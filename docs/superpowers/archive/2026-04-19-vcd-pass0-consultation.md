@@ -85,7 +85,7 @@ if (!is.null(args$config)) {
 ```
 
 - [ ] **Step 2: Test `--config` override**
-Create a dummy `test_config.json` and run `analysis.R --config test_config.json`.
+Create a minimal JSON (see `tests/fixtures/configs/bayesian_minimal_config_stub.json`) and run `analysis.R --config <path>`.
 
 ### Task 3: Create Pass 0 Skill Definition
 

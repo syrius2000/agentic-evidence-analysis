@@ -18,6 +18,9 @@ docs/superpowers/plans/
 .gemini/
 .cursor/
 
+# Pass 0 inspect_data.R (writes to cwd)
+inspection_results.json
+
 # Test artifacts
 **/tests/temp_test.csv
 **/tests/test_out_logic/
