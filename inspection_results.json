@@ -1,0 +1,35 @@
+{
+  "file": "examples/ucb_admissions.csv",
+  "n_rows": 24,
+  "n_cols": 4,
+  "categorical_vars": {
+    "Admit": {
+      "levels": ["Admitted", "Rejected"],
+      "n_levels": 2,
+      "top_counts": {
+        "Admitted": 12,
+        "Rejected": 12
+      }
+    },
+    "Gender": {
+      "levels": ["Female", "Male"],
+      "n_levels": 2,
+      "top_counts": {
+        "Female": 12,
+        "Male": 12
+      }
+    },
+    "Dept": {
+      "levels": ["A", "B", "C", "D", "E", "F"],
+      "n_levels": 6,
+      "top_counts": {
+        "A": 4,
+        "B": 4,
+        "C": 4,
+        "D": 4,
+        "E": 4
+      }
+    }
+  },
+  "numeric_vars": "Freq"
+}

@@ -1,0 +1,37 @@
+# R
+.Rhistory
+.Rdata
+.RData
+.Renviron
+
+# Skill output (runtime-generated)
+skill_out/
+skill_output/
+!skill_out/.gitkeep
+!skill_output/.gitkeep
+output/
+docs/superpowers/plans/
+
+# IDE
+.DS_Store
+.vscode/
+.gemini/
+.cursor/
+
+# Test artifacts
+**/tests/temp_test.csv
+**/tests/test_out_logic/
+**/vcd-categorical-analysis/templates/skill_out/
+*dt_table_files/
+tests/skill_out_smoke/
+tests/Rlib/
+tests/fixtures/vcd_bayesian_evidence_skilltemp/.Rlib
+
+# Generated images in skills
+.agent/skills/*/*/*.png
+
+# OS
+Thumbs.db
+
+# Logs
+*.log

@@ -1,0 +1,1 @@
+{"input": "examples/titanic.csv", "vars": ["Class", "Sex", "Age", "Survived"], "freq": "Freq", "output_dir": "output/titanic_verify", "run_id": "verify_v1"}

@@ -1,0 +1,10 @@
+{
+  "interface_version": "1.0",
+  "skill": "vcd-bayesian-evidence-analysis",
+  "run_id": "7d30a6a76dfcf79c24186bb8c0da10de12d4a959fb3fcf6f1a095c74aa6dc9bb",
+  "run_id_short": "7d30a6a76dfcf79c",
+  "out_root": "/Users/myamaguchi/Programing/Skill_Development_Gemini/tests/fixtures/vcd_bayesian_dashboard",
+  "run_output_dir": "/Users/myamaguchi/Programing/Skill_Development_Gemini/tests/fixtures/vcd_bayesian_dashboard/run_7d30a6a76dfcf79c",
+  "input_data": "builtin:HairEyeColor",
+  "created_at": "2026-04-18T16:56:27+0900"
+}
