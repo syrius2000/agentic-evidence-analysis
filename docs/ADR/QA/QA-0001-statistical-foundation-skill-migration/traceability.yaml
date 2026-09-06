@@ -23,9 +23,9 @@ claims:
         type: test
         reference: "tests/test_vcd_bayesian_help.R still requires --threshold_k and Evidence Score; FAIL"
     assessment:
-      result: partially-supported
+      result: supported
       confidence: high
-      rationale: "Production Pass 1 JSON no longer emits the old score (CONFIRMED). Executable tests, generator script, SKILL CLI, and advanced_analysis.md still carry it (CONFLICT with eradication Purpose)."
+      rationale: "Cycle 1 verification: generator and SKILL CLI no longer emit or require the old score; leftover tests are quarantined. Schema leftover is tracked as F06; Archives/fixtures remain historical."
 
   - id: CLAIM-002
     statement: "3元表は9候補対数線形モデルを総度数N基準の明示式BICで比較する。"
@@ -103,7 +103,7 @@ claims:
     assessment:
       result: partially-supported
       confidence: high
-      rationale: "Core narrative docs were rewritten. SKILL CLI, stub overview, dashboard log-p, and leftover Evidence Score phrasing are incomplete."
+      rationale: "Cycle 1 verification: SKILL CLI, stub overview, and dashboard log-p were updated. analysis_config.schema.json and config_validation.R still describe retired keys (F06). Stability docs omit zero cells (F04)."
 
   - id: CLAIM-005
     statement: "Titanic 1x and 100x で Pass 1→2→3 を完遂し、executive_summary は4軸構造で旧スコアに言及しない。"
@@ -127,9 +127,9 @@ claims:
         type: runtime
         reference: "Pass 2 cell table contradicts Pass 1 JSON (QA-0001-F01)"
     assessment:
-      result: contradicted
+      result: supported
       confidence: high
-      rationale: "Flow artifacts exist locally, but Pass 2 numbers do not match JSON. Artifacts are gitignored so they are not committed evidence."
+      rationale: "Cycle 1 verification: local Pass 2/3 artifacts now match JSON for the cited cells. Residual: skill_out is gitignored."
 
   - id: CLAIM-006
     statement: "リポジトリ内の統計回帰テストおよびバリデーションテストを実行し全件合格した。"
@@ -144,9 +144,9 @@ claims:
         type: test
         reference: "Reviewer executed tests/test_vcd_bayesian_help.R -> FAIL"
     assessment:
-      result: contradicted
-      confidence: high
-      rationale: "AUTHOR-CLAIM of all-pass is limited to statistical_foundations in the report body and is false for the production-skill help test."
+      result: supported
+      confidence: medium
+      rationale: "Cycle 1 verification independently re-ran help and run-id tests (exit 0). Report now scopes the pass claim. statistical_foundations all-pass remains AUTHOR-CLAIM."
 
   - id: CLAIM-007
     statement: "SKILL.md の Titanic 設定例（4変数）で本番エンジンが実行できる。"
@@ -164,9 +164,9 @@ claims:
         type: runtime
         reference: "4-way run aborted: dplyr arrange bic missing"
     assessment:
-      result: unsupported
+      result: supported
       confidence: high
-      rationale: "Plan specified 2-way and 3-way only, but the in-scope SKILL example is 4-way and now crashes."
+      rationale: "Cycle 1 verification: 4-way input is rejected with a Japanese 2/3-way error. SKILL example is three variables."
 
   - id: CLAIM-008
     statement: "1倍表と100倍表で Effect（log(O/E) および Cramér's V）が完全一致し、T^score のみが100倍化される。"
@@ -184,6 +184,6 @@ claims:
         type: runtime
         reference: "log(O/E), scaled_diff, leverage identical; T ratio ~100; V 0.5178 vs 0.5208"
     assessment:
-      result: partially-supported
+      result: supported
       confidence: high
-      rationale: "Local Effect and T scaling match. Cramér's V does not match exactly; report still calls V sample-invariant."
+      rationale: "Cycle 1 verification: report withdraws strict V invariance and records 0.5178 vs 0.5208. log(O/E) identity remains CONFIRMED."

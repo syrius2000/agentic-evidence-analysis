@@ -43,7 +43,7 @@ parse_args <- function(args) {
     freq = "Freq",
     response_var = NULL,
     top_k = 10L,
-    large_n_threshold = 1000,
+    large_n_threshold = 2000,
     base_model = "M1",
     show_help = FALSE,
     show_help_stats = FALSE

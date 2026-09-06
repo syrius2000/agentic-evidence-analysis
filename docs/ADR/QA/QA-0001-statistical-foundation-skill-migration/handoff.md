@@ -2,12 +2,12 @@
 document_type: spec-driven-qa-handoff
 handoff_contract_version: "1.0"
 case_id: QA-0001
-generated_at: "2026-09-06T22:41:20+09:00"
-source_revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+generated_at: "2026-09-06T23:17:11+09:00"
+source_revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
 recipient_role: "implementer"
 workflow: "author-response"
 status: "author-action-required"
-current_cycle: 1
+current_cycle: 2
 ---
 
 # QA Handoff
@@ -26,16 +26,8 @@ Findingは`findings.yaml`を正本とし、以下は受け渡し用の要約で�
 
 | ID | 重大度 | 状態 | 要求される対応 | 根拠 |
 |---|---|---|---|---|
-| QA-0001-F01 | high | open | Regenerate Pass 2 from the actual JSON, correct the cell table, re-render Pass 3, and show a cell-level JSON-vs-summary diff. | skill_out/titanic_std_v2/run_run_std_v2/evidence_results.json cell 3rd/Male/No: log_oe=0.1157, T=16.6576, h=0.6603, E=375.8789 |
-| QA-0001-F02 | high | open | Either update/remove leftover executable tests and SKILL CLI so they cannot emit or require the old score, or revise Purpose/report to a bounded eradication scope with an explicit leftover inventory. | tests/scripts/vcd_bayesian_gen_executive_summary.R still writes Evidence_Score = r^2 - log(N) |
-| QA-0001-F03 | high | open | Migrate or quarantine vcd-bayesian skill tests to the 4-axis contract, rerun them, and correct the report's test-scope claim. | Rscript tests/test_vcd_bayesian_help.R exit 1: grepl('--threshold_k', help_text) is not TRUE |
-| QA-0001-F04 | medium | open | Pick one Stability rule, implement it, and align SKILL/Reference/dashboard/report. Add a fixture that crosses the chosen leverage cut. | pass1_compute.R is_high_lev <- lev > 0.95; is_quarantined <- is_zero | is_sparse | is_high_lev |
-| QA-0001-F05 | medium | open | Publish a single BIC equation matching the code and validation report, and remove the Deviance+df ln N statement from dashboard and stats_bayesian.md. | pass1_compute.R bic_explicit <- -2 * ll + k_param * log(total_n); Titanic M1 bic=1160.1817 |
-| QA-0001-F06 | medium | open | Rewrite SKILL CLI/JSON contracts to the 4-axis engine, and drop or explicitly deprecate old keys in schema and config_validation.R. | SKILL.md options table still lists --threshold_k, --ebic_gamma, --level2_factor, --arm_*; generated files still say core/model_selection/effects/thresholds |
-| QA-0001-F07 | medium | open | Point the stub at input_summary/effects/models and stop emitting NULL overview fields. | pass2_stub.R on new JSON: データセット名 Unknown; 分析次元 empty; 総度数 (N) NULL; Top-K 4-axis lines do render |
-| QA-0001-F08 | medium | open | Either reject n_vars>3 with a Japanese error before fitting, or implement a defined 4-way policy; fix the SKILL example to match. | Rscript analysis.R --input examples/titanic.csv --vars Class,Sex,Age,Survived ... Error in dplyr::arrange(): オブジェクト 'bic' がありません |
-| QA-0001-F09 | medium | open | Stop calling V sample-invariant, or compute an N-invariant V and re-gate Step 5.3 against that definition. | Independent Pass 1: effects.cramers_v 0.5178 (N=2201) vs 0.5208 (N=220100); log_oe_ratio identical on all 16 cells |
-| QA-0001-F10 | medium | open | Add 対数P値, make Top-K ranking explicit and consistent with the sort key, and align the caption. | dashboard.Rmd col_rename has p_value but not log_p; order = list(list(score_col_idx, 'desc')); caption Score統計量 上位 |
+| QA-0001-F04 | medium | open | Align Stability docs with code (zero cells, E<5, h>=0.80) and add a fixture that crosses h=0.80. | pass1_compute.R is_high_lev <- lev > 0.95; is_quarantined <- is_zero | is_sparse | is_high_lev |
+| QA-0001-F06 | medium | open | Drop or explicitly deprecate threshold_k, ebic_*, level*_factor, and arm_* in config_validation.R and analysis_config.schema.json. | SKILL.md options table still lists --threshold_k, --ebic_gamma, --level2_factor, --arm_*; generated files still say core/model_selection/effects/thresholds |
 
 ## 3. 回答の契約
 
@@ -56,4 +48,4 @@ Findingは`findings.yaml`を正本とし、以下は受け渡し用の要約で�
 ## 6. 出典
 
 - 正本QAケース: `review.md`, `findings.yaml`, `traceability.yaml`, `events.jsonl`
-- 生成元リビジョン: `3d5fb36d1ab02210a721b10fe0c8b56b9a987b09`
+- 生成元リビジョン: `c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480`
