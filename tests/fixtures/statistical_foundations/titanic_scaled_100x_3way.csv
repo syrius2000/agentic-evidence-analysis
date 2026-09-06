@@ -1,0 +1,17 @@
+Class,Sex,Survived,Freq
+1st,Female,No,400
+1st,Female,Yes,14100
+1st,Male,No,11800
+1st,Male,Yes,6200
+2nd,Female,No,1300
+2nd,Female,Yes,9300
+2nd,Male,No,15400
+2nd,Male,Yes,2500
+3rd,Female,No,10600
+3rd,Female,Yes,9000
+3rd,Male,No,42200
+3rd,Male,Yes,8800
+Crew,Female,No,300
+Crew,Female,Yes,2000
+Crew,Male,No,67000
+Crew,Male,Yes,19200

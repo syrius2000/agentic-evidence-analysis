@@ -1,0 +1,30 @@
+{
+  "schema_version": "3way-foundation-v1",
+  "input": "tests/fixtures/statistical_foundations/titanic_scaled_100x_3way.csv",
+  "vars": ["Class", "Sex", "Survived"],
+  "freq": "Freq",
+  "response_var": "Survived",
+  "output_dir": "output/statistical_foundations",
+  "run_id": "titanic_100x_dir",
+  "sampling": {
+    "unit": "乗客",
+    "total_n_meaning": "タイタニック号の度数を100倍拡大 (N=220100)",
+    "independence_assumption": "assumed_independent",
+    "is_scaled": true,
+    "scaling_factor": 100,
+    "lineage": "tests/fixtures/statistical_foundations/titanic_aggregated_3way.csv の Freq を100倍"
+  },
+  "prior": {
+    "total_alpha": 1,
+    "distribution": "dirichlet"
+  },
+  "reference_tolerance": {
+    "glm_vs_loglin_fitted_rel_tol": 1e-05,
+    "glm_vs_loglin_deviance_abs_tol": 0.0001,
+    "mcse_factor": 3,
+    "coverage_se_factor": 3,
+    "analytical_vs_mc_mean_abs_tol": 0.01,
+    "analytical_vs_mc_quantile_prob_tol": 0.01
+  },
+  "seed": 20260906
+}

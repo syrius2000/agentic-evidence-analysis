@@ -1,0 +1,28 @@
+{
+  "schema_version": "3way-foundation-v1",
+  "input": "tests/fixtures/statistical_foundations/syn_independent.csv",
+  "vars": ["A", "B", "C"],
+  "freq": "Freq",
+  "response_var": {},
+  "output_dir": "output/statistical_foundations",
+  "run_id": "syn_independent",
+  "sampling": {
+    "unit": "人工観測単位",
+    "total_n_meaning": "完全に相互独立な人工表 (N=800)",
+    "independence_assumption": "assumed_independent",
+    "is_scaled": false
+  },
+  "prior": {
+    "total_alpha": 1,
+    "distribution": "dirichlet"
+  },
+  "reference_tolerance": {
+    "glm_vs_loglin_fitted_rel_tol": 1e-05,
+    "glm_vs_loglin_deviance_abs_tol": 0.0001,
+    "mcse_factor": 3,
+    "coverage_se_factor": 3,
+    "analytical_vs_mc_mean_abs_tol": 0.01,
+    "analytical_vs_mc_quantile_prob_tol": 0.01
+  },
+  "seed": 20260906
+}

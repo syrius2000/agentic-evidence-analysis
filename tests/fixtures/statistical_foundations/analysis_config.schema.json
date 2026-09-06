@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/statistical-foundations/analysis_config.schema.json",
+  "title": "3-way Statistical Foundations Trial Config Schema",
+  "description": "3次元カテゴリカル統計基盤検証のための試作用設定スキーマ（未知キー拒否・厳格検証）",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "input",
+    "vars",
+    "freq",
+    "output_dir",
+    "run_id",
+    "sampling"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["3way-foundation-v1"]
+    },
+    "input": {
+      "type": "string",
+      "minLength": 1,
+      "description": "入力データCSVの相対パスまたは絶対パス"
+    },
+    "vars": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "解析対象となるちょうど3つの異なるカテゴリ変数名"
+    },
+    "freq": {
+      "type": "string",
+      "minLength": 1,
+      "description": "度数（カウント）列名"
+    },
+    "response_var": {
+      "type": ["string", "null"],
+      "description": "目的変数（varsに含まれる変数名、または探索的解析の場合はnull）"
+    },
+    "output_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "実行結果出力ルートディレクトリ"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "実行識別子（出力隔離ディレクトリ run_<first16> に使用）"
+    },
+    "sampling": {
+      "type": "object",
+      "required": [
+        "unit",
+        "total_n_meaning",
+        "independence_assumption",
+        "is_scaled"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "description": "標本単位（例: 乗客, 被験者）"
+        },
+        "total_n_meaning": {
+          "type": "string",
+          "minLength": 1,
+          "description": "総度数の意味（例: 総乗客数, 標本観測数）"
+        },
+        "independence_assumption": {
+          "type": "string",
+          "enum": ["assumed_independent", "unverified", "dependent_blocked"],
+          "description": "観測間の独立性に関する申告状態"
+        },
+        "is_scaled": {
+          "type": "boolean",
+          "description": "人工的な倍率拡大が行われているか"
+        },
+        "scaling_factor": {
+          "type": "number",
+          "minimum": 0,
+          "description": "拡大倍率（100倍表なら100）"
+        },
+        "lineage": {
+          "type": "string",
+          "description": "生成来歴・派生元の説明"
+        }
+      }
+    },
+    "levels": {
+      "type": "object",
+      "description": "各カテゴリ変数の水準順定義",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "missing_policy": {
+      "type": "string",
+      "enum": ["reject", "omit_with_warning", "hold_inference"],
+      "default": "reject",
+      "description": "度数列やカテゴリ列にNAが存在した場合の処理方針"
+    },
+    "absent_cell_policy": {
+      "type": "string",
+      "enum": ["treat_as_sample_zero", "reject", "hold_inference"],
+      "default": "treat_as_sample_zero",
+      "description": "水準格子に未記載セルがあった場合の処理方針"
+    },
+    "structural_zeros": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "構造的ゼロ（理論上発生し得ないセル）の定義リスト"
+    },
+    "filters": {
+      "type": "array",
+      "description": "等値・集合包含のみを許可する構造化抽出条件リスト（任意R式禁止）",
+      "items": {
+        "type": "object",
+        "required": ["column", "op", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "column": {
+            "type": "string",
+            "minLength": 1
+          },
+          "op": {
+            "type": "string",
+            "enum": ["==", "in"]
+          },
+          "value": {
+            "type": ["string", "number", "array"]
+          }
+        }
+      }
+    },
+    "model_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9"]
+      },
+      "description": "適合・比較を行う候補モデルID一覧"
+    },
+    "prior": {
+      "type": "object",
+      "required": ["total_alpha"],
+      "additionalProperties": false,
+      "properties": {
+        "total_alpha": {
+          "type": "number",
+          "minimum": 0.0001,
+          "description": "Dirichlet事前の総集中度（例: 1.0, 0.1, 10.0）"
+        },
+        "distribution": {
+          "type": "string",
+          "default": "dirichlet"
+        }
+      }
+    },
+    "reference_tolerance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "glm_vs_loglin_fitted_rel_tol": { "type": "number" },
+        "glm_vs_loglin_deviance_abs_tol": { "type": "number" },
+        "analytical_vs_mc_mean_abs_tol": { "type": "number" },
+        "analytical_vs_mc_quantile_prob_tol": { "type": "number" }
+      }
+    },
+    "seed": {
+      "type": "integer",
+      "description": "MCMC・乱数シード"
+    }
+  }
+}

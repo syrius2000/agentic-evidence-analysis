@@ -1,0 +1,96 @@
+{
+  "created_at": "2026-09-06T21:49:57+0900",
+  "source_titanic": {
+    "file": "examples/titanic.csv",
+    "sha256": "69af742ef405fc4ec8c0d485da43f837d8fdc54f13c5f4f2ab817873ba8b7ce1",
+    "n_rows": 32,
+    "n_cols": 5,
+    "total_n": 2201
+  },
+  "cases": {
+    "titanic_aggregated_3way": {
+      "file": "tests/fixtures/statistical_foundations/titanic_aggregated_3way.csv",
+      "sha256": "68b4e93100304980c29c053e3932387705c5a847717b37fc1dbbd8a6899479f5",
+      "derived_from": "examples/titanic.csv",
+      "transformation": "Class x Sex x Survived への Age 合算集約",
+      "supplement": {
+        "cat_vars": ["Class", "Sex", "Survived"],
+        "expected_cells": 16,
+        "actual_cells": 16,
+        "is_full_grid": true,
+        "missing_cells_count": 0,
+        "total_n": 2201,
+        "zero_cells": 0,
+        "na_freq_count": 0,
+        "min_freq": 3,
+        "max_freq": 670
+      }
+    },
+    "titanic_scaled_100x_3way": {
+      "file": "tests/fixtures/statistical_foundations/titanic_scaled_100x_3way.csv",
+      "sha256": "a755f409224c5d900bad747edba4fc8811b12f536c2a48ed59580ff55c6f71ca",
+      "derived_from": "tests/fixtures/statistical_foundations/titanic_aggregated_3way.csv",
+      "transformation": "度数を100倍（構成比完全一致）",
+      "supplement": {
+        "cat_vars": ["Class", "Sex", "Survived"],
+        "expected_cells": 16,
+        "actual_cells": 16,
+        "is_full_grid": true,
+        "missing_cells_count": 0,
+        "total_n": 220100,
+        "zero_cells": 0,
+        "na_freq_count": 0,
+        "min_freq": 300,
+        "max_freq": 67000
+      }
+    },
+    "syn_independent": {
+      "path": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/tests/fixtures/statistical_foundations/syn_independent.csv",
+      "sha256": "b9d5851118a7638f194cf546b18f790dfd167ab9a0d580185439e54db64e3099",
+      "supplement": {
+        "cat_vars": ["A", "B", "C"],
+        "expected_cells": 8,
+        "actual_cells": 8,
+        "is_full_grid": true,
+        "missing_cells_count": 0,
+        "total_n": 800,
+        "zero_cells": 0,
+        "na_freq_count": 0,
+        "min_freq": 48,
+        "max_freq": 168
+      }
+    },
+    "syn_ab_associated": {
+      "path": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/tests/fixtures/statistical_foundations/syn_ab_associated.csv",
+      "sha256": "82d5ee44d1305acc0f53618bc8ccbf7236fe6f0c0c6f230d4ce72cf6acf0d2ec",
+      "supplement": {
+        "cat_vars": ["A", "B", "C"],
+        "expected_cells": 8,
+        "actual_cells": 8,
+        "is_full_grid": true,
+        "missing_cells_count": 0,
+        "total_n": 800,
+        "zero_cells": 0,
+        "na_freq_count": 0,
+        "min_freq": 20,
+        "max_freq": 180
+      }
+    },
+    "syn_interaction_shifted": {
+      "path": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/tests/fixtures/statistical_foundations/syn_interaction_shifted.csv",
+      "sha256": "5e73793c12538b71a9560d16e80d1af1a752d21e0ef86a4362132f73e7aab2bd",
+      "supplement": {
+        "cat_vars": ["A", "B", "C"],
+        "expected_cells": 8,
+        "actual_cells": 8,
+        "is_full_grid": true,
+        "missing_cells_count": 0,
+        "total_n": 800,
+        "zero_cells": 0,
+        "na_freq_count": 0,
+        "min_freq": 40,
+        "max_freq": 160
+      }
+    }
+  }
+}

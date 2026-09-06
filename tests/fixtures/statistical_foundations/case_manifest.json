@@ -1,0 +1,356 @@
+{
+  "manifest_version": "1.0.0-pre-execution",
+  "created_at": "2026-09-06T17:46:00+09:00",
+  "description": "3次元カテゴリカル統計基盤検証のための検証ケース・候補モデル・参照計算・許容誤差定義",
+  "models": [
+    {
+      "id": "M1",
+      "name": "mutual_independence",
+      "formula": "~ A + B + C",
+      "description": "相互独立モデル（3変数すべてが互いに独立）",
+      "margins": [["A"], ["B"], ["C"]],
+      "max_interaction_order": 1
+    },
+    {
+      "id": "M2",
+      "name": "assoc_AB",
+      "formula": "~ A*B + C",
+      "description": "AとBの関連のみを許容し、Cは独立",
+      "margins": [["A", "B"], ["C"]],
+      "max_interaction_order": 2
+    },
+    {
+      "id": "M3",
+      "name": "assoc_AC",
+      "formula": "~ A*C + B",
+      "description": "AとCの関連のみを許容し、Bは独立",
+      "margins": [["A", "C"], ["B"]],
+      "max_interaction_order": 2
+    },
+    {
+      "id": "M4",
+      "name": "assoc_BC",
+      "formula": "~ B*C + A",
+      "description": "BとCの関連のみを許容し、Aは独立",
+      "margins": [["B", "C"], ["A"]],
+      "max_interaction_order": 2
+    },
+    {
+      "id": "M5",
+      "name": "cond_indep_BC_given_A",
+      "formula": "~ A*B + A*C",
+      "description": "Aで条件付けたときBとCが条件付き独立",
+      "margins": [["A", "B"], ["A", "C"]],
+      "max_interaction_order": 2
+    },
+    {
+      "id": "M6",
+      "name": "cond_indep_AC_given_B",
+      "formula": "~ A*B + B*C",
+      "description": "Bで条件付けたときAとCが条件付き独立",
+      "margins": [["A", "B"], ["B", "C"]],
+      "max_interaction_order": 2
+    },
+    {
+      "id": "M7",
+      "name": "cond_indep_AB_given_C",
+      "formula": "~ A*C + B*C",
+      "description": "Cで条件付けたときAとBが条件付き独立",
+      "margins": [["A", "C"], ["B", "C"]],
+      "max_interaction_order": 2
+    },
+    {
+      "id": "M8",
+      "name": "homogeneous_association",
+      "formula": "~ A*B + A*C + B*C",
+      "description": "均一連関モデル（すべての2因子交互作用を含み、3次交互作用を含まない）",
+      "margins": [["A", "B"], ["A", "C"], ["B", "C"]],
+      "max_interaction_order": 2
+    },
+    {
+      "id": "M9",
+      "name": "saturated",
+      "formula": "~ A*B*C",
+      "description": "飽和モデル（3次交互作用まで含む完全適合モデル）",
+      "margins": [["A", "B", "C"]],
+      "max_interaction_order": 3
+    }
+  ],
+  "titanic_cases": {
+    "source_file": "examples/titanic.csv",
+    "variables": ["Class", "Sex", "Survived"],
+    "ignored_and_aggregated_variable": "Age",
+    "expected_cell_count": 16,
+    "multipliers": [
+      {
+        "id": "standard",
+        "factor": 1,
+        "expected_total_n": 2201
+      },
+      {
+        "id": "scaled_100x",
+        "factor": 100,
+        "expected_total_n": 220100
+      }
+    ],
+    "search_modes": [
+      {
+        "id": "exploratory",
+        "response_var": null,
+        "description": "3変数を対等に扱う探索的モデル比較"
+      },
+      {
+        "id": "directed",
+        "response_var": "Survived",
+        "description": "Survivedを目的変数とした条件付き確率・オッズ比視点の比較"
+      }
+    ]
+  },
+  "synthetic_tables": [
+    {
+      "id": "syn_independent",
+      "name": "完全に独立な2x2x2人工表",
+      "dimensions": ["A", "B", "C"],
+      "levels": {
+        "A": ["A1", "A2"],
+        "B": ["B1", "B2"],
+        "C": ["C1", "C2"]
+      },
+      "generation_formula": "n_ijk = N * p_A(i) * p_B(j) * p_C(k)",
+      "target_n": 800,
+      "p_A": [0.4, 0.6],
+      "p_B": [0.3, 0.7],
+      "p_C": [0.5, 0.5]
+    },
+    {
+      "id": "syn_ab_associated",
+      "name": "AB間のみ関連がありCは独立な2x2x2人工表",
+      "dimensions": ["A", "B", "C"],
+      "levels": {
+        "A": ["A1", "A2"],
+        "B": ["B1", "B2"],
+        "C": ["C1", "C2"]
+      },
+      "generation_formula": "n_ijk = N * p_AB(i, j) * p_C(k)",
+      "target_n": 800,
+      "p_AB": [
+        [0.35, 0.05],
+        [0.15, 0.45]
+      ],
+      "p_C": [0.5, 0.5]
+    },
+    {
+      "id": "syn_interaction_shifted",
+      "name": "Cの層によってAB関連が逆転する3次交互作用人工表",
+      "dimensions": ["A", "B", "C"],
+      "levels": {
+        "A": ["A1", "A2"],
+        "B": ["B1", "B2"],
+        "C": ["C1", "C2"]
+      },
+      "generation_formula": "C=C1ではAB正相関、C=C2ではAB逆相関",
+      "target_n": 800,
+      "p_ABC": [
+        [[0.20, 0.05], [0.05, 0.20]],
+        [[0.05, 0.20], [0.20, 0.05]]
+      ]
+    }
+  ],
+  "simulation_and_mcmc": {
+    "random_seed": 20260906,
+    "posterior_draws": 20000,
+    "dirichlet_priors": [
+      {
+        "id": "uniform_total_mass_1",
+        "total_alpha": 1.0,
+        "is_primary": true,
+        "description": "総集中度1.0のフラットDirichlet事前分布（セル当たり 1/K）"
+      },
+      {
+        "id": "sensitivity_sparse_0.1",
+        "total_alpha": 0.1,
+        "is_primary": false,
+        "description": "スパース性を仮定した感度分析設定（セル当たり 0.1/K）"
+      },
+      {
+        "id": "sensitivity_dense_10",
+        "total_alpha": 10.0,
+        "is_primary": false,
+        "description": "一様縮約を強めた感度分析設定（セル当たり 10/K）"
+      }
+    ]
+  },
+  "tolerances": {
+    "glm_vs_loglin_fitted_rel_tol": 1e-05,
+    "glm_vs_loglin_deviance_abs_tol": 1e-04,
+    "mcse_factor": 3.0,
+    "coverage_se_factor": 3.0,
+    "analytical_vs_mc_mean_abs_tol": 0.01,
+    "analytical_vs_mc_quantile_prob_tol": 0.01
+  },
+  "scenario_mapping": [
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "標準Titanicから入力を作る",
+      "handler": "execution_verification",
+      "implementation_target": "prepare_cases.R"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "元表と100倍表を比較する",
+      "handler": "execution_verification",
+      "implementation_target": "run_validation.R"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "許容範囲を外れる",
+      "handler": "execution_verification",
+      "implementation_target": "check_results.R"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "元データも強い関連を示す",
+      "handler": "adoption_record",
+      "implementation_target": "statistical_validation report"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "数値が通常表示の範囲を超える",
+      "handler": "execution_verification",
+      "implementation_target": "check_results.R"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "既知構造の表を評価する",
+      "handler": "execution_verification",
+      "implementation_target": "run_validation.R"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "抽出条件が無効である",
+      "handler": "execution_verification",
+      "implementation_target": "validate_config.R"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "数値検証だけが完了する",
+      "handler": "adoption_record",
+      "implementation_target": "statistical_validation report"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "実LLMのコメントを評価する",
+      "handler": "post_stage_llm_evaluation",
+      "implementation_target": "後段の実装計画へ引き継ぎ（本変更では未実施）"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "同じセルに複数行がある",
+      "handler": "execution_verification",
+      "implementation_target": "prepare_cases.R"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "入力または設定が無効である",
+      "handler": "execution_verification",
+      "implementation_target": "validate_config.R"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "推論の前提が未確定である",
+      "handler": "execution_verification",
+      "implementation_target": "validate_config.R"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "未記載または構造ゼロのセルがある",
+      "handler": "execution_verification",
+      "implementation_target": "validate_config.R"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "目的変数を指定しない",
+      "handler": "execution_verification",
+      "implementation_target": "fit_models.R"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "目的変数を指定する",
+      "handler": "execution_verification",
+      "implementation_target": "fit_models.R"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "均一連関と3次交互作用を比較する",
+      "handler": "execution_verification",
+      "implementation_target": "fit_models.R"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "BICとEBICを併記する",
+      "handler": "execution_verification",
+      "implementation_target": "fit_models.R & adoption_record"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "候補の評価に失敗する",
+      "handler": "execution_verification",
+      "implementation_target": "fit_models.R"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "現行方式を置換する判断となる",
+      "handler": "adoption_record",
+      "implementation_target": "statistical_validation report"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "同じセルを複数モデルで診断する",
+      "handler": "execution_verification",
+      "implementation_target": "fit_models.R"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "二乗した指標を表示する",
+      "handler": "execution_verification",
+      "implementation_target": "fit_models.R"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "局所モデル比較との対応が未確認である",
+      "handler": "adoption_record",
+      "implementation_target": "statistical_validation report"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "3元表を2元表に変形して効果量を求める",
+      "handler": "execution_verification",
+      "implementation_target": "fit_models.R"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "重要性の基準が指定されていない",
+      "handler": "adoption_record",
+      "implementation_target": "statistical_validation report"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "上位セルだけを表示する",
+      "handler": "execution_verification",
+      "implementation_target": "fit_models.R"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "事前分布で解釈が変わる",
+      "handler": "execution_verification",
+      "implementation_target": "fit_models.R & adoption_record"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "AIが特定セルの偏りを説明する",
+      "handler": "post_stage_llm_evaluation",
+      "implementation_target": "後段の実装計画へ引き継ぎ（本変更では未実施）"
+    }
+  ]
+}
+
