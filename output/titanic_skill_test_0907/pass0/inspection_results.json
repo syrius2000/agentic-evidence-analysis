@@ -1,0 +1,50 @@
+{
+  "file": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/examples/titanic.csv",
+  "input_sha256": "69af742ef405fc4ec8c0d485da43f837d8fdc54f13c5f4f2ab817873ba8b7ce1",
+  "missing_counts": {
+    "Class": 0,
+    "Sex": 0,
+    "Age": 0,
+    "Survived": 0,
+    "Freq": 0
+  },
+  "n_rows": 32,
+  "n_cols": 5,
+  "categorical_vars": {
+    "Class": {
+      "levels": ["1st", "2nd", "3rd", "Crew"],
+      "n_levels": 4,
+      "top_counts": {
+        "1st": 8,
+        "2nd": 8,
+        "3rd": 8,
+        "Crew": 8
+      }
+    },
+    "Sex": {
+      "levels": ["Female", "Male"],
+      "n_levels": 2,
+      "top_counts": {
+        "Female": 16,
+        "Male": 16
+      }
+    },
+    "Age": {
+      "levels": ["Adult", "Child"],
+      "n_levels": 2,
+      "top_counts": {
+        "Adult": 16,
+        "Child": 16
+      }
+    },
+    "Survived": {
+      "levels": ["No", "Yes"],
+      "n_levels": 2,
+      "top_counts": {
+        "No": 16,
+        "Yes": 16
+      }
+    }
+  },
+  "numeric_vars": "Freq"
+}

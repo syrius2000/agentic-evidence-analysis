@@ -1,0 +1,37 @@
+{
+  "schema_version": "3way-foundation-v1",
+  "input": "examples/titanic.csv",
+  "vars": ["Class", "Sex", "Survived"],
+  "freq": "Freq",
+  "response_var": "Survived",
+  "output_dir": "output/titanic_skill_test_0907/pass1",
+  "run_id": "titanic_20260907_001",
+  "sampling": {
+    "unit": "乗客・乗員",
+    "total_n_meaning": "集計総度数 2201",
+    "independence_assumption": "assumed_independent",
+    "is_scaled": false,
+    "scaling_factor": 1,
+    "lineage": "examples/titanic.csv: Ageはvarsに含めず、Class・Sex・Survivedの3元セル内で合算"
+  },
+  "levels": {
+    "Class": ["1st", "2nd", "3rd", "Crew"],
+    "Sex": ["Female", "Male"],
+    "Survived": ["No", "Yes"]
+  },
+  "missing_policy": "reject",
+  "absent_cell_policy": "sample_zero",
+  "structural_zeros": [],
+  "filters": [],
+  "prior": {
+    "total_alpha": 1,
+    "sensitivity": [0.1, 10],
+    "draws": 20000
+  },
+  "seed": 20260907,
+  "consultation": {
+    "inspection": "output/titanic_skill_test_0907/pass0/inspection_results.json",
+    "input_sha256": "69af742ef405fc4ec8c0d485da43f837d8fdc54f13c5f4f2ab817873ba8b7ce1",
+    "rationale": "Titanicの4変数から3次元経路の上限に合わせてClass・Sex・Survivedを選び、Ageは3元セル内で合算する。Survivedを目的変数として条件付き割合を表示する。0度数は構造ゼロと断定せず標本ゼロとして扱う。これはスキルの計算・考察・HTML表示を確認する教材テストであり、因果推論ではない。"
+  }
+}

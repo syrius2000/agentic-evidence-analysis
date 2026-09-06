@@ -1,0 +1,17 @@
+{
+  "result_sha256": "868083f398edf61296502afc80f58d1bee40c65535279eefbcf6b28de6cac8d9",
+  "status": "REVIEWED",
+  "claims": [
+    {"pointer": "/input_summary/total_n", "value": 2201},
+    {"pointer": "/models/M1/deviance", "value": 1018.32494646211},
+    {"pointer": "/models/M8/deviance", "value": 65.1798309580879},
+    {"pointer": "/models/M9/deviance", "value": 4.37427871702202e-14},
+    {"pointer": "/comparisons/6/delta_g2", "value": 953.14511550402},
+    {"pointer": "/comparisons/6/delta_g2_per_n", "value": 0.433050938438901},
+    {"pointer": "/comparisons/26/delta_g2", "value": 65.1798309580878},
+    {"pointer": "/posterior/exact_bf/log_bf_sat_over_ind", "value": 466.963914829987},
+    {"pointer": "/posterior/conditional/probabilities/1/mean", "value": 0.972006890611542},
+    {"pointer": "/posterior/conditional/probabilities/1/lower", "value": 0.939743828918902},
+    {"pointer": "/posterior/conditional/probabilities/1/upper", "value": 0.992164701642589}
+  ]
+}
