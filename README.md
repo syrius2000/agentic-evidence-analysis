@@ -6,7 +6,7 @@
 **AIエージェントおよびRユーザーのための、エビデンス駆動型カテゴリカルデータ分析スキルセット**  
 *Evidence-Driven Categorical Data Analysis Skills for AI Agents & R Users.*
 
-大標本データ（RWD、臨床・疫学データ、アンケート等）における「P値の罠」を克服し、ベイズ因子、エビデンススコア、効果量を用いて「統計的有意性」と「実質的意義」を峻別する分析パイプラインを提供します。
+大標本データ（RWD、臨床・疫学データ、アンケート等）における「P値の罠」を克服し、4軸セル診断（Effect × Evidence × Influence × Stability）、Leverage補正局所Score統計量、明示式BIC、および全体効果量を用いて「統計的有意性」と「実質的意義」を峻別する分析パイプラインを提供します。
 
 ---
 
@@ -59,24 +59,29 @@ graph TD
 | スキル名 | 種別 | 主な役割 |
 |---|---|---|
 | **vcd-pass0-consultation** | 事前相談 | データ検分、次元削減、層別解析の提案。分析の「次の一手」をガイド。 |
-| **vcd-bayesian-evidence-analysis** | 主力解析 | ベイズ因子 ($BF_{10}$) と Evidence Score による多次元エビデンス分析。 |
+| **vcd-bayesian-evidence-analysis** | 主力解析 | 4軸セル診断（Effect/Evidence/Influence/Stability）と明示式BICによる多次元エビデンス分析。 |
 | **vcd-categorical-analysis** | 名義解析 | 名義カテゴリ分析。R 2パス・executive_summary・quality_check・ダッシュボード生成。 |
 | **questionnaire-batch-analysis** | バッチ処理 | アンケート集計。複数設問の設定に基づき、ダッシュボードを自動量産。 |
 | **vcd-categorical-reporting** | 参照用 | （レガシー参照用テンプレート。新規は `vcd-categorical-analysis` を推奨） |
 
 ---
 
-## エビデンス判定基準 (Evidence Criteria)
+## エビデンス判定基準 (Evidence Criteria: 4軸フレームワーク)
 
-大標本データにおける関連性と実質的意義を以下の基準で評価します：
+大標本データにおける関連性と実質的意義を、標本サイズ $N$ の影響を峻別する以下の **4軸独立フレームワーク（Effect × Evidence × Influence × Stability）** で評価します：
 
-| 指標 | 数式 / 定義 | 閾値 / 判定 | 解釈 |
-|---|---|---|---|
-| **Evidence Score** | $r^2 - k \cdot \log(N)$ | $> 0$ | 実質的エビデンス（セル単位の逸脱がBICペナルティを超えている） |
-| **Bayes Factor ($BF_{10}$)** | EBIC / BIC 近似 | $> 100$<br/>$30 \sim 100$<br/>$10 \sim 30$ | 決定的エビデンス (Decisive)<br/>極めて強いエビデンス (Very Strong)<br/>強いエビデンス (Strong) |
-| **Cramér's V / Fei** | 効果量（0〜1） | $> 0.5$<br/>$> 0.3$<br/>$> 0.1$ | 非常に強い関連<br/>中程度の関連<br/>実務的に意味のある最小限の関連 |
+| 評価軸 | 主要指標 | 数式 / 定義 | 判定基準・解釈 | 大標本（$N$増大時）の挙動 |
+|---|---|---|---|---|
+| **Effect（実質的効果量）** | **局所効果比**<br/>**標準化差**<br/>**全体効果量** | $\log(O_i / E_i)$<br/>$e_i = \frac{y_i - \hat{\mu}_i}{\sqrt{\hat{\mu}_i \cdot N}}$<br/>Cramér's V / Fei | $> 0$ (過剰), $< 0$ (過少)<br/>実務的乖離の大きさ<br/>$> 0.1$ (実質的有意), $> 0.5$ (大効果) | **標本サイズ $N$ に 100% 不変**。<br/>実務的・臨床的有意性の主判定。 |
+| **Evidence（証拠強度）** | **Leverage補正局所Score**<br/>**モデル間明示式BIC**<br/>**局所対数P値** | $T_i^{\rm score} = \frac{r_{P,i}^2}{1 - h_{ii}}$<br/>$\Delta\mathrm{BIC} = \Delta G^2 - \Delta df \cdot \ln N$<br/>$\ln p$ (upper tail) | 自由度1のカイ二乗値（局所LRT $\Delta G_i^2$ の二次近似）<br/>$> 10$ (強い証拠), $> 100$ (決定的)<br/>アンダーフロー防止した正確な有意度 | **標本数 $N$ に比例して増大**。<br/>統計的有意性の判定。 |
+| **Influence（構造影響度）** | **Leverage (梃子力)** | $h_{ii} = \text{hatvalues}(fit)$ | モデル適合を左右するセルの制約度（0〜1） | 分割表配置と周辺和で定まり、**$N$ に不変**。 |
+| **Stability（数値的安定性）** | **診断ステータス** | ゼロセル、$\hat{\mu} < 5$、境界推定 | `REGULAR` (正常) / `QUARANTINED` (隔離) | 標本サイズ増大に伴い推定安定。 |
 
-> 数学的定義および統計モデルの詳細は [docs/reference/](docs/reference/) を参照してください。
+> [!NOTE]
+> **旧セルScore（$r_i^2 - k \cdot \log(N)$）の廃止について**:  
+> 従来の旧セルScoreは、局所ダミー再適合による尤度比統計量 $\Delta G_i^2$ と大きく乖離し、また標本サイズ $N$ の増大に伴って全セルが正値化する「エビデンス飽和」を引き起こすため、**非推奨・廃止**としました。セル診断は上記 4軸体系に基づき、標本数に不変な Effect（効果量）を最優先として解釈します。
+
+> 数学的定義および統計モデルの詳細は [docs/Artifacts/statistical_validation_001_0906.md](docs/Artifacts/statistical_validation_001_0906.md) を参照してください。
 
 ---
 
@@ -133,7 +138,7 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
 
 1. `vcd-pass0-consultation` でデータの水準数、欠損、セルの疎密、層別の必要性を確認する。
 2. [docs/reference/stats_categorical.md](docs/reference/stats_categorical.md) で期待度数、Pearson residual、Cramér's V / Fei を確認する。
-3. 大標本または多次元表では [docs/reference/stats_bayesian.md](docs/reference/stats_bayesian.md) で Evidence Score と $BF_{10}$ を確認する。
+3. 大標本または多次元表では [docs/Artifacts/statistical_validation_001_0906.md](docs/Artifacts/statistical_validation_001_0906.md) で 4軸セル診断と明示式BICモデル選択を確認する。
 4. [docs/reference/](docs/reference/) 配下の各種リファレンスでモデル選択（GLM/GNM）と尺度の扱いを確認する。
 5. 統計的有意性と実務的意義を峻別したエグゼクティブ・サマリーを作成する。
 

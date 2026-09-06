@@ -1,14 +1,14 @@
 ---
 name: vcd-bayesian-evidence-analysis
-description: Use when analyzing large-sample two-way or three-way categorical tables with Poisson GLM, Bayes Factors, Evidence Scores, and effect sizes through the evidence JSON, expert narrative, and dashboard workflow.
+description: Use when analyzing large-sample two-way or three-way categorical tables with 4-axis cell diagnostics (Effect, Evidence, Influence, Stability), explicit BIC log-linear models, Dirichlet posterior inferences, and effect sizes.
 license: MIT
 metadata:
-  version: "1.0"
+  version: "2.0"
 ---
 
 **IRON LAW**: Pass 3（`dashboard.html`）は既定で Pass 2 産物（`executive_summary.md`）が無いと失敗する。プレビュー目的でのみ `require_pass2 = FALSE` を明示し、それ以外では Pass 1→2→3 の順序を崩さない。
 
-大標本における「P値の罠」を克服し、ベイズファクター（BF）・Evidence Score・効果量（Cramér's V / Fei）を併用して「統計的有意性」と「実質的意義」を峻別するAI連携型分析パイプライン。
+大標本における「P値の罠」を克服し、4軸セル診断（Effect × Evidence × Influence × Stability）、Leverage補正局所Score統計量、総度数 $N$ 基準の明示式 BIC、および全体効果量（Cramér's V）を併用して「統計的有意性」と「実質的意義」を峻別するAI連携型分析パイプライン。
 
 `mysql-create-query-support` などで検証済みになった抽出 SQL は、repo root の `sql/validated/` 配下を正本として参照する。分析用 CSV は、その SQL の粒度・除外条件・検証結果と対応するものを使う。
 
@@ -16,36 +16,30 @@ metadata:
 
 本スキルは `.agents/shared/analysis_quality_contract.md` を参照する。Pass 0では分析スコープ、Pass 1では統計計算と主要JSON、Pass 2ではAIレビュー標準構成、Pass 2.5では品質確認、Pass 3ではHTMLと図表の読み取り確認を契約に沿って満たす。
 
-## 統計的背景
+## 統計的背景: 4軸セル診断フレームワーク
 
-本スキルの **推論本体**は、(1) セル度数に対する **独立 Poisson GLM** の標準化ピアソン残差から作る **Evidence Score**、(2) **独立 Poisson 対 飽和 Poisson** の EBIC に基づく **$\mathrm{BF}_{10}$ 近似**、および (3) **Cramér's V / Fei** です。`dashboard.html` の用語解説と同じ整理です。
+本スキルの **推論本体**は、(1) 標本数 $N$ に不変な実質的効果量 **Effect**、(2) セル指示変数追加に対する Rao のスコア統計量（自由度1のカイ二乗値）である **Evidence**（Leverage補正局所Score統計量 $T_i^{\rm score}$）、(3) モデル適合に対するセルの制約度 **Influence**（Leverage $h_{ii}$）、(4) ゼロセルや過大レバレッジを隔離する **Stability**、および (5) 全体効果量 **Cramér's V** です。
 
 ### 指標の粒度契約
 
-- **セル単位**: `Residual` と `Evidence_Score` は、各セルの観測度数が独立モデルの期待値からどれだけ逸脱したかを示す。
-- **全体効果量**: `Cramér's V` / `Fei` は、セルごとの列ではなく、表全体または分析全体の効果量として扱う。
-- **全セル表の禁止事項**: `dashboard.html` の全セル・エビデンス・テーブルに Cramér's V を行ごとの列として表示しない。必要な場合は上部カード、効果量説明枠、または比較レポートの別枠に表示する。
-- **未算出時**: `effects.effect_status`, `effects.effect_reason` を確認し、値を捏造しない。Pass 2 では「未算出」と理由を明示する。
+- **Effect（実質的効果量: 標本数不変）**: `log_oe_ratio`（$\log(O/E)$）および `scaled_diff`（$e_i$）は、期待値に対する実質的な過剰・過少の強さを示し、標本サイズ $N$ に依存しない。大標本における主判定指標。
+- **Evidence（証拠強度: 標本数比例）**: `score_stat`（$T_i^{\rm score} = \frac{r_{P,i}^2}{1 - h_{ii}}$）は、セルが偶然変動を超えてモデルから逸脱している統計的確信度を示す。
+- **全体効果量**: `Cramér's V` は、分割表全体の大域的な関連強度を表し、個々のセルに割り付ける局所指標ではない。
+- **旧セルScoreの廃止**: 従来の $r^2 - k \log N$ は局所LRTとの乖離および大標本でのエビデンス飽和を引き起こすため、**完全廃止**されました。
 
-### Evidence Score
+### Leverage補正局所Score統計量
 
-$$\mathrm{Evidence\;Score}_{ijk} = r_{ijk}^2 - k \cdot \log(N)$$
+$$T_i^{\rm score} = \frac{r_{P,i}^2}{1 - h_{ii}} = \frac{(y_i - \hat{\mu}_i)^2}{\hat{\mu}_i (1 - h_{ii})}$$
 
-- $r_{ijk}$: **独立** Poisson GLM（主効果のみ）に基づくセル $(i,j,k)$ の標準化ピアソン残差
-- $k \cdot \log(N)$: 多段階閾値（CLI の `--threshold_k`、JSON の `thresholds.threshold_k` と `core.log_n`）
-- **正値 → 実質的エビデンス**（ノイズを超える逸脱）／**負値 → ノイズレベル**（独立モデルで説明しうる範囲）
+- $r_{P,i}$: 基準モデル（相互独立 M1 または均一連関 M8）の標準化ピアソン残差
+- $h_{ii}$: Hat 行列の対角成分（Leverage）。セルの構造的制約度を表す。
+- 自由度 1 のカイ二乗分布に従い、ダミー再適合による局所尤度比検定統計量 $\Delta G_i^2$ の高精度な二次近似となる。
 
-### Bayes Factor（EBIC近似）
+### 総度数 $N$ 基準の明示式 BIC
 
-$$\log \mathrm{BF}_{10} \approx \tfrac{1}{2}\bigl(\mathrm{EBIC}_{\mathrm{indep}} - \mathrm{EBIC}_{\mathrm{sat}}\bigr)$$
+$$\mathrm{BIC} = -2 \ln L + k \cdot \ln(N) \quad (\text{または } G^2 - df \cdot \ln N)$$
 
-- $\mathrm{EBIC}_{\mathrm{indep}}$: **主効果のみ**の Poisson（独立構造）、$\mathrm{EBIC}_{\mathrm{sat}}$: **セルごとに別期待値**の飽和 Poisson
-- Jeffreys の目安: $\mathrm{BF}_{10} > 100$ 決定的、$> 10$ 強い、$> 3$ 中程度
-- $\mathrm{BF}_{10} = \infty$ に近い極大値: 独立モデルでは到底説明しきれない強い逸脱（飽和側が圧倒的に有利）
-
-### BIC ペナルティの類比（$M_0$ / $M_1$）
-
-ダッシュボードでは、**「主効果に対し、ある1セルだけ余分なパラメータを1つ足すと BIC のペナルティが $\log(N)$ だけ増える」**という直観を、連続反応の加法モデル（$y_{ijk}=\mu+\alpha_i+\beta_j+\gamma_k+\varepsilon$ と、1セルだけ $\delta$ を付ける $M_1$）で **類比**として示しています。これは **ペナルティ項の読み**用であり、セル度数 $n_{ijk}$ の Poisson 期待値の式そのものではありません。$\mathrm{BF}_{10}$ の比較は **独立 Poisson vs 飽和 Poisson** です。
+- 分割表の真の標本サイズである被験者総数 $N$ を用いる（R既定の `stats::BIC` はセル数 $K$ を用いるため不採用）。
 
 ## 前提条件
 
@@ -132,33 +126,32 @@ Pass 1 が生成した `evidence_results.json` を読み込み、以下の **日
 
 あなたは **計量薬理学・医療統計の専門家** です。`evidence_results.json` を入力として受け取り、以下の4節構成で日本語考察を執筆してください。
 
-#### 節1: 全体的な関連性の評価（ベイズファクター + 効果量）
+#### 節1: 全体的な関連性の評価（モデル選択BIC + 全体効果量）
 
 - **重要: 見出しには必ず `####` (H4) を使用してください。**
 - 冒頭で主要結論、実務上の意味、解釈保留の有無を先に記述
-- `bf_independence` の値を明示し、Jeffreys スケールで解釈
-- `model_selection.method`（EBIC）と `model_selection.bf10_bic`（比較用）があれば併記
-- `effects.primary` が `cramers_v` または `fei` であることを踏まえて、実用的意義を評価
-- `effects.effect_status` が `computed` の場合のみ、Cramér's V / Fei の数値を示す。`not_applicable` または `failed` の場合は「未算出」と `effects.effect_reason` を明記し、値があるかのように書かない
-- Cramér's V は全体効果量であり、`core.full_data` の各セルへ割り付ける指標ではないことを明示
-- BF = Inf → 「独立モデルでは到底説明不可能な極めて強固な交互作用」
+- 最良モデル（`models.best_model_id`、例: 均一連関M8、飽和M9）と相互独立M1との明示式BICの差を明示
+- `effects.primary_metric`（Cramér's V）の数値を明示し、Cohen基準（>0.1小, >0.3中, >0.5大）で実質的意義を評価
+- Cramér's V は全体効果量であり、個々のセルへ割り付ける指標ではないことを明示
 - 対象次元数と変数名を明記
 
-#### 節2: エビデンス・スコアによる「真の関連」の抽出
+#### 節2: 局所セル診断の4軸評価（Effect / Evidence / Influence / Stability）
 
 - **重要: 見出しには必ず `####` (H4) を使用してください。**
-- Evidence Score の定義を数式で示す: $\mathrm{Evidence\;Score} = r^2 - k \cdot \log(N)$（JSON の `thresholds.threshold_k` と `core.log_n` を明示）
-- `thresholds.level1/level2/level3` の値と意味（強度レベル）を説明
-- 正値セル数 / 全セル数を集計して記載
-- 大標本でのP値の限界（type I error inflation）に言及
+- 旧セルScore（$r^2 - k \ln N$）が大標本でのエビデンス飽和や局所LRT乖離により廃止された背景に言及
+- 4軸フレームワークの定義を解説：
+  - **Effect（実質的効果量）**: 標本数 $N$ に不変な局所効果比 $\log(O/E)$ および標準化差 $e_i$。大標本における最優先の意思決定根拠。
+  - **Evidence（証拠強度）**: 標本数 $N$ に比例して増大する検定統計量（Leverage補正Score統計量 $T_i^{\rm score} = \frac{r_{P,i}^2}{1 - h_{ii}}$）および局所対数P値。
+  - **Influence（構造影響度）**: モデル適合に対するセルの梃子力（Hat行列対角成分 $h_{ii}$）。
+  - **Stability（数値的安定性）**: ゼロセルや過大レバレッジを隔離（`REGULAR` vs `QUARANTINED`）。
+- 正常セル（REGULAR）の比率を記載
 
-#### 節3: 多次元交互作用の解釈（層別エビデンス）
+#### 節3: 多次元交互作用の解釈（層別エビデンスと条件付き割合差）
 
 - **重要: 見出しには必ず `####` (H4) を使用してください。**
-- `core.top_k_data` に含まれる **上位セル**（Evidence Score 降順）を具体的数値付きで記述
-- **レイアウト**: セル一覧は長文の連続を避け、読みやすい **Markdown表**（`| 変数 | 水準 | … |`）または **番号付き箇条書き**で整列させる（Pass 3 の Top-K 表と対応しやすい形）
-- Evidence Score **下位3セル**（負の絶対値上位）も `core.full_data` から参照して記述
-- 層別変数がある場合、層ごとのスコア差異を比較・考察
+- `cells.top_k_data` に含まれる **上位セル**（局所効果比 $\log(O/E)$ または Score統計量順）を具体的数値付きで記述
+- **レイアウト**: セル一覧は長文の連続を避け、読みやすい **Markdown表**（`| 変数 | 観測 | 期待 | log(O/E) | Score統計量 | Leverage | 診断状態 |`）で整列させる
+- 応答変数 `response_var` がある場合、`posterior.conditional_differences` から層別の条件付き生存率や層間差（平均、95%信用区間、優位確率）を比較・考察
 
 #### 節4: 結論と実務的示唆
 
@@ -171,8 +164,8 @@ Pass 1 が生成した `evidence_results.json` を読み込み、以下の **日
 **禁止事項**:
 
 - 英語での考察出力（数式・変数名を除く）
-- Evidence Score 負値セルを「有意な関連あり」と表現すること
-- P値を主な根拠として使用すること
+- 旧エビデンススコア（$r^2 - k \ln N$）を主たる根拠として使用すること
+- P値のみを根拠として効果の大きさを論じること
 - 2次元データとして3次元データを解釈すること
 - 時間順序や介入情報がない結果から因果を断定すること
 
@@ -180,11 +173,8 @@ Pass 1 が生成した `evidence_results.json` を読み込み、以下の **日
 `large_sample_mode` が `true` の場合、以下を必ず考察に含めること：
 
 - Cramér's V の値と Cohen 基準による評価を冒頭に明示
-- Cramér's V が未算出の場合は、未算出理由と、Evidence Scoreがセル単位指標であることを明示
-- Evidence Score が多数のセルで正値になっている場合、「大標本効果による飽和の可能性」に言及
-- P値ではなく効果量を主な根拠として使用
-- `thresholds.threshold_k` が 1 より大きい場合、その閾値設定の根拠を記述
-- `warnings.practical_significance_low` が `true` の場合は Dual-Filter 警告を明示
+- 検定統計量（Score統計量やP値）の肥大化に惑わされず、**標本数不変の Effect 軸（$\log(O/E)$、割合差）を最優先として実質的意義を判断する Dual-Filter ルール**を明記
+- 100倍拡大等で検定統計量が巨大化しても、効果量が同一であることを対比
 
 ### Pass 2.5: 品質確認
 
@@ -193,8 +183,8 @@ Pass 2 の後、必要に応じて `quality_check.md` を `executive_summary.md`
 **確認項目**:
 
 - `executive_summary.md` が結論、根拠、限界、解釈保留、次アクションを含む。
-- P値、効果量、Evidence Score、Bayes Factor、セル数、サンプルサイズを読み分けている。
-- Evidence Score 負値セルを関連ありと扱っていない。
+- 効果量（Effect）、検定統計量（Evidence）、構造影響度（Influence）、安定性（Stability）を読み分けている。
+- 旧エビデンススコアを根拠としていない。
 - 大標本効果、スパースセル、過剰水準、集約による情報損失を必要に応じて明示している。
 - `evidence_results.json`、Top-K表、`dt_table.html`、`dashboard.html`予定の図表と本文が矛盾していない。
 - 重大な未解決事項がある場合は完了扱いにせず、ブロッカーまたは解釈保留として報告する。

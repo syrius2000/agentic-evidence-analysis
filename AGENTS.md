@@ -20,7 +20,7 @@ All agents MUST follow this sequence for any analysis request:
    - **Contract**: Generate **`analysis_config.json`** as the Single Source of Truth.
 2. **Pass 1: R Engine Computation**
    - Execute statistical scripts (e.g., `analysis.R`) using the `--config` flag pointing to `analysis_config.json`.
-   - Compute Bayes Factors, Evidence Scores, and standardized residuals.
+   - Compute 4-axis cell diagnostics (Effect, Evidence, Influence, Stability), explicit BIC, and standardized residuals.
    - **Contract**: Generate structured results JSON (e.g., `evidence_results.json`).
 3. **Pass 2: AI Review & Narrative**
    - Act as an expert statistical consultant to interpret JSON results.
@@ -32,15 +32,20 @@ All agents MUST follow this sequence for any analysis request:
 
 ---
 
-## Evidence Judgment Criteria
+## Evidence Judgment Criteria (4-Axis Framework)
 
 Do NOT rely on P-values alone. When $N > 2,000$, statistical significance is trivial.
+Always separate sample-invariant **Effect** from sample-dependent **Evidence** (Dual-Filter approach).
 
-| Metric | Criterion / Formula | Goal / Interpretation |
+| Axis / Metric | Criterion / Formula | Goal / Interpretation |
 | :--- | :--- | :--- |
-| **Evidence Score** | $r^2 - k \cdot \log(N) > 0$ | Distinguish genuine signal from large-sample noise (BIC penalty). |
-| **Bayes Factor** | $BF_{10} > 100$ | Decisive evidence favoring the association model over independence. |
-| **Effect Size** | Cramér's V > 0.1 | Ensure practical/substantive significance. |
+| **Effect Size (Sample-Invariant)** | $\log(O_i/E_i) \neq 0$ / Cramér's V > 0.1 | Primary criterion for practical/substantive significance. Invariant to $N$. |
+| **Evidence (Sample-Dependent)** | $T_i^{\rm score} = \frac{r_{P,i}^2}{1 - h_{ii}} > 10$ / $\Delta\mathrm{BIC} > 10$ | Decisive statistical evidence against independence (Rao score statistic & explicit BIC). |
+| **Influence (Structure Impact)** | Leverage $h_{ii} = \text{hatvalues}(fit)$ | Detect influential cells constraining model fit ($h_{ii} \in [0, 1]$). |
+| **Stability (Robustness)** | Status: `REGULAR` vs `QUARANTINED` | Isolate zero cells, sparse counts ($\hat{\mu} < 5$), and boundary fits. |
+
+> [!NOTE]
+> The legacy formula $r^2 - k \cdot \log(N)$ has been deprecated and retired due to local LRT divergence and evidence inflation in large samples.
 
 ---
 

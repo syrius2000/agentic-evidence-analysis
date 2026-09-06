@@ -1,33 +1,58 @@
-# リファレンス: vcd-bayesian-evidence-analysis
+# リファレンス: vcd-bayesian-evidence-analysis (新4軸統計基盤)
 
-このスキルで使用されている固有の理論背景および共通指標へのガイドです。
+このスキルで使用されている固有の理論背景および統計指標の定義ガイドです。
 
-## 1. 固有指標: Evidence Score (大標本フィルタリング)
+## 1. 4軸セル診断体系 (Effect x Evidence x Influence x Stability)
 
-大規模データセットにおいて、「統計的に有意だが実用的な意味がない」微小な差を除外するための独自指標です。
+大標本データセットにおいて、「統計的確信度（Evidence）」と「実務的意義（Effect）」を峻別し、分割表の構造的影響（Influence）と数値的安定性（Stability）を同時に評価するための独立4軸フレームワークです。
 
-### 数式
+### 1.1 Effect（実質的効果量: 標本数 $N$ に不変）
+- **局所効果比**: $\log(O_i / E_i) = \ln(y_i / \hat{\mu}_i)$
+  - 基準モデル期待値に対する観測値の実質的な倍率（過剰 $>0$、過少 $<0$）。
+  - 標本サイズ $N$ が 100倍、10,000倍になっても完全不変であり、大標本分析における主たる意思決定根拠となります。
+- **標準化差**: $e_i = \frac{y_i - \hat{\mu}_i}{\sqrt{\hat{\mu}_i \cdot N}}$
+  - 標本サイズに依存しない正規化残差指標。
+- **全体効果量**: **Cramér's V**
+  - 分割表全体の大域的な関連強度（Cohen基準: $>0.1$ 小, $>0.3$ 中, $>0.5$ 大）。
 
-$$\text{Evidence Score}_i = r_{i}^2 - k \cdot \log(N)$$
+### 1.2 Evidence（証拠強度: 標本数 $N$ に正比例）
+- **Leverage補正局所Score統計量**:
+  $$T_i^{\rm score} = \frac{r_{P,i}^2}{1 - h_{ii}} = \frac{(y_i - \hat{\mu}_i)^2}{\hat{\mu}_i (1 - h_{ii})}$$
+  - 各セルに指示変数（ダミー）を追加したモデルに対する **Raoのスコア検定統計量（efficient score statistic）**。
+  - モデル再適合なしに局所尤度比検定統計量 $\Delta G_i^2$ の高精度な二次近似となります。自由度 1 のカイ二乗分布に従います。
+- **局所対数P値**: $\ln p = \text{pchisq}(T_i^{\rm score}, df = 1, \text{lower.tail} = \text{FALSE}, \text{log.p} = \text{TRUE})$
+  - 大標本下での数値的アンダーフロー（P値が0に潰れる現象）を防止し、正確な有意性を保持します。
 
-- $r_i$: ポアソンGLMから算出された標準化ピアソン残差。
-- $k \cdot \log(N)$: BIC (Bayesian Information Criterion) に基づく複雑さへのペナルティ。
-- **正値**: 統計的ノイズを超えた、実質的な関連の証拠（Evidence）あり。
-- **負値**: サンプルサイズの大きさに起因する擬似的な有意である可能性が高い。
+### 1.3 Influence（構造影響度: 標本数 $N$ に不変）
+- **Leverage (梃子力)**: $h_{ii} = \text{hatvalues}(fit)$
+  - モデル適合に対するセルの拘束度・影響度（$0 \le h_{ii} \le 1$）。
+  - 周辺和や表の構造で定まり、標本サイズ拡大に影響されません。
 
-## 2. 共通指標へのポインタ
+### 1.4 Stability（数値的安定性）
+- **ステータス判定**:
+  - `REGULAR`: 正常な推定セル。
+  - `QUARANTINED`: ゼロセル（$y_i = 0$）、小期待度数（$\hat{\mu}_i < 5$）、または過大レバレッジ（$h_{ii} > 0.95$）により、通常の順位付けから隔離すべきセル。
 
-以下の基本概念については、中央統計リファレンスを参照してください。
+> [!NOTE]
+> **旧セルScore（$r_i^2 - k \log N$）の廃止について**:  
+> 従来の $r^2 - k \log N$ は局所LRT統計量 $\Delta G_i^2$ と大きく乖離し、また大標本下で全セルが正値化する「エビデンス飽和」を引き起こすため**非推奨・廃止**としました。
 
-- [ピアソン残差の定義と数式](../../../docs/Reference/evidence-analysis/stats_categorical.md#1-ピアソン残差-pearson-residuals)
-- [Cramér's V による効果量（関連の強さ）判定](../../../docs/Reference/evidence-analysis/stats_categorical.md#2-cramérs-v-クラメールのv)
-- [ベイズ因子の解釈基準 (Jeffreys Scale)](../../../docs/Reference/evidence-analysis/stats_bayesian.md#1-ベイズ因子-bayes-factor-bf10)
+---
 
-## 3. 分析の妥当性
+## 2. 対数線形モデル選択とベイズ事後推論
 
-- **Poisson GLM**: 各セルが独立したポアソン分布に従うと仮定し、対数線形モデルを適合させることで、多次元の交互作用（変数間の関連）を評価します。
+### 2.1 総度数 $N$ 基準の明示式 BIC
+3元表に対しては 9候補モデル（相互独立 M1 〜 飽和 M9）を適合し、総度数 $N$ に基づく明示式 BIC でモデル選択を行います：
+$$\mathrm{BIC} = -2 \ln L + k \cdot \ln(N) \quad (\text{または } G^2 - df \cdot \ln N)$$
+※ R既定の `stats::BIC` はセル数 $K$ をペナルティに用いるため不採用としました。
+
+### 2.2 多項Dirichlet推論
+一様事前分布 $a = 1.0$ のもとで多項Dirichlet事後分布（20,000ドロー）を生成し、層別条件付き割合および層間差（生存率差等）の不確実性を相関構造を保ったまま推論します。
+
+---
 
 ## 参考文献
-
-- Raftery, A. E. (1995). Bayesian Model Selection in Social Research. _Sociological Methodology_.
-- [本プロジェクトの実験レポート](../../Large_Categorical_Data_Analysis_Report.md)
+- 採否報告書: `docs/Artifacts/statistical_validation_001_0906.md`
+- 局所セル診断再設計: `HairEyeColor_local_cell_diagnostics_redesign.md`
+- Agresti, A. (2013). *Categorical Data Analysis* (3rd ed.). Wiley.
+- Rao, C. R. (1948). Large sample tests of statistical hypotheses concerning several parameters with applications to problems of estimation. *Proc. Cambridge Philos. Soc.*

@@ -55,75 +55,48 @@ if (!file.exists(json_path)) {
 if (require_pass2 && !file.exists(summ_path)) {
   stop(paste0(
     "executive_summary.md が見つかりません（Pass 2 未完了）: ", summ_path, "\n",
-    "Pass 2 で生成してから Pass 3 を実行してください。",
+    "Pass 2 で生成してから Pass 3 を実行してください。\n",
     "プレビューのみ必要な場合は params$require_pass2 = FALSE を指定してください。"
   ))
 }
 
 res <- fromJSON(json_path)
-dims <- res$dimensions
-n_total <- res$n_total
-log_n <- res$log_n
-threshold <- res$threshold
-threshold_k <- res$threshold_k %||% 1
 
-format_bf10_display <- function(raw) {
-  x <- suppressWarnings(as.numeric(raw))
-  if (length(x) != 1L || is.na(x) || !is.finite(x)) {
-    enc <- htmltools::htmlEscape(as.character(raw)[1] %||% "", attribute = FALSE)
-    if (nchar(enc) > 32L) {
-      enc <- paste0(substr(enc, 1L, 29L), "...")
-    }
-    return(enc)
-  }
-  ax <- abs(x)
-  if (ax >= 1e-2 && ax < 1e4) {
-    sprintf("%.2f", x)
-  } else {
-    sprintf("%.2e", x)
-  }
-}
+# メタ情報・基本変数の取得
+dims <- res$input_summary$variables %||% res$dimensions %||% res$core$dimensions
+n_total <- res$input_summary$total_n %||% res$n_total %||% res$core$n_total
+n_cells <- res$input_summary$n_cells %||% res$n_cells %||% res$core$n_cells %||% nrow(res$cells$full_data)
+log_n <- res$input_summary$log_n %||% res$log_n %||% res$core$log_n
+response_var <- res$input_summary$response_var %||% res$response_var
+large_sample_mode <- isTRUE(res$input_summary$large_sample_mode %||% res$large_sample_mode %||% res$core$large_sample_mode)
 
-bf10_display <- format_bf10_display(res$bf_independence)
-
-thr_num <- suppressWarnings(as.numeric(threshold))
-threshold_display <- if (length(thr_num) == 1L && is.finite(thr_num)) {
-  sprintf("%.2f", thr_num)
-} else {
-  "N/A"
-}
-run_id_disp <- if (!is.null(res$run_id) && length(res$run_id)) {
+run_id_disp <- if (!is.null(res$provenance$run_id)) {
+  as.character(res$provenance$run_id)
+} else if (!is.null(res$run_id)) {
   as.character(res$run_id[[1]])
 } else {
   ""
 }
-full_data <- as.data.frame(res$full_data)
 
-cramers_v <- res$cramers_v
-cramers_v_ci_low <- res$cramers_v_ci_low
-cramers_v_ci_high <- res$cramers_v_ci_high
-effect_status <- res$effect_status %||% res$effects$effect_status %||% "unknown"
-effect_reason <- res$effect_reason %||% res$effects$effect_reason %||% "効果量の算出状態が記録されていません。"
-large_sample_mode <- isTRUE(res$large_sample_mode)
-top_k <- as.integer(res$top_k %||% 10L)
-top_k_data <- if (!is.null(res$top_k_data)) {
-  as.data.frame(res$top_k_data)
-} else {
-  head(full_data, top_k)
-}
+# モデル選択情報
+best_model_id <- res$models$best_model_id %||% res$model_selection$best_model %||% "M1"
+base_model_id <- res$cells$base_model_id %||% res$models$base_model_id %||% "M1"
+base_model_name <- res$cells$base_model_name %||% "ベースラインモデル"
+models_summary <- as.data.frame(res$models$summary %||% res$model_selection$summary)
 
-# 数値型を保証
-num_cols <- c("Freq", "Expected", "Residual", "Evidence_Score")
-for (col in num_cols) {
-  if (col %in% names(full_data)) {
-    full_data[[col]] <- as.numeric(full_data[[col]])
-  }
-}
+# 効果量情報
+cramers_v <- res$effects$cramers_v %||% res$cramers_v
+cramers_v_ci <- res$effects$cramers_v_ci %||% c(res$cramers_v_ci_low, res$cramers_v_ci_high)
+effect_status <- res$effects$effect_status %||% res$effect_status %||% "unknown"
+effect_reason <- res$effects$effect_reason %||% res$effect_reason %||% ""
 
-n_positive <- sum(full_data$Evidence_Score > 0, na.rm = TRUE)
-n_cells <- nrow(full_data)
+# セル診断データ
+regular_count <- res$cells$regular_count %||% sum(res$cells$full_data$stability_status == "REGULAR", na.rm = TRUE)
+quarantined_count <- res$cells$quarantined_count %||% sum(res$cells$full_data$stability_status == "QUARANTINED", na.rm = TRUE)
+top_k_data <- as.data.frame(res$cells$top_k_data %||% res$top_k_data %||% res$core$top_k_data)
+full_data <- as.data.frame(res$cells$full_data %||% res$full_data %||% res$core$full_data)
 
-# AI サマリーの読み込み（存在しない場合はプレースホルダー）
+# AI サマリーの読み込み
 if (file.exists(summ_path)) {
   summary_text <- paste(readLines(summ_path, encoding = "UTF-8"), collapse = "\n")
 } else {
@@ -135,9 +108,9 @@ if (file.exists(summ_path)) {
     "**暫定情報**:\n\n",
     "- 分析変数: ", paste(dims, collapse = " × "), "\n",
     "- 総度数: N = ", format(n_total, big.mark = ","), "\n",
-    "- BF10 = ", bf10_display, "\n",
-    "- 閾値 k×log(N) = ", threshold_display, " (k = ", threshold_k, ")\n",
-    "- エビデンス・セル数: ", n_positive, " / ", n_cells, "\n"
+    "- 最良対数線形モデル: ", best_model_id, "\n",
+    "- 全体効果量 Cramér's V: ", if (!is.null(cramers_v) && !is.na(cramers_v)) sprintf("%.4f", cramers_v) else "未算出", "\n",
+    "- 診断安定セル数: ", regular_count, " / ", n_cells, " (", round(regular_count / n_cells * 100, 1), "% REGULAR)\n"
   )
 }
 ```
@@ -150,177 +123,183 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
+  background-color: #fcfcfc;
 }
 
 .dashboard-main-content {
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
 .header-banner {
-  background: linear-gradient(135deg, #1a3a5c 0%, #2d6a9f 100%);
+  background: linear-gradient(135deg, #1b365d 0%, #2b5b88 100%);
   color: white;
-  padding: 20px 30px;
+  padding: 24px 32px;
   border-radius: 8px;
   margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(27, 54, 93, 0.15);
 }
 
 .header-banner h2 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  font-weight: bold;
+  margin: 0 0 10px 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .header-banner .meta {
   font-size: 13px;
-  opacity: 0.85;
+  opacity: 0.9;
+  line-height: 1.6;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 24px;
 }
 
 .stat-card {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 6px;
-  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px 12px;
   text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
 }
 
 .stat-card .value {
-  font-size: 22px;
-  font-weight: bold;
-  color: #1a3a5c;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1b365d;
 }
 
 .stat-card .label {
   font-size: 11px;
-  color: #666;
-  margin-top: 4px;
+  color: #64748b;
+  margin-top: 6px;
+  font-weight: 500;
 }
 
-.stat-card.bf-card .value { color: #c0392b; }
-.stat-card.evidence-card .value { color: #27ae60; }
+.stat-card.model-card .value { color: #1e40af; }
+.stat-card.effect-card .value { color: #7c3aed; }
+.stat-card.regular-card .value { color: #16a34a; }
+.stat-card.quarantine-card .value { color: #ea580c; }
+.stat-card.sample-card .value { color: #0f766e; }
 
 .section-title {
   font-size: 16px;
-  font-weight: bold;
-  color: #1a3a5c;
-  border-left: 4px solid #2d6a9f;
+  font-weight: 700;
+  color: #1b365d;
+  border-left: 4px solid #2b5b88;
   padding-left: 10px;
-  margin: 24px 0 12px 0;
+  margin: 28px 0 14px 0;
+  letter-spacing: -0.3px;
 }
 
 .ai-summary-box {
-  background: #fafbfc;
-  border: 1px solid #d0dce8;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
   border-radius: 8px;
-  padding: 20px 24px;
-  margin-bottom: 24px;
-  line-height: 1.7;
+  padding: 24px 28px;
+  margin-bottom: 28px;
+  line-height: 1.75;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.04);
 }
 
 .ai-summary-box h1, .ai-summary-box h2, .ai-summary-box h3, .ai-summary-box h4 {
-  color: #1a3a5c;
-  margin-top: 1.2em;
+  color: #1b365d;
+  margin-top: 1.3em;
   margin-bottom: 0.6em;
-  font-weight: bold;
+  font-weight: 700;
 }
-.ai-summary-box h1 { font-size: 1.25em; border-bottom: 1px solid #d0dce8; padding-bottom: 4px; }
-.ai-summary-box h2 { font-size: 1.15em; }
-.ai-summary-box h3 { font-size: 1.05em; }
+.ai-summary-box h1 { font-size: 1.3em; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+.ai-summary-box h2 { font-size: 1.18em; border-bottom: 1px solid #edf2f7; padding-bottom: 4px; }
+.ai-summary-box h3 { font-size: 1.08em; }
 .ai-summary-box h4 { font-size: 1.0em; }
-
-.glossary-md h2 {
-  font-size: 1.15em;
-  font-weight: 600;
-  margin-top: 0.9em;
-  margin-bottom: 0.35em;
-  color: #1a3a5c;
-}
-.glossary-md h3 {
-  font-size: 1.05em;
-  font-weight: 600;
-  margin-top: 0.75em;
-  color: #2d4a6a;
-}
-.glossary-md p,
-.glossary-md li,
-.glossary-md blockquote {
-  font-size: 0.95em;
-}
-
-.formula-box {
-  background: #f0f4f8;
-  border: 1px solid #c5d5e4;
-  border-radius: 6px;
-  padding: 10px 16px;
-  margin: 12px 0;
-  font-size: 13px;
-}
-
-.evidence-note {
-  background: #d4edda;
-  border: 1px solid #b5d5bc;
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: #155724;
-  margin-bottom: 16px;
-}
-
-.dt-section { margin-top: 8px; }
-
-.exec-topk-layout {
-  display: block;
-  margin-bottom: 28px;
-}
-
-.exec-summary-panel {
+.ai-summary-box table {
   width: 100%;
-  margin-bottom: 28px;
+  margin: 16px 0;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ai-summary-box th, .ai-summary-box td {
+  border: 1px solid #cbd5e1;
+  padding: 8px 12px;
+  text-align: left;
+}
+.ai-summary-box th {
+  background-color: #f1f5f9;
+  font-weight: 600;
 }
 
 .topk-panel {
-  width: 100%;
-  background: #fff;
-  border: 1px solid #d6e0ea;
-  border-radius: 10px;
-  box-shadow: 0 4px 14px rgba(26, 58, 92, 0.07);
-  padding: 8px 16px 16px 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  padding: 16px 20px;
+  margin-bottom: 28px;
 }
 
-.topk-panel .section-title {
-  margin-top: 8px;
-  margin-bottom: 14px;
+.notice-box {
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 13px;
+  margin-bottom: 20px;
+  line-height: 1.6;
 }
 
-.topk-panel .dataTables_wrapper {
-  margin-top: 0;
+.notice-warning {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  color: #92400e;
+}
+
+.notice-info {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  color: #1e40af;
 }
 
 .glossary-md {
-  font-size: 14px;
-  line-height: 1.65;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #334155;
 }
 
-.glossary-md h2, .glossary-md h3, .glossary-md h4 {
-  color: #1a3a5c;
-  margin-top: 1.1em;
+.glossary-md h3 {
+  font-size: 1.1em;
+  font-weight: 700;
+  color: #1b365d;
+  margin-top: 1.2em;
+  margin-bottom: 0.4em;
+  border-bottom: 1px dashed #cbd5e1;
+  padding-bottom: 3px;
 }
 
-.glossary-md hr {
-  border: none;
-  border-top: 1px solid #dee2e6;
-  margin: 1.25em 0;
+.glossary-md p, .glossary-md li {
+  margin-bottom: 0.6em;
 }
 
-/* DataTables の日本語フォント */
-.dataTables_wrapper { font-size: 13px; }
+.glossary-md code {
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.dataTables_wrapper {
+  font-size: 13px;
+}
 ```
 
 ```{r dashboard-main-open, results='asis'}
@@ -328,16 +307,21 @@ cat('<div class="dashboard-main-content">')
 ```
 
 ```{r header-banner, results='asis'}
+cv_summary_str <- if (!is.null(cramers_v) && !is.na(cramers_v)) {
+  sprintf("%.4f", cramers_v)
+} else {
+  "未算出"
+}
+
 cat(paste0(
   '<div class="header-banner">',
-  "<h2>&#128202; 多次元エビデンス分析ダッシュボード</h2>",
+  "<h2>&#128202; 多次元エビデンス分析ダッシュボード（4軸セル診断体系）</h2>",
   '<div class="meta">',
   "<strong>分析変数</strong>: ", paste(dims, collapse = " &times; "),
+  if (!is.null(response_var)) paste0(" (応答変数: ", response_var, ")") else "",
   " &nbsp;|&nbsp; <strong>総度数</strong>: N = ", format(n_total, big.mark = ","),
-  " &nbsp;|&nbsp; <strong>BF<sub>10</sub></strong> = ", bf10_display,
-  " &nbsp;|&nbsp; <strong>閾値 (k×log N)</strong> = ", threshold_display,
-  " &nbsp;|&nbsp; <strong>k</strong> = ", threshold_k,
-  " &nbsp;|&nbsp; <strong>log(N)</strong> = ", sprintf("%.4f", as.numeric(log_n)),
+  " &nbsp;|&nbsp; <strong>最良モデル(BIC)</strong>: ", htmltools::htmlEscape(best_model_id),
+  " &nbsp;|&nbsp; <strong>全体効果量 (Cram&eacute;r's V)</strong>: ", cv_summary_str,
   if (nzchar(run_id_disp)) {
     paste0(" &nbsp;|&nbsp; <strong>run-id</strong>: ", htmltools::htmlEscape(run_id_disp))
   } else {
@@ -348,62 +332,53 @@ cat(paste0(
 ```
 
 ```{r stats-cards, results='asis'}
-pct_evidence <- round(n_positive / n_cells * 100, 1)
-cv_display <- if (!is.null(cramers_v) && length(cramers_v) && !is.na(cramers_v)) {
-  sprintf("%.4f", as.numeric(cramers_v[1]))
+pct_regular <- round(regular_count / n_cells * 100, 1)
+
+cv_ci_str <- if (!is.null(cramers_v_ci) && length(cramers_v_ci) == 2L && !is.na(cramers_v_ci[1])) {
+  paste0("[", cramers_v_ci[1], ", ", cramers_v_ci[2], "]")
 } else {
-  "未算出"
-}
-cv_label <- if (!is.null(cramers_v) && length(cramers_v) && !is.na(cramers_v)) {
-  "Cram&eacute;r's V（全体効果量）"
-} else {
-  paste0("Cram&eacute;r's V（", htmltools::htmlEscape(effect_status), "）")
+  ""
 }
 
 cat(paste0(
   '<div class="stats-grid">',
-  '<div class="stat-card bf-card"><div class="value">', bf10_display, "</div>",
-  '<div class="label">BF<sub>10</sub>（独立仮説への反証）</div></div>',
-  '<div class="stat-card"><div class="value">', threshold_display, "</div>",
-  '<div class="label">Evidence 閾値 (k×log N), k=', threshold_k, "</div></div>",
-  '<div class="stat-card evidence-card"><div class="value">', n_positive, " / ", n_cells, "</div>",
-  '<div class="label">エビデンス・セル数（正値 / 全セル）</div></div>',
-  '<div class="stat-card evidence-card"><div class="value">', sprintf("%.1f", pct_evidence), "%</div>",
-  '<div class="label">エビデンス率</div></div>',
-  '<div class="stat-card" style="border-color: #8e44ad;"><div class="value" style="color: #8e44ad;">',
-  cv_display, "</div>",
-  '<div class="label">', cv_label, "</div></div>",
+  '<div class="stat-card model-card"><div class="value">', htmltools::htmlEscape(best_model_id), "</div>",
+  '<div class="label">最良モデル (明示式BIC)</div></div>',
+  
+  '<div class="stat-card effect-card"><div class="value">', cv_summary_str, "</div>",
+  '<div class="label">全体効果量 V ', cv_ci_str, '</div></div>',
+  
+  '<div class="stat-card regular-card"><div class="value">', regular_count, " / ", n_cells, "</div>",
+  '<div class="label">安定セル (', pct_regular, '% REGULAR)</div></div>',
+  
+  '<div class="stat-card quarantine-card"><div class="value">', quarantined_count, "</div>",
+  '<div class="label">隔離セル (QUARANTINED)</div></div>',
+  
+  '<div class="stat-card sample-card"><div class="value">N = ', format(n_total, big.mark = ","), "</div>",
+  '<div class="label">総観測度数 (log N = ', sprintf("%.2f", as.numeric(log_n)), ')</div></div>',
   "</div>"
 ))
 
-if (is.null(cramers_v) || !length(cramers_v) || is.na(cramers_v)) {
-  cat(paste0(
-    '<div class="evidence-note" style="background:#eef5ff;border-color:#b6d4fe;color:#084298;">',
-    "&#9432; <strong>Cram&eacute;r's V 未算出</strong>: ",
-    htmltools::htmlEscape(effect_reason),
-    " Residual / Evidence Score はセル単位、Cram&eacute;r's V は全体効果量として扱います。</div>"
-  ))
-}
-
 if (large_sample_mode) {
-  # Dual-Filter 警告の取得
-  warn_msg <- res$warnings$practical_significance_message
-  if (is.null(warn_msg)) {
-    warn_msg <- paste0("大規模データモード (N > ", res$large_n_threshold, "): 効果量（Cramér's V）を優先して解釈してください。")
-  }
-  
   cat(paste0(
-    '<div class="evidence-note" style="background:#ffeaa7;border-color:#fdcb6e;color:#856404;">',
-    "&#9888; <strong>大規模データモード</strong>: ", htmltools::htmlEscape(warn_msg), "</div>"
+    '<div class="notice-box notice-warning">',
+    "&#9888; <strong>大規模データモード適用中 (N = ", format(n_total, big.mark = ","), " > 2,000)</strong><br>",
+    "大標本下では統計的証拠（Score統計量 / P値）が極めて過敏になり、微小な乖離でも極大化します。",
+    "判定には標本規模不変の <strong>Effect 軸（効果比 log(O/E) および 全体効果量 Cramér's V）を第一義的スクリーニングとして優先</strong> してください（Dual-Filter原則）。",
+    "</div>"
+  ))
+}
+
+if (is.null(cramers_v) || is.na(cramers_v)) {
+  cat(paste0(
+    '<div class="notice-box notice-info">',
+    "&#9432; <strong>全体効果量（Cram&eacute;r's V）の補足</strong>: ",
+    htmltools::htmlEscape(effect_reason), "</div>"
   ))
 }
 ```
 
-```{r exec-topk-open, results='asis'}
-cat('<div class="exec-topk-layout"><div class="exec-summary-panel">')
-```
-
-<div class="section-title">&#129504; AI エグゼクティブ・サマリー（Pass 2 出力）</div>
+<div class="section-title">&#129504; AI エグゼクティブ・サマリー（Pass 2 専門的考察）</div>
 
 ```{r ai-summary, results='asis'}
 cat('<div class="ai-summary-box">\n')
@@ -411,113 +386,146 @@ cat(knitr::knit(text = summary_text, quiet = TRUE))
 cat("\n</div>\n")
 ```
 
-```{r exec-topk-mid, results='asis'}
-cat('</div><div class="topk-panel">')
+```{r model-comparison-section, results='asis'}
+if (nrow(models_summary) > 0) {
+  cat('<div class="section-title">&#9879; 対数線形モデル比較（総度数 N 基準の明示式BIC）</div>')
+  cat('<div class="topk-panel" style="margin-bottom:24px;">')
+  cat('<p style="margin:0 0 12px 0; font-size:13px; color:#64748b;">')
+  cat('ポアソン対数線形回帰による主効果・交互作用モデルの適合度比較です。総度数 $N$ をペナルティ基準としたBICにより最良モデルを選択しています。')
+  cat('</p>')
+}
 ```
 
-```{r top-k-heading, results='asis'}
-cat(paste0(
-  '<p class="topk-lead" style="margin:0 0 10px 0;font-size:13px;color:#555;line-height:1.5;">',
-  "Evidence Score 上位セルのみを表形式で要約します（全セルは下段の折りたたみから参照できます）。",
-  "</p>",
-  '<div class="section-title">&#127942; Top-', top_k, " エビデンス・セル</div>\n"
-))
+```{r model-table}
+if (nrow(models_summary) > 0) {
+  m_tab <- models_summary
+  if (!"delta_bic" %in% names(m_tab) && "bic" %in% names(m_tab)) {
+    m_tab$delta_bic <- m_tab$bic - min(m_tab$bic, na.rm = TRUE)
+  }
+  names(m_tab)[names(m_tab) == "model_id"] <- "モデルID"
+  names(m_tab)[names(m_tab) == "model_name"] <- "モデル名"
+  names(m_tab)[names(m_tab) == "name"] <- "モデル名"
+  names(m_tab)[names(m_tab) == "df_residual"] <- "残差自由度"
+  names(m_tab)[names(m_tab) == "df"] <- "残差自由度"
+  names(m_tab)[names(m_tab) == "deviance"] <- "逸脱度"
+  names(m_tab)[names(m_tab) == "bic"] <- "BIC"
+  names(m_tab)[names(m_tab) == "delta_bic"] <- "ΔBIC"
+  
+  round_target <- intersect(c("逸脱度", "BIC", "ΔBIC"), names(m_tab))
+  
+  datatable(
+    m_tab,
+    filter = "none",
+    rownames = FALSE,
+    options = list(dom = "t", paging = FALSE, ordering = FALSE)
+  ) |>
+    formatRound(round_target, digits = 2) |>
+    formatStyle(
+      "モデルID",
+      target = "row",
+      backgroundColor = styleEqual(best_model_id, "#f0fdf4"),
+      fontWeight = styleEqual(best_model_id, "bold")
+    )
+}
 ```
+
+```{r model-comparison-close, results='asis'}
+if (nrow(models_summary) > 0) {
+  cat('</div>')
+}
+```
+
+<div class="section-title">&#127942; Top 局所セル診断（Score統計量 上位セル）</div>
+
+<div class="topk-panel">
+<p style="margin:0 0 12px 0; font-size:13px; color:#64748b;">
+基準モデル（`r base_model_id`: `r base_model_name`）からの乖離を <strong>4軸（Effect × Evidence × Influence × Stability）</strong> で診断した上位セルです。
+</p>
 
 ```{r top-k-table}
 tk <- top_k_data
-names(tk)[names(tk) == "Freq"] <- "度数"
-names(tk)[names(tk) == "Expected"] <- "期待値"
-names(tk)[names(tk) == "Residual"] <- "標準残差"
-names(tk)[names(tk) == "Evidence_Score"] <- "エビデンス・スコア"
+col_rename <- c(
+  "Observed" = "度数(O)",
+  "Expected" = "期待値(E)",
+  "Residual" = "ピアソン残差",
+  "log_oe_ratio" = "効果比:log(O/E)",
+  "scaled_diff" = "標準化差",
+  "score_stat" = "Score統計量(T)",
+  "p_value" = "P値",
+  "leverage" = "Leverage(h)",
+  "stability_status" = "診断状態"
+)
 
-for (v in dims) {
-  if (v %in% names(tk)) {
-    tk[[v]] <- factor(tk[[v]], levels = sort(unique(as.character(tk[[v]]))))
+display_cols <- c(dims, intersect(names(col_rename), names(tk)))
+tk_disp <- tk[, display_cols, drop = FALSE]
+
+for (orig in names(col_rename)) {
+  if (orig %in% names(tk_disp)) {
+    names(tk_disp)[names(tk_disp) == orig] <- col_rename[[orig]]
   }
 }
 
+for (v in dims) {
+  if (v %in% names(tk_disp)) {
+    tk_disp[[v]] <- factor(tk_disp[[v]], levels = sort(unique(as.character(tk_disp[[v]]))))
+  }
+}
+
+round_cols <- intersect(c("期待値(E)", "ピアソン残差", "効果比:log(O/E)", "標準化差", "Score統計量(T)", "Leverage(h)"), names(tk_disp))
+
 datatable(
-  tk,
+  tk_disp,
   filter = "none",
   rownames = FALSE,
   caption = htmltools::tags$caption(
     style = "caption-side: top; text-align: left; font-size: 13px; color: #555;",
-    paste0("Evidence Score 上位 ", top_k, " セル（閾値 k=", threshold_k, "）")
+    paste0("Score統計量 上位 ", nrow(tk_disp), " セル（局所特異効果の顕著なサブグループ）")
   ),
-  options = list(pageLength = top_k, dom = "t", scrollX = TRUE)
+  options = list(dom = "t", paging = FALSE, scrollX = TRUE)
 ) |>
-  formatRound(c("期待値", "標準残差", "エビデンス・スコア"), digits = 4) |>
+  formatRound(round_cols, digits = 4) |>
+  formatSignif(intersect(c("P値"), names(tk_disp)), digits = 3) |>
   formatStyle(
-    "エビデンス・スコア",
-    backgroundColor = styleInterval(0, c("#fff3cd", "#d4edda")),
+    "効果比:log(O/E)",
+    backgroundColor = styleInterval(0, c("#fee2e2", "#dbeafe")),
     fontWeight = "bold"
   ) |>
   formatStyle(
-    "標準残差",
-    color = styleInterval(0, c("#e74c3c", "#2980b9"))
+    "診断状態",
+    backgroundColor = styleEqual(c("REGULAR", "QUARANTINED"), c("#dcfce7", "#ffedd5")),
+    color = styleEqual(c("REGULAR", "QUARANTINED"), c("#15803d", "#c2410c")),
+    fontWeight = "bold"
   )
 ```
-
-```{r exec-topk-close, results='asis'}
-cat("</div></div>")
-```
-
-<div class="section-title">&#128200; Evidence Score の定義</div>
-
-```{r formula-box, results='asis'}
-cat(paste0(
-  '<div class="formula-box">',
-  "$$\\mathrm{Evidence\\;Score}_{ijk} = r_{ijk}^2 - k \\cdot \\log(N)$$ (M0 vs M1 Model Comparison)",
-  "<ul style=\"margin:8px 0 0 0; font-size:13px;\">",
-  "<li>$M_0$: すべてのセルに共通する主効果（ベースライン）モデル</li>",
-  "<li>$M_1$: <strong>特定のセル $(i, j, k)$ だけ</strong>に特異効果を追加した代替モデル</li>",
-  "<li>$r_{ijk}$: $M_0$（独立モデル）における標準化ピアソン残差</li>",
-  "<li>$k \\cdot \\log(N)$: $M_1$ で追加された 1 自由度に対する BIC ペナルティ（本レポート: $k = <strong>", threshold_k, "</strong>$, ",
-  "$\\log(N) = <strong>", sprintf("%.4f", as.numeric(log_n)), "</strong>$）</li>",
-
-  "<li><span style=\"color:#27ae60;font-weight:bold;\">正値</span>: 実質的エビデンス（ノイズを超える真の関連）</li>",
-  "<li><span style=\"color:#e67e22;font-weight:bold;\">負値</span>: ノイズレベル（独立モデルで説明可能）</li>",
-  "</ul></div>"
-))
-```
-
-```{r evidence-note, results='asis'}
-cat(paste0(
-  '<div class="evidence-note">&#9989; <strong>', n_positive, " セル / ", n_cells, " セル（",
-  sprintf("%.1f", pct_evidence), "%）</strong> がエビデンス・スコア正値（threshold = ",
-  threshold_display, " 超過）。",
-  "これらのセルは大標本（N = ", format(n_total, big.mark = ","),
-  "）においても統計ノイズを超える<strong>実質的な関連</strong>を持ちます。</div>"
-))
-```
+</div>
 
 <details id="all-cells-detail">
-<summary class="section-title" style="cursor:pointer;">&#128203; 全セル・エビデンス・テーブル（クリックで展開）</summary>
+<summary class="section-title" style="cursor:pointer;">&#128203; 全セル 4軸診断テーブル（クリックで展開）</summary>
 
-<div class="dt-section">
+<div class="topk-panel" style="margin-top:12px;">
 ```{r dt-table}
-# 日本語ラベルへ変換
-cat_vars <- dims
 dt_data <- full_data
-names(dt_data)[names(dt_data) == "Freq"] <- "度数"
-names(dt_data)[names(dt_data) == "Expected"] <- "期待値"
-names(dt_data)[names(dt_data) == "Residual"] <- "標準残差"
-names(dt_data)[names(dt_data) == "Evidence_Score"] <- "エビデンス・スコア"
+dt_disp <- dt_data[, display_cols, drop = FALSE]
 
-for (v in cat_vars) {
-  if (v %in% names(dt_data)) {
-    dt_data[[v]] <- factor(dt_data[[v]], levels = sort(unique(as.character(dt_data[[v]]))))
+for (orig in names(col_rename)) {
+  if (orig %in% names(dt_disp)) {
+    names(dt_disp)[names(dt_disp) == orig] <- col_rename[[orig]]
   }
 }
 
-multiselect_cols <- intersect(dims, names(dt_data))
-cn_to_idx <- stats::setNames(seq_along(names(dt_data)) - 1L, names(dt_data))
+for (v in dims) {
+  if (v %in% names(dt_disp)) {
+    dt_disp[[v]] <- factor(dt_disp[[v]], levels = sort(unique(as.character(dt_disp[[v]]))))
+  }
+}
+
+multiselect_cols <- intersect(dims, names(dt_disp))
+cn_to_idx <- stats::setNames(seq_along(names(dt_disp)) - 1L, names(dt_disp))
 ms_specs <- lapply(multiselect_cols, function(cn) {
-  levs <- if (is.factor(dt_data[[cn]])) {
-    levels(dt_data[[cn]])
+  levs <- if (is.factor(dt_disp[[cn]])) {
+    levels(dt_disp[[cn]])
   } else {
-    sort(unique(as.character(dt_data[[cn]])))
+    sort(unique(as.character(dt_disp[[cn]])))
   }
   list(
     col = as.integer(unname(cn_to_idx[cn])),
@@ -562,98 +570,94 @@ callback_ms <- htmlwidgets::JS(paste0(
   "  });\n"
 ))
 
+score_col_idx <- which(names(dt_disp) == "Score統計量(T)") - 1L
+if (length(score_col_idx) == 0L) score_col_idx <- ncol(dt_disp) - 1L
+
 dt_widget <- datatable(
-  dt_data,
+  dt_disp,
   filter = "top",
   rownames = FALSE,
   callback = callback_ms,
   caption = htmltools::tags$caption(
     style = "caption-side: top; text-align: left; font-size: 13px; color: #555;",
     paste0(
-      "全 ", n_cells, " セル | N = ", format(n_total, big.mark = ","),
-      " | BF10 = ", bf10_display,
-      " | threshold = ", threshold_display,
-      " | ※ エビデンス・スコア > 0 が実質的エビデンス",
-      " | Cramér's V は全体効果量のため、このセル単位テーブルには列表示しません"
+      "全 ", nrow(dt_disp), " セル | N = ", format(n_total, big.mark = ","),
+      " | 基準モデル: ", base_model_id,
+      " | 診断状態: REGULAR=", regular_count, "件, QUARANTINED=", quarantined_count, "件"
     )
   ),
   options = list(
     pageLength = 20,
     scrollX = TRUE,
-    order = list(list(ncol(dt_data) - 1, "desc")),
+    order = list(list(score_col_idx, "desc")),
     language = list(
       url = "https://cdn.datatables.net/plug-ins/1.13.6/i18n/ja.json"
     )
   )
-)
-
-dt_widget <- dt_widget |>
-  formatRound(c("期待値", "標準残差", "エビデンス・スコア"), digits = 4) |>
+) |>
+  formatRound(round_cols, digits = 4) |>
+  formatSignif(intersect(c("P値"), names(dt_disp)), digits = 3) |>
   formatStyle(
-    "エビデンス・スコア",
-    backgroundColor = styleInterval(0, c("#fff3cd", "#d4edda")),
+    "効果比:log(O/E)",
+    backgroundColor = styleInterval(0, c("#fee2e2", "#dbeafe")),
     fontWeight = "bold"
   ) |>
   formatStyle(
-    "標準残差",
-    color = styleInterval(0, c("#e74c3c", "#2980b9"))
+    "診断状態",
+    backgroundColor = styleEqual(c("REGULAR", "QUARANTINED"), c("#dcfce7", "#ffedd5")),
+    color = styleEqual(c("REGULAR", "QUARANTINED"), c("#15803d", "#c2410c")),
+    fontWeight = "bold"
   )
 
 dt_widget
 ```
 </div>
-
 </details>
 
-```{r glossary-block, results='asis'}
-ln_txt <- sprintf("%.4f", as.numeric(log_n))
-lthresh <- as.integer(res$large_n_threshold %||% 1000)
-md <- paste0(
-  "### BIC ペナルティの直観：主効果 $M_0$ と「1セルだけ付加」$M_1$（類比）\n\n",
-  "> **このレポートの推論本体**は、上段の **Evidence Score**（セル度数に対する **独立 Poisson GLM** の標準化ピアソン残差）と、\n",
-  "> **独立 Poisson モデル対 飽和 Poisson モデル**に基づく **EBIC 近似の $\\mathrm{BF}_{10}$** です。\n",
-  "> 次の $M_0$ / $M_1$ は、**「主効果に対し、特定セル $(i,j,k)$ だけ余分なパラメータをちょうど1つ足すと、BIC のペナルティが $\\log(N)$ だけ増える」**\n",
-  "> という点を示すための **類比用スケッチ**です。$y_{ijk}$ は連続反応＋正規誤差の例示であり、**セル度数 $n_{ijk}$ の Poisson 期待値の式そのものではありません**。\n\n",
-  "加法モデルで考えると、追加パラメータ数に応じてペナルティが増えます（例：独立にない交互作用を **3 成分** 足すなら、形式的に $3\\log(N)$ の増分が対応）。\n\n",
-  "添字 $i,j,k$ は連続座標ではなく、分割表・多次元配列上の **水準の組＝1セル**（例：患者サブグループ、薬剤×有害事象の組）を指します。\n\n",
-  "### 帰無（主効果・ベースライン）$M_0$\n\n",
-  "$$y_{ijk} = \\mu + \\alpha_i + \\beta_j + \\gamma_k + \\varepsilon$$\n\n",
-  "### 代替（対象セルにだけ局所パラメータ）$M_1$\n\n",
-  "$$y_{ijk} = \\mu + \\alpha_i + \\beta_j + \\gamma_k + ",
-  "\\mathbf{1}\\{(i,j,k)=(i_0,j_0,k_0)\\}\\,\\delta + \\varepsilon$$\n\n",
-  "（実務メモでは $I_{(x=i,\\,y=j,\\,z=k)}\\,\\delta_{ijk}$ と書くことが多いですが、**付くのは1セル分の $\\delta$ だけ**、という意味です。）\n\n",
-  "$M_1$ は「$M_0$ の全体傾向から見て、**ある1セル**だけ特異か？」を表す構造です。**自由度がちょうど1だけ**増えるなら、BIC 側のペナルティ増分は $\\log(N)$ に対応します。\n\n",
-  "分割表の Poisson では、期待度数に対する **対数線形モデル**で同様に、「独立＝主効果のみ」「飽和＝セルごとに別パラメータ」といった **モデル次元と $\\log(N)$ ペナルティの対応**で理解できます（本ダッシュボードの $\\mathrm{BF}_{10}$ は **独立 vs 飽和**の比較）。\n\n",
-  "---\n\n",
-  "### Evidence Score（上段と同一定式）\n\n",
-  "$$\\mathrm{Evidence\\;Score}_{ijk} = r_{ijk}^2 - k \\cdot \\log(N)$$\n\n",
-  "- $r_{ijk}$: **独立** Poisson GLM に基づくセル $(i,j,k)$ の標準化ピアソン残差\n",
-  "- 本レポート: $k = ", threshold_k, "$, $\\log(N) = ", ln_txt, "$（総度数 $N = ", format(n_total, big.mark = ","), "$）\n",
-  "- エビデンス閾値 $k \\cdot \\log(N)$（本ダッシュボードの数値表示）: **", threshold_display, "**\n",
-  "- **正値**: 実質的エビデンス　**負値**: ノイズ範囲\n\n",
-  "---\n\n",
-  "### ベイズファクター $\\mathrm{BF}_{10}$\n\n",
-  "$$\\log \\mathrm{BF}_{10} \\approx \\tfrac{1}{2}\\bigl(\\mathrm{EBIC}_{\\mathrm{indep}} - ",
-  "\\mathrm{EBIC}_{\\mathrm{sat}}\\bigr)$$\n\n",
-  "- ここで $\\mathrm{EBIC}_{\\mathrm{indep}}$ は **主効果のみの Poisson（独立構造）**、$\\mathrm{EBIC}_{\\mathrm{sat}}$ は **セルごとに別期待値を持つ飽和 Poisson** に対応します。\n",
-  "- Jeffreys の目安: $\\mathrm{BF}_{10} > 100$ 決定的、$> 10$ 強い、$> 3$ 中程度\n\n",
-  "### Cramér's $V \\in [0,1]$\n\n",
-  "- $V < 0.1$: 弱い　$\\sim 0.3$: 中程度　$\\ge 0.5$: 強い（Cohen, 1988 の目安）\n",
-  "- Cramér's $V$ は**表全体の効果量**です。全セル・エビデンス・テーブルの各行に付く指標ではありません。\n",
-  "- 本レポートの算出状態: `", effect_status, "`（", effect_reason, "）\n\n",
-  "### 標準化ピアソン残差 $r_{ijk}$\n\n",
-  "- **正**: そのセルの観測度数が、独立モデルの期待度数より大きい（過剰）\n",
-  "- **負**: 期待より小さい（過少）\n\n",
-  "### 大規模データモード\n\n",
-  "**総度数** $N$ がしきい値（", lthresh, "）を超えると有効化されます（`large_sample_mode`）。",
-  "大標本では些細な差でも検定が有意になりやすいため、**効果量（Cramér's $V$）を優先**して解釈してください。\n"
-)
-cat("<details>\n")
-cat("<summary class=\"section-title\" style=\"cursor:pointer;\">&#128218; 統計指標の用語解説（クリックで展開）</summary>\n")
-cat("<div class=\"ai-summary-box glossary-md\" style=\"margin-top:12px;\">\n")
-cat(knitr::knit(text = md, quiet = TRUE))
-cat("\n</div>\n</details>\n")
-```
+<details>
+<summary class="section-title" style="cursor:pointer;">&#128218; 統計指標の解説：4軸セル診断フレームワーク（クリックで展開）</summary>
+
+<div class="ai-summary-box glossary-md" style="margin-top:12px;">
+
+### 1. 4軸セル診断フレームワーク（4-Axis Framework）
+
+大標本データ（$N > 2,000$）において、従来の検定統計量やP値だけに頼ると、些細な度数差がすべて「極めて有意」と判定され、実務上の本質的シグナルが埋没する課題（大標本の呪い）が生じます。
+本ダッシュボードでは、セルごとの乖離を以下の **4つの独立した軸** で多面的に評価します。
+
+1. **Effect（効果量・乖離の大きさ）**:
+   - **対数効果比 $\log(O/E)$**: 観測度数 $O$ が期待度数 $E$ に対して何倍乖離しているかの対数尺度。標本規模 $N$ の増加によって値がインフレしないため、大標本下でのセル間比較・スクリーニングにおいて最も信頼できる尺度です。正値は過剰（濃縮）、負値は過少（希薄）を示します。
+   - **全体効果量（Cramér's $V$）**: 表全体の連関の強さを表す標準化指標（$[0, 1]$）。
+2. **Evidence（統計的証拠・有意性）**:
+   - **Leverage補正Score統計量 $T_i^{\rm score}$**:
+     $$T_i^{\rm score} = \frac{r_{P,i}^2}{1 - h_{ii}}$$
+     ここで $r_{P,i} = \frac{O_i - E_i}{\sqrt{E_i}}$ はピアソン残差、$h_{ii}$ はポアソンGLMにおけるハット行列の対角成分（Leverage）です。
+     これは「特定セル $i$ にのみ局所特異パラメータ $\delta_i$ を追加した代替モデル」に対する **厳密なRaoのスコア検定統計量** であり、モデル再推定を行わずに厳密な局所検定を可能にします。
+   - **P値**: $\chi^2(1)$ 分布に基づく検定P値。
+3. **Influence（影響度・てこ比）**:
+   - **Leverage $h_{ii}$**: そのセルが分割表全体のモデル適合にどれだけ強い影響力を持っているかを表す尺度（$[0, 1]$）。$h_{ii}$ が大きいセルは、自身が期待値 $E_i$ を強く引き寄せているため、生の残差が見かけ上小さく収縮しやすくなります（$T_i$ で補正されます）。
+4. **Stability（数値安定性・信頼性）**:
+   - **診断状態（Stability Status）**:
+     - `REGULAR`: 期待度数 $E \ge 5$ かつ $h < 0.8$。大標本漸近正規性・カイ二乗近似が成立する信頼性の高いセル。
+     - `QUARANTINED`: 期待度数が極小（$E < 5$）または過大レバレッジ（$h \ge 0.8$）のセル。Score統計量や残差の近似が歪む可能性があるため、隔離フラグを付与し慎重な解釈を促します。
+
+---
+
+### 2. モデル選択基準（総度数 $N$ 基準の明示式BIC）
+
+対数線形モデルの比較には、Rの標準 `BIC()` 関数（行数基準）ではなく、**観測対象の総度数 $N$ を標本サイズとした明示式BIC** を使用しています。
+$$\mathrm{BIC} = \mathrm{Deviance} + \mathrm{df}_{\rm used} \cdot \ln(N)$$
+これにより、分割表の行数ではなく真の標本規模 $N$ に応じた適切な複雑度ペナルティが課され、過剰適合を防ぎます。
+
+---
+
+### 3. 大標本モード（Dual-Filter 原則）
+
+総度数 $N > 2,000$ の大標本下では、以下の二段階判定（Dual-Filter）を厳格に適用します：
+- **第1フィルタ（Effect軸）**: まず対数効果比 $|\log(O/E)|$ または全体効果量 Cramér's $V$ に基づき、実務的・臨床的に意味のある乖離が存在するかをスクリーニングする。
+- **第2フィルタ（Evidence軸）**: 十分な効果量を持つセルに対してのみ、Score統計量 $T_i^{\rm score}$ および P値を確認し、標本抽出誤差（ノイズ）でないことを検証する。
+
+</div>
+</details>
 
 ```{r dashboard-main-close, results='asis'}
 cat('</div><!-- End .dashboard-main-content -->')
@@ -661,11 +665,10 @@ cat('</div><!-- End .dashboard-main-content -->')
 
 ```{r footer, results='asis'}
 cat(paste0(
-  '<hr style="margin-top:40px; border-color:#dee2e6;">',
-  '<p style="font-size:11px; color:#999; text-align:right;">',
-  "Generated by <strong>vcd-bayesian-evidence-analysis v1.0</strong> &nbsp;|&nbsp; ",
-  "Evidence Score = r&#178; &minus; k·log(N) &nbsp;|&nbsp; ",
-  "BIC近似ベイズファクター &nbsp;|&nbsp; ",
+  '<hr style="margin-top:40px; border-color:#e2e8f0;">',
+  '<p style="font-size:11px; color:#94a3b8; text-align:right;">',
+  "Generated by <strong>vcd-bayesian-evidence-analysis (4-Axis Cell Diagnostics)</strong> &nbsp;|&nbsp; ",
+  "Rao's Score Statistic &amp; Explicit BIC (N) &nbsp;|&nbsp; ",
   format(Sys.time(), "%Y-%m-%d %H:%M JST", tz = "Asia/Tokyo"),
   "</p>"
 ))

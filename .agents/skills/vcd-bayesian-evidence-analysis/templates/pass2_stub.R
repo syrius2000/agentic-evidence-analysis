@@ -72,7 +72,7 @@ if (!is.null(res$cramers_v)) {
   md_lines <- c(md_lines,
     "#### 3. 効果量 (Dual-Filter)",
     cram_str,
-    "- **注**: Cramér's V はセル単位ではなく表全体の効果量です。セル単位の偏りは Residual / Evidence Score で確認します。",
+    "- **注**: Cramér's V はセル単位ではなく表全体の効果量です。セル単位の偏りは局所効果比 log(O/E) および Score統計量で確認します。",
     ""
   )
 }
@@ -85,15 +85,18 @@ if (!is.null(res$warnings) && length(res$warnings) > 0) {
   )
 }
 
-if (!is.null(res$top_k_data) && is.data.frame(res$top_k_data) && nrow(res$top_k_data) > 0) {
+if (!is.null(res$cells$top_k_data) && is.data.frame(res$cells$top_k_data) && nrow(res$cells$top_k_data) > 0) {
   md_lines <- c(md_lines,
-    "#### 4. 主要な偏りセル (Top-K)",
-    "以下のセルが強い偏り（Evidence Score > 0）を示しました："
+    "#### 4. 主要な偏りセル (Top-K: 4軸診断)",
+    "以下のセルが強い実質的効果量または高い検定統計量を示しました："
   )
-  for (i in seq_len(nrow(res$top_k_data))) {
-    row <- res$top_k_data[i, ]
-    cell_desc <- paste(sapply(res$dimensions, function(d) paste0(d, "=", row[[d]])), collapse = ", ")
-    md_lines <- c(md_lines, sprintf("- %d. %s (Score: %.2f, Residual: %.2f)", i, cell_desc, row$Evidence_Score, row$Residual))
+  top_df <- res$cells$top_k_data
+  for (i in seq_len(nrow(top_df))) {
+    row <- top_df[i, ]
+    cell_desc <- paste(sapply(res$input_summary$variables, function(d) paste0(d, "=", row[[d]])), collapse = ", ")
+    score_val <- if (!is.null(row$score_stat)) row$score_stat else row$Residual^2
+    log_oe <- if (!is.null(row$log_oe_ratio)) row$log_oe_ratio else NA_real_
+    md_lines <- c(md_lines, sprintf("- %d. %s (log(O/E): %.2f, Score統計量: %.2f, 残差: %.2f)", i, cell_desc, log_oe, score_val, row$Residual))
   }
   md_lines <- c(md_lines, "")
 }
