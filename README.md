@@ -142,3 +142,10 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
 ## ライセンス
 
 [MIT](LICENSE)
+
+
+## 3次元探索支援（2026-09-06）
+
+集計済みの3元表には、[vcd-bayesian-evidence-analysisの新経路](.agents/skills/vcd-bayesian-evidence-analysis/SKILL.md)を追加した。9つの階層対数線形モデル、基準モデル別のセル診断、明示した事前分布による条件付き割合・層間差、日本語考察、層別ヒートマップ付きHTMLを扱う。
+
+[統計契約と再現手順](.agents/skills/vcd-bayesian-evidence-analysis/references/three_way_contract.md)を確認し、Pass 0から開始する。旧Scoreの正負は真の関連・ノイズの判定に使わない。ベイズでも標本サイズへの感度は残る。FREQ・MEANS互換、階層モデル・再標本化安定性は後続予定。

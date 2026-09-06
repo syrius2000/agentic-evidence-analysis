@@ -34,15 +34,9 @@ All agents MUST follow this sequence for any analysis request:
 
 ## Evidence Judgment Criteria
 
-Do NOT rely on P-values alone. When $N > 2,000$, statistical significance is trivial.
+P値だけで判断しない。標本サイズの普遍的な境界や、BF・効果量の一律閾値から重要性を自動判定しない。
 
-| Metric | Criterion / Formula | Goal / Interpretation |
-| :--- | :--- | :--- |
-| **Evidence Score** | $r^2 - k \cdot \log(N) > 0$ | Distinguish genuine signal from large-sample noise (BIC penalty). |
-| **Bayes Factor** | $BF_{10} > 100$ | Decisive evidence favoring the association model over independence. |
-| **Effect Size** | Cramér's V > 0.1 | Ensure practical/substantive significance. |
-
----
+新しい3元表は `vcd-bayesian-evidence-analysis` の `three-way-results-v1` 経路を使用する。全体構造、基準モデルに対するセル診断、効果の大きさ、不確実性、推定保留を分ける。旧 `r² − k log N` は局所BFでも真の信号の判定でもなく監査専用。全体BFをセルへ転用しない。人工100倍化は標本サイズ感度の検証であり、新しい独立観測ではない。
 
 ## Operational Constraints & Rules
 

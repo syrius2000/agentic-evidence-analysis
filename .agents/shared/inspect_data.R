@@ -57,7 +57,9 @@ if (ncol(cat_vars) > 0) {
 }
 
 output <- list(
-  file = input_file,
+  file = normalizePath(input_file),
+  input_sha256 = strsplit(system2("shasum", c("-a", "256", shQuote(input_file)), stdout = TRUE)[1], " ")[[1]][1],
+  missing_counts = lapply(df, function(x) sum(is.na(x))),
   n_rows = nrow(df),
   n_cols = ncol(df),
   categorical_vars = cat_details,

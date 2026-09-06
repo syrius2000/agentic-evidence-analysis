@@ -1,0 +1,314 @@
+{
+  "models": [
+    "[A][B][C]",
+    "[AB][C]",
+    "[AC][B]",
+    "[BC][A]",
+    "[AB][AC]",
+    "[AB][BC]",
+    "[AC][BC]",
+    "[AB][AC][BC]",
+    "[ABC]"
+  ],
+  "synthetic_formulas": [
+    "n=u*v*w; u=(1,2),v=(2,3),w=(3,4)",
+    "AB=((30,10),(10,30)); C倍率=(1,2)",
+    "C1=((40,10),(10,40)); C2=((10,40),(40,10))"
+  ],
+  "tolerance": {
+    "absolute": 1e-08,
+    "relative": 1e-06,
+    "mcse_multiplier": 5,
+    "cdf_extra": 0.0001
+  },
+  "posterior_predictive": "固定N、主事前a=1、Freeman–Tukey",
+  "seed": 20260906,
+  "draws": 20000,
+  "scenarios": [
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "同じセルを複数モデルで診断する",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "二乗した指標を表示する",
+      "evidence": [
+        "test_report.py",
+        "verified_0906/runs/run_tit_1_dir/executive_summary.md",
+        "verified_0906/runs/run_hair_1_dir/executive_summary.md"
+      ],
+      "status": "実例AI考察とrenderer検証。最終利用者受入は未実施"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "局所モデル比較との対応が未確認である",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "3元表を2元表に変形して効果量を求める",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "重要性の基準が指定されていない",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "上位セルだけを表示する",
+      "evidence": [
+        "test_report.py",
+        "verified_0906/runs/run_tit_1_dir/executive_summary.md",
+        "verified_0906/runs/run_hair_1_dir/executive_summary.md"
+      ],
+      "status": "実例AI考察とrenderer検証。最終利用者受入は未実施"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "事前分布で解釈が変わる",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "cell-evidence-interpretation",
+      "scenario": "AIが特定セルの偏りを説明する",
+      "evidence": [
+        "test_report.py",
+        "verified_0906/runs/run_tit_1_dir/executive_summary.md",
+        "verified_0906/runs/run_hair_1_dir/executive_summary.md"
+      ],
+      "status": "実例AI考察とrenderer検証。最終利用者受入は未実施"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "標準Titanicから入力を作る",
+      "evidence": [
+        "prepare_cases.R",
+        "test_acceptance.py"
+      ],
+      "status": "実行検証済み"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "元表と100倍表を比較する",
+      "evidence": [
+        "prepare_cases.R",
+        "test_acceptance.py"
+      ],
+      "status": "実行検証済み"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "許容範囲を外れる",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "元データも強い関連を示す",
+      "evidence": [
+        "prepare_cases.R",
+        "test_acceptance.py"
+      ],
+      "status": "実行検証済み"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "数値が通常表示の範囲を超える",
+      "evidence": [
+        "test_report.py",
+        "verified_0906/runs/run_tit_1_dir/executive_summary.md",
+        "verified_0906/runs/run_hair_1_dir/executive_summary.md"
+      ],
+      "status": "実例AI考察とrenderer検証。最終利用者受入は未実施"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "既知構造の表を評価する",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "抽出条件が無効である",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "数値検証だけが完了する",
+      "evidence": [
+        "test_report.py",
+        "verified_0906/runs/run_tit_1_dir/executive_summary.md",
+        "verified_0906/runs/run_hair_1_dir/executive_summary.md"
+      ],
+      "status": "実例AI考察とrenderer検証。最終利用者受入は未実施"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "実LLMのコメントを評価する",
+      "evidence": [
+        "test_report.py",
+        "verified_0906/runs/run_tit_1_dir/executive_summary.md",
+        "verified_0906/runs/run_hair_1_dir/executive_summary.md"
+      ],
+      "status": "実例AI考察とrenderer検証。最終利用者受入は未実施"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "考察の数値が一致しない",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-validation-cases",
+      "scenario": "3次元の実例を表示する",
+      "evidence": [
+        "test_report.py",
+        "verified_0906/runs/run_tit_1_dir/executive_summary.md",
+        "verified_0906/runs/run_hair_1_dir/executive_summary.md"
+      ],
+      "status": "実例AI考察とrenderer検証。最終利用者受入は未実施"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "同じセルに複数行がある",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "入力または設定が無効である",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "推論の前提が未確定である",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "未記載または構造ゼロのセルがある",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "目的変数を指定しない",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "目的変数を指定する",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "均一連関と3次交互作用を比較する",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "BICとEBICを併記する",
+      "evidence": [
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "採否記録: EBIC不採用。原典モデル空間の全面監査は未実施"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "候補の評価に失敗する",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    },
+    {
+      "spec": "three-way-model-assessment",
+      "scenario": "現行方式を置換する判断となる",
+      "evidence": [
+        "test_contract.R",
+        "test_acceptance.py",
+        "statistical_validation_001_0906.md"
+      ],
+      "status": "計算・異常系検証と採否記録。仕様の全てを独立テストしたという意味ではない"
+    }
+  ]
+}

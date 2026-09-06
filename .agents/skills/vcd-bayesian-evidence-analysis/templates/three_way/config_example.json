@@ -1,0 +1,55 @@
+{
+  "schema_version": "3way-foundation-v1",
+  "input": "examples/titanic.csv",
+  "vars": [
+    "Class",
+    "Sex",
+    "Survived"
+  ],
+  "freq": "Freq",
+  "response_var": "Survived",
+  "output_dir": "output/three_way",
+  "run_id": "my_titanic",
+  "sampling": {
+    "unit": "乗客・乗員",
+    "total_n_meaning": "集計総度数 2201",
+    "independence_assumption": "assumed_independent",
+    "is_scaled": false,
+    "scaling_factor": 1,
+    "lineage": "examples/titanic.csv: Ageはvarsに含めず重複3元セルを合算"
+  },
+  "levels": {
+    "Class": [
+      "1st",
+      "2nd",
+      "3rd",
+      "Crew"
+    ],
+    "Sex": [
+      "Female",
+      "Male"
+    ],
+    "Survived": [
+      "No",
+      "Yes"
+    ]
+  },
+  "missing_policy": "reject",
+  "absent_cell_policy": "sample_zero",
+  "structural_zeros": [],
+  "filters": [],
+  "prior": {
+    "total_alpha": 1,
+    "sensitivity": [
+      0.1,
+      10
+    ],
+    "draws": 20000
+  },
+  "seed": 20260906,
+  "consultation": {
+    "inspection": "output/my_inspection/inspection_results.json",
+    "input_sha256": "69af742ef405fc4ec8c0d485da43f837d8fdc54f13c5f4f2ab817873ba8b7ce1",
+    "rationale": "ユーザー合意: 3次元探索、原表と人工100倍の感度比較。集計度数を展開せず、欠測拒否・標本ゼロ・独立性仮定の限界を明示。目的変数指定は条件付き割合の説明に使う。"
+  }
+}

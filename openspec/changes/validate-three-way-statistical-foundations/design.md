@@ -4,6 +4,10 @@ created: 2026-09-06 17:24 (JST)
 update: 2026-09-06 17:24 (JST)
 author: Codex (GPT-6)
 
+## 2026-09-06 実装範囲の更新
+
+ユーザーの明示的な実装指示に基づき、[統合実装計画](../../../docs/Artifacts/implementation_plan_006_0906.md)を今回の対象範囲の正本とする。下記の初期試作限定・本番変更対象外という記述は計画履歴であり、今回に限り同計画の正本エンジン・スキル統合・実例レポートまで拡張する。統計的な許容誤差と保留条件は維持する。
+
 ## 背景
 
 目的と対象範囲は[proposal](proposal.md)、必須の振る舞いは[モデル評価](specs/three-way-model-assessment/spec.md)、[セル解釈](specs/cell-evidence-interpretation/spec.md)、[受入検証](specs/three-way-validation-cases/spec.md)を正本とする。

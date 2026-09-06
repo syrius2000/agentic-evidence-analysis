@@ -98,3 +98,8 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R --con
 
 - **全変数投入**: 「とりあえず全部」は次元の呪いと解釈の混乱を招きます。Pass 0 で絞り込むことが重要です。
 - **検分なしの実行**: データのスパース性や水準数を知らずに計算を回すと、Pass 1 でエラーや無意味な結果が出る原因になります。
+
+
+## 集計済み3元表の新経路
+
+3変数の整数度数で構造・セル・不確実性を探索する場合は、[3次元探索支援](../vcd-bayesian-evidence-analysis/SKILL.md)へ接続する。検分のinput_sha256、明示水準、標本単位、独立性、ゼロ・欠測、抽出条件、合意理由を設定へ記録する。度数列の合算と入力行数の違いを確認する。新経路の `analysis.R --config ... --validate-only` はモデル計算をしない検分補足として使用できる。旧schemaを新経路へ流用しない。
