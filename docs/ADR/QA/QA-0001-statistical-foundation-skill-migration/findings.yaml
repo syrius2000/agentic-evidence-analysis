@@ -1,0 +1,417 @@
+schema_version: "1.0"
+case_id: QA-0001
+findings:
+  - id: QA-0001-F01
+    title: Pass 2 executive_summary numeric table contradicts Pass 1 JSON
+    category: contradictory-evidence
+    purpose_classification: purpose-critical
+    severity: high
+    severity_rationale: "The quality contract and Plan 5.3 require narrative-JSON consistency. The published summaries (and therefore dashboards) report cell diagnostics that do not match evidence_results.json, so the human-facing statistical meaning is wrong."
+    status: open
+    technical_disposition: failed
+    owner_disposition: null
+    first_seen_cycle: 1
+    claim_refs: [CLAIM-005]
+    requirement_refs: [PLAN-5.3, CONTRACT-PASS2]
+    evidence:
+      - type: runtime
+        reference: "skill_out/titanic_std_v2/run_run_std_v2/evidence_results.json cell 3rd/Male/No: log_oe=0.1157, T=16.6576, h=0.6603, E=375.8789"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: runtime
+        reference: "skill_out/titanic_std_v2/run_run_std_v2/executive_summary.md table: 3rd Male No log(O/E)=+0.7672, T=327.91, h=0.1874, E=195.95"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: runtime
+        reference: "Same mismatch for 2nd Female Yes: JSON T=311.1194 h=0.1206 vs summary T=328.79 h=0.1195; 100x summary scales the wrong 1x numbers"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    limitations: ["Pass 2 LLM text is gitignored local output; reviewer compared on-disk artifacts plus independent Pass 1 JSON"]
+    requested_action: "Regenerate Pass 2 from the actual JSON, correct the cell table, re-render Pass 3, and show a cell-level JSON-vs-summary diff."
+    risk_acceptance:
+      owner: null
+      rationale: null
+      scope_or_assumptions: null
+      compensating_controls: []
+      expiry_or_review_trigger: null
+    fingerprint:
+      category: contradictory-evidence
+      requirement_id: PLAN-5.3
+      primary_path: skill_out/titanic_std_v2/run_run_std_v2/executive_summary.md
+      semantic_key: pass2-json-numeric-mismatch
+    author_response:
+      disposition: fix-submitted
+      summary: "Pass 2 executive_summary.md and Pass 3 dashboard.html regenerated from ground-truth evidence_results.json. Exact cell matches verified for 3rd Male No (log_oe=0.1157, T=16.6576, h=0.6603) and 2nd Female Yes (log_oe=1.5540, T=311.1194, h=0.1206) in both 1x and 100x runs."
+      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+      cycle: 1
+      evidence: "skill_out/titanic_std_v2/run_run_std_v2/executive_summary.md and skill_out/titanic_100x_v2/run_run_100x_v2/executive_summary.md match evidence_results.json exactly."
+    verification: null
+
+  - id: QA-0001-F02
+    title: Legacy Evidence Score remains in tests, generator script, and SKILL CLI
+    category: purpose-gap
+    purpose_classification: purpose-critical
+    severity: high
+    severity_rationale: "Plan Purpose and the completion report claim repository-wide eradication. Executable tests and a generator script still compute or require r^2-k log N, which is the original zombie-output failure mode."
+    status: open
+    technical_disposition: failed
+    owner_disposition: null
+    first_seen_cycle: 1
+    claim_refs: [CLAIM-001]
+    requirement_refs: [PURPOSE-ERADICATION, PLAN-2.1]
+    evidence:
+      - type: code
+        reference: "tests/scripts/vcd_bayesian_gen_executive_summary.R still writes Evidence_Score = r^2 - log(N)"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: code
+        reference: "tests/test_vcd_bayesian_help.R, test_vcd_bayesian_levels.R, test_vcd_bayesian_dashboard_v2.R, test_vcd_bayesian_layout_glossary_sync.R, fixtures JSON with Evidence_Score"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: code
+        reference: "SKILL.md documents --threshold_k as Score > k x log(N) and anti-pattern E still says Evidence Score負値セル"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: code
+        reference: "docs/reference/advanced_analysis.md still teaches r^2 - k log N"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    limitations: ["Plan section 3 listed only 8 files; leftover paths are in-repo but outside that inventory"]
+    requested_action: "Either update/remove leftover executable tests and SKILL CLI so they cannot emit or require the old score, or revise Purpose/report to a bounded eradication scope with an explicit leftover inventory."
+    risk_acceptance:
+      owner: null
+      rationale: null
+      scope_or_assumptions: null
+      compensating_controls: []
+      expiry_or_review_trigger: null
+    fingerprint:
+      category: purpose-gap
+      requirement_id: PURPOSE-ERADICATION
+      primary_path: tests/scripts/vcd_bayesian_gen_executive_summary.R
+      semantic_key: legacy-evidence-score-not-eradicated
+    author_response:
+      disposition: fix-submitted
+      summary: "Refactored tests/scripts/vcd_bayesian_gen_executive_summary.R to the 4-axis framework, removed legacy CLI flags (--threshold_k, --ebic_gamma, --level2_factor, --arm_*) from SKILL.md, and quarantined legacy reference docs to docs/Archives/legacy_reference_20260906/."
+      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+      cycle: 1
+      evidence: "grep_search confirms r^2 - k log N eliminated from production skills, generator scripts, and active references."
+    verification: null
+
+  - id: QA-0001-F03
+    title: Production-skill regression tests were not migrated; all-pass claim is overstated
+    category: coverage-gap
+    purpose_classification: spec-required
+    severity: high
+    severity_rationale: "Strict profile requires execution evidence. The report claims full test-suite pass while listing only statistical_foundations tests. The in-tree vcd-bayesian help regression fails against the new engine."
+    status: open
+    technical_disposition: failed
+    owner_disposition: null
+    first_seen_cycle: 1
+    claim_refs: [CLAIM-006]
+    requirement_refs: [PLAN-5, REPORT-S5]
+    evidence:
+      - type: test
+        reference: "Rscript tests/test_vcd_bayesian_help.R exit 1: grepl('--threshold_k', help_text) is not TRUE"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: report
+        reference: "statistical_foundation_skill_migration_report_001_0906.md section 5 claims 全件合格 but only enumerates tests/statistical_foundations plus config/reproducibility"
+        revision: "untracked-report"
+    limitations: ["Reviewer did not re-run the full statistical_foundations suite; those results remain AUTHOR-CLAIM except where independently recomputed"]
+    requested_action: "Migrate or quarantine vcd-bayesian skill tests to the 4-axis contract, rerun them, and correct the report's test-scope claim."
+    risk_acceptance:
+      owner: null
+      rationale: null
+      scope_or_assumptions: null
+      compensating_controls: []
+      expiry_or_review_trigger: null
+    fingerprint:
+      category: coverage-gap
+      requirement_id: PLAN-5
+      primary_path: tests/test_vcd_bayesian_help.R
+      semantic_key: skill-regression-tests-not-migrated
+    author_response:
+      disposition: fix-submitted
+      summary: "Migrated test_vcd_bayesian_help.R to test 4-axis options (PASS confirmed), verified test_vcd_bayesian_run_id.R (PASS), quarantined 12 legacy-dependent tests to tests/legacy_quarantine/, and corrected test scope claims in completion report section 5."
+      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+      cycle: 1
+      evidence: "Rscript tests/test_vcd_bayesian_help.R and tests/test_vcd_bayesian_run_id.R pass with exit 0."
+    verification: null
+
+  - id: QA-0001-F04
+    title: Stability quarantine threshold differs between code and narrative
+    category: contradictory-evidence
+    purpose_classification: spec-required
+    severity: medium
+    severity_rationale: "Stability is a declared 4th axis. Code quarantines y==0 or mu<5 or h>0.95; glossary, report, and Pass 2 text use h>=0.8 and omit zero cells. Operators cannot reconstruct the status rule."
+    status: open
+    technical_disposition: failed
+    owner_disposition: null
+    first_seen_cycle: 1
+    claim_refs: [CLAIM-003]
+    requirement_refs: [PLAN-2.2, PLAN-2.4]
+    evidence:
+      - type: code
+        reference: "pass1_compute.R is_high_lev <- lev > 0.95; is_quarantined <- is_zero | is_sparse | is_high_lev"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: code
+        reference: "dashboard.Rmd glossary and docs/reference/stats_bayesian.md: REGULAR iff E>=5 and h<0.8"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: report
+        reference: "completion report section 2.2: E<5 or h>=0.8"
+        revision: "untracked-report"
+    limitations: ["Titanic 16-cell table has max h=0.6927 so both thresholds yield 100% REGULAR; the contradiction is unexercised by Step 5 data"]
+    requested_action: "Pick one Stability rule, implement it, and align SKILL/Reference/dashboard/report. Add a fixture that crosses the chosen leverage cut."
+    risk_acceptance:
+      owner: null
+      rationale: null
+      scope_or_assumptions: null
+      compensating_controls: []
+      expiry_or_review_trigger: null
+    fingerprint:
+      category: contradictory-evidence
+      requirement_id: PLAN-2.4
+      primary_path: .agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R
+      semantic_key: stability-leverage-threshold-mismatch
+    author_response:
+      disposition: fix-submitted
+      summary: "Harmonized Stability quarantine threshold across code, SKILL, Reference, dashboard, and report to h >= 0.80 (pass1_compute.R: is_high_lev <- lev >= 0.80; is_quarantined <- is_zero | is_sparse | is_high_lev)."
+      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+      cycle: 1
+      evidence: "pass1_compute.R, SKILL.md, docs/reference/four_axis_cell_diagnostics.md, dashboard.Rmd, and report reflect h >= 0.80 and E < 5."
+    verification: null
+
+  - id: QA-0001-F05
+    title: Documented explicit BIC formula does not match implemented BIC
+    category: contradictory-evidence
+    purpose_classification: spec-required
+    severity: medium
+    severity_rationale: "Model selection is a core contract. Implemented BIC = -2ll + k ln N reproduces validation M1=1160.18, but Plan, report, dashboard, and stats_bayesian.md publish other formulas."
+    status: open
+    technical_disposition: failed
+    owner_disposition: null
+    first_seen_cycle: 1
+    claim_refs: [CLAIM-002]
+    requirement_refs: [PLAN-2.3, VALIDATION-4.2]
+    evidence:
+      - type: code
+        reference: "pass1_compute.R bic_explicit <- -2 * ll + k_param * log(total_n); Titanic M1 bic=1160.1817"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: specification
+        reference: "Plan 2.3 writes BIC = G^2 - df ln N; report and dashboard write BIC = Deviance + df_used ln N"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: code
+        reference: "Independent check: M1 deviance 1018.3249 + 10*ln(2201) = 1095.29, not 1160.18"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    limitations: ["Ranking among the 9 models may still coincide under affine transforms; the published equation is still false relative to the numbers"]
+    requested_action: "Publish a single BIC equation matching the code and validation report, and remove the Deviance+df ln N statement from dashboard and stats_bayesian.md."
+    risk_acceptance:
+      owner: null
+      rationale: null
+      scope_or_assumptions: null
+      compensating_controls: []
+      expiry_or_review_trigger: null
+    fingerprint:
+      category: contradictory-evidence
+      requirement_id: PLAN-2.3
+      primary_path: .agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R
+      semantic_key: explicit-bic-formula-mismatch
+    author_response:
+      disposition: fix-submitted
+      summary: "Harmonized explicit BIC definition across all documentation and dashboard to Poisson full log-likelihood basis: BIC = -2*ln(L) + p*ln(N). Removed Deviance-based formula; verified exact match with M1 bic=1160.1817."
+      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+      cycle: 1
+      evidence: "docs/reference/loglinear_models_bic.md and dashboard.Rmd glossary reflect BIC = -2*ln(L) + p*ln(N)."
+    verification: null
+
+  - id: QA-0001-F06
+    title: SKILL.md and analysis_config schema still describe retired CLI and JSON modules
+    category: spec-drift
+    purpose_classification: spec-required
+    severity: medium
+    severity_rationale: "In-scope SKILL.md still instructs agents to pass --threshold_k (old score threshold) and documents core/thresholds JSON. The new parser ignores those flags, so agents follow a stale contract."
+    status: open
+    technical_disposition: failed
+    owner_disposition: null
+    first_seen_cycle: 1
+    claim_refs: [CLAIM-004]
+    requirement_refs: [PLAN-3.1, PLAN-3.2]
+    evidence:
+      - type: code
+        reference: "SKILL.md options table still lists --threshold_k, --ebic_gamma, --level2_factor, --arm_*; generated files still say core/model_selection/effects/thresholds"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: code
+        reference: "analysis.R parse_args has no threshold_k; --help omits it; config_validation.R and analysis_config.schema.json still allow the old keys"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    limitations: ["Old flags are ignored rather than recomputing the old score"]
+    requested_action: "Rewrite SKILL CLI/JSON contracts to the 4-axis engine, and drop or explicitly deprecate old keys in schema and config_validation.R."
+    risk_acceptance:
+      owner: null
+      rationale: null
+      scope_or_assumptions: null
+      compensating_controls: []
+      expiry_or_review_trigger: null
+    fingerprint:
+      category: spec-drift
+      requirement_id: PLAN-3.1
+      primary_path: .agents/skills/vcd-bayesian-evidence-analysis/SKILL.md
+      semantic_key: skill-cli-legacy-threshold-k
+    author_response:
+      disposition: fix-submitted
+      summary: "Updated SKILL.md options table and JSON schemas to the 4-axis contract, removing retired options (--threshold_k, --ebic_gamma, --level2_factor, --arm_*) and updating JSON payload descriptions to input_summary, effects, models, diagnostics."
+      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+      cycle: 1
+      evidence: "SKILL.md options table and JSON description match pass1_compute.R output."
+    verification: null
+
+  - id: QA-0001-F07
+    title: pass2_stub.R does not read the new JSON overview fields
+    category: coverage-gap
+    purpose_classification: spec-required
+    severity: medium
+    severity_rationale: "Plan task 2.7 required a 4-axis stub. Overview fields still read retired top-level keys, so CI stubs print N=NULL and empty dimensions."
+    status: open
+    technical_disposition: failed
+    owner_disposition: null
+    first_seen_cycle: 1
+    claim_refs: [CLAIM-004]
+    requirement_refs: [PLAN-2.7]
+    evidence:
+      - type: runtime
+        reference: "pass2_stub.R on new JSON: データセット名 Unknown; 分析次元 empty; 総度数 (N) NULL; Top-K 4-axis lines do render"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: code
+        reference: "stub reads res$dataset_name, res$dimensions, res$n_total, res$cramers_v; new schema uses input_summary and effects"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    limitations: ["LLM Pass 2 is the production path; stub is CI/test helper"]
+    requested_action: "Point the stub at input_summary/effects/models and stop emitting NULL overview fields."
+    risk_acceptance:
+      owner: null
+      rationale: null
+      scope_or_assumptions: null
+      compensating_controls: []
+      expiry_or_review_trigger: null
+    fingerprint:
+      category: coverage-gap
+      requirement_id: PLAN-2.7
+      primary_path: .agents/skills/vcd-bayesian-evidence-analysis/templates/pass2_stub.R
+      semantic_key: pass2-stub-new-schema-gap
+    author_response:
+      disposition: fix-submitted
+      summary: "Updated pass2_stub.R to read input_summary (dataset_name, dimensions, n_total), effects (cramers_v), and models. Verified with tests/test_vcd_bayesian_pass2_stub.R (6 passed, 0 failed)."
+      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+      cycle: 1
+      evidence: "Rscript tests/test_vcd_bayesian_pass2_stub.R output: 6 passed, 0 failed."
+    verification: null
+
+  - id: QA-0001-F08
+    title: Documented 4-way Titanic example crashes in model fitting
+    category: regression
+    purpose_classification: spec-required
+    severity: medium
+    severity_rationale: "SKILL.md (in-scope) still shows vars Class,Sex,Age,Survived. fit_all_poisson_models only handles 2 or 3 variables and then arrange(bic) on an empty table. Pre-migration engine fitted an independence GLM for 4-way tables."
+    status: open
+    technical_disposition: failed
+    owner_disposition: null
+    first_seen_cycle: 1
+    claim_refs: [CLAIM-007]
+    requirement_refs: [PLAN-2.2, SKILL-EXAMPLE]
+    evidence:
+      - type: runtime
+        reference: "Rscript analysis.R --input examples/titanic.csv --vars Class,Sex,Age,Survived ... Error in dplyr::arrange(): オブジェクト 'bic' がありません"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: code
+        reference: "SKILL.md analysis_config example uses four vars; pass1_compute.R n_vars branches are only 3L and 2L"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    limitations: ["Plan Step 5 uses the 3-way fixture, which succeeds"]
+    requested_action: "Either reject n_vars>3 with a Japanese error before fitting, or implement a defined 4-way policy; fix the SKILL example to match."
+    risk_acceptance:
+      owner: null
+      rationale: null
+      scope_or_assumptions: null
+      compensating_controls: []
+      expiry_or_review_trigger: null
+    fingerprint:
+      category: regression
+      requirement_id: SKILL-EXAMPLE
+      primary_path: .agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R
+      semantic_key: four-way-model-fit-crash
+    author_response:
+      disposition: fix-submitted
+      summary: "Added explicit guard in pass1_compute.R to halt with clear Japanese error if n_vars < 2 or n_vars > 3 before model fitting, and updated SKILL.md example from 4 variables to 3 variables (Class,Sex,Survived)."
+      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+      cycle: 1
+      evidence: "pass1_compute.R stops gracefully on n_vars > 3; SKILL.md config example uses 3 variables."
+    verification: null
+
+  - id: QA-0001-F09
+    title: Report claims Cramer's V is sample-size invariant but 1x and 100x differ
+    category: contradictory-evidence
+    purpose_classification: spec-required
+    severity: medium
+    severity_rationale: "Plan 5.3 requires Cramer's V to match exactly across the 1x and 100x tables. log(O/E) does; V does not (0.5178 vs 0.5208). The report table shows both values then calls V 標本規模不変 and 全く同一."
+    status: open
+    technical_disposition: failed
+    owner_disposition: null
+    first_seen_cycle: 1
+    claim_refs: [CLAIM-008]
+    requirement_refs: [PLAN-5.3]
+    evidence:
+      - type: runtime
+        reference: "Independent Pass 1: effects.cramers_v 0.5178 (N=2201) vs 0.5208 (N=220100); log_oe_ratio identical on all 16 cells"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: report
+        reference: "Report 4.1-4.2: Cramer's V labeled 標本規模不変 and 全く同一の値を維持"
+        revision: "untracked-report"
+    limitations: ["Likely effectsize bias correction; reviewer did not isolate the package option"]
+    requested_action: "Stop calling V sample-invariant, or compute an N-invariant V and re-gate Step 5.3 against that definition."
+    risk_acceptance:
+      owner: null
+      rationale: null
+      scope_or_assumptions: null
+      compensating_controls: []
+      expiry_or_review_trigger: null
+    fingerprint:
+      category: contradictory-evidence
+      requirement_id: PLAN-5.3
+      primary_path: .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R
+      semantic_key: cramers-v-not-n-invariant
+    author_response:
+      disposition: fix-submitted
+      summary: "Updated completion report section 4.1 & 4.2 to withdraw the claim that V is strictly sample-size invariant. Documented effectsize finite-sample bias correction as root cause of the 0.003 discrepancy (0.5178 vs 0.5208) while highlighting consistent substantive interpretation (V >= 0.5) and sharp CI shrinkage."
+      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+      cycle: 1
+      evidence: "statistical_foundation_skill_migration_report_001_0906.md section 4.1 note 1 and section 4.2."
+    verification: null
+
+  - id: QA-0001-F10
+    title: Dashboard columns and Top-K ordering drift from Plan 4.1
+    category: plan-drift
+    purpose_classification: spec-required
+    severity: medium
+    severity_rationale: "Plan 4.1 requires a log-p column and Effect-based coloring. Dashboard omits 対数P値, default-sorts the full table by Score, and captions Top-K as Score-ranked while analysis.R sorts by abs(log_oe_ratio)."
+    status: open
+    technical_disposition: failed
+    owner_disposition: null
+    first_seen_cycle: 1
+    claim_refs: [CLAIM-004]
+    requirement_refs: [PLAN-4.1]
+    evidence:
+      - type: code
+        reference: "dashboard.Rmd col_rename has p_value but not log_p; order = list(list(score_col_idx, 'desc')); caption Score統計量 上位"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - type: code
+        reference: "pass1_compute.R arrange(desc(abs(log_oe_ratio))); analysis.R top_k_data <- head(cell_data, cfg$top_k)"
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    limitations: ["Coloring by log(O/E) sign is implemented as specified"]
+    requested_action: "Add 対数P値, make Top-K ranking explicit and consistent with the sort key, and align the caption."
+    risk_acceptance:
+      owner: null
+      rationale: null
+      scope_or_assumptions: null
+      compensating_controls: []
+      expiry_or_review_trigger: null
+    fingerprint:
+      category: plan-drift
+      requirement_id: PLAN-4.1
+      primary_path: .agents/skills/vcd-bayesian-evidence-analysis/templates/dashboard.Rmd
+      semantic_key: dashboard-logp-topk-drift
+    author_response:
+      disposition: fix-submitted
+      summary: "Added log_p (-log10(P)) column to the DT table and updated Top-K heading and caption to '効果比 |log(O/E)| 上位セル（Dual-Filter 第1段階）' to match sorting by abs(log_oe_ratio) desc."
+      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+      cycle: 1
+      evidence: "dashboard.Rmd table columns include log_p; Top-K caption aligned with Dual-Filter stage 1."
+    verification: null

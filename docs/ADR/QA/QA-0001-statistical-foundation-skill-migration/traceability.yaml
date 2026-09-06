@@ -1,0 +1,189 @@
+schema_version: "1.0"
+case_id: QA-0001
+claims:
+  - id: CLAIM-001
+    statement: "旧セルScore r^2 - k ln N を本番エンジンとリポジトリから完全に排除する。"
+    source:
+      type: purpose
+      reference: "plan §1.2 / §2.1 PURPOSE-ERADICATION"
+    plan_refs: [PLAN-2.1, PLAN-2.1-code]
+    task_refs: [TASK-2.1, TASK-5.3]
+    implementation:
+      - path: ".agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R"
+        symbol: compute_4axis_cell_diagnostics
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - path: ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R"
+        symbol: output_results
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    evidence:
+      - id: EVID-001
+        type: runtime
+        reference: "Independent Titanic JSON contains no Evidence_Score / Intensity_Level keys"
+      - id: EVID-002
+        type: test
+        reference: "tests/test_vcd_bayesian_help.R still requires --threshold_k and Evidence Score; FAIL"
+    assessment:
+      result: partially-supported
+      confidence: high
+      rationale: "Production Pass 1 JSON no longer emits the old score (CONFIRMED). Executable tests, generator script, SKILL CLI, and advanced_analysis.md still carry it (CONFLICT with eradication Purpose)."
+
+  - id: CLAIM-002
+    statement: "3元表は9候補対数線形モデルを総度数N基準の明示式BICで比較する。"
+    source:
+      type: specification
+      reference: "plan §2.3 / statistical_validation_001_0906.md §4.2"
+    plan_refs: [PLAN-2.3]
+    task_refs: [TASK-2.2]
+    implementation:
+      - path: ".agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R"
+        symbol: fit_all_poisson_models
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    evidence:
+      - id: EVID-003
+        type: runtime
+        reference: "Titanic 1x models.summary has M1..M9; M1 bic=1160.1817 matches validation 1,160.18"
+    assessment:
+      result: partially-supported
+      confidence: high
+      rationale: "Implemented BIC = -2ll + k ln N matches the validation testbed numbers. Plan/report/dashboard equations (G^2 - df ln N or Deviance + df ln N) do not match those numbers."
+
+  - id: CLAIM-003
+    statement: "セル診断は Effect/Evidence/Influence/Stability の4軸で、T_i^score = r_P^2/(1-h_ii) を用いる。"
+    source:
+      type: specification
+      reference: "plan §2.2 / validation §4.3.2"
+    plan_refs: [PLAN-2.2, PLAN-2.3-local]
+    task_refs: [TASK-2.3, TASK-2.4]
+    implementation:
+      - path: ".agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R"
+        symbol: compute_4axis_cell_diagnostics
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    evidence:
+      - id: EVID-004
+        type: runtime
+        reference: "1st Male No: T=42.8217, h=0.5913 vs validation T=42.80, h=0.591"
+      - id: EVID-005
+        type: runtime
+        reference: "log(O/E) identical 1x vs 100x; T scales ~100x"
+    assessment:
+      result: supported
+      confidence: high
+      rationale: "Cell formulas and N-scaling of Effect vs Evidence match the validation contract. Stability cut (F04) and dashboard columns (F10) remain drifted."
+
+  - id: CLAIM-004
+    statement: "計画対象の規範文書・SKILL・ダッシュボード・スタブを4軸契約へ更新する。"
+    source:
+      type: plan
+      reference: "plan §3 and tasks 1.x-4.x"
+    plan_refs: [PLAN-3, PLAN-4]
+    task_refs: [TASK-1.1, TASK-1.2, TASK-1.3, TASK-3.1, TASK-4.1, TASK-2.7]
+    implementation:
+      - path: "README.md"
+        symbol: null
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - path: "AGENTS.md"
+        symbol: null
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - path: ".agents/skills/vcd-bayesian-evidence-analysis/SKILL.md"
+        symbol: null
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - path: ".agents/skills/vcd-bayesian-evidence-analysis/templates/dashboard.Rmd"
+        symbol: null
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+      - path: ".agents/skills/vcd-bayesian-evidence-analysis/templates/pass2_stub.R"
+        symbol: null
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    evidence:
+      - id: EVID-006
+        type: code
+        reference: "README.md and AGENTS.md 4-axis tables; SKILL Pass 2 section 2 rewritten"
+      - id: EVID-007
+        type: runtime
+        reference: "pass2_stub overview fields NULL; SKILL still lists --threshold_k"
+    assessment:
+      result: partially-supported
+      confidence: high
+      rationale: "Core narrative docs were rewritten. SKILL CLI, stub overview, dashboard log-p, and leftover Evidence Score phrasing are incomplete."
+
+  - id: CLAIM-005
+    statement: "Titanic 1x and 100x で Pass 1→2→3 を完遂し、executive_summary は4軸構造で旧スコアに言及しない。"
+    source:
+      type: plan
+      reference: "plan §5.1-5.3"
+    plan_refs: [PLAN-5]
+    task_refs: [TASK-5.1, TASK-5.2, TASK-5.3]
+    implementation:
+      - path: "skill_out/titanic_std_v2/run_run_std_v2/executive_summary.md"
+        symbol: null
+        revision: "local-gitignore"
+      - path: "skill_out/titanic_100x_v2/run_run_100x_v2/dashboard.html"
+        symbol: null
+        revision: "local-gitignore"
+    evidence:
+      - id: EVID-008
+        type: runtime
+        reference: "Local skill_out dashboards and summaries exist and do not mention the old score formula as a decision rule"
+      - id: EVID-009
+        type: runtime
+        reference: "Pass 2 cell table contradicts Pass 1 JSON (QA-0001-F01)"
+    assessment:
+      result: contradicted
+      confidence: high
+      rationale: "Flow artifacts exist locally, but Pass 2 numbers do not match JSON. Artifacts are gitignored so they are not committed evidence."
+
+  - id: CLAIM-006
+    statement: "リポジトリ内の統計回帰テストおよびバリデーションテストを実行し全件合格した。"
+    source:
+      type: implementation_report
+      reference: "report §5"
+    plan_refs: []
+    task_refs: [TASK-5]
+    implementation: []
+    evidence:
+      - id: EVID-010
+        type: test
+        reference: "Reviewer executed tests/test_vcd_bayesian_help.R -> FAIL"
+    assessment:
+      result: contradicted
+      confidence: high
+      rationale: "AUTHOR-CLAIM of all-pass is limited to statistical_foundations in the report body and is false for the production-skill help test."
+
+  - id: CLAIM-007
+    statement: "SKILL.md の Titanic 設定例（4変数）で本番エンジンが実行できる。"
+    source:
+      type: specification
+      reference: "SKILL.md analysis_config example"
+    plan_refs: [PLAN-2.2]
+    task_refs: [TASK-2.2]
+    implementation:
+      - path: ".agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R"
+        symbol: fit_all_poisson_models
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    evidence:
+      - id: EVID-011
+        type: runtime
+        reference: "4-way run aborted: dplyr arrange bic missing"
+    assessment:
+      result: unsupported
+      confidence: high
+      rationale: "Plan specified 2-way and 3-way only, but the in-scope SKILL example is 4-way and now crashes."
+
+  - id: CLAIM-008
+    statement: "1倍表と100倍表で Effect（log(O/E) および Cramér's V）が完全一致し、T^score のみが100倍化される。"
+    source:
+      type: plan
+      reference: "plan §5.3"
+    plan_refs: [PLAN-5.3]
+    task_refs: [TASK-5.3]
+    implementation:
+      - path: ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R"
+        symbol: cramers_v
+        revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
+    evidence:
+      - id: EVID-005
+        type: runtime
+        reference: "log(O/E), scaled_diff, leverage identical; T ratio ~100; V 0.5178 vs 0.5208"
+    assessment:
+      result: partially-supported
+      confidence: high
+      rationale: "Local Effect and T scaling match. Cramér's V does not match exactly; report still calls V sample-invariant."
