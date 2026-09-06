@@ -1,0 +1,934 @@
+{
+  "core": {
+    "dimensions": ["Hair", "Eye", "Sex"],
+    "n_total": 592,
+    "log_n": 6.3835,
+    "top_k": 10,
+    "n_cells": 32,
+    "n_evidence_cells": 7,
+    "large_sample_mode": false,
+    "large_n_threshold": 1000,
+    "top_k_data": [
+      {
+        "Hair": "Blond",
+        "Eye": "Blue",
+        "Sex": "Female",
+        "Freq": 64,
+        "Expected": 24.3861,
+        "Residual": 8.0219,
+        "Evidence_Score": 57.9669,
+        "Intensity_Level": 3
+      },
+      {
+        "Hair": "Blond",
+        "Eye": "Brown",
+        "Sex": "Female",
+        "Freq": 4,
+        "Expected": 24.9533,
+        "Residual": -4.1946,
+        "Evidence_Score": 11.211,
+        "Intensity_Level": 1
+      },
+      {
+        "Hair": "Blond",
+        "Eye": "Brown",
+        "Sex": "Male",
+        "Freq": 3,
+        "Expected": 22.2427,
+        "Residual": -4.0801,
+        "Evidence_Score": 10.2638,
+        "Intensity_Level": 1
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Brown",
+        "Sex": "Female",
+        "Freq": 36,
+        "Expected": 21.2201,
+        "Residual": 3.2085,
+        "Evidence_Score": 3.9108,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Brown",
+        "Sex": "Male",
+        "Freq": 32,
+        "Expected": 18.915,
+        "Residual": 3.0086,
+        "Evidence_Score": 2.6684,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Brown",
+        "Eye": "Blue",
+        "Sex": "Female",
+        "Freq": 34,
+        "Expected": 54.9168,
+        "Residual": -2.8226,
+        "Evidence_Score": 1.5833,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Blue",
+        "Sex": "Female",
+        "Freq": 9,
+        "Expected": 20.7378,
+        "Residual": -2.5775,
+        "Evidence_Score": 0.2602,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Red",
+        "Eye": "Blue",
+        "Sex": "Female",
+        "Freq": 7,
+        "Expected": 13.6332,
+        "Residual": -1.7965,
+        "Evidence_Score": -3.1561,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Red",
+        "Eye": "Green",
+        "Sex": "Male",
+        "Freq": 7,
+        "Expected": 3.6174,
+        "Residual": 1.7785,
+        "Evidence_Score": -3.2205,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Blond",
+        "Eye": "Blue",
+        "Sex": "Male",
+        "Freq": 30,
+        "Expected": 21.7372,
+        "Residual": 1.7723,
+        "Evidence_Score": -3.2426,
+        "Intensity_Level": 0
+      }
+    ],
+    "full_data": [
+      {
+        "Hair": "Blond",
+        "Eye": "Blue",
+        "Sex": "Female",
+        "Freq": 64,
+        "Expected": 24.3861,
+        "Residual": 8.0219,
+        "Evidence_Score": 57.9669,
+        "Intensity_Level": 3
+      },
+      {
+        "Hair": "Blond",
+        "Eye": "Brown",
+        "Sex": "Female",
+        "Freq": 4,
+        "Expected": 24.9533,
+        "Residual": -4.1946,
+        "Evidence_Score": 11.211,
+        "Intensity_Level": 1
+      },
+      {
+        "Hair": "Blond",
+        "Eye": "Brown",
+        "Sex": "Male",
+        "Freq": 3,
+        "Expected": 22.2427,
+        "Residual": -4.0801,
+        "Evidence_Score": 10.2638,
+        "Intensity_Level": 1
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Brown",
+        "Sex": "Female",
+        "Freq": 36,
+        "Expected": 21.2201,
+        "Residual": 3.2085,
+        "Evidence_Score": 3.9108,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Brown",
+        "Sex": "Male",
+        "Freq": 32,
+        "Expected": 18.915,
+        "Residual": 3.0086,
+        "Evidence_Score": 2.6684,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Brown",
+        "Eye": "Blue",
+        "Sex": "Female",
+        "Freq": 34,
+        "Expected": 54.9168,
+        "Residual": -2.8226,
+        "Evidence_Score": 1.5833,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Blue",
+        "Sex": "Female",
+        "Freq": 9,
+        "Expected": 20.7378,
+        "Residual": -2.5775,
+        "Evidence_Score": 0.2602,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Red",
+        "Eye": "Blue",
+        "Sex": "Female",
+        "Freq": 7,
+        "Expected": 13.6332,
+        "Residual": -1.7965,
+        "Evidence_Score": -3.1561,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Red",
+        "Eye": "Green",
+        "Sex": "Male",
+        "Freq": 7,
+        "Expected": 3.6174,
+        "Residual": 1.7785,
+        "Evidence_Score": -3.2205,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Blond",
+        "Eye": "Blue",
+        "Sex": "Male",
+        "Freq": 30,
+        "Expected": 21.7372,
+        "Residual": 1.7723,
+        "Evidence_Score": -3.2426,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Blue",
+        "Sex": "Male",
+        "Freq": 11,
+        "Expected": 18.4852,
+        "Residual": -1.741,
+        "Evidence_Score": -3.3526,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Blond",
+        "Eye": "Hazel",
+        "Sex": "Female",
+        "Freq": 5,
+        "Expected": 10.5484,
+        "Residual": -1.7083,
+        "Evidence_Score": -3.4651,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Green",
+        "Sex": "Female",
+        "Freq": 2,
+        "Expected": 6.1731,
+        "Residual": -1.6796,
+        "Evidence_Score": -3.5624,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Red",
+        "Eye": "Green",
+        "Sex": "Female",
+        "Freq": 7,
+        "Expected": 4.0583,
+        "Residual": 1.4603,
+        "Evidence_Score": -4.2511,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Blond",
+        "Eye": "Hazel",
+        "Sex": "Male",
+        "Freq": 5,
+        "Expected": 9.4026,
+        "Residual": -1.4358,
+        "Evidence_Score": -4.3221,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Hazel",
+        "Sex": "Female",
+        "Freq": 5,
+        "Expected": 8.9703,
+        "Residual": -1.3256,
+        "Evidence_Score": -4.6262,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Brown",
+        "Eye": "Brown",
+        "Sex": "Female",
+        "Freq": 66,
+        "Expected": 56.194,
+        "Residual": 1.3081,
+        "Evidence_Score": -4.6723,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Brown",
+        "Eye": "Hazel",
+        "Sex": "Female",
+        "Freq": 29,
+        "Expected": 23.7547,
+        "Residual": 1.0762,
+        "Evidence_Score": -5.2253,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Green",
+        "Sex": "Male",
+        "Freq": 3,
+        "Expected": 5.5026,
+        "Residual": -1.0668,
+        "Evidence_Score": -5.2453,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Brown",
+        "Eye": "Hazel",
+        "Sex": "Male",
+        "Freq": 25,
+        "Expected": 21.1743,
+        "Residual": 0.8314,
+        "Evidence_Score": -5.6923,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Red",
+        "Eye": "Hazel",
+        "Sex": "Male",
+        "Freq": 7,
+        "Expected": 5.2566,
+        "Residual": 0.7604,
+        "Evidence_Score": -5.8053,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Black",
+        "Eye": "Hazel",
+        "Sex": "Male",
+        "Freq": 10,
+        "Expected": 7.9959,
+        "Residual": 0.7087,
+        "Evidence_Score": -5.8812,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Red",
+        "Eye": "Brown",
+        "Sex": "Male",
+        "Freq": 10,
+        "Expected": 12.4349,
+        "Residual": -0.6905,
+        "Evidence_Score": -5.9067,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Red",
+        "Eye": "Blue",
+        "Sex": "Male",
+        "Freq": 10,
+        "Expected": 12.1523,
+        "Residual": -0.6174,
+        "Evidence_Score": -6.0023,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Blond",
+        "Eye": "Green",
+        "Sex": "Male",
+        "Freq": 8,
+        "Expected": 6.4706,
+        "Residual": 0.6012,
+        "Evidence_Score": -6.022,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Brown",
+        "Eye": "Green",
+        "Sex": "Female",
+        "Freq": 14,
+        "Expected": 16.3473,
+        "Residual": -0.5806,
+        "Evidence_Score": -6.0465,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Red",
+        "Eye": "Brown",
+        "Sex": "Female",
+        "Freq": 16,
+        "Expected": 13.9502,
+        "Residual": 0.5488,
+        "Evidence_Score": -6.0823,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Red",
+        "Eye": "Hazel",
+        "Sex": "Female",
+        "Freq": 7,
+        "Expected": 5.8972,
+        "Residual": 0.4541,
+        "Evidence_Score": -6.1773,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Brown",
+        "Eye": "Brown",
+        "Sex": "Male",
+        "Freq": 53,
+        "Expected": 50.0898,
+        "Residual": 0.4112,
+        "Evidence_Score": -6.2144,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Blond",
+        "Eye": "Green",
+        "Sex": "Female",
+        "Freq": 8,
+        "Expected": 7.2591,
+        "Residual": 0.275,
+        "Evidence_Score": -6.3079,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Brown",
+        "Eye": "Blue",
+        "Sex": "Male",
+        "Freq": 50,
+        "Expected": 48.9514,
+        "Residual": 0.1499,
+        "Evidence_Score": -6.361,
+        "Intensity_Level": 0
+      },
+      {
+        "Hair": "Brown",
+        "Eye": "Green",
+        "Sex": "Male",
+        "Freq": 15,
+        "Expected": 14.5716,
+        "Residual": 0.1122,
+        "Evidence_Score": -6.3709,
+        "Intensity_Level": 0
+      }
+    ]
+  },
+  "model_selection": {
+    "method": "EBIC",
+    "ebic_gamma": 0.5,
+    "ebic_p": 32,
+    "ebic_indep": 372.4155,
+    "ebic_satur": 343.1509,
+    "delta_ebic": 29.2646,
+    "log_bf10": 14.6323,
+    "bf10": "2263230.3504",
+    "bic_indep": 332.9048,
+    "bic_satur": 249.7823,
+    "delta_bic": 83.1225,
+    "bf10_bic": "1121545049065308928"
+  },
+  "effects": {
+    "primary": "cramers_v",
+    "cramers_v": 0.0877,
+    "cramers_v_ci_low": 0,
+    "cramers_v_ci_high": 1,
+    "fei": "NA",
+    "fei_ci_low": "NA",
+    "fei_ci_high": "NA",
+    "effect_small_threshold": 0.1
+  },
+  "thresholds": {
+    "method": "BIC Approximation (M0 vs M1)",
+    "comparison": "M0 (Additive Main Effects) vs M1 (Single-cell Specific Effect)",
+    "penalty_per_cell": "log(N) (1 degree of freedom)",
+    "threshold_k": 1,
+    "level1": 6.3835,
+    "level2": 12.767,
+    "level3": 19.1505,
+    "level2_factor": 2,
+    "level3_factor": 3
+  },
+  "warnings": {
+    "practical_significance_low": true,
+    "practical_significance_message": {}
+  },
+  "extensions": {
+    "viz_thresholds": {
+      "residual_abs_p90": 3.1885,
+      "residual_abs_p95": 4.1316,
+      "residual_abs_p99": 6.8354,
+      "score_abs_p90": 6.3699,
+      "score_abs_p95": 10.69,
+      "score_abs_p99": 43.4725
+    },
+    "arm": {
+      "eligible": false,
+      "reason": "Freq付き集計表と判定したためARMスキップ",
+      "min_support": 0.01,
+      "min_confidence": 0.1,
+      "top_rules": []
+    }
+  },
+  "dimensions": ["Hair", "Eye", "Sex"],
+  "n_total": 592,
+  "bf_independence": "2263230.3504",
+  "log_n": 6.3835,
+  "threshold": 6.3835,
+  "threshold_k": 1,
+  "bic_indep": 332.9048,
+  "bic_satur": 249.7823,
+  "delta_bic": 83.1225,
+  "cramers_v": 0.0877,
+  "cramers_v_ci_low": 0,
+  "cramers_v_ci_high": 1,
+  "large_sample_mode": false,
+  "large_n_threshold": 1000,
+  "n_cells": 32,
+  "n_evidence_cells": 7,
+  "top_k": 10,
+  "top_k_data": [
+    {
+      "Hair": "Blond",
+      "Eye": "Blue",
+      "Sex": "Female",
+      "Freq": 64,
+      "Expected": 24.3861,
+      "Residual": 8.0219,
+      "Evidence_Score": 57.9669,
+      "Intensity_Level": 3
+    },
+    {
+      "Hair": "Blond",
+      "Eye": "Brown",
+      "Sex": "Female",
+      "Freq": 4,
+      "Expected": 24.9533,
+      "Residual": -4.1946,
+      "Evidence_Score": 11.211,
+      "Intensity_Level": 1
+    },
+    {
+      "Hair": "Blond",
+      "Eye": "Brown",
+      "Sex": "Male",
+      "Freq": 3,
+      "Expected": 22.2427,
+      "Residual": -4.0801,
+      "Evidence_Score": 10.2638,
+      "Intensity_Level": 1
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Brown",
+      "Sex": "Female",
+      "Freq": 36,
+      "Expected": 21.2201,
+      "Residual": 3.2085,
+      "Evidence_Score": 3.9108,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Brown",
+      "Sex": "Male",
+      "Freq": 32,
+      "Expected": 18.915,
+      "Residual": 3.0086,
+      "Evidence_Score": 2.6684,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Brown",
+      "Eye": "Blue",
+      "Sex": "Female",
+      "Freq": 34,
+      "Expected": 54.9168,
+      "Residual": -2.8226,
+      "Evidence_Score": 1.5833,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Blue",
+      "Sex": "Female",
+      "Freq": 9,
+      "Expected": 20.7378,
+      "Residual": -2.5775,
+      "Evidence_Score": 0.2602,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Red",
+      "Eye": "Blue",
+      "Sex": "Female",
+      "Freq": 7,
+      "Expected": 13.6332,
+      "Residual": -1.7965,
+      "Evidence_Score": -3.1561,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Red",
+      "Eye": "Green",
+      "Sex": "Male",
+      "Freq": 7,
+      "Expected": 3.6174,
+      "Residual": 1.7785,
+      "Evidence_Score": -3.2205,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Blond",
+      "Eye": "Blue",
+      "Sex": "Male",
+      "Freq": 30,
+      "Expected": 21.7372,
+      "Residual": 1.7723,
+      "Evidence_Score": -3.2426,
+      "Intensity_Level": 0
+    }
+  ],
+  "full_data": [
+    {
+      "Hair": "Blond",
+      "Eye": "Blue",
+      "Sex": "Female",
+      "Freq": 64,
+      "Expected": 24.3861,
+      "Residual": 8.0219,
+      "Evidence_Score": 57.9669,
+      "Intensity_Level": 3
+    },
+    {
+      "Hair": "Blond",
+      "Eye": "Brown",
+      "Sex": "Female",
+      "Freq": 4,
+      "Expected": 24.9533,
+      "Residual": -4.1946,
+      "Evidence_Score": 11.211,
+      "Intensity_Level": 1
+    },
+    {
+      "Hair": "Blond",
+      "Eye": "Brown",
+      "Sex": "Male",
+      "Freq": 3,
+      "Expected": 22.2427,
+      "Residual": -4.0801,
+      "Evidence_Score": 10.2638,
+      "Intensity_Level": 1
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Brown",
+      "Sex": "Female",
+      "Freq": 36,
+      "Expected": 21.2201,
+      "Residual": 3.2085,
+      "Evidence_Score": 3.9108,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Brown",
+      "Sex": "Male",
+      "Freq": 32,
+      "Expected": 18.915,
+      "Residual": 3.0086,
+      "Evidence_Score": 2.6684,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Brown",
+      "Eye": "Blue",
+      "Sex": "Female",
+      "Freq": 34,
+      "Expected": 54.9168,
+      "Residual": -2.8226,
+      "Evidence_Score": 1.5833,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Blue",
+      "Sex": "Female",
+      "Freq": 9,
+      "Expected": 20.7378,
+      "Residual": -2.5775,
+      "Evidence_Score": 0.2602,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Red",
+      "Eye": "Blue",
+      "Sex": "Female",
+      "Freq": 7,
+      "Expected": 13.6332,
+      "Residual": -1.7965,
+      "Evidence_Score": -3.1561,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Red",
+      "Eye": "Green",
+      "Sex": "Male",
+      "Freq": 7,
+      "Expected": 3.6174,
+      "Residual": 1.7785,
+      "Evidence_Score": -3.2205,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Blond",
+      "Eye": "Blue",
+      "Sex": "Male",
+      "Freq": 30,
+      "Expected": 21.7372,
+      "Residual": 1.7723,
+      "Evidence_Score": -3.2426,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Blue",
+      "Sex": "Male",
+      "Freq": 11,
+      "Expected": 18.4852,
+      "Residual": -1.741,
+      "Evidence_Score": -3.3526,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Blond",
+      "Eye": "Hazel",
+      "Sex": "Female",
+      "Freq": 5,
+      "Expected": 10.5484,
+      "Residual": -1.7083,
+      "Evidence_Score": -3.4651,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Green",
+      "Sex": "Female",
+      "Freq": 2,
+      "Expected": 6.1731,
+      "Residual": -1.6796,
+      "Evidence_Score": -3.5624,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Red",
+      "Eye": "Green",
+      "Sex": "Female",
+      "Freq": 7,
+      "Expected": 4.0583,
+      "Residual": 1.4603,
+      "Evidence_Score": -4.2511,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Blond",
+      "Eye": "Hazel",
+      "Sex": "Male",
+      "Freq": 5,
+      "Expected": 9.4026,
+      "Residual": -1.4358,
+      "Evidence_Score": -4.3221,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Hazel",
+      "Sex": "Female",
+      "Freq": 5,
+      "Expected": 8.9703,
+      "Residual": -1.3256,
+      "Evidence_Score": -4.6262,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Brown",
+      "Eye": "Brown",
+      "Sex": "Female",
+      "Freq": 66,
+      "Expected": 56.194,
+      "Residual": 1.3081,
+      "Evidence_Score": -4.6723,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Brown",
+      "Eye": "Hazel",
+      "Sex": "Female",
+      "Freq": 29,
+      "Expected": 23.7547,
+      "Residual": 1.0762,
+      "Evidence_Score": -5.2253,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Green",
+      "Sex": "Male",
+      "Freq": 3,
+      "Expected": 5.5026,
+      "Residual": -1.0668,
+      "Evidence_Score": -5.2453,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Brown",
+      "Eye": "Hazel",
+      "Sex": "Male",
+      "Freq": 25,
+      "Expected": 21.1743,
+      "Residual": 0.8314,
+      "Evidence_Score": -5.6923,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Red",
+      "Eye": "Hazel",
+      "Sex": "Male",
+      "Freq": 7,
+      "Expected": 5.2566,
+      "Residual": 0.7604,
+      "Evidence_Score": -5.8053,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Black",
+      "Eye": "Hazel",
+      "Sex": "Male",
+      "Freq": 10,
+      "Expected": 7.9959,
+      "Residual": 0.7087,
+      "Evidence_Score": -5.8812,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Red",
+      "Eye": "Brown",
+      "Sex": "Male",
+      "Freq": 10,
+      "Expected": 12.4349,
+      "Residual": -0.6905,
+      "Evidence_Score": -5.9067,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Red",
+      "Eye": "Blue",
+      "Sex": "Male",
+      "Freq": 10,
+      "Expected": 12.1523,
+      "Residual": -0.6174,
+      "Evidence_Score": -6.0023,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Blond",
+      "Eye": "Green",
+      "Sex": "Male",
+      "Freq": 8,
+      "Expected": 6.4706,
+      "Residual": 0.6012,
+      "Evidence_Score": -6.022,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Brown",
+      "Eye": "Green",
+      "Sex": "Female",
+      "Freq": 14,
+      "Expected": 16.3473,
+      "Residual": -0.5806,
+      "Evidence_Score": -6.0465,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Red",
+      "Eye": "Brown",
+      "Sex": "Female",
+      "Freq": 16,
+      "Expected": 13.9502,
+      "Residual": 0.5488,
+      "Evidence_Score": -6.0823,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Red",
+      "Eye": "Hazel",
+      "Sex": "Female",
+      "Freq": 7,
+      "Expected": 5.8972,
+      "Residual": 0.4541,
+      "Evidence_Score": -6.1773,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Brown",
+      "Eye": "Brown",
+      "Sex": "Male",
+      "Freq": 53,
+      "Expected": 50.0898,
+      "Residual": 0.4112,
+      "Evidence_Score": -6.2144,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Blond",
+      "Eye": "Green",
+      "Sex": "Female",
+      "Freq": 8,
+      "Expected": 7.2591,
+      "Residual": 0.275,
+      "Evidence_Score": -6.3079,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Brown",
+      "Eye": "Blue",
+      "Sex": "Male",
+      "Freq": 50,
+      "Expected": 48.9514,
+      "Residual": 0.1499,
+      "Evidence_Score": -6.361,
+      "Intensity_Level": 0
+    },
+    {
+      "Hair": "Brown",
+      "Eye": "Green",
+      "Sex": "Male",
+      "Freq": 15,
+      "Expected": 14.5716,
+      "Residual": 0.1122,
+      "Evidence_Score": -6.3709,
+      "Intensity_Level": 0
+    }
+  ],
+  "run_id": "7d30a6a76dfcf79c24186bb8c0da10de12d4a959fb3fcf6f1a095c74aa6dc9bb"
+}

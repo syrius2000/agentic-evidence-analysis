@@ -1,0 +1,49 @@
+# R
+.Rhistory
+.Rdata
+.RData
+.Renviron
+
+# Skill output (runtime-generated)
+skill_out/
+skill_output/
+!skill_out/.gitkeep
+!skill_output/.gitkeep
+output/
+docs/superpowers/plans/
+Other_Skill/
+
+# IDE
+.DS_Store
+.vscode/
+.gemini/
+.cursor/
+
+# Pass 0 inspect_data.R (writes to cwd)
+inspection_results.json
+
+# Test artifacts
+**/tests/temp_test.csv
+**/tests/test_out_logic/
+**/vcd-categorical-analysis/templates/skill_out/
+*dt_table_files/
+tests/skill_out_smoke/
+tests/Rlib/
+tests/fixtures/vcd_bayesian_evidence_skilltemp/.Rlib
+
+# Generated images in skills
+.agents/skills/*/*/*.png
+
+# OS
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+
+# OpenSpec (tool-managed / external)
+.agents/skills/openspec-*
+.agent/skills/openspec-*
+.agent/workflows/
+.agents/workflows/
+.cursor/

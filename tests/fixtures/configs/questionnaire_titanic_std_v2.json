@@ -1,0 +1,1 @@
+{"input": "examples/titanic.csv", "question_config": "tests/question_config_test.csv", "output_dir": "output/test_standardization", "run_id": "std_v2"}
