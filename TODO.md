@@ -1,44 +1,27 @@
 # TODO: 分析パイプラインの強化と保守
 
-4-Pass パイプラインと3次元探索の初期版は実装済みです。以下は残課題と、講座での受入後に進める項目です。
+4-Pass パイプラインと 3 次元探索正本経路（新 4 軸セル診断、総度数 $N$ 基準の明示式 BIC、大標本 Dual-Filter 原則、多項 Dirichlet 事後推論）は実装・検証完了済みです。以下は受入後の保守運用項目および次期計画です。
 
-## 受入後の最初の確認
-- [x] **スモークテストの実行**: `tests/test_questionnaire_batch_smoke.R` を実行し、環境が正常であることを確認する。
-- [x] **Titanic・HairEyeColorのPass 0からHTMLまでの検証**: `output/statistical_foundations/verified_0906/`に検証記録を保存した。
-- [ ] **講座利用者による確認**: レポートの説明量、用語、図表が受講者に理解できるか確認する。
+## 受入後の運用・確認項目
+- [x] **スモークテストの実行**: `tests/test_questionnaire_batch_smoke.R` 等を実行し、実行環境の健全性を確認。
+- [x] **Titanic・HairEyeColor の全パス検証**: `output/statistical_foundations/verified_0906/` に検証記録を保存、QA-0001 にて Cycle 2 承認完了。
+- [ ] **講座利用者・実務ユーザーによる確認**: レポートの説明量、新 4 軸の用語（Effect, Evidence, Influence, Stability）、HTML 図表が受講者に直感的に理解できるか確認。
 
 ## 優先度の高い改善項目 (High Priority)
 - [ ] **対話ログの保存 (Traceability)**:
-  - Pass 0 での AI との議論内容（なぜその変数を選んだか）を `discussion.log` として `run_dir` に保存する仕組みを `vcd-pass0-consultation` に追加。
-- [x] **JSON スキーマの導入**:
-  - `analysis_config.json` のバリデーション用スキーマを作成し、Pass 1 の読み込み時にチェックをかける。
+  - Pass 0 での AI との議論内容（変数選択理由、水準定義）を `discussion.log` として `run_dir` に保存する仕組みを `vcd-pass0-consultation` に追加。
+- [x] **JSON スキーマの導入と検証**:
+  - `analysis_config.json` のバリデーション（`test_vcd_bayesian_config_validation.R`）を実装・検証済み。
 - [ ] **ポータブルなライブラリ環境**:
-  - `.Renviron` またはプロジェクト内設定で `libPaths()` を固定し、書き込み権限エラーを恒久的に回避する。
+  - `.Renviron` またはプロジェクト内設定で `libPaths()` を固定し、書き込み権限エラーを恒久的に回避。
 
-## 中長期的な改善 (Backlog)
-- [ ] **Google Fonts 連携**: `dashboard.Rmd` に Google Fonts を組み込み、日本語フォントがない環境でも文字化けしないようにする。
-- [ ] **実RWDの受入**: 実データ1件を、標本単位・重複・分母・除外条件を確認してからPass 0で分析する。
+## 中長期的な改善課題 (Backlog)
+- [ ] **Google Fonts 連携**: `dashboard.Rmd` に Google Fonts を組み込み、日本語フォントがない環境でもフォールバックで文字化けを防止。
+- [ ] **実RWDの受入検証**: 実際の医療・購買データ 1 件を、標本単位・重複・分母・除外条件を確認してから Pass 0 で分析。
+- [ ] **セル順位の再標本化安定性評価**: 基準モデル・指標・上位 K を固定し、個票ブートストラップまたは集計度数再標本化で上位 K 包含率、順位分布、適合成功率を評価（[意味論とセル順位安定性の整備計画](docs/Artifacts/semantic_governance_and_ranking_stability_plan_001_0907.md) 準拠）。
 
-## 合意した開発予定（2026-09-06）
-
-以下は[実装・検証報告](docs/Artifacts/statistical_validation_001_0906.md)を踏まえた次期計画です。3次元初期版の実装完了を前提に、実務受入で必要性を確認してから進めます。
-
-- [ ] **SAS PROC FREQ 互換スキルの開発計画**: 集計済み度数データを必須入力として扱い、度数・割合・クロス集計を初期対象にする。欠損の扱い、割合の分母、水準順を明示し、対象機能を限定した数値互換の条件と検証方法を定義する。SAS構文や全オプションへの対応は未合意とする。
-- [ ] **SAS PROC MEANS 互換スキルの開発計画**: FREQ互換とは別スキルとして計画する。対象統計量、必要な入力情報、欠損・重みの扱い、数値互換の条件は計画時に確定する。
-- [x] **統計仕様の検証**: 9モデル、局所セル診断、Dirichlet事後、Titanic・HairEyeColor・人工表を検証した。EBICと旧Scoreは現行経路の採用指標から外した。
-
-各次期実装の前に `docs/Artifacts/implementation_plan_NNN_MMDD.md` を作成し、対象範囲の明示的な承認を得る。
-
----
-*初版作成: 2026-04-19 by Gemini CLI。現行内容は2026-09-06に更新。*
-
-
-## 3次元探索の実装後に進める順序
-
-1. 今回のTitanic・HairEyeColor実例を利用者が確認し、講座で必要な説明量・図表を調整する。
-2. 実際のアンケート・RWD集計表1件でPass 0から受入確認する。標本単位・重複・除外・分母を優先する。
-3. 既存questionnaireの抽出処理と旧2次元の統計説明を移行計画にまとめる。新3次元経路の構造化抽出とは区別する。
-4. 反復利用で必要性が確認できた場合、bootstrap安定性、多重性、構造ゼロ、階層的縮約を別計画で検討する。
-5. SAS PROC FREQ相当、続いてPROC MEANS相当を別スキルとして計画する。数値互換の対象範囲を先に限定する。
-
-旧「N数に応じたthreshold_k自動提案」は実装しない。普遍的な重要性の閾値を仮定せず、効果・証拠・不確実性・実務基準を分ける。
+## 次期開発予定（合意事項）
+- [ ] **SAS PROC FREQ 互換スキルの開発計画**: 集計済み度数データを必須入力とし、度数・割合・クロス集計・欠損処理の数値互換を担保。
+- [ ] **SAS PROC MEANS 互換スキルの開発計画**: FREQ 互換とは別スキルとして計画。要約統計量、欠損・重みの扱いを確定。
+- [x] **統計仕様の検証**: 9 モデル、新 4 軸セル診断、Dirichlet 事後、Titanic・HairEyeColor・人工表の検証完了。旧 Evidence Score（$r^2 - k\ln N$）は監査専用列に隔離。
+- [x] **統計文書の正本化**: `docs/reference/` 配下を新 4 軸セル診断、明示式 BIC、大標本 Dual-Filter、多項 Dirichlet 推論、一次情報（DOI付き）で全面刷新。

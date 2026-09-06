@@ -7,7 +7,7 @@ metadata:
   version: "3.1"
 ---
 
-名義カテゴリカル変数（クロス表 **2-way / 3-way**）の独立性検定（Poisson GLM）および残差の可視化を行う。**エージェント3ステップ**で集計・AI考察・レポート生成までを一貫して行う。Step 1 の R エンジンは **2パス**（`--profile` → `render_config.json` → `--render`）。
+名義カテゴリカル変数の **2-wayを主対象**とする独立性検定（Poisson GLM）および残差の可視化を行う。既存3-way出力は互換保守の範囲に限り、現行の新規3-way推論は `vcd-bayesian-evidence-analysis`へ誘導する。**エージェント3ステップ**で集計・AI考察・レポート生成までを一貫して行う。Step 1 の R エンジンは **2パス**（`--profile` → `render_config.json` → `--render`）。
 
 ## 共通品質契約
 
@@ -17,9 +17,15 @@ metadata:
 
 | 項目 | 内容 |
 | :--- | :--- |
-| **次元** | **3-way まで**。4-way 以上は対象外（分割・集約を提案）。 |
+| **次元** | **2-wayを主対象**。既存3-wayは互換保守のみ。4-way以上は対象外（分割・集約を提案）。 |
 | **出力先** | `./skill_out/vcd_categorical/run_<first16>[_N]/`（一般形: `<out>/run_<first16>[_N]/`） |
 | **正本** | `.agents/skills/vcd-categorical-analysis/` です。旧ミラーは廃止済みのため参照しません。 |
+
+## 責務境界
+
+本スキルは名義カテゴリの2次元分析を主担当とし、プロファイル、残差、全体のCramér's V、既存の2パス・ダッシュボードを提供する。3次元の新規探索で9階層対数線形モデル、基準モデル別セル診断、明示事前の条件付き割合を計算する場合は、[vcd-bayesian-evidence-analysis](../vcd-bayesian-evidence-analysis/SKILL.md)へ移る。両スキルの結果JSONを相互に読み替えない。
+
+3次元入力を受けた場合は、目的、分母、標本単位、欠測・ゼロ、独立性を `vcd-pass0-consultation` で確認したうえで、現行の統計的正本である `three-way-results-v1` 経路へ誘導する。旧レポートの互換保守は `vcd-categorical-reporting` の範囲であり、新規の3次元推論をこのスキルへ複製しない。
 
 ## 必須ワークフロー（実行フェーズ）
 

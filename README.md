@@ -3,38 +3,38 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![R >= 4.0](https://img.shields.io/badge/R-%3E%3D%204.0-276DC3?logo=r)](https://www.r-project.org/)
 
-**AIエージェントおよびRユーザーのための、エビデンス駆動型カテゴリカルデータ分析スキルセット**  
-*Evidence-Driven Categorical Data Analysis Skills for AI Agents & R Users.*
+**AIエージェントおよび統計エンジニアのための、エビデンス駆動型カテゴリカルデータ分析スキルセット**
+*Evidence-Driven Categorical Data Analysis Skills for AI Agents & Statistical Engineers.*
 
-大標本データ（RWD、臨床・疫学データ、アンケート等）で、構造、効果の大きさ、証拠量、不確実性を分けて読む分析パイプラインを提供します。P値、BIC近似、明示事前によるBF、セル診断を同じ意味の指標として扱いません。
+リアルワールドデータ（RWD）、臨床・疫学調査、アンケート集計などの大規模カテゴリカルデータにおいて、「統計的有意性と実用的有意性の乖離（P値の呪い）」を克服し、**全体構造、効果量、証拠強度、数値安定性、統計的不確実性** を明確に切り分ける高信頼な分析パイプラインを提供します。
 
 ---
 
 ## 背景：なぜエビデンス駆動なのか？
 
-サンプルサイズが大きい場合、微小な偏りでもP値が小さくなることがあります。ただし、普遍的なNの境界で自動判定せず、効果量、分母、意思決定上の許容差、モデルの前提を併記します。
+サンプルサイズ $N$ が大規模（数万〜数十万件）になると、実務的に無意味な微小な偏りであっても検定統計量は巨大化し、$p < 0.0001$ のように P 値は容易に極小化（飽和）します。
 
-2016年のアメリカ統計学会（ASA）「P値に関する声明」に基づき、本ツールキットは以下の原則を実装しています：
+2016年のアメリカ統計学会（ASA）「P値に関する声明」に基づき、本ツールキットは以下の原則を徹底しています：
 
-1. **P値は仮説とデータの矛盾度を示すにすぎない**: 効果の大きさや研究の重要性を証明しない。
-2. **$p < 0.05$ の二択評価を廃止する**: 思考停止の有意・非有意判定を行わない。
-3. **効果量・信頼区間・モデル尤度を併用する**: 「差の大きさ」と「証拠の強さ」を峻別する。
+1. **P 値は仮説とデータの矛盾度を示す指標に過ぎない**: 効果の大きさや研究・実務上の重要性を直接証明しない。
+2. **$p < 0.05$ の二択判定（有意・非有意）を廃止する**: 思考停止の機械的足切りを行わない。
+3. **「効果の大きさ（Effect）」と「証拠の強さ（Evidence）」を峻別する**: 標本サイズ $N$ に依存しない効果量と、標本サイズに比例する統計的確信度を分離する。
 
 ---
 
-## 4-Pass 分析パイプライン
+## 4-Pass 分析パイプライン (Strict Execution Sequence)
 
-本ツールキットは、AIエージェントと統計スクリプトが協調する 4 ステップ（Pass）で分析を実行します。
+本ツールキットは、AI エージェントと R 統計エンジンが協調する厳格な 4 ステップ（Pass）で分析を実行します。
 
 ```mermaid
 graph TD
-  Data[Raw Data CSV] --> P0["<b>Pass 0: Interactive Consultation</b><br/>AIがデータを検分し分析設計を提案"]
+  Data[Raw Data CSV / Contingency Table] --> P0["<b>Pass 0: Interactive Consultation</b><br/>AIがデータを検分し分析設計を提案"]
   P0 --> CFG[analysis_config.json]
-  CFG --> P1["<b>Pass 1: R Engine</b><br/>統計計算と異常検知の実行"]
-  P1 --> JSON[Analysis Results JSON]
-  JSON --> P2["<b>Pass 2: AI Review</b><br/>専門家による日本語考察の執筆"]
-  P2 --> MD[executive_summary.md]
-  JSON & MD --> P3["<b>Pass 3: Report Integration</b><br/>インタラクティブなHTMLダッシュボード生成"]
+  CFG --> P1["<b>Pass 1: R Engine Computation</b><br/>階層モデル・新4軸セル診断・ベイズ推論"]
+  P1 --> JSON[evidence_results.json]
+  JSON --> P2["<b>Pass 2: AI Review & Narrative</b><br/>専門コンサルタントによる日本語考察"]
+  P2 --> MD[executive_summary.md / quality_check.md]
+  JSON & MD --> P3["<b>Pass 3: Report Integration</b><br/>インタラクティブHTMLダッシュボード生成"]
   P3 --> HTML[dashboard.html]
 
   style P0 fill:#fff3e0,stroke:#e65100
@@ -45,108 +45,116 @@ graph TD
   style HTML font-weight:bold,fill:#fff9c4
 ```
 
-1. **Pass 0 (Interactive Consultation)**: AIがデータの水準数や度数を事前に検分し、次元削減（変数の絞り込み）や層別解析をユーザーに提案。Pass 1 の入力を固定する **`analysis_config.json`** を作成します。
-2. **Pass 1 (R Engine Computation)**: Rスクリプトがベイズ因子、エビデンススコア、標準化残差を計算。`--config` 引数で Pass 0 の設定を読み込み、中間成果物（JSON）を出力します。
-3. **Pass 2 (AI Review & Narrative)**: AIが専門コンサルタントとして中間成果物を読み解き、背景知識を交えた日本語のエグゼクティブ・サマリー (`executive_summary.md`) を執筆します。必要に応じて `quality_check.md` で解釈保留や図表整合を確認します。
-4. **Pass 3 (Report Integration)**: RMarkdownが統計数値とAI考察を統合し、インタラクティブ・ダッシュボード (`dashboard.html`) を生成します。
+1. **Pass 0 (Interactive Consultation / 事前相談)**:
+   AI がデータの水準数、観測度数、欠測、疎セルを事前に検分し、次元削減や層別解析をユーザーに提案。Pass 1 の入力を固定する **`analysis_config.json`**（Single Source of Truth）を作成します。
+2. **Pass 1 (R Engine Computation / 統計計算)**:
+   R スクリプトが 9 階層対数線形モデル、総度数 $N$ 基準の明示式 BIC、新 4 軸セル診断、多項 Dirichlet 事後推論、事後予測チェック（PPP-value）を高速かつ決定論的に計算し、`evidence_results.json` を出力します。
+3. **Pass 2 (AI Review & Narrative / 専門家考察)**:
+   AI が専門統計コンサルタントとして構造化結果を読み解き、背景ドメイン知識を交えた日本語エグゼクティブ・サマリー (`executive_summary.md`) を執筆します。品質保留や隔離セルは `quality_check.md` に明記します。
+4. **Pass 3 (Report Integration / レポート統合)**:
+   `render_report.R`（RMarkdown）が統計結果と AI 考察を統合し、層別ヒートマップやセル診断表を備えたスタンドアローンな HTML ダッシュボード (`dashboard.html`) を生成します。
 
 ---
 
-## スキル一覧 (AI Agent Skills)
+## 現代的カテゴリカル分析の 4 つの柱
 
-本リポジトリで提供されるスキル一覧です（`.agents/skills/` に配置）：
+```
+                    【現代的カテゴリカル分析の 4 つの柱】
+┌────────────────────────────────────────────────────────────────────────┐
+│  1. 全体構造の階層比較（Global Model Hierarchy）                       │
+│     → 9 階層対数線形モデル（M1〜M9）と総度数 N 基準の明示式 BIC        │
+│       BIC_explicit = -2 ln L + p ln N                                  │
+├────────────────────────────────────────────────────────────────────────┤
+│  2. 新 4 軸セル診断フレームワーク（Four-Axis Cell Diagnostics）          │
+│     → Effect（効果量: 標本数不変 log(O/E), e_i, d_i）                   │
+│     → Evidence（証拠強度: 標本数比例 Rao Score T_i^score, ln P）        │
+│     → Influence（影響度: ハット行列 Leverage h_ii）                    │
+│     → Stability（数値安定性: O_i=0, E_i<5.0, h_ii>=0.80 の隔離判定）   │
+├────────────────────────────────────────────────────────────────────────┤
+│  3. 大標本 Dual-Filter 原則（N > 2,000）                               │
+│     → Step 1: Effect スクリーニング（|log(O/E)| >= 0.50）              │
+│     → Step 2: Evidence フィルタリング（T_i^score >= 3.84, ノイズ排除） │
+├────────────────────────────────────────────────────────────────────────┤
+│  4. 多項 Dirichlet 事後推論と不確実性評価                               │
+│     → 共役事前分布による事後平均、点ごとの 95% 信用区間（HDI/ETI）     │
+│     → Freeman-Tukey 統計量による事後予測チェック（PPP-value）           │
+└────────────────────────────────────────────────────────────────────────┘
+```
 
-| スキル名 | 種別 | 主な役割 |
-|---|---|---|
-| **vcd-pass0-consultation** | 事前相談 | データ検分、次元削減、層別解析の提案。分析の「次の一手」をガイド。 |
-| **vcd-bayesian-evidence-analysis** | 主力解析 | 3次元の階層対数線形モデル、局所セル診断、明示事前のベイズ推定、日本語レポート。旧2次元経路も保守。 |
-| **vcd-categorical-analysis** | 名義解析 | 名義カテゴリ分析。R 2パス・executive_summary・quality_check・ダッシュボード生成。 |
-| **questionnaire-batch-analysis** | バッチ処理 | アンケート集計。複数設問の設定に基づき、ダッシュボードを自動量産。 |
-| **vcd-categorical-reporting** | 参照用 | （レガシー参照用テンプレート。新規は `vcd-categorical-analysis` を推奨） |
+### 指標の読み分けガイド
+
+| 問いの次元 | 採用指標 | 数理的性質と解釈 |
+| :--- | :--- | :--- |
+| **全体の連関構造** | 9 階層対数線形モデル（M1〜M9）、ポアソン完全対数尤度による明示式 BIC | 相互独立、条件付き独立、均一連関、3 次交互作用のどれがデータを最良に説明するか |
+| **差の大きさ（現象）** | 局所対数効果比 $\log(O_i/E_i)$、標準化差 $e_i$、率差 $d_i$ | 標本サイズ $N$ に依存しない乗法的・絶対的な乖離の大きさ |
+| **証拠の強さ（確信度）** | Rao の局所スコア検定統計量 $T_i^{\rm score} = \frac{r_{P,i}^2}{1-h_{ii}}$、対数 P 値 $\ln(P)$ | 偶然の標本誤差ではない統計的確信度（$N$ に比例） |
+| **モデル改善量** | 局所逸脱度改善 $\Delta G_i^2 / N$ | 1 観測あたりの逸脱度改善（KL 乖離縮小）。標準化効果量とは区別 |
+| **数値安定性と影響度** | ハット行列 Leverage $h_{ii}$、Stability フラグ（`QUARANTINED` / `REGULAR`） | 観測ゼロ $O_i=0$、疎セル $E_i < 5.0$、過大レバレッジ $h_{ii} \ge 0.80$ を自動隔離 |
+| **統計的不確実性** | 多項 Dirichlet 事後分布、条件付き割合の 95% 信用区間（HDI/ETI） | 点ごとの事後信用区間、Freeman-Tukey 事後予測チェック（PPP-value） |
+
+> [!NOTE]
+> 旧プロトタイプの「旧エビデンススコア（$r^2 - k\ln N$）」は大標本下で全セルが正値化（エビデンス飽和）してフィルタ機能を喪失するため、現行システムでは**監査専用列（audit-only）**としてのみ保持し、真の信号判定や合否判定には一切使用しません。
 
 ---
 
-## 指標の読み分け
+## 提供スキル一覧 (Agent Skills)
 
-現行の3次元経路では、一律の閾値による合否判定を行いません。
+本リポジトリで提供されるスキル一覧です（`.agents/skills/` 配下）：
 
-| 問い | 主な指標 | 読み方 |
-|---|---|---|
-| 全体の構造は何か | 9階層モデル、逸脱度、固定Nの多項BIC | どの交互作用を許したモデルが問いに合うか |
-| セルはどれだけずれるか | `log(O/E)`、`d/√N`、`ΔG²/N` | 基準モデル、分母、方向を付けて読む |
-| 追加セル効果の証拠はあるか | 局所`ΔG²`、leverage補正score、近似P値 | 正則な近似条件を満たす場合だけ補助的に使う |
-| 確率や割合はどれだけ不確かか | Dirichlet事後、条件付き割合、信用区間、事前感度 | 点ごとの区間であり、多重性調整済みではない |
-
-旧 `r² − k log N` は監査用です。セルBF、実質的重要性、真の信号の自動判定には用いません。Cramér's VとFeiは補助的な背景知識であり、現行3次元経路の合否指標ではありません。数式と参考文献は [docs/reference/](docs/reference/) にまとめています。
+| スキル名 | 種別 | 主な役割と守備範囲 |
+| :--- | :--- | :--- |
+| **vcd-pass0-consultation** | 事前相談 | データ検分、次元削減・層別解析の提案、`analysis_config.json` の作成 |
+| **vcd-bayesian-evidence-analysis** | 3次元正本 | 3次元集計表の 9 階層対数線形モデル、新 4 軸セル診断、明示式 BIC、Dirichlet 事後推論、HTML レポート生成 |
+| **vcd-categorical-analysis** | 2次元解析 | 名義 2 変数の全体効果量（Cramér's V、Bergsma 補正）、残差分析、executive_summary・ダッシュボード生成 |
+| **questionnaire-batch-analysis** | バッチ処理 | アンケート複数設問の設定ファイルに基づく自動一括集計とサマリー量産 |
+| **vcd-categorical-reporting** | 参照用 | （レガシーテンプレートの再現・互換保守用。新規分析は上記 3 スキルを推奨） |
 
 ---
 
 ## クイックスタート
 
 ### 動作環境要件
-- **R**: >= 4.0。3次元経路は標準の`stats`に加え、既存の`jsonlite`、検分用の`dplyr`・`readr`、HTML用の`htmltools`・`commonmark`を使用。
-- **Pandoc**: HTMLダッシュボード生成に必要
+- **R**: >= 4.0（標準 `stats` に加え、`jsonlite`, `dplyr`, `readr`, `htmltools`, `rmarkdown`）
+- **Pandoc**: HTML ダッシュボードのレンダリングに必要
 
-### 1. AIエージェントで使う（推奨）
-Agent Skills 対応のCLIやエディタ（Antigravity, Cursor, Gemini CLI等）からスキルをインストールします：
+### 1. AI エージェントで使う（推奨）
+Agent Skills 対応ツール（Antigravity, Cursor, Gemini CLI 等）から本スキルを呼び出します：
 
-```bash
-npx skills add syrius2000/agentic-evidence-analysis
-```
+> 「`examples/titanic.csv` を Class × Sex × Survived で分析したい。まずは `vcd-pass0-consultation` スキルでデータの性質を検分して、分析設定を作って。」
 
-導入後、エージェントに対話形式で依頼します：
-
-> 「`data.csv` を分析したい。まずは `vcd-pass0-consultation` スキルでデータの性質を調べて、分析の軸を提案して。」
-
-### 2. Rスクリプトとして手動実行する
+### 2. R コマンドラインから実行する
 
 ```bash
-# Pass 0: データの検分
+# Pass 0: データの事前検分
 Rscript .agents/shared/inspect_data.R examples/titanic.csv \
-  --out-dir output/<project>/run_<id>/
+  --out-dir output/titanic/run_01/
 
-# Pass 1: 3次元統計計算（Pass 0で作成した設定を指定）
+# Pass 1: 3次元統計計算（Pass 0 で作成した設定を指定）
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analysis.R \
-  --config output/titanic/run_v1/analysis_config.json
+  --config output/titanic/run_01/analysis_config.json
+
+# Pass 3: ダッシュボード生成
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/render_report.R \
+  output/titanic/run_01/run_<run_idの先頭16文字>/
 ```
 
-`--out-dir=`、`--out-dir ""`、空の第2位置引数など、空のout-dirは拒否され、ファイルシステムのrootへは書き込みません。
-
-**出力ディレクトリ規則**:
-- `vcd-bayesian-evidence-analysis`: `--output_dir` 直下に `run_<run_idの先頭16文字>/` を作成。
-- `vcd-categorical-analysis`: 常に `<out>/run_<first16>[_N]/` へ出力（run ID未指定時はJST日時、衝突時はサフィックス付与）。
-- `questionnaire-batch-analysis`: `--run-id` 利用時に `runs/<id>/` 配下へ出力。
-
 ---
 
-## リポジトリ管理方針 & アーキテクチャ
+## 参考文献・一次情報ポータル
 
-- **統計分析の正本リポジトリ**: この `agentic-evidence-analysis` リポジトリを、同名5スキル、統計schema、統計品質契約、Rテンプレート、統計回帰テストの唯一の正本とします。
-- **他リポジトリとの責務分離**:
-  - `Productivity-Skill`: 一般コード・SQLコード理解を担当します。
-  - `rwd-mysql-skill-toolkit`: RWD/DB実行・統合ハブを担当します。
-  - DB/SQL/Python実行補助をこのリポジトリへ複製せず、統計仕様・実装の変更はこの正本へ反映します。
-- **スキルツリー**: `.agents/skills` を公式管理対象とし、旧 `.cursor/skills` は管理しません。
+本ツールキットの統計数理手法は、国際的に認知された学術論文および標準教科書（一次情報）に厳密に依拠しています。詳細な数理導出と文献一覧は [docs/reference/README.md](docs/reference/README.md) をご覧ください。
 
----
-
-## おすすめの読み方
-
-1. `vcd-pass0-consultation` でデータの水準数、欠損、セルの疎密、層別の必要性を確認する。
-2. [docs/reference/stats_categorical.md](docs/reference/stats_categorical.md) で期待度数、残差、2元表効果量、P値を確認する。
-3. 3変数なら [docs/reference/three_way_models.md](docs/reference/three_way_models.md) で9モデル、固定Nの多項BIC、セル診断を確認する。
-4. [docs/reference/stats_bayesian.md](docs/reference/stats_bayesian.md) でBIC近似、厳密BF、Dirichlet事後、条件付き割合を確認する。
-5. 統計的有意性、効果の大きさ、不確実性、実務判断を分けた日本語サマリーを作成する。
+- **局所スコア検定理論**: Rao, C. R. (1948). *Proc. Camb. Phil. Soc.* [DOI:10.1017/S0305004100024038](https://doi.org/10.1017/S0305004100024038)
+- **GLM 診断とレバレッジ**: Pregibon, D. (1981). *Ann. Statist.* [DOI:10.1214/aos/1176345513](https://doi.org/10.1214/aos/1176345513)
+- **モデル選択基準 (BIC)**: Schwarz, G. (1978). *Ann. Statist.* [DOI:10.1214/aos/1176344136](https://doi.org/10.1214/aos/1176344136)
+- **対数線形モデル**: Agresti, A. (2013). *Categorical Data Analysis* (3rd ed.). Wiley.
+- **多項 Dirichlet 事後推論**: Good, I. J. (1965). *The Estimation of Probabilities*. MIT Press.
+- **ベイズデータ解析**: Gelman, A. et al. (2013). *Bayesian Data Analysis* (3rd ed.). CRC Press.
+- **効果量基準**: Cohen, J. (1988). *Statistical Power Analysis for the Behavioral Sciences* (2nd ed.). LEA.
+- **P 値声明**: Wasserstein, R. L., & Lazar, N. A. (2016). *Amer. Statist.* [DOI:10.1080/00031305.2016.1154108](https://doi.org/10.1080/00031305.2016.1154108)
 
 ---
 
 ## ライセンス
 
-[MIT](LICENSE)
-
-
-## 3次元探索支援（2026-09-06）
-
-集計済みの3元表には、[vcd-bayesian-evidence-analysisの新経路](.agents/skills/vcd-bayesian-evidence-analysis/SKILL.md)を追加した。9つの階層対数線形モデル、基準モデル別のセル診断、明示した事前分布による条件付き割合・層間差、日本語考察、層別ヒートマップ付きHTMLを扱う。
-
-[統計契約と再現手順](.agents/skills/vcd-bayesian-evidence-analysis/references/three_way_contract.md)を確認し、Pass 0から開始する。旧Scoreの正負は真の関連・ノイズの判定に使わない。ベイズでも標本サイズへの感度は残る。FREQ・MEANS互換、階層モデル・再標本化安定性は後続予定。
+[MIT License](LICENSE)

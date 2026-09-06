@@ -1,6 +1,11 @@
-# 旧2次元・旧3次元経路の保守資料
+# DEPRECATED：旧2次元・旧3次元経路の保守資料（過去ログ照合専用）
 
-この文書は旧出力との互換性を確認するための履歴です。以下の旧Scoreの正負による真偽判定、大標本への万能性、全体BFのセルへの転用は採用しません。新しい3次元解析は [現行スキル](../SKILL.md) に従います。旧経路を新たな実質的重要性の自動判定に用いないでください。
+> [!WARNING]
+> **この文書は過去の分析ログおよび旧ダッシュボード出力を照合するための履歴保守資料です。**
+>
+> 以下の本文に記載されている `Evidence Score = r² − k \log(N)` による正負の合否判定、EBIC の粗い近似、および固定的な効果量閾値は、大標本シミュレーション実験において破綻が実証された旧方式です。
+> 現行の推論本体は、9 階層対数線形モデル、総度数 $N$ 基準の明示式 BIC（$\mathrm{BIC}_{\mathrm{explicit}} = -2\ln L + p\ln N$）、新 4 軸セル診断フレームワーク（Effect, Evidence, Influence, Stability）、大標本 Dual-Filter 原則（$N > 2,000$）、および多項 Dirichlet 事後推論に完全に移行しています。
+> 新規分析・仕様設計においては、必ず [現行スキル (SKILL.md)](../SKILL.md) および [3次元分析契約 (three_way_contract.md)](three_way_contract.md) に従ってください。
 
 ---
 name: vcd-bayesian-evidence-analysis
