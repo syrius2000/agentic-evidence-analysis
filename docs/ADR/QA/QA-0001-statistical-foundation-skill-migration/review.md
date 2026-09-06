@@ -2,17 +2,17 @@
 id: QA-0001
 title: "statistical-foundation-skill-migration"
 document_type: spec-driven-qa-review
-status: author-action-required
+status: author-response-submitted
 result: null
 qa_profile: strict
 risk_level: high
 current_cycle: 2
 created_at: "2026-09-06T22:38:17+09:00"
-updated_at: "2026-09-06T23:16:52+09:00"
+updated_at: "2026-09-06T23:26:00+09:00"
 subject:
   targets:
     - "docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md"
-  implementation_revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
+  implementation_revision: "cdce095368a52aa3bfd3f821cc1bca8b7fb1ff77"
 baseline:
   purpose: ["docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md#1.2"]
   spec: ["docs/Artifacts/statistical_validation_001_0906.md", "docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md#2"]
@@ -44,15 +44,15 @@ handoff_contract_version: "1.0"
 
 | Item | Current |
 |---|---|
-| Status | `author-action-required` |
+| Status | `author-response-submitted` |
 | Cycle | 2 / 3 |
-| Implementation revision | `c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480` |
+| Implementation revision | `cdce095368a52aa3bfd3f821cc1bca8b7fb1ff77` |
 | Critical open | 0 |
 | High open | 0 |
 | Medium open | 2 |
-| Next actor | `implementer` |
-| Next action | Cycle 2 author-response for F04 and F06 |
-| Updated | 2026-09-06 23:16 JST |
+| Next actor | `reviewer` |
+| Next action | Independent verification of Cycle 2 fixes (`verify`) |
+| Updated | 2026-09-06 23:26 JST |
 
 ## 1. Purpose and Review Objective
 
@@ -106,12 +106,11 @@ See `traceability.yaml`. CLAIM-001/002/003/005 は概ね `supported`。スキー
 | 2026-09-06T22:41:20+09:00 | 1 | cursor-reviewer | independent-review | findings-issued |
 | 2026-09-06T23:05:00+09:00 | 1 | antigravity-implementer | author-response | fix-submitted |
 | 2026-09-06T23:16:52+09:00 | 1 | cursor-reviewer | reviewer-verification | partially-fixed |
+| 2026-09-06T23:26:00+09:00 | 2 | antigravity-implementer | author-response | fix-submitted |
 
 ## 9. Next Required Action
 
-`REQUIRED:AUTHOR-RESPONSE:QA-0001-F04:CYCLE-2`
+`REQUIRED:VERIFY:CYCLE-2`
 
-`REQUIRED:AUTHOR-RESPONSE:QA-0001-F06:CYCLE-2`
+実装者は F04 および F06 の残差を解消し、コミット `cdce095` として回答（`fix-submitted`）を提出しました。自己クローズは行わず、レビュアーによる独立再検証（`verify`）を要請します。
 
-F04: コードの `y==0 | E<5 | h>=0.80` と文書式を一致させ、`h>=0.80` を跨ぐ fixture を追加する。  
-F06: `config_validation.R` と `analysis_config.schema.json` から旧キーを削除するか、明示的に deprecated と記載する。

@@ -179,10 +179,10 @@ findings:
       semantic_key: stability-leverage-threshold-mismatch
     author_response:
       disposition: fix-submitted
-      summary: "Harmonized Stability quarantine threshold across code, SKILL, Reference, dashboard, and report to h >= 0.80 (pass1_compute.R: is_high_lev <- lev >= 0.80; is_quarantined <- is_zero | is_sparse | is_high_lev)."
-      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
-      cycle: 1
-      evidence: "pass1_compute.R, SKILL.md, docs/reference/four_axis_cell_diagnostics.md, dashboard.Rmd, and report reflect h >= 0.80 and E < 5."
+      summary: "Harmonized Stability documentation (four_axis_cell_diagnostics.md, SKILL.md, Reference.md, dashboard.Rmd, and report) with code to explicitly include zero cells: O == 0 | E < 5.0 | h >= 0.80. Added 3-way fixture stability_leverage_fixture_3way.csv crossing h >= 0.80 (max h = 0.9234) with zero, sparse, pure high-leverage, and regular cells, verified via automated test tests/test_vcd_bayesian_stability_leverage.R."
+      revision: "cdce095368a52aa3bfd3f821cc1bca8b7fb1ff77"
+      cycle: 2
+      evidence: "Rscript tests/test_vcd_bayesian_stability_leverage.R passes all 6 assertions (exit 0). Docs and code fully aligned on 3-condition rule."
     verification:
       result: partially-fixed
       revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
@@ -270,10 +270,10 @@ findings:
       semantic_key: skill-cli-legacy-threshold-k
     author_response:
       disposition: fix-submitted
-      summary: "Updated SKILL.md options table and JSON schemas to the 4-axis contract, removing retired options (--threshold_k, --ebic_gamma, --level2_factor, --arm_*) and updating JSON payload descriptions to input_summary, effects, models, diagnostics."
-      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
-      cycle: 1
-      evidence: "SKILL.md options table and JSON description match pass1_compute.R output."
+      summary: "Dropped legacy keys (threshold_k, ebic_*, level*_factor, arm_*) from references/analysis_config.schema.json, added base_model, and updated config_validation.R to treat legacy keys as deprecated with explicit [DEPRECATED] messages while validating base_model. Verified with tests/test_vcd_bayesian_config_validation.R."
+      revision: "cdce095368a52aa3bfd3f821cc1bca8b7fb1ff77"
+      cycle: 2
+      evidence: "Rscript tests/test_vcd_bayesian_config_validation.R passes all 3 tests (exit 0). Schema drops legacy keys and config_validation.R emits [DEPRECATED] warnings."
     verification:
       result: partially-fixed
       revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
