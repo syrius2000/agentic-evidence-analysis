@@ -20,7 +20,8 @@ All agents MUST follow this sequence for any analysis request:
    - **Contract**: Generate **`analysis_config.json`** as the Single Source of Truth.
 2. **Pass 1: R Engine Computation**
    - Execute statistical scripts (e.g., `analysis.R`) using the `--config` flag pointing to `analysis_config.json`.
-   - Compute Bayes Factors, Evidence Scores, and standardized residuals.
+   - 3次元経路では9階層モデル、固定総度数の多項BIC、局所`ΔG²`、leverage補正score、効果量、Dirichlet事後を計算する。厳密BFは明示事前の独立対飽和に限る。
+   - 旧Evidence Scoreは監査列であり、真の信号・セルBF・実質的重要性の判定に使わない。
    - **Contract**: Generate structured results JSON (e.g., `evidence_results.json`).
 3. **Pass 2: AI Review & Narrative**
    - Act as an expert statistical consultant to interpret JSON results.
@@ -28,7 +29,7 @@ All agents MUST follow this sequence for any analysis request:
    - If ambiguity or quality concerns exist, document interpretation holds in `quality_check.md`.
 4. **Pass 3: Report Integration & Visualization**
    - Render the interactive HTML dashboard (`dashboard.html` / `dashboard.Rmd`).
-   - Merge statistical metrics and AI narratives into a cohesive artifact.
+   - 3次元経路では `render_report.R` を使い、モデル比較、基準モデル別のセル診断、層別ヒートマップ、条件付き割合、事前感度、日本語考察を統合する。
 
 ---
 
@@ -57,6 +58,7 @@ Save artifacts under skill-specific output trees:
 
 ### 4. Repository Boundaries & Governance
 - **正本リポジトリ**: この `agentic-evidence-analysis` リポジトリを、同名5スキル、統計schema、統計品質契約、Rテンプレート、統計回帰テストの唯一の正本とする。
+- **数理リファレンス**: 指標の定義・参考文献・適用条件は [`docs/reference/README.md`](docs/reference/README.md)を入口とする。実装済みの指標と背景知識としての指標を区別する。
 - **Skill Tree**: `.agents/skills` is the only managed skill tree. Do not create or restore `.cursor/skills`.
 - **Ecosystem Boundaries**:
   - `Productivity-Skill`: 一般コード・SQLコード理解を担当する。

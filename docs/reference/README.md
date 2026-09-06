@@ -1,31 +1,35 @@
-# 統計リファレンス (Reference Documentation)
+# 統計リファレンス
 
-このディレクトリには、本プロジェクトの分析パイプラインで使用されている統計的手法、数理的背景、および解釈基準に関する詳細なドキュメントが格納されています。
+created: 2026-09-06 23:52 (JST)
+update: 2026-09-06 23:52 (JST)
+author: Codex (GPT-5)
 
-## ドキュメント一覧
+このディレクトリは、分析スキルが計算する量の定義、前提、解釈、参考文献を学ぶための正本です。実装の挙動はスキルと [新しい3次元統計契約](../../.agents/skills/vcd-bayesian-evidence-analysis/references/three_way_contract.md)で確認し、ここでは数理的な意味を確認します。
 
-| ファイル名 | 内容 | 対象スキル |
-| :--- | :--- | :--- |
-| **[stats_categorical.md](./stats_categorical.md)** | **カテゴリカル分析の基礎**: ピアソン残差、効果量 (Cramér's V / Fei)、大標本におけるP値の飽和問題について。 | 全スキル |
-| **[stats_bayesian.md](./stats_bayesian.md)** | **ベイズ的エビデンス評価**: ベイズ因子 ($BF_{10}$)、Evidence Score ($r^2 - k\log N$)、EBIC の数理的背景について。 | `vcd-bayesian-evidence-analysis` |
-| **[advanced_analysis.md](./advanced_analysis.md)** | **高度な分析ワークフロー**: Dual-Filter フレームワーク、アソシエーション分析 (ARM)、Top-K ランキング手法について。 | 全スキル (Pass 0/2/3) |
+## 読む順序
 
-## 基本コンセプト
+| 順序 | 文書 | 学ぶ内容 |
+| --- | --- | --- |
+| 1 | [stats_categorical.md](stats_categorical.md) | 度数、期待値、残差、Cramér's V、P値の読み方 |
+| 2 | [three_way_models.md](three_way_models.md) | 9階層モデル、固定Nの多項BIC、セル診断、100倍実験 |
+| 3 | [stats_bayesian.md](stats_bayesian.md) | BIC近似と厳密BF、Dirichlet事後、条件付き割合、事前感度 |
+| 4 | [advanced_analysis.md](advanced_analysis.md) | Pass 0からの探索設計、Top-K、ARM、疎な表の次の選択 |
+| 補助 | [DB_Best_Practices.md](DB_Best_Practices.md) | CSV・DBの型、文字コード、件数整合性 |
 
-本プロジェクトは、大規模データ ($N > 5,000$) において「すべてが有意になってしまう」従来の検定の限界を克服することを目的としています。各ドキュメントを参照することで、単なる計算結果の読み方だけでなく、**「統計的有意性」と「実務的意義」をいかに峻別するか**の理論的根拠を確認できます。
+## 現行経路の要点
 
----
+- 3次元経路は、集計度数の9つの階層対数線形モデルを比較します。
+- 構造、効果の大きさ、証拠量、不確実性、実務判断を別々に報告します。
+- `r² − k log N` は旧監査列で、局所BFや実質的重要性の自動判定ではありません。
+- Cramér's VとFeiは背景知識として説明しますが、現行3次元経路の合否指標ではありません。
+- BIC差の半分は正則な大標本条件での近似log BFにすぎず、明示事前による厳密BFと区別します。
+- 全体BFをセル単位へ転用しません。条件付き割合の信用区間も点ごとの区間です。
+- 度数100倍は独立標本の追加ではなく、標本サイズ感度の教材です。
 
-# Reference Documentation (English)
+## 参照文献の選び方
 
-This directory contains technical documentation regarding the statistical methods, mathematical backgrounds, and interpretation criteria used in this project.
+標準的な理論はAgresti、Schwarz、Kass & Rafteryを軸にし、実装仕様はR公式マニュアルを一次参照とします。P値の表現についてはASA声明を参照します。有限標本のCramér's V補正はBergsmaを参照します。各文書末尾に著者、年、題名、媒体またはDOI、リンクを記載しています。
 
-## Documents
+## 文書の使い分け
 
-- **[stats_categorical.md](./stats_categorical.md)**: Fundamentals of categorical analysis, including Pearson residuals, effect sizes (Cramér's V / Fei), and the P-value saturation problem.
-- **[stats_bayesian.md](./stats_bayesian.md)**: Bayesian evidence evaluation, covering Bayes Factors ($BF_{10}$), Evidence Scores, and Extended BIC (EBIC).
-- **[advanced_analysis.md](./advanced_analysis.md)**: Advanced workflows such as the Dual-Filter framework, Association Rule Mining (ARM), and Top-K ranking strategies.
-
-## Core Philosophy
-
-This toolkit is designed to overcome the limitations of classical hypothesis testing in large-scale datasets, where trivial deviations often become statistically significant. These references provide the theoretical foundation for distinguishing **"Statistical Significance"** from **"Practical Significance."**
+`docs/reference`は講座・利用者向けの数理説明です。実行順序や保留条件はスキル、入力契約は `three_way_contract.md`、回帰検証の証拠は [統計検証報告](../Artifacts/statistical_validation_001_0906.md)を参照します。未実装の方式を、参考文献があるという理由だけで現行機能と扱いません。

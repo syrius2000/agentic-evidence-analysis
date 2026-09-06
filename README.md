@@ -6,13 +6,13 @@
 **AIエージェントおよびRユーザーのための、エビデンス駆動型カテゴリカルデータ分析スキルセット**  
 *Evidence-Driven Categorical Data Analysis Skills for AI Agents & R Users.*
 
-大標本データ（RWD、臨床・疫学データ、アンケート等）における「P値の罠」を克服し、ベイズ因子、エビデンススコア、効果量を用いて「統計的有意性」と「実質的意義」を峻別する分析パイプラインを提供します。
+大標本データ（RWD、臨床・疫学データ、アンケート等）で、構造、効果の大きさ、証拠量、不確実性を分けて読む分析パイプラインを提供します。P値、BIC近似、明示事前によるBF、セル診断を同じ意味の指標として扱いません。
 
 ---
 
 ## 背景：なぜエビデンス駆動なのか？
 
-サンプルサイズが非常に大きい場合（$N > 2,000$）、従来のカイ二乗検定（P値）では、実務的に無視できるほど微小な偏りであってもすべて「統計的に有意（$p < 0.001$）」と判定されてしまいます（**P値の飽和問題**）。
+サンプルサイズが大きい場合、微小な偏りでもP値が小さくなることがあります。ただし、普遍的なNの境界で自動判定せず、効果量、分母、意思決定上の許容差、モデルの前提を併記します。
 
 2016年のアメリカ統計学会（ASA）「P値に関する声明」に基づき、本ツールキットは以下の原則を実装しています：
 
@@ -59,31 +59,32 @@ graph TD
 | スキル名 | 種別 | 主な役割 |
 |---|---|---|
 | **vcd-pass0-consultation** | 事前相談 | データ検分、次元削減、層別解析の提案。分析の「次の一手」をガイド。 |
-| **vcd-bayesian-evidence-analysis** | 主力解析 | ベイズ因子 ($BF_{10}$) と Evidence Score による多次元エビデンス分析。 |
+| **vcd-bayesian-evidence-analysis** | 主力解析 | 3次元の階層対数線形モデル、局所セル診断、明示事前のベイズ推定、日本語レポート。旧2次元経路も保守。 |
 | **vcd-categorical-analysis** | 名義解析 | 名義カテゴリ分析。R 2パス・executive_summary・quality_check・ダッシュボード生成。 |
 | **questionnaire-batch-analysis** | バッチ処理 | アンケート集計。複数設問の設定に基づき、ダッシュボードを自動量産。 |
 | **vcd-categorical-reporting** | 参照用 | （レガシー参照用テンプレート。新規は `vcd-categorical-analysis` を推奨） |
 
 ---
 
-## エビデンス判定基準 (Evidence Criteria)
+## 指標の読み分け
 
-大標本データにおける関連性と実質的意義を以下の基準で評価します：
+現行の3次元経路では、一律の閾値による合否判定を行いません。
 
-| 指標 | 数式 / 定義 | 閾値 / 判定 | 解釈 |
-|---|---|---|---|
-| **Evidence Score** | $r^2 - k \cdot \log(N)$ | $> 0$ | 実質的エビデンス（セル単位の逸脱がBICペナルティを超えている） |
-| **Bayes Factor ($BF_{10}$)** | EBIC / BIC 近似 | $> 100$<br/>$30 \sim 100$<br/>$10 \sim 30$ | 決定的エビデンス (Decisive)<br/>極めて強いエビデンス (Very Strong)<br/>強いエビデンス (Strong) |
-| **Cramér's V / Fei** | 効果量（0〜1） | $> 0.5$<br/>$> 0.3$<br/>$> 0.1$ | 非常に強い関連<br/>中程度の関連<br/>実務的に意味のある最小限の関連 |
+| 問い | 主な指標 | 読み方 |
+|---|---|---|
+| 全体の構造は何か | 9階層モデル、逸脱度、固定Nの多項BIC | どの交互作用を許したモデルが問いに合うか |
+| セルはどれだけずれるか | `log(O/E)`、`d/√N`、`ΔG²/N` | 基準モデル、分母、方向を付けて読む |
+| 追加セル効果の証拠はあるか | 局所`ΔG²`、leverage補正score、近似P値 | 正則な近似条件を満たす場合だけ補助的に使う |
+| 確率や割合はどれだけ不確かか | Dirichlet事後、条件付き割合、信用区間、事前感度 | 点ごとの区間であり、多重性調整済みではない |
 
-> 数学的定義および統計モデルの詳細は [docs/reference/](docs/reference/) を参照してください。
+旧 `r² − k log N` は監査用です。セルBF、実質的重要性、真の信号の自動判定には用いません。Cramér's VとFeiは補助的な背景知識であり、現行3次元経路の合否指標ではありません。数式と参考文献は [docs/reference/](docs/reference/) にまとめています。
 
 ---
 
 ## クイックスタート
 
 ### 動作環境要件
-- **R**: >= 4.0 (`vcd`, `gnm`, `rmarkdown` 等の関連パッケージ)
+- **R**: >= 4.0。3次元経路は標準の`stats`に加え、既存の`jsonlite`、検分用の`dplyr`・`readr`、HTML用の`htmltools`・`commonmark`を使用。
 - **Pandoc**: HTMLダッシュボード生成に必要
 
 ### 1. AIエージェントで使う（推奨）
@@ -104,8 +105,8 @@ npx skills add syrius2000/agentic-evidence-analysis
 Rscript .agents/shared/inspect_data.R examples/titanic.csv \
   --out-dir output/<project>/run_<id>/
 
-# Pass 1: 統計計算（Pass 0で生成された analysis_config.json を指定）
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
+# Pass 1: 3次元統計計算（Pass 0で作成した設定を指定）
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analysis.R \
   --config output/titanic/run_v1/analysis_config.json
 ```
 
@@ -132,10 +133,10 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
 ## おすすめの読み方
 
 1. `vcd-pass0-consultation` でデータの水準数、欠損、セルの疎密、層別の必要性を確認する。
-2. [docs/reference/stats_categorical.md](docs/reference/stats_categorical.md) で期待度数、Pearson residual、Cramér's V / Fei を確認する。
-3. 大標本または多次元表では [docs/reference/stats_bayesian.md](docs/reference/stats_bayesian.md) で Evidence Score と $BF_{10}$ を確認する。
-4. [docs/reference/](docs/reference/) 配下の各種リファレンスでモデル選択（GLM/GNM）と尺度の扱いを確認する。
-5. 統計的有意性と実務的意義を峻別したエグゼクティブ・サマリーを作成する。
+2. [docs/reference/stats_categorical.md](docs/reference/stats_categorical.md) で期待度数、残差、2元表効果量、P値を確認する。
+3. 3変数なら [docs/reference/three_way_models.md](docs/reference/three_way_models.md) で9モデル、固定Nの多項BIC、セル診断を確認する。
+4. [docs/reference/stats_bayesian.md](docs/reference/stats_bayesian.md) でBIC近似、厳密BF、Dirichlet事後、条件付き割合を確認する。
+5. 統計的有意性、効果の大きさ、不確実性、実務判断を分けた日本語サマリーを作成する。
 
 ---
 
