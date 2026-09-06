@@ -135,7 +135,7 @@ if (cfg$show_help) {
   cat("  --freq <col>                度数列名（既定: Freq）\n")
   cat("  --response_var <col>        応答変数。Cramér's V算出および条件付き割合差で使用\n")
   cat("  --top_k <N>                 Top-K 表示件数（既定: 10）\n")
-  cat("  --large_n_threshold <N>     大規模データモード閾値（既定: 1000）\n")
+  cat("  --large_n_threshold <N>     大規模データモード閾値（既定: 2000）\n")
   cat("  --base_model <M1|M8>        局所診断の基準モデル（既定: M1相互独立）\n")
   cat("  --help                      このヘルプを表示\n")
   cat("  --help_stats                統計指標ガイドを表示\n\n")

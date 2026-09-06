@@ -571,8 +571,8 @@ callback_ms <- htmlwidgets::JS(paste0(
   "  });\n"
 ))
 
-score_col_idx <- which(names(dt_disp) == "Score統計量(T)") - 1L
-if (length(score_col_idx) == 0L) score_col_idx <- ncol(dt_disp) - 1L
+effect_col_idx <- which(names(dt_disp) == "効果比:log(O/E)") - 1L
+if (length(effect_col_idx) == 0L) effect_col_idx <- 0L
 
 dt_widget <- datatable(
   dt_disp,
@@ -590,7 +590,7 @@ dt_widget <- datatable(
   options = list(
     pageLength = 20,
     scrollX = TRUE,
-    order = list(list(score_col_idx, "desc")),
+    order = list(list(effect_col_idx, "desc")),
     language = list(
       url = "https://cdn.datatables.net/plug-ins/1.13.6/i18n/ja.json"
     )
