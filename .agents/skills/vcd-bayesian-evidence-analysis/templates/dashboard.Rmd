@@ -435,11 +435,11 @@ if (nrow(models_summary) > 0) {
 }
 ```
 
-<div class="section-title">&#127942; Top 局所セル診断（Score統計量 上位セル）</div>
+<div class="section-title">&#127942; Top 局所セル診断（効果比 |log(O/E)| 上位セル：Dual-Filter 第1段階）</div>
 
 <div class="topk-panel">
 <p style="margin:0 0 12px 0; font-size:13px; color:#64748b;">
-基準モデル（`r base_model_id`: `r base_model_name`）からの乖離を <strong>4軸（Effect × Evidence × Influence × Stability）</strong> で診断した上位セルです。
+基準モデル（`r base_model_id`: `r base_model_name`）からの乖離を <strong>4軸（Effect × Evidence × Influence × Stability）</strong> で診断した上位セルです（効果比の絶対値降順）。
 </p>
 
 ```{r top-k-table}
@@ -452,6 +452,7 @@ col_rename <- c(
   "scaled_diff" = "標準化差",
   "score_stat" = "Score統計量(T)",
   "p_value" = "P値",
+  "log_p" = "対数P値",
   "leverage" = "Leverage(h)",
   "stability_status" = "診断状態"
 )
@@ -471,7 +472,7 @@ for (v in dims) {
   }
 }
 
-round_cols <- intersect(c("期待値(E)", "ピアソン残差", "効果比:log(O/E)", "標準化差", "Score統計量(T)", "Leverage(h)"), names(tk_disp))
+round_cols <- intersect(c("期待値(E)", "ピアソン残差", "効果比:log(O/E)", "標準化差", "Score統計量(T)", "対数P値", "Leverage(h)"), names(tk_disp))
 
 datatable(
   tk_disp,
@@ -479,7 +480,7 @@ datatable(
   rownames = FALSE,
   caption = htmltools::tags$caption(
     style = "caption-side: top; text-align: left; font-size: 13px; color: #555;",
-    paste0("Score統計量 上位 ", nrow(tk_disp), " セル（局所特異効果の顕著なサブグループ）")
+    paste0("効果比 |log(O/E)| 上位 ", nrow(tk_disp), " セル（実質的乖離の顕著なサブグループ）")
   ),
   options = list(dom = "t", paging = FALSE, scrollX = TRUE)
 ) |>
@@ -644,8 +645,9 @@ dt_widget
 
 ### 2. モデル選択基準（総度数 $N$ 基準の明示式BIC）
 
-対数線形モデルの比較には、Rの標準 `BIC()` 関数（行数基準）ではなく、**観測対象の総度数 $N$ を標本サイズとした明示式BIC** を使用しています。
-$$\mathrm{BIC} = \mathrm{Deviance} + \mathrm{df}_{\rm used} \cdot \ln(N)$$
+対数線形モデルの比較には、Rの標準 `BIC()` 関数（行数基準）ではなく、**観測対象の総度数 $N$ を標本サイズとした明示式BIC（ポアソン対数尤度基準）** を使用しています。
+$$\mathrm{BIC} = -2 \ln L + p \cdot \ln(N)$$
+（$L$ はポアソン対数尤度、$p$ はモデルパラメータ数、$N$ は総度数）
 これにより、分割表の行数ではなく真の標本規模 $N$ に応じた適切な複雑度ペナルティが課され、過剰適合を防ぎます。
 
 ---

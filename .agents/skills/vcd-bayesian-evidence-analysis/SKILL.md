@@ -60,7 +60,7 @@ $$\mathrm{BIC} = -2 \ln L + k \cdot \ln(N) \quad (\text{または } G^2 - df \cd
 ```json
 {
   "input": "examples/titanic.csv",
-  "vars": ["Class", "Sex", "Age", "Survived"],
+  "vars": ["Class", "Sex", "Survived"],
   "freq": "Freq",
   "response_var": "Survived",
   "output_dir": "output/titanic",
@@ -79,13 +79,13 @@ $$\mathrm{BIC} = -2 \ln L + k \cdot \ln(N) \quad (\text{または } G^2 - df \cd
 ```bash
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
   --input your_data.csv \
+  --vars FactorA,FactorB,FactorC \
+  --freq Freq \
   --output_dir ./skill_out/vcd_bayesian/ \
   --run-id datasetA_20260417 \
-  --dataset_name mydata \
-  --response_var outcome_col \
+  --response_var FactorC \
   --top_k 10 \
-  --threshold_k 1 \
-  --large_n_threshold 1000
+  --large_n_threshold 2000
 ```
 
 Pass 0 が生成した config を使う場合:
@@ -98,25 +98,19 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
 | オプション | 既定値 | 説明 |
 | :--- | :--- | :--- |
 | `--run-id` | （なし） | 指定時は `<--output_dir>/run_<prefix>/` に隔離（`prefix` = 解決後 `run_id` の先頭16文字。未指定時は入力から算出したハッシュの先頭16文字）。`auto` は JST タイムスタンプに展開される |
+| `--vars` | （全変数） | 分析対象カテゴリ変数（2変数または3変数をカンマ区切りで指定） |
+| `--freq` | `Freq` | 度数列名（存在しない場合は1行=1件としてカウント） |
 | `--response_var` | （なし） | 3次元以上でCramér's Vを算出するための応答変数。指定時は「予測側水準の組み合わせ × 応答変数」の2次元表へ畳み込んで全体効果量を算出する |
-| `--top_k` | 10 | Top-K 表示件数 |
-| `--threshold_k` | 1 | 多段階閾値係数（Score > k × log(N)） |
-| `--large_n_threshold` | 1000 | 大規模データモード切替閾値 |
-| `--ebic_gamma` | 0.5 | EBIC 追加ペナルティ係数（γ） |
-| `--ebic_p` | 飽和モデル係数数 | EBIC の候補パラメータ数（省略時は自動） |
-| `--level2_factor` | 2 | 多段階閾値 Level2 倍率 |
-| `--level3_factor` | 3 | 多段階閾値 Level3 倍率 |
-| `--arm_top_rules` | 20 | ARM（support/confidence/lift）上位件数 |
-| `--arm_min_support` | 0.01 | ARM 最小 support |
-| `--arm_min_confidence` | 0.10 | ARM 最小 confidence |
+| `--base_model` | `M1` | 局所セル診断の基準モデル（M1: 相互独立モデル 〜 M9: 飽和モデル） |
+| `--top_k` | 10 | Top-K 表示件数（効果比またはScore統計量上位セル） |
+| `--large_n_threshold` | 2000 | 大規模データモード切替閾値（N > 2,000 で Effect 優先 Dual-Filter を適用） |
+| `--config` | （なし） | Pass 0 で生成された `analysis_config.json` パス |
 | `--help` | - | CLI ヘルプを表示 |
 | `--help_stats` | - | 統計指標ガイドを表示 |
 
 ※ `--input` が無い場合は R 組み込みの `HairEyeColor` データセットを使用する。
-※ `--vars` で分析対象変数を指定可能（省略時は全変数を使用）。
-※ `--freq` で度数列名を指定可能（省略時は `Freq`）。
-※ `--response_var` は `--vars` に含める。未指定または算出不可の場合、Cramér's Vは未算出理由付きで `effects.effect_status = "not_applicable"` または `"failed"` になる。
-※ ARM は **行データのみ** 対象。`Freq` がある場合は重みとして扱う。
+※ 本スキルは **2元表または3元表（2変数または3変数）** を対象とします。4変数以上を分析する場合は、Pass 0 にて次元削減・層別化・3変数への絞り込みを行ってください。
+※ `--response_var` は `--vars` に含める。未指定または算出不可の場合、Cramér's Vは未算出理由付きで記録される。
 
 ### Pass 2: AI 考察生成（本スキル）
 
@@ -222,7 +216,7 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard
 | 出力 | 説明 |
 | :--- | :--- |
 | `run_meta.json` | Pass 1 時に `run_<prefix>/` に出力。`out_root` は `--output_dir`、`run_output_dir` は当該 `run_<prefix>/`（`.agents/shared/run_scope.R` の `write_run_meta`） |
-| `evidence_results.json` | `core/model_selection/effects/thresholds/warnings/extensions` のモジュール構造 + 旧キー互換（Pass 1） |
+| `evidence_results.json` | `provenance/input_summary/models/effects/cells/posterior` の4軸セル診断モジュール構造（Pass 1） |
 | `dt_table.html` | 列フィルタ付きインタラクティブDTテーブル（+青/−赤色分け）（Pass 1）。`evidence_results.json` と同じ **`run_<prefix>/` 成果ディレクトリ**に保存される（`selfcontained` 時は同隣に補助ファイルが増える場合あり） |
 | `executive_summary.md` | AI日本語エグゼクティブサマリー（Pass 2） |
 | `quality_check.md` | AIレビュー・指標解釈・図表整合・解釈保留の品質確認（Pass 2.5） |
@@ -236,7 +230,7 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard
 | B | レンダリングパス失敗 | Pass 3 は `render_dashboard.R` を使い、リポジトリルートを `knit_root_dir` に固定する |
 | C | 英語のみ出力 | すべての出力（ラベル・UI・考察）を日本語にデフォルト設定 |
 | D | Pass 2 を飛ばして Pass 3 のみ実行 | 既定 `require_pass2 = TRUE` で `executive_summary.md` 必須。意図的プレビューのみ `FALSE` |
-| E | レビュー過剰主張 | `quality_check.md` でP値偏重、因果断定、Evidence Score負値セルの誤解釈、図表矛盾を確認 |
+| E | レビュー過剰主張 | `quality_check.md` でP値・検定統計量偏重、因果断定、効果比と検定統計量の混同、図表矛盾を確認 |
 
 ## 連携スキル
 

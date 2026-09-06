@@ -340,7 +340,8 @@ output_results <- list(
     method = "Explicit BIC (Total N)",
     best_model = best_m_id,
     summary = model_fits$summary_df
-  )
+  ),
+  run_id = rid$run_id
 )
 
 json_path <- file.path(artifact_dir, "evidence_results.json")

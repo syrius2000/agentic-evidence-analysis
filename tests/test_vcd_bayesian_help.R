@@ -6,19 +6,22 @@ if (!file.exists(file.path(root, ".agents")) && identical(basename(root), "tests
 analysis <- file.path(root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R")
 stopifnot(file.exists(analysis))
 
-# --help テスト
+# --help テスト (4軸CLIオプション)
 out_help <- system2("Rscript", c(analysis, "--help"), stdout = TRUE, stderr = TRUE)
 help_text <- paste(out_help, collapse = "\n")
 stopifnot(grepl("--top_k", help_text, fixed = TRUE))
-stopifnot(grepl("--threshold_k", help_text, fixed = TRUE))
+stopifnot(grepl("--response_var", help_text, fixed = TRUE))
+stopifnot(grepl("--base_model", help_text, fixed = TRUE))
 stopifnot(grepl("--large_n_threshold", help_text, fixed = TRUE))
 stopifnot(grepl("--help_stats", help_text, fixed = TRUE))
 
 # --help_stats テスト
 out_stats <- system2("Rscript", c(analysis, "--help_stats"), stdout = TRUE, stderr = TRUE)
 stats_text <- paste(out_stats, collapse = "\n")
-stopifnot(grepl("Evidence Score", stats_text, fixed = TRUE))
+stopifnot(grepl("4軸", stats_text, fixed = TRUE))
+stopifnot(grepl("Effect", stats_text, fixed = TRUE))
+stopifnot(grepl("Evidence", stats_text, fixed = TRUE))
+stopifnot(grepl("Score", stats_text, fixed = TRUE))
 stopifnot(grepl("Cram", stats_text, fixed = TRUE))
-stopifnot(grepl("BF", stats_text, fixed = TRUE))
 
-message("OK: help and help_stats output")
+message("OK: help and help_stats output verified for 4-axis framework")

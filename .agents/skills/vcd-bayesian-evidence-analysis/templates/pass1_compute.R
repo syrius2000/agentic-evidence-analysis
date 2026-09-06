@@ -63,6 +63,10 @@ fit_all_poisson_models <- function(df, vars, freq_col) {
   total_n <- sum(df[[freq_col]])
   n_vars <- length(vars)
   
+  if (n_vars < 2L || n_vars > 3L) {
+    stop(sprintf("[ERROR] vcd-bayesian-evidence-analysis は 2元表または 3元表（2変数または3変数）のみをサポートしています（指定変数数: %d）。4変数以上の場合は Pass 0 にて次元削減・層別化・3変数への絞り込みを行ってください。", n_vars))
+  }
+  
   fits <- list()
   summary_table <- list()
   
@@ -194,8 +198,8 @@ compute_4axis_cell_diagnostics <- function(df, vars, freq_col, fitted_models, ba
   
   # 4. Stability (数値的安定性)
   is_zero <- y == 0
-  is_sparse <- exp_val < 5
-  is_high_lev <- lev > 0.95
+  is_sparse <- exp_val < 5.0
+  is_high_lev <- lev >= 0.80
   is_quarantined <- is_zero | is_sparse | is_high_lev
   stability_status <- ifelse(is_quarantined, "QUARANTINED", "REGULAR")
   

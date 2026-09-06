@@ -35,7 +35,12 @@ if (is.null(out_path) || !nzchar(out_path)) {
   out_path <- file.path(dirname(normalizePath(json_path, winslash = "/", mustWork = TRUE)), "executive_summary.md")
 }
 
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
 res <- jsonlite::fromJSON(json_path)
+dims <- res$input_summary$variables %||% res$dimensions %||% res$core$dimensions %||% character(0)
+total_n <- res$input_summary$total_n %||% res$n_total %||% res$core$n_total
+ds_name <- res$provenance$input_file %||% res$dataset_name %||% "Unknown"
 
 md_lines <- c(
   "### エグゼクティブ・サマリー（スタブ生成：LLM未使用）",
@@ -43,28 +48,31 @@ md_lines <- c(
   "> **注意**: 本レポートはCIまたはローカルテスト用のスタブ（プレースホルダー）です。LLMによる考察は含まれていません。",
   "",
   "#### 1. データ概要",
-  sprintf("- **データセット名**: %s", ifelse(is.null(res$dataset_name), "Unknown", res$dataset_name)),
-  sprintf("- **分析次元**: %s", paste(res$dimensions, collapse = " × ")),
-  sprintf("- **総度数 (N)**: %s", format(res$n_total, big.mark = ",")),
+  sprintf("- **データセット名**: %s", ds_name),
+  sprintf("- **分析次元**: %s", if (length(dims) > 0) paste(dims, collapse = " × ") else "未設定"),
+  sprintf("- **総度数 (N)**: %s", if (!is.null(total_n)) format(total_n, big.mark = ",") else "N/A"),
   ""
 )
 
-if (!is.null(res$bf_independence)) {
+# 最良モデル
+best_model <- res$models$best_model_id %||% res$model_selection$best_model
+if (!is.null(best_model)) {
   md_lines <- c(md_lines,
-    "#### 2. 全体的な関連性（ベイズファクター）",
-    sprintf("- **BF10**: %s", res$bf_independence),
+    "#### 2. 最良モデル（対数線形・明示式BIC）",
+    sprintf("- **最良モデルID**: %s", best_model),
     ""
   )
 }
 
-if (!is.null(res$cramers_v)) {
-  effect_status <- if (!is.null(res$effect_status)) res$effect_status else res$effects$effect_status
-  effect_reason <- if (!is.null(res$effect_reason)) res$effect_reason else res$effects$effect_reason
-  if (!is.na(res$cramers_v)) {
-    cram_str <- sprintf("- **Cramér's V（全体効果量）**: %.4f", res$cramers_v)
-    if (!is.null(res$cramers_v_ci_low) && !is.null(res$cramers_v_ci_high) &&
-      !is.na(res$cramers_v_ci_low) && !is.na(res$cramers_v_ci_high)) {
-      cram_str <- paste0(cram_str, sprintf(" (95%% CI: %.4f - %.4f)", res$cramers_v_ci_low, res$cramers_v_ci_high))
+cv_val <- res$effects$cramers_v %||% res$cramers_v
+if (!is.null(cv_val)) {
+  effect_status <- res$effects$effect_status %||% res$effect_status %||% "computed"
+  effect_reason <- res$effects$effect_reason %||% res$effect_reason %||% ""
+  if (!is.na(cv_val)) {
+    cram_str <- sprintf("- **Cramér's V（全体効果量）**: %.4f", as.numeric(cv_val))
+    ci <- res$effects$cramers_v_ci %||% c(res$cramers_v_ci_low, res$cramers_v_ci_high)
+    if (!is.null(ci) && length(ci) == 2L && !is.na(ci[1])) {
+      cram_str <- paste0(cram_str, sprintf(" (95%% CI: %.4f - %.4f)", as.numeric(ci[1]), as.numeric(ci[2])))
     }
   } else {
     cram_str <- sprintf("- **Cramér's V（全体効果量）**: 未算出（%s: %s）", effect_status, effect_reason)
@@ -85,15 +93,19 @@ if (!is.null(res$warnings) && length(res$warnings) > 0) {
   )
 }
 
-if (!is.null(res$cells$top_k_data) && is.data.frame(res$cells$top_k_data) && nrow(res$cells$top_k_data) > 0) {
+top_df <- res$cells$top_k_data %||% res$top_k_data
+if (!is.null(top_df) && is.data.frame(top_df) && nrow(top_df) > 0) {
   md_lines <- c(md_lines,
     "#### 4. 主要な偏りセル (Top-K: 4軸診断)",
     "以下のセルが強い実質的効果量または高い検定統計量を示しました："
   )
-  top_df <- res$cells$top_k_data
   for (i in seq_len(nrow(top_df))) {
     row <- top_df[i, ]
-    cell_desc <- paste(sapply(res$input_summary$variables, function(d) paste0(d, "=", row[[d]])), collapse = ", ")
+    cell_desc <- if (length(dims) > 0) {
+      paste(sapply(dims, function(d) paste0(d, "=", row[[d]])), collapse = ", ")
+    } else {
+      paste0("Cell ", i)
+    }
     score_val <- if (!is.null(row$score_stat)) row$score_stat else row$Residual^2
     log_oe <- if (!is.null(row$log_oe_ratio)) row$log_oe_ratio else NA_real_
     md_lines <- c(md_lines, sprintf("- %d. %s (log(O/E): %.2f, Score統計量: %.2f, 残差: %.2f)", i, cell_desc, log_oe, score_val, row$Residual))

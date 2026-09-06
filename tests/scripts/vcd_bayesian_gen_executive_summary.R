@@ -19,89 +19,54 @@ parse_args <- function() {
   out
 }
 
-interpret_bf <- function(bf) {
-  if (is.null(bf) || (length(bf) == 1 && is.na(bf))) return("（BF 解釈不能）")
-  if (is.character(bf)) {
-    if (identical(toupper(trimws(bf)), "INF")) return("決定的エビデンス (decisive)")
-    bf <- suppressWarnings(as.numeric(bf))
-  }
-  if (length(bf) != 1 || is.na(bf)) return("（BF 解釈不能）")
-  if (is.infinite(bf) || bf > 100) return("決定的エビデンス (decisive)")
-  if (bf > 30) return("非常に強いエビデンス (very strong)")
-  if (bf > 10) return("強いエビデンス (strong)")
-  if (bf > 3) return("中程度のエビデンス (moderate)")
-  if (bf > 1) return("弱いエビデンス (anecdotal)")
-  "関連なし / 独立仮説を支持"
-}
-
 cfg <- parse_args()
 res <- fromJSON(cfg$json, simplifyVector = TRUE)
-dims <- res$dimensions
-n_total <- res$n_total
-bf_raw <- res$bf_independence
-log_n <- as.numeric(res$log_n)
-threshold <- as.numeric(res$threshold)
 
-bf_num <- if (is.character(bf_raw) && toupper(trimws(bf_raw)) == "INF") {
-  Inf
-} else {
-  suppressWarnings(as.numeric(bf_raw))
-}
-bf_disp <- if (is.finite(bf_num)) format(bf_num, scientific = TRUE, digits = 4) else "Inf"
+`%||%` <- function(x, y) if (is.null(x)) y else x
 
-fd <- as.data.frame(res$full_data)
-for (col in c("Freq", "Expected", "Residual", "Evidence_Score")) {
-  if (col %in% names(fd)) fd[[col]] <- as.numeric(fd[[col]])
-}
+dims <- res$input_summary$variables %||% res$dimensions %||% res$core$dimensions %||% character(0)
+n_total <- res$input_summary$total_n %||% res$n_total %||% res$core$n_total %||% 0
+best_model <- res$models$best_model_id %||% res$model_selection$best_model %||% "N/A"
+cv_val <- res$effects$cramers_v %||% res$cramers_v
+cv_disp <- if (!is.null(cv_val) && !is.na(cv_val)) sprintf("%.4f", as.numeric(cv_val)) else "未算出"
+
+fd <- as.data.frame(res$cells$full_data %||% res$full_data %||% res$core$full_data)
 n_cells <- nrow(fd)
-n_pos <- sum(fd$Evidence_Score > 0, na.rm = TRUE)
-pct <- round(n_pos / n_cells * 100, 1)
+regular_count <- res$cells$regular_count %||% sum(fd$stability_status == "REGULAR", na.rm = TRUE)
 
-ord <- order(-fd$Evidence_Score)
-top5 <- fd[head(ord, 5), , drop = FALSE]
-neg_ord <- order(fd$Evidence_Score)
-bot3 <- fd[head(neg_ord, 3), , drop = FALSE]
+top5 <- head(fd, 5)
 
 fmt_cell <- function(row) {
   parts <- sapply(dims, function(d) paste0(d, "=", row[[d]]))
   paste(parts, collapse = ", ")
 }
 
-th_note <- if (isTRUE(all.equal(as.numeric(threshold), as.numeric(log_n), tolerance = 1e-4))) {
-  "（JSON の threshold と一致: 正本スキル想定）"
-} else {
-  "（JSON の threshold は log(N) と異なる実装の補助値の可能性あり）"
-}
-
 lines <- c(
-  "### エグゼクティブ・サマリー（決定論生成・tests 用）",
+  "### エグゼクティブ・サマリー（決定論生成・4軸セル診断体系）",
   "",
   paste0("**分析次元**: ", paste(dims, collapse = " × "), " ／ **N** = ", format(n_total, big.mark = ","), " ／ **セル数** = ", n_cells),
   "",
-  "#### 1. 全体的な関連性（ベイズファクター）",
-  paste0("- **BF10** = ", bf_disp, "（", interpret_bf(bf_num), "）"),
+  "#### 1. 全体的な関連性（対数線形モデル・効果量）",
+  paste0("- **最良モデル (明示式BIC)**: ", best_model),
+  paste0("- **全体効果量 (Cramér's V)**: ", cv_disp),
   "",
-  "#### 2. Evidence Score と閾値",
-  paste0("- **Evidence Score** = r² − log(N)（r: 独立 Poisson GLM のピアソン標準化残差）"),
-  paste0("- **log(N)** = ", round(log_n, 4), "（Score > 0 の境界は r² > log(N)）"),
-  paste0("- **JSON threshold** = ", round(as.numeric(threshold), 4), " ", th_note),
-  paste0("- **正の Score を持つセル**: ", n_pos, " / ", n_cells, "（", pct, "%）"),
+  "#### 2. 4軸セル診断体系（Effect × Evidence × Influence × Stability）",
+  paste0("- **効果比**: log(O/E)（標本数不変の実質的乖離尺度）"),
+  paste0("- **Evidence**: Raoの局所スコア検定統計量 T = r² / (1 - h)"),
+  paste0("- **安定セル数 (REGULAR)**: ", regular_count, " / ", n_cells, "（", round(regular_count / n_cells * 100, 1), "%）"),
   "",
-  "#### 3. セル（参考: 上位5 / 下位3）",
-  "**Evidence Score 上位5**",
+  "#### 3. 主要特異セル（Top 5）",
   vapply(seq_len(min(5, nrow(top5))), function(i) {
     r <- top5[i, , drop = FALSE]
-    paste0("- ", i, ". ", fmt_cell(r), " — Score=", round(r$Evidence_Score, 4), ", r=", round(r$Residual, 4))
-  }, character(1)),
-  "",
-  "**Evidence Score 下位3（最も負）**",
-  vapply(seq_len(min(3, nrow(bot3))), function(i) {
-    r <- bot3[i, , drop = FALSE]
-    paste0("- ", i, ". ", fmt_cell(r), " — Score=", round(r$Evidence_Score, 4), ", r=", round(r$Residual, 4))
+    log_oe <- if ("log_oe_ratio" %in% names(r)) round(r$log_oe_ratio, 4) else NA_real_
+    t_score <- if ("score_stat" %in% names(r)) round(r$score_stat, 4) else NA_real_
+    lev <- if ("leverage" %in% names(r)) round(r$leverage, 4) else NA_real_
+    status <- if ("stability_status" %in% names(r)) r$stability_status else "REGULAR"
+    paste0("- ", i, ". ", fmt_cell(r), " — log(O/E)=", log_oe, ", T=", t_score, ", h=", lev, " [", status, "]")
   }, character(1)),
   "",
   "#### 4. 結論（機械生成）",
-  paste0("大標本（N=", format(n_total, big.mark = ","), "）でも Evidence Score により、実質的に議論すべきセルを数値で絞り込める。詳細はテーブルで確認。"),
+  paste0("大標本（N=", format(n_total, big.mark = ","), "）においても、4軸セル診断により、標本抽出誤差と実質的効果を明確に分離して評価できる。詳細はダッシュボードで確認。"),
   ""
 )
 
