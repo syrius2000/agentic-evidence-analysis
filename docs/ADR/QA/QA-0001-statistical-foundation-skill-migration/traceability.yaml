@@ -43,9 +43,9 @@ claims:
         type: runtime
         reference: "Titanic 1x models.summary has M1..M9; M1 bic=1160.1817 matches validation 1,160.18"
     assessment:
-      result: partially-supported
+      result: supported
       confidence: high
-      rationale: "Implemented BIC = -2ll + k ln N matches the validation testbed numbers. Plan/report/dashboard equations (G^2 - df ln N or Deviance + df ln N) do not match those numbers."
+      rationale: "Implemented BIC = -2ll + k ln N matches the validation testbed numbers. Cycle 1 F05 aligned dashboard and loglinear_models_bic.md to the same equation. Plan 2.3 historical G^2 form remains a plan artifact."
 
   - id: CLAIM-003
     statement: "セル診断は Effect/Evidence/Influence/Stability の4軸で、T_i^score = r_P^2/(1-h_ii) を用いる。"
@@ -68,7 +68,7 @@ claims:
     assessment:
       result: supported
       confidence: high
-      rationale: "Cell formulas and N-scaling of Effect vs Evidence match the validation contract. Stability cut (F04) and dashboard columns (F10) remain drifted."
+      rationale: "Cell formulas and N-scaling of Effect vs Evidence match the validation contract. Cycle 2 F04: Stability 3-condition rule matches code, docs, and leverage fixture. Cycle 1 F10: Top-K uses |log(O/E)|; full-cell DT still defaults to Score."
 
   - id: CLAIM-004
     statement: "計画対象の規範文書・SKILL・ダッシュボード・スタブを4軸契約へ更新する。"
@@ -101,9 +101,9 @@ claims:
         type: runtime
         reference: "pass2_stub overview fields NULL; SKILL still lists --threshold_k"
     assessment:
-      result: partially-supported
+      result: supported
       confidence: high
-      rationale: "Cycle 1 verification: SKILL CLI, stub overview, and dashboard log-p were updated. analysis_config.schema.json and config_validation.R still describe retired keys (F06). Stability docs omit zero cells (F04)."
+      rationale: "Cycle 2 F06: schema dropped retired keys; config_validation.R deprecates them. Cycle 2 F04: Stability docs include zero cells. Residual: vcd-pass0-consultation still lists old keys (out of SKILL.md scope)."
 
   - id: CLAIM-005
     statement: "Titanic 1x and 100x で Pass 1→2→3 を完遂し、executive_summary は4軸構造で旧スコアに言及しない。"

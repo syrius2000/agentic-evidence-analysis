@@ -148,8 +148,8 @@ findings:
     purpose_classification: spec-required
     severity: medium
     severity_rationale: "Stability is a declared 4th axis. Code quarantines y==0 or mu<5 or h>0.95; glossary, report, and Pass 2 text use h>=0.8 and omit zero cells. Operators cannot reconstruct the status rule."
-    status: open
-    technical_disposition: partially-fixed
+    status: fixed-and-verified
+    technical_disposition: fixed-and-verified
     owner_disposition: null
     first_seen_cycle: 1
     claim_refs: [CLAIM-003]
@@ -184,10 +184,10 @@ findings:
       cycle: 2
       evidence: "Rscript tests/test_vcd_bayesian_stability_leverage.R passes all 6 assertions (exit 0). Docs and code fully aligned on 3-condition rule."
     verification:
-      result: partially-fixed
-      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
-      cycle: 1
-      evidence: "Code now uses lev >= 0.80, matching the 0.8 narrative. Remaining: (1) four_axis_cell_diagnostics.md and dashboard glossary omit y==0 which code quarantines; (2) no fixture crosses h=0.80 (Titanic max h=0.6927)."
+      result: fixed-and-verified
+      revision: "cdce095368a52aa3bfd3f821cc1bca8b7fb1ff77"
+      cycle: 2
+      evidence: "Independent Rscript tests/test_vcd_bayesian_stability_leverage.R exit 0: 3 pure high-leverage cells (max h=0.9234), 1 zero cell, 2 sparse, 6 regular; 3-condition rule matches code. Docs (four_axis, SKILL, Reference, dashboard) now include O=0. Cycle 1 remainder cleared."
 
   - id: QA-0001-F05
     title: Documented explicit BIC formula does not match implemented BIC
@@ -242,8 +242,8 @@ findings:
     purpose_classification: spec-required
     severity: medium
     severity_rationale: "In-scope SKILL.md still instructs agents to pass --threshold_k (old score threshold) and documents core/thresholds JSON. The new parser ignores those flags, so agents follow a stale contract."
-    status: open
-    technical_disposition: partially-fixed
+    status: fixed-and-verified
+    technical_disposition: fixed-and-verified
     owner_disposition: null
     first_seen_cycle: 1
     claim_refs: [CLAIM-004]
@@ -275,10 +275,10 @@ findings:
       cycle: 2
       evidence: "Rscript tests/test_vcd_bayesian_config_validation.R passes all 3 tests (exit 0). Schema drops legacy keys and config_validation.R emits [DEPRECATED] warnings."
     verification:
-      result: partially-fixed
-      revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
-      cycle: 1
-      evidence: "SKILL.md CLI/JSON description updated. Remaining: config_validation.R and references/analysis_config.schema.json still allow threshold_k, ebic_gamma, level2_factor, arm_*."
+      result: fixed-and-verified
+      revision: "cdce095368a52aa3bfd3f821cc1bca8b7fb1ff77"
+      cycle: 2
+      evidence: "Independent Rscript tests/test_vcd_bayesian_config_validation.R exit 0. Schema properties no longer list threshold_k/ebic_*/arm_*/level*_factor; config_validation.R emits [DEPRECATED] and ignores them. Cycle 1 remainder cleared. Residual (non-blocking): vcd-pass0-consultation still documents old keys (out of original SKILL.md scope)."
 
   - id: QA-0001-F07
     title: pass2_stub.R does not read the new JSON overview fields

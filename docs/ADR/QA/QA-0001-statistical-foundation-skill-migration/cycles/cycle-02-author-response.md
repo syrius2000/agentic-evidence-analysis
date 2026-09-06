@@ -122,7 +122,7 @@ Cycle 1 のレビュアー検証（`cycle-01-verification.md`）において Hig
 
 ## 4. 次のアクション
 
-`REQUIRED:VERIFY:CYCLE-2`
+VERIFY:CYCLE-2 requested (fulfilled in `cycles/cycle-02-verification.md`).
 
 F04 および F06 の残差解消、テスト追加、および残差事項の是正が完了しました。
 契約に従い、自己クローズは行わず、レビュアー（Cursor / 独立エージェント）による Cycle 2 の独立再検証（`verify`）を要請します。

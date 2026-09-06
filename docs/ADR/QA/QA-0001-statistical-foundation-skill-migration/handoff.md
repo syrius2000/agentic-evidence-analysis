@@ -2,11 +2,11 @@
 document_type: spec-driven-qa-handoff
 handoff_contract_version: "1.0"
 case_id: QA-0001
-generated_at: "2026-09-06T23:17:11+09:00"
-source_revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
-recipient_role: "implementer"
-workflow: "author-response"
-status: "author-action-required"
+generated_at: "2026-09-06T23:31:42+09:00"
+source_revision: "cdce095368a52aa3bfd3f821cc1bca8b7fb1ff77"
+recipient_role: "reviewer"
+workflow: "reviewer-verification"
+status: "closed"
 current_cycle: 2
 ---
 
@@ -16,9 +16,9 @@ current_cycle: 2
 
 - QAケース: `QA-0001`
 - 対象: `docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md`
-- 受け手の役割: `implementer`
-- 現在の状態: `author-action-required`
-- 次のワークフロー: `author-response`
+- 受け手の役割: `reviewer`
+- 現在の状態: `closed`
+- 次のワークフロー: `reviewer-verification`
 
 ## 2. 開いているFinding
 
@@ -26,8 +26,7 @@ Findingは`findings.yaml`を正本とし、以下は受け渡し用の要約で�
 
 | ID | 重大度 | 状態 | 要求される対応 | 根拠 |
 |---|---|---|---|---|
-| QA-0001-F04 | medium | open | Align Stability docs with code (zero cells, E<5, h>=0.80) and add a fixture that crosses h=0.80. | pass1_compute.R is_high_lev <- lev > 0.95; is_quarantined <- is_zero | is_sparse | is_high_lev |
-| QA-0001-F06 | medium | open | Drop or explicitly deprecate threshold_k, ebic_*, level*_factor, and arm_* in config_validation.R and analysis_config.schema.json. | SKILL.md options table still lists --threshold_k, --ebic_gamma, --level2_factor, --arm_*; generated files still say core/model_selection/effects/thresholds |
+| なし | - | - | 開いているFindingはありません | - |
 
 ## 3. 回答の契約
 
@@ -48,4 +47,4 @@ Findingは`findings.yaml`を正本とし、以下は受け渡し用の要約で�
 ## 6. 出典
 
 - 正本QAケース: `review.md`, `findings.yaml`, `traceability.yaml`, `events.jsonl`
-- 生成元リビジョン: `c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480`
+- 生成元リビジョン: `cdce095368a52aa3bfd3f821cc1bca8b7fb1ff77`
