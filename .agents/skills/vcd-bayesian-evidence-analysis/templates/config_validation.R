@@ -2,10 +2,13 @@
 
 analysis_config_allowed_keys <- c(
   "input", "vars", "freq", "output_dir", "run_id", "dataset_name",
-  "response_var",
-  "top_k", "threshold_k", "large_n_threshold", "ebic_gamma", "ebic_p",
-  "level2_factor", "level3_factor", "arm_top_rules", "arm_min_support",
-  "arm_min_confidence"
+  "response_var", "top_k", "large_n_threshold", "base_model"
+)
+
+analysis_config_deprecated_keys <- c(
+  "threshold_k", "ebic_gamma", "ebic_p",
+  "level2_factor", "level3_factor",
+  "arm_top_rules", "arm_min_support", "arm_min_confidence"
 )
 
 analysis_config_required_keys <- c("input", "vars", "freq", "output_dir", "run_id")
@@ -54,12 +57,19 @@ validate_analysis_config <- function(config_data, config_path = NULL, repo_root 
     errors <- c(errors, paste0("必須キーがありません: ", paste(missing_keys, collapse = ", ")))
   }
 
-  unknown_keys <- setdiff(names(config_data), analysis_config_allowed_keys)
+  # 旧仕様キーの明示的非推奨警告
+  deprecated_found <- intersect(names(config_data), analysis_config_deprecated_keys)
+  if (length(deprecated_found) > 0L) {
+    message("[DEPRECATED] analysis_config.json のキー '", paste(deprecated_found, collapse = ", "),
+            "' は旧仕様のため廃止されました。4軸セル診断エンジンでは無視されます。")
+  }
+
+  unknown_keys <- setdiff(names(config_data), c(analysis_config_allowed_keys, analysis_config_deprecated_keys))
   if (length(unknown_keys) > 0L) {
     message("[WARN] analysis_config.json の未知キーを無視せず読み込みます: ", paste(unknown_keys, collapse = ", "))
   }
 
-  scalar_string_keys <- c("input", "freq", "output_dir", "run_id", "dataset_name", "response_var")
+  scalar_string_keys <- c("input", "freq", "output_dir", "run_id", "dataset_name", "response_var", "base_model")
   for (key in intersect(scalar_string_keys, names(config_data))) {
     if (!is_nonempty_scalar_string(config_data[[key]])) {
       errors <- c(errors, paste0(key, " は空でない文字列である必要があります。"))
@@ -70,20 +80,10 @@ validate_analysis_config <- function(config_data, config_path = NULL, repo_root 
     errors <- c(errors, "vars は空でない文字列配列である必要があります。")
   }
 
-  integer_keys <- c("top_k", "large_n_threshold", "arm_top_rules")
+  integer_keys <- c("top_k", "large_n_threshold")
   for (key in intersect(integer_keys, names(config_data))) {
     if (!is_positive_integerish(config_data[[key]])) {
       errors <- c(errors, paste0(key, " は正の整数である必要があります。"))
-    }
-  }
-
-  numeric_keys <- c(
-    "threshold_k", "ebic_gamma", "ebic_p", "level2_factor", "level3_factor",
-    "arm_min_support", "arm_min_confidence"
-  )
-  for (key in intersect(numeric_keys, names(config_data))) {
-    if (!is_finite_number(config_data[[key]])) {
-      errors <- c(errors, paste0(key, " は有限の数値である必要があります。"))
     }
   }
 
