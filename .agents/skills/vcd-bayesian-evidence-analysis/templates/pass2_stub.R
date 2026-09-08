@@ -56,12 +56,33 @@ md_lines <- c(
 
 # 最良モデル
 best_model <- res$models$best_model_id %||% res$model_selection$best_model
+definitions <- res$models$definitions
+best_def <- if (!is.null(definitions) && !is.null(best_model) && best_model %in% names(definitions)) {
+  definitions[[best_model]]
+} else {
+  NULL
+}
+
 if (!is.null(best_model)) {
-  md_lines <- c(md_lines,
+  model_lines <- c(
     "#### 2. 最良モデル（対数線形・明示式BIC）",
-    sprintf("- **最良モデルID**: %s", best_model),
+    sprintf("- **最良モデルID**: %s", best_model)
+  )
+  if (!is.null(best_def)) {
+    model_lines <- c(
+      model_lines,
+      sprintf("- **生成クラス（ブラケット記法）**: `%s`", best_def$bracket_notation %||% "N/A"),
+      if (!is.null(best_def$bracket_expanded)) sprintf("- **実変数展開**: `%s`", best_def$bracket_expanded) else NULL,
+      sprintf("- **構造仮定**: %s", best_def$independence$description_ja %||% "N/A"),
+      if (!is.null(best_def$fitted_formula)) sprintf("- **適合式 (R)**: `%s`", best_def$fitted_formula) else NULL
+    )
+  }
+  model_lines <- c(
+    model_lines,
+    "- **解釈上の重要注意（相対採択の原則）**: 本モデルの採択は候補モデル群における明示式BICに基づく相対的優位性を支持するものであり、モデルの絶対的適合や差別の不存在を証明するものではありません。",
     ""
   )
+  md_lines <- c(md_lines, model_lines)
 }
 
 cv_val <- res$effects$cramers_v %||% res$cramers_v

@@ -60,6 +60,10 @@ parse_args <- function(args) {
         i <- i + 1L
         result$output_dir <- args[i]
       },
+      "--output-dir" = {
+        i <- i + 1L
+        result$output_dir <- args[i]
+      },
       "--run-id" = {
         i <- i + 1L
         result$run_id <- args[i]
@@ -292,7 +296,7 @@ output_results <- list(
     r_version = R.version.string
   ),
   input_summary = list(
-    variables = cat_vars,
+    variables = I(as.character(cat_vars)),
     response_var = response_var,
     total_n = n_total,
     n_cells = nrow(df),
@@ -300,6 +304,10 @@ output_results <- list(
     large_sample_mode = large_sample_mode
   ),
   models = list(
+    notation_version = model_fits$notation_version %||% "1.0.0",
+    dimension = model_fits$dimension %||% length(cat_vars),
+    factor_map = model_fits$factor_map,
+    definitions = model_fits$definitions,
     summary = model_fits$summary_df,
     best_model_id = best_m_id,
     base_model_id = base_id,

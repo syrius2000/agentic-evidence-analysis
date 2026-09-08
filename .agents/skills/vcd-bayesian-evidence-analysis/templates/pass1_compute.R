@@ -27,36 +27,322 @@ sanitize_run_slug <- function(x) {
   x
 }
 
-# --- [1. 3元表の9候補モデル定義] ---
+# --- [1. モデル仕様辞書と生成クラス（generators）正本定義] ---
+
 MODEL_SPECS_3WAY <- list(
-  M1 = list(id = "M1", name = "mutual_independence", formula_str = "~ %s + %s + %s", order = 1),
-  M2 = list(id = "M2", name = "assoc_AB", formula_str = "~ %s*%s + %s", order = 2),
-  M3 = list(id = "M3", name = "assoc_AC", formula_str = "~ %s*%s + %s", order = 2),
-  M4 = list(id = "M4", name = "assoc_BC", formula_str = "~ %s*%s + %s", order = 2),
-  M5 = list(id = "M5", name = "cond_indep_BC_given_A", formula_str = "~ %s*%s + %s*%s", order = 2),
-  M6 = list(id = "M6", name = "cond_indep_AC_given_B", formula_str = "~ %s*%s + %s*%s", order = 2),
-  M7 = list(id = "M7", name = "cond_indep_AB_given_C", formula_str = "~ %s*%s + %s*%s", order = 2),
-  M8 = list(id = "M8", name = "homogeneous_association", formula_str = "~ %s*%s + %s*%s + %s*%s", order = 2),
-  M9 = list(id = "M9", name = "saturated", formula_str = "~ %s*%s*%s", order = 3)
+  M1 = list(
+    id = "M1",
+    model_key = "3way_M1",
+    name = "mutual_independence",
+    order = 1,
+    generators = list(c("A"), c("B"), c("C")),
+    bracket_notation = "[A][B][C]",
+    independence = list(
+      kind = "mutual_independence",
+      statements = list(
+        list(left = I(c("A")), right = I(c("B")), given = I(character(0))),
+        list(left = I(c("A", "B")), right = I(c("C")), given = I(character(0)))
+      ),
+      base_description = "3因子が相互に独立である"
+    ),
+    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C",
+    formula_description_ja = "主効果A, B, Cのみを含む相互独立モデル（交互作用を含まない）"
+  ),
+  M2 = list(
+    id = "M2",
+    model_key = "3way_M2",
+    name = "assoc_AB",
+    order = 2,
+    generators = list(c("A", "B"), c("C")),
+    bracket_notation = "[AB][C]",
+    independence = list(
+      kind = "joint_independence",
+      statements = list(
+        list(left = I(c("A", "B")), right = I(c("C")), given = I(character(0)))
+      ),
+      base_description = "(A, B) と C は結合独立である"
+    ),
+    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB}",
+    formula_description_ja = "主効果A, B, Cおよび2因子交互作用ABを含む結合独立モデル"
+  ),
+  M3 = list(
+    id = "M3",
+    model_key = "3way_M3",
+    name = "assoc_AC",
+    order = 2,
+    generators = list(c("A", "C"), c("B")),
+    bracket_notation = "[AC][B]",
+    independence = list(
+      kind = "joint_independence",
+      statements = list(
+        list(left = I(c("A", "C")), right = I(c("B")), given = I(character(0)))
+      ),
+      base_description = "(A, C) と B は結合独立である"
+    ),
+    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ik}^{AC}",
+    formula_description_ja = "主効果A, B, Cおよび2因子交互作用ACを含む結合独立モデル"
+  ),
+  M4 = list(
+    id = "M4",
+    model_key = "3way_M4",
+    name = "assoc_BC",
+    order = 2,
+    generators = list(c("B", "C"), c("A")),
+    bracket_notation = "[BC][A]",
+    independence = list(
+      kind = "joint_independence",
+      statements = list(
+        list(left = I(c("B", "C")), right = I(c("A")), given = I(character(0)))
+      ),
+      base_description = "(B, C) と A は結合独立である"
+    ),
+    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{jk}^{BC}",
+    formula_description_ja = "主効果A, B, Cおよび2因子交互作用BCを含む結合独立モデル"
+  ),
+  M5 = list(
+    id = "M5",
+    model_key = "3way_M5",
+    name = "cond_indep_BC_given_A",
+    order = 2,
+    generators = list(c("A", "B"), c("A", "C")),
+    bracket_notation = "[AB][AC]",
+    independence = list(
+      kind = "conditional_independence",
+      statements = list(
+        list(left = I(c("B")), right = I(c("C")), given = I(c("A")))
+      ),
+      base_description = "Aで層別したとき、BとCは条件付き独立である"
+    ),
+    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{ik}^{AC}",
+    formula_description_ja = "主効果A, B, Cおよび2因子交互作用AB, ACを含む条件付き独立モデル（BC交互作用を含まない）"
+  ),
+  M6 = list(
+    id = "M6",
+    model_key = "3way_M6",
+    name = "cond_indep_AC_given_B",
+    order = 2,
+    generators = list(c("A", "B"), c("B", "C")),
+    bracket_notation = "[AB][BC]",
+    independence = list(
+      kind = "conditional_independence",
+      statements = list(
+        list(left = I(c("A")), right = I(c("C")), given = I(c("B")))
+      ),
+      base_description = "Bで層別したとき、AとCは条件付き独立である"
+    ),
+    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{jk}^{BC}",
+    formula_description_ja = "主効果A, B, Cおよび2因子交互作用AB, BCを含む条件付き独立モデル（AC交互作用を含まない）"
+  ),
+  M7 = list(
+    id = "M7",
+    model_key = "3way_M7",
+    name = "cond_indep_AB_given_C",
+    order = 2,
+    generators = list(c("A", "C"), c("B", "C")),
+    bracket_notation = "[AC][BC]",
+    independence = list(
+      kind = "conditional_independence",
+      statements = list(
+        list(left = I(c("A")), right = I(c("B")), given = I(c("C")))
+      ),
+      base_description = "Cで層別したとき、AとBは条件付き独立である"
+    ),
+    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ik}^{AC} + \\lambda_{jk}^{BC}",
+    formula_description_ja = "主効果A, B, Cおよび2因子交互作用AC, BCを含む条件付き独立モデル（AB交互作用を含まない）"
+  ),
+  M8 = list(
+    id = "M8",
+    model_key = "3way_M8",
+    name = "homogeneous_association",
+    order = 2,
+    generators = list(c("A", "B"), c("A", "C"), c("B", "C")),
+    bracket_notation = "[AB][AC][BC]",
+    independence = list(
+      kind = "no_independence_constraint",
+      statements = list(),
+      base_description = "全2因子交互作用を含み、3因子交互作用を含まない（均一連関）"
+    ),
+    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{ik}^{AC} + \\lambda_{jk}^{BC}",
+    formula_description_ja = "全2因子交互作用を含み、3因子交互作用を含まない均一連関モデル"
+  ),
+  M9 = list(
+    id = "M9",
+    model_key = "3way_M9",
+    name = "saturated",
+    order = 3,
+    generators = list(c("A", "B", "C")),
+    bracket_notation = "[ABC]",
+    independence = list(
+      kind = "no_independence_constraint",
+      statements = list(),
+      base_description = "飽和モデル（3因子交互作用まで含む）"
+    ),
+    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{ik}^{AC} + \\lambda_{jk}^{BC} + \\lambda_{ijk}^{ABC}",
+    formula_description_ja = "3因子交互作用まで含む飽和モデル（自由度0）"
+  )
 )
 
-build_formula_3way <- function(model_id, vars, freq_col) {
-  A <- vars[1L]; B <- vars[2L]; C <- vars[3L]
-  rhs <- switch(
-    model_id,
-    M1 = sprintf("%s + %s + %s", A, B, C),
-    M2 = sprintf("%s*%s + %s", A, B, C),
-    M3 = sprintf("%s*%s + %s", A, C, B),
-    M4 = sprintf("%s*%s + %s", B, C, A),
-    M5 = sprintf("%s*%s + %s*%s", A, B, A, C),
-    M6 = sprintf("%s*%s + %s*%s", A, B, B, C),
-    M7 = sprintf("%s*%s + %s*%s", A, C, B, C),
-    M8 = sprintf("%s*%s + %s*%s + %s*%s", A, B, A, C, B, C),
-    M9 = sprintf("%s*%s*%s", A, B, C),
-    stop("未知のモデルID: ", model_id)
+MODEL_SPECS_2WAY <- list(
+  M1 = list(
+    id = "M1",
+    model_key = "2way_M1",
+    name = "mutual_independence",
+    order = 1,
+    generators = list(c("A"), c("B")),
+    bracket_notation = "[A][B]",
+    independence = list(
+      kind = "mutual_independence",
+      statements = list(
+        list(left = I(c("A")), right = I(c("B")), given = I(character(0)))
+      ),
+      base_description = "AとBは独立である"
+    ),
+    formula_latex = "\\log \\mu_{ij} = \\lambda + \\lambda_i^A + \\lambda_j^B",
+    formula_description_ja = "主効果A, Bのみを含む独立モデル"
+  ),
+  M2 = list(
+    id = "M2",
+    model_key = "2way_M2",
+    name = "saturated",
+    order = 2,
+    generators = list(c("A", "B")),
+    bracket_notation = "[AB]",
+    independence = list(
+      kind = "no_independence_constraint",
+      statements = list(),
+      base_description = "飽和モデル（2因子交互作用まで含む）"
+    ),
+    formula_latex = "\\log \\mu_{ij} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_{ij}^{AB}",
+    formula_description_ja = "2因子交互作用を含む飽和モデル（自由度0）"
   )
+)
+
+# 因子記号と実変数の対応マップ構築
+build_factor_map <- function(vars) {
+  factor_syms <- c("A", "B", "C")[seq_along(vars)]
+  map <- list()
+  for (i in seq_along(vars)) {
+    sym <- factor_syms[i]
+    map[[sym]] <- list(
+      symbol = sym,
+      variable = vars[i],
+      label = vars[i]
+    )
+  }
+  map
+}
+
+# generators から R formula の右辺項を生成
+build_formula_from_generators <- function(generators, factor_map, freq_col) {
+  sym_to_var <- vapply(factor_map, function(x) x$variable, character(1))
+  
+  gen_terms <- vapply(generators, function(gen) {
+    real_vars <- sym_to_var[gen]
+    if (length(real_vars) == 1L) {
+      real_vars
+    } else {
+      paste(real_vars, collapse = " * ")
+    }
+  }, character(1))
+  
+  rhs <- paste(gen_terms, collapse = " + ")
   as.formula(sprintf("%s ~ %s", freq_col, rhs))
 }
+
+# 階層原理に基づき generators から期待される全展開項の正規化集合を導出
+expand_generator_terms <- function(generators, factor_map) {
+  sym_to_var <- vapply(factor_map, function(x) x$variable, character(1))
+  terms_set <- character(0)
+  
+  for (gen in generators) {
+    real_vars <- sym_to_var[gen]
+    k <- length(real_vars)
+    for (m in seq_len(k)) {
+      combs <- utils::combn(real_vars, m, simplify = FALSE)
+      for (comb in combs) {
+        comb_sorted <- sort(comb)
+        terms_set <- c(terms_set, paste(comb_sorted, collapse = ":"))
+      }
+    }
+  }
+  unique(terms_set)
+}
+
+# R formula の展開項と generators の期待項集合が完全一致（setequal）することを検証
+validate_formula_terms <- function(fmla, generators, factor_map) {
+  expected_terms <- expand_generator_terms(generators, factor_map)
+  f_terms <- attr(stats::terms(fmla), "term.labels")
+  
+  # formula 側の各項ラベル（A:B等）をソートして正規化
+  f_terms_norm <- vapply(strsplit(f_terms, ":"), function(parts) {
+    paste(sort(parts), collapse = ":")
+  }, character(1))
+  
+  if (!setequal(expected_terms, f_terms_norm)) {
+    stop(sprintf(
+      "[ERROR] formula の展開項と生成クラスが一致しません。\n期待項: %s\n実展開項: %s",
+      paste(sort(expected_terms), collapse = ", "),
+      paste(sort(f_terms_norm), collapse = ", ")
+    ), call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+# モデル仕様から実変数を反映したメタデータ（bracket_expanded, description_ja）を導出
+derive_model_metadata <- function(spec, factor_map, fit = NULL) {
+  sym_to_var <- vapply(factor_map, function(x) x$variable, character(1))
+  sym_to_label <- vapply(factor_map, function(x) x$label, character(1))
+  
+  # bracket_expanded (例: [Dept, Gender][Dept, Admit])
+  gen_expanded <- vapply(spec$generators, function(gen) {
+    real_vars <- sym_to_var[gen]
+    sprintf("[%s]", paste(real_vars, collapse = ", "))
+  }, character(1))
+  bracket_expanded <- paste(gen_expanded, collapse = "")
+  
+  # 日本語説明の生成（変数名を埋め込む）
+  desc_ja <- spec$independence$base_description
+  for (sym in names(factor_map)) {
+    var_name <- sym_to_var[[sym]]
+    label <- sym_to_label[[sym]]
+    target_text <- if (!is.null(label) && nzchar(label) && var_name != label) sprintf("%s（%s）", label, var_name) else var_name
+    # 記号 A, B, C を実変数表記に置換（マルチバイト文字列に対応したアルファベット境界）
+    pat <- sprintf("(?<![A-Za-z])%s(?![A-Za-z])", sym)
+    desc_ja <- gsub(pat, target_text, desc_ja, perl = TRUE)
+  }
+  
+  fitted_fmla_str <- if (!is.null(fit)) {
+    paste(deparse(formula(fit)), collapse = " ")
+  } else {
+    NULL
+  }
+  
+  # independence statements の left, right, given に AsIs を保持
+  indep_clean <- list(
+    kind = spec$independence$kind,
+    statements = lapply(spec$independence$statements, function(st) {
+      list(
+        left = I(as.character(st$left)),
+        right = I(as.character(st$right)),
+        given = I(as.character(st$given))
+      )
+    }),
+    description_ja = desc_ja
+  )
+  
+  list(
+    model_id = spec$id,
+    model_key = spec$model_key,
+    generators = lapply(spec$generators, function(g) I(as.character(g))),
+    bracket_notation = spec$bracket_notation,
+    bracket_expanded = bracket_expanded,
+    independence = indep_clean,
+    fitted_formula = fitted_fmla_str,
+    formula_latex = spec$formula_latex,
+    formula_description_ja = spec$formula_description_ja
+  )
+}
+
 
 # --- [2. モデル適合と総度数N基準の明示式BIC算出] ---
 fit_all_poisson_models <- function(df, vars, freq_col) {
@@ -67,91 +353,58 @@ fit_all_poisson_models <- function(df, vars, freq_col) {
     stop(sprintf("[ERROR] vcd-bayesian-evidence-analysis は 2元表または 3元表（2変数または3変数）のみをサポートしています（指定変数数: %d）。4変数以上の場合は Pass 0 にて次元削減・層別化・3変数への絞り込みを行ってください。", n_vars))
   }
   
+  factor_map <- build_factor_map(vars)
+  specs <- if (n_vars == 3L) MODEL_SPECS_3WAY else MODEL_SPECS_2WAY
+  
   fits <- list()
   summary_table <- list()
+  definitions <- list()
   
-  if (n_vars == 3L) {
-    for (m_id in names(MODEL_SPECS_3WAY)) {
-      spec <- MODEL_SPECS_3WAY[[m_id]]
-      fmla <- build_formula_3way(m_id, vars, freq_col)
-      
-      fit <- tryCatch({
-        glm(fmla, data = df, family = poisson(), x = TRUE)
-      }, error = function(e) NULL)
-      
-      if (!is.null(fit)) {
-        ll <- as.numeric(stats::logLik(fit))
-        k_param <- attr(stats::logLik(fit), "df")
-        dev <- fit$deviance
-        df_res <- fit$df.residual
-        # 総度数 N 基準の明示式 BIC (Poisson尤度ベース)
-        # BIC = -2*logLik + k_param * log(N)
-        # 切片を含む対数線形モデルではモデル間差は多項BICと完全一致
-        bic_explicit <- -2 * ll + k_param * log(total_n)
-        leverage <- tryCatch(stats::hatvalues(fit), error = function(e) rep(0, nrow(df)))
-        
-        fits[[m_id]] <- list(
-          id = m_id,
-          name = spec$name,
-          formula = deparse(fmla),
-          fit = fit,
-          loglik = ll,
-          rank = fit$rank,
-          df_residual = df_res,
-          deviance = dev,
-          bic = bic_explicit,
-          fitted_values = fitted(fit),
-          residuals_pearson = residuals(fit, type = "pearson"),
-          residuals_deviance = residuals(fit, type = "deviance"),
-          leverage = leverage
-        )
-        
-        summary_table[[m_id]] <- data.frame(
-          model_id = m_id,
-          model_name = spec$name,
-          df_residual = df_res,
-          deviance = round(dev, 4),
-          bic = round(bic_explicit, 4),
-          stringsAsFactors = FALSE
-        )
-      }
-    }
-  } else if (n_vars == 2L) {
-    # 2元表: M1(相互独立) と M2(飽和)
-    f_indep <- as.formula(sprintf("%s ~ %s + %s", freq_col, vars[1L], vars[2L]))
-    f_satur <- as.formula(sprintf("%s ~ %s * %s", freq_col, vars[1L], vars[2L]))
+  for (m_id in names(specs)) {
+    spec <- specs[[m_id]]
+    fmla <- build_formula_from_generators(spec$generators, factor_map, freq_col)
     
-    fit_ind <- glm(f_indep, data = df, family = poisson(), x = TRUE)
-    fit_sat <- glm(f_satur, data = df, family = poisson(), x = TRUE)
+    # 階層原理に基づく展開項の完全一致（setequal）検証
+    validate_formula_terms(fmla, spec$generators, factor_map)
     
-    for (m_info in list(list(id="M1", name="mutual_independence", fit=fit_ind),
-                        list(id="M2", name="saturated", fit=fit_sat))) {
-      m_id <- m_info$id
-      f_obj <- m_info$fit
-      ll <- as.numeric(stats::logLik(f_obj))
-      k_param <- attr(stats::logLik(f_obj), "df")
-      dev <- f_obj$deviance
-      df_res <- f_obj$df.residual
+    fit <- tryCatch({
+      glm(fmla, data = df, family = poisson(), x = TRUE)
+    }, error = function(e) NULL)
+    
+    # 数理メタデータの導出（実変数展開、独立性説明、式文字列）
+    meta <- derive_model_metadata(spec, factor_map, fit)
+    definitions[[m_id]] <- meta
+    
+    if (!is.null(fit)) {
+      ll <- as.numeric(stats::logLik(fit))
+      k_param <- attr(stats::logLik(fit), "df")
+      dev <- fit$deviance
+      df_res <- fit$df.residual
+      # 総度数 N 基準の明示式 BIC (Poisson尤度ベース)
+      # BIC = -2*logLik + k_param * log(N)
+      # 切片を含む対数線形モデルではモデル間差は多項BICと完全一致
       bic_explicit <- -2 * ll + k_param * log(total_n)
-      leverage <- tryCatch(stats::hatvalues(f_obj), error = function(e) rep(0, nrow(df)))
+      leverage <- tryCatch(stats::hatvalues(fit), error = function(e) rep(0, nrow(df)))
       
       fits[[m_id]] <- list(
         id = m_id,
-        name = m_info$name,
-        fit = f_obj,
+        name = spec$name,
+        formula = deparse(fmla),
+        fit = fit,
         loglik = ll,
-        rank = f_obj$rank,
+        rank = fit$rank,
         df_residual = df_res,
         deviance = dev,
         bic = bic_explicit,
-        fitted_values = fitted(f_obj),
-        residuals_pearson = residuals(f_obj, type = "pearson"),
-        residuals_deviance = residuals(f_obj, type = "deviance"),
+        fitted_values = fitted(fit),
+        residuals_pearson = residuals(fit, type = "pearson"),
+        residuals_deviance = residuals(fit, type = "deviance"),
         leverage = leverage
       )
+      
       summary_table[[m_id]] <- data.frame(
         model_id = m_id,
-        model_name = m_info$name,
+        model_name = spec$name,
         df_residual = df_res,
         deviance = round(dev, 4),
         bic = round(bic_explicit, 4),
@@ -163,8 +416,17 @@ fit_all_poisson_models <- function(df, vars, freq_col) {
   df_summary <- dplyr::bind_rows(summary_table) %>% dplyr::arrange(bic)
   best_id <- df_summary$model_id[1L]
   
-  list(models = fits, summary_df = df_summary, best_model_id = best_id)
+  list(
+    notation_version = "1.0.0",
+    dimension = n_vars,
+    factor_map = factor_map,
+    definitions = definitions,
+    models = fits,
+    summary_df = df_summary,
+    best_model_id = best_id
+  )
 }
+
 
 # --- [3. 4軸セル診断体系 (Effect, Evidence, Influence, Stability)] ---
 compute_4axis_cell_diagnostics <- function(df, vars, freq_col, fitted_models, base_model_id = "M1") {

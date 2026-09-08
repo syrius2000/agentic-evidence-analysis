@@ -1,0 +1,12 @@
+{
+  "input": "examples/ucb_admissions.csv",
+  "vars": ["Dept", "Gender", "Admit"],
+  "freq": "Freq",
+  "response_var": "Admit",
+  "output_dir": "output/ucb_admissions",
+  "run_id": "admit_bias",
+  "dataset_name": "UCBAdmissions",
+  "large_n_threshold": 2000,
+  "top_k": 10,
+  "base_model": "M1"
+}

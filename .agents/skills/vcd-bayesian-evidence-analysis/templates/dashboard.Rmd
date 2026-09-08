@@ -84,6 +84,86 @@ base_model_id <- res$cells$base_model_id %||% res$models$base_model_id %||% "M1"
 base_model_name <- res$cells$base_model_name %||% "ベースラインモデル"
 models_summary <- as.data.frame(res$models$summary %||% res$model_selection$summary)
 
+# 数理メタデータ（因子対応・数理辞書・バージョン）の取得
+notation_version <- res$models$notation_version %||% "legacy"
+dimension <- res$models$dimension %||% length(dims)
+raw_factor_map <- res$models$factor_map
+definitions <- res$models$definitions
+
+# 凡例マップの解決（旧JSONの場合は dims から導出ルールを明記）
+has_factor_map_stored <- !is.null(raw_factor_map)
+factor_map <- if (has_factor_map_stored) {
+  raw_factor_map
+} else {
+  syms <- c("A", "B", "C")[seq_along(dims)]
+  map <- list()
+  for (i in seq_along(dims)) {
+    map[[syms[i]]] <- list(symbol = syms[i], variable = dims[i], label = dims[i])
+  }
+  map
+}
+
+# 内部不整合および未知バージョンのフラグ判定
+has_notation_mismatch <- FALSE
+mismatch_reasons <- character(0)
+
+if (notation_version != "legacy" && !startsWith(notation_version, "1.")) {
+  has_notation_mismatch <- TRUE
+  mismatch_reasons <- c(mismatch_reasons, sprintf("未知の notation_version です: %s", notation_version))
+}
+
+if (!is.null(res$models$dimension) && as.integer(res$models$dimension) != length(dims)) {
+  has_notation_mismatch <- TRUE
+  mismatch_reasons <- c(mismatch_reasons, sprintf("モデル次元 (%s) と入力変数数 (%s) が一致しません", res$models$dimension, length(dims)))
+}
+
+if (dimension == 2L && "C" %in% names(factor_map)) {
+  has_notation_mismatch <- TRUE
+  mismatch_reasons <- c(mismatch_reasons, "2元表データですが因子記号Cが定義に含まれています")
+}
+
+# best_model_id の存在・定義参照チェック
+best_model_def <- if (!is.null(definitions) && !is.null(best_model_id) && best_model_id %in% names(definitions)) {
+  definitions[[best_model_id]]
+} else {
+  NULL
+}
+
+if (!is.null(definitions) && !is.null(best_model_id) && !best_model_id %in% names(definitions)) {
+  has_notation_mismatch <- TRUE
+  mismatch_reasons <- c(mismatch_reasons, sprintf("最良モデル %s の数理定義が definitions に見つかりません", best_model_id))
+}
+
+best_model_in_summary <- if (nrow(models_summary) > 0 && "model_id" %in% names(models_summary)) {
+  best_model_id %in% models_summary$model_id
+} else {
+  FALSE
+}
+
+if (!is.null(best_model_id) && nrow(models_summary) > 0 && !best_model_in_summary) {
+  has_notation_mismatch <- TRUE
+  mismatch_reasons <- c(mismatch_reasons, sprintf("最良モデル %s がモデル比較サマリー表に存在しません", best_model_id))
+}
+
+if (!is.null(definitions) && nrow(models_summary) > 0 && "formula" %in% names(models_summary)) {
+  for (i in seq_len(nrow(models_summary))) {
+    mid <- as.character(models_summary$model_id[i])
+    if (mid %in% names(definitions)) {
+      d_f <- definitions[[mid]]$fitted_formula
+      s_f <- as.character(models_summary$formula[i])
+      if (!is.null(d_f) && !is.null(s_f) && !is.na(s_f) && nzchar(s_f)) {
+        d_norm <- gsub("\\s+", "", d_f)
+        s_norm <- gsub("\\s+", "", s_f)
+        if (d_norm != s_norm) {
+          has_notation_mismatch <- TRUE
+          mismatch_reasons <- c(mismatch_reasons, sprintf("モデル %s の記録適合式 (%s) と数理定義の適合式 (%s) が一致しません", mid, s_f, d_f))
+          break
+        }
+      }
+    }
+  }
+}
+
 # 効果量情報
 cramers_v <- res$effects$cramers_v %||% res$cramers_v
 cramers_v_ci <- res$effects$cramers_v_ci %||% c(res$cramers_v_ci_low, res$cramers_v_ci_high)
@@ -300,6 +380,120 @@ body {
 .dataTables_wrapper {
   font-size: 13px;
 }
+
+.factor-legend-box {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-left: 5px solid #2b5b88;
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+}
+.factor-legend-box h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1b365d;
+}
+.factor-legend-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+}
+.factor-legend-list li {
+  display: flex;
+  align-items: center;
+}
+.factor-symbol-badge {
+  display: inline-block;
+  background: #1e3a8a;
+  color: white;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-right: 6px;
+  font-size: 12px;
+}
+.factor-note {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.model-detail-link {
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: 6px;
+}
+.model-detail-link:hover {
+  color: #1d4ed8;
+}
+
+.model-detail-accordion {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  background: #ffffff;
+  overflow: hidden;
+}
+.model-detail-accordion summary {
+  padding: 12px 16px;
+  font-weight: 600;
+  background: #f8fafc;
+  cursor: pointer;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.model-detail-accordion summary:hover {
+  background: #f1f5f9;
+}
+.model-detail-accordion summary:focus {
+  box-shadow: 0 0 0 2px #3b82f6;
+}
+.model-detail-content {
+  padding: 16px 20px;
+  border-top: 1px solid #e2e8f0;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.model-detail-content h5 {
+  margin: 0 0 10px 0;
+  color: #1b365d;
+  font-size: 14px;
+  font-weight: 700;
+}
+.model-detail-content p {
+  margin: 6px 0;
+}
+.formula-box {
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .factor-legend-list {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .header-banner {
+    padding: 16px 20px;
+  }
+}
 ```
 
 ```{r dashboard-main-open, results='asis'}
@@ -331,6 +525,48 @@ cat(paste0(
 ))
 ```
 
+```{r factor-legend, results='asis'}
+# タスク 2.1: 最上部の変数定義・因子記号凡例ボックス
+legend_items <- vapply(names(factor_map), function(sym) {
+  item <- factor_map[[sym]]
+  v_name <- item$variable
+  v_label <- item$label %||% v_name
+  label_disp <- if (v_name != v_label && nzchar(v_label)) sprintf("%s（%s）", v_label, v_name) else v_name
+  sprintf('<li><span class="factor-symbol-badge">%s</span> <strong>%s</strong></li>', htmltools::htmlEscape(sym), htmltools::htmlEscape(label_disp))
+}, character(1))
+
+derivation_note <- if (!has_factor_map_stored) {
+  " <span style='color:#b45309;'>（※ 本データは旧JSON仕様のため、変数順序より導出しています）</span>"
+} else {
+  ""
+}
+
+cat(paste0(
+  '<div class="factor-legend-box">',
+  '<h4>&#128273; 変数定義と因子記号の対応凡例', derivation_note, '</h4>',
+  '<ul class="factor-legend-list">',
+  paste(legend_items, collapse = "\n"),
+  '</ul>',
+  '<div class="factor-note">',
+  '※ カテゴリの水準名（例: 学科 A〜F）と、分析上の因子記号（A, B, C）は異なります。以降のモデル構造や数式は本凡例の因子記号に基づきます。',
+  '</div>',
+  '</div>'
+))
+
+# タスク 3.2 / 3.3: 内部不整合および未知バージョンの警告ボックス
+if (has_notation_mismatch && length(mismatch_reasons) > 0) {
+  cat('<div class="notice-box notice-warning">')
+  cat('<strong>&#9888; 数理定義・入力整合性の警告</strong>:<br>')
+  cat('<ul style="margin:4px 0 6px 20px; padding:0;">')
+  for (reason in mismatch_reasons) {
+    cat('<li>', htmltools::htmlEscape(reason), '</li>')
+  }
+  cat('</ul>')
+  cat('※ 不整合が検出されたため、該当する数学的解釈および初期展開は安全のため保留されます。')
+  cat('</div>')
+}
+```
+
 ```{r stats-cards, results='asis'}
 pct_regular <- round(regular_count / n_cells * 100, 1)
 
@@ -340,10 +576,25 @@ cv_ci_str <- if (!is.null(cramers_v_ci) && length(cramers_v_ci) == 2L && !is.na(
   ""
 }
 
+# タスク 2.2: 主要指標カードでの構造仮定表示
+model_assumption_desc <- if (has_notation_mismatch) {
+  '<div style="font-size:11px; color:#c2410c; margin-top:4px;">内部不整合（仮定保留）</div>'
+} else if (!is.null(best_model_def)) {
+  desc_text <- best_model_def$independence$description_ja %||% best_model_def$bracket_notation
+  sprintf('<div style="font-size:11px; color:#1e40af; margin-top:4px; line-height:1.3;" title="%s">%s</div>',
+          htmltools::htmlEscape(desc_text), htmltools::htmlEscape(desc_text))
+} else if (is.null(definitions)) {
+  '<div style="font-size:11px; color:#64748b; margin-top:4px;">数学的定義未収録（仮定推測なし）</div>'
+} else {
+  '<div style="font-size:11px; color:#64748b; margin-top:4px;">仮定情報未確定</div>'
+}
+
 cat(paste0(
   '<div class="stats-grid">',
   '<div class="stat-card model-card"><div class="value">', htmltools::htmlEscape(best_model_id), "</div>",
-  '<div class="label">最良モデル (明示式BIC)</div></div>',
+  '<div class="label">最良モデル (明示式BIC)</div>',
+  model_assumption_desc,
+  '</div>',
   
   '<div class="stat-card effect-card"><div class="value">', cv_summary_str, "</div>",
   '<div class="label">全体効果量 V ', cv_ci_str, '</div></div>',
@@ -390,9 +641,14 @@ cat("\n</div>\n")
 if (nrow(models_summary) > 0) {
   cat('<div class="section-title">&#9879; 対数線形モデル比較（総度数 N 基準の明示式BIC）</div>')
   cat('<div class="topk-panel" style="margin-bottom:24px;">')
-  cat('<p style="margin:0 0 12px 0; font-size:13px; color:#64748b;">')
-  cat('ポアソン対数線形回帰による主効果・交互作用モデルの適合度比較です。総度数 $N$ をペナルティ基準としたBICにより最良モデルを選択しています。')
-  cat('</p>')
+  
+  # タスク 2.3: ブラケット解説および BIC・ΔBIC の定義・比較方向の注記
+  cat('<div class="notice-box notice-info" style="margin-bottom:16px;">')
+  cat('<strong>記法の見方とモデル選択基準</strong>:<br>')
+  cat('・<strong>生成クラス（ブラケット記法）</strong>: 階層的対数線形モデルにおいて最大の交互作用項とその下位項を指定する記法です（例: <code>[AB][AC]</code> は因子A-B間およびA-C間の交互作用と、主効果A, B, Cを含み、B-C間交互作用を含まない構造仮定を表します）。<br>')
+  cat('・<strong>明示式BIC</strong>: $\\text{BIC} = -2 \\ln L + k \\ln N$（$N$: 総観測度数, $k$: 推定パラメータ数）。<strong>値が小さいほど好ましい</strong>モデルです。<br>')
+  cat('・<strong>相対評価の原則</strong>: $\\Delta\\text{BIC} = \\text{BIC} - \\min(\\text{BIC})$ において、$\\Delta\\text{BIC} > 10$ は最良モデルに対する極めて強力な支持証拠となります。ただし、本評価は候補モデル群における<strong>相対的採択</strong>であり、モデルの絶対的適合や差別の不存在を証明するものではありません。')
+  cat('</div>')
 }
 ```
 
@@ -402,38 +658,239 @@ if (nrow(models_summary) > 0) {
   if (!"delta_bic" %in% names(m_tab) && "bic" %in% names(m_tab)) {
     m_tab$delta_bic <- m_tab$bic - min(m_tab$bic, na.rm = TRUE)
   }
-  names(m_tab)[names(m_tab) == "model_id"] <- "モデルID"
-  names(m_tab)[names(m_tab) == "model_name"] <- "モデル名"
-  names(m_tab)[names(m_tab) == "name"] <- "モデル名"
-  names(m_tab)[names(m_tab) == "df_residual"] <- "残差自由度"
-  names(m_tab)[names(m_tab) == "df"] <- "残差自由度"
-  names(m_tab)[names(m_tab) == "deviance"] <- "逸脱度"
-  names(m_tab)[names(m_tab) == "bic"] <- "BIC"
-  names(m_tab)[names(m_tab) == "delta_bic"] <- "ΔBIC"
   
-  round_target <- intersect(c("逸脱度", "BIC", "ΔBIC"), names(m_tab))
+  # タスク 2.3: 6列DT表の構築
+  # 1. モデルと仮定（短い説明 + アンカーリンク）
+  # 2. 生成クラス（等幅テキスト）
+  # 3. 残差自由度
+  # 4. 逸脱度
+  # 5. BIC
+  # 6. ΔBIC
   
-  datatable(
-    m_tab,
+  m_ids <- as.character(m_tab$model_id)
+  
+  model_assumption_col <- vapply(seq_along(m_ids), function(i) {
+    mid <- m_ids[i]
+    def <- if (!is.null(definitions) && mid %in% names(definitions)) definitions[[mid]] else NULL
+    short_desc <- if (!is.null(def)) {
+      def$independence$description_ja %||% def$bracket_notation
+    } else {
+      as.character(m_tab$model_name[i] %||% mid)
+    }
+    target_accordion_id <- sprintf("model-detail-%s", mid)
+    sprintf('<strong>%s</strong>: %s <a href="#%s" class="model-detail-link" onclick="openModelDetail(\'%s\'); return false;">数式・定義</a>',
+            htmltools::htmlEscape(mid), htmltools::htmlEscape(short_desc), target_accordion_id, target_accordion_id)
+  }, character(1))
+  
+  generators_col <- vapply(seq_along(m_ids), function(i) {
+    mid <- m_ids[i]
+    def <- if (!is.null(definitions) && mid %in% names(definitions)) definitions[[mid]] else NULL
+    if (!is.null(def)) {
+      sprintf('<code>%s</code>', htmltools::htmlEscape(def$bracket_notation))
+    } else {
+      '<span style="color:#94a3b8;">未収録</span>'
+    }
+  }, character(1))
+  
+  df_res_col <- m_tab$df_residual %||% m_tab$df
+  dev_col <- m_tab$deviance
+  bic_col <- m_tab$bic
+  dbic_col <- m_tab$delta_bic
+  
+  table_6col <- data.frame(
+    "モデルと仮定" = model_assumption_col,
+    "生成クラス" = generators_col,
+    "残差自由度" = df_res_col,
+    "逸脱度" = dev_col,
+    "BIC" = bic_col,
+    "ΔBIC" = dbic_col,
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  
+  best_row_idx <- which(m_ids == best_model_id)
+  
+  dt_models <- datatable(
+    table_6col,
+    escape = FALSE,
     filter = "none",
     rownames = FALSE,
     options = list(dom = "t", paging = FALSE, ordering = FALSE)
   ) |>
-    formatRound(round_target, digits = 2) |>
-    formatStyle(
-      "モデルID",
-      target = "row",
-      backgroundColor = styleEqual(best_model_id, "#f0fdf4"),
-      fontWeight = styleEqual(best_model_id, "bold")
-    )
+    formatRound(c("逸脱度", "BIC", "ΔBIC"), digits = 2)
+  
+  if (length(best_row_idx) == 1L) {
+    dt_models <- dt_models |>
+      formatStyle(
+        "モデルと仮定",
+        target = "row",
+        backgroundColor = styleEqual(table_6col$`モデルと仮定`[best_row_idx], "#f0fdf4"),
+        fontWeight = styleEqual(table_6col$`モデルと仮定`[best_row_idx], "bold")
+      )
+  }
+  
+  dt_models
+}
+```
+
+```{r model-details, results='asis'}
+# タスク 2.4: DT 表直下の候補モデル詳細アコーディオン (<details>)
+if (nrow(models_summary) > 0) {
+  cat('<div style="margin-top:20px;">')
+  cat('<h4 style="font-size:14px; font-weight:700; color:#1b365d; margin-bottom:12px;">&#128269; 各候補モデルの数理定義・構造仮定詳細</h4>')
+  
+  candidate_ids <- if (dimension == 3L) paste0("M", 1:9) else paste0("M", 1:2)
+  
+  should_open_id <- if (!has_notation_mismatch && best_model_in_summary && !is.null(best_model_id) && best_model_id %in% candidate_ids) {
+    best_model_id
+  } else {
+    ""
+  }
+  
+  for (mid in candidate_ids) {
+    accordion_id <- sprintf("model-detail-%s", mid)
+    heading_id <- sprintf("heading-%s", accordion_id)
+    is_open <- (mid == should_open_id)
+    open_attr <- if (is_open) " open" else ""
+    
+    sum_row <- if (mid %in% models_summary$model_id) {
+      models_summary[models_summary$model_id == mid, , drop = FALSE]
+    } else {
+      NULL
+    }
+    
+    def <- if (!is.null(definitions) && mid %in% names(definitions)) {
+      definitions[[mid]]
+    } else {
+      NULL
+    }
+    
+    # 適合失敗判定（タスク 3.3）
+    has_failed <- FALSE
+    fail_msg <- ""
+    if (!is.null(sum_row) && nrow(sum_row) > 0) {
+      st <- if ("status" %in% names(sum_row) && !is.na(sum_row$status[1])) as.character(sum_row$status[1]) else ""
+      err <- if ("error_message" %in% names(sum_row) && !is.na(sum_row$error_message[1])) as.character(sum_row$error_message[1]) else ""
+      if (identical(st, "FAILED") || nzchar(err)) {
+        has_failed <- TRUE
+        fail_msg <- if (nzchar(err)) err else "収束不良等のため適合失敗"
+      }
+    }
+    
+    status_badge <- if (has_failed) {
+      sprintf(' <span style="background:#dc2626; color:white; font-size:11px; padding:2px 6px; border-radius:4px;">適合失敗: %s</span>', htmltools::htmlEscape(fail_msg))
+    } else if (!is.null(sum_row) && mid == best_model_id && best_model_in_summary) {
+      ' <span style="background:#15803d; color:white; font-size:11px; padding:2px 6px; border-radius:4px;">最良モデル (BIC最小)</span>'
+    } else if (is.null(sum_row)) {
+      ' <span style="background:#64748b; color:white; font-size:11px; padding:2px 6px; border-radius:4px;">適合結果未収録</span>'
+    } else {
+      ""
+    }
+    
+    summary_title <- sprintf('%s: %s%s',
+                             htmltools::htmlEscape(mid),
+                             htmltools::htmlEscape(def$bracket_notation %||% (sum_row$model_name[1] %||% "モデル")),
+                             status_badge)
+    
+    cat(sprintf('<details id="%s" class="model-detail-accordion"%s>', accordion_id, open_attr))
+    cat(sprintf('<summary><span><strong>%s</strong></span><span style="font-size:12px; color:#64748b;">開閉</span></summary>', summary_title))
+    cat('<div class="model-detail-content">')
+    cat(sprintf('<h5 id="%s" tabindex="-1" style="outline:none;">モデル %s の数理定義と構造仮定</h5>', heading_id, htmltools::htmlEscape(mid)))
+    
+    if (is.null(def)) {
+      # 定義未収録（旧JSON等）
+      cat('<div class="notice-box notice-warning">')
+      cat('<strong>数学的定義未収録</strong>: 本モデルの数理定義（生成クラス・独立性構造・LaTeX式）は入力データに記録されていません。未保存の定義を推測して補完表示しません。')
+      cat('</div>')
+    } else {
+      cat('<p><strong>生成クラス（ブラケット記法）</strong>: <code>', htmltools::htmlEscape(def$bracket_notation), '</code>')
+      if (!is.null(def$bracket_expanded)) {
+        cat(' &nbsp;|&nbsp; <strong>実変数展開</strong>: <code>', htmltools::htmlEscape(def$bracket_expanded), '</code>')
+      }
+      cat('</p>')
+      
+      cat('<p><strong>独立性仮定</strong>: ', htmltools::htmlEscape(def$independence$description_ja %||% "制約なし"), '</p>')
+      
+      if (!is.null(def$formula_description_ja)) {
+        cat('<p><strong>モデル構造説明</strong>: ', htmltools::htmlEscape(def$formula_description_ja), '</p>')
+      }
+      
+      if (!is.null(def$formula_latex)) {
+        cat('<div class="formula-box">')
+        cat('<strong>ポアソン対数線形回帰式</strong>:<br>')
+        cat('$$', def$formula_latex, '$$')
+        cat('<div style="font-size:11.5px; color:#64748b; margin-top:4px;">※ パラメータにはゼロ和制約または基準水準制約が適用されます。</div>')
+        cat('</div>')
+      }
+      
+      if (!is.null(def$fitted_formula)) {
+        cat('<p style="font-size:12px; color:#475569;"><strong>実際の適合 formula (R)</strong>: <code>', htmltools::htmlEscape(def$fitted_formula), '</code></p>')
+      }
+    }
+    
+    if (has_failed) {
+      cat(sprintf('<div style="margin-top:10px; font-size:12.5px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:8px 12px; border-radius:4px;"><strong>適合状態: 評価失敗</strong>（理由: %s）※ 通常のモデル順位付けから除外されています。</div>', htmltools::htmlEscape(fail_msg)))
+    } else if (!is.null(sum_row) && nrow(sum_row) > 0 && !is.na(sum_row$bic[1])) {
+      cat('<div style="margin-top:10px; font-size:12.5px; background:#f8fafc; padding:8px 12px; border-radius:4px;">')
+      cat('<strong>適合指標</strong>: 残差自由度 = ', sum_row$df_residual[1] %||% sum_row$df[1],
+          ', 逸脱度 = ', round(sum_row$deviance[1], 2),
+          ', BIC = ', round(sum_row$bic[1], 2),
+          if (!is.null(sum_row$delta_bic)) paste0(', ΔBIC = ', round(sum_row$delta_bic[1], 2)) else "",
+          '</div>')
+    } else {
+      cat('<div style="margin-top:10px; font-size:12px; color:#94a3b8;">適合数値: 未収録（適合エラーまたは評価除外）</div>')
+    }
+    
+    cat('</div>')
+    cat('</details>')
+  }
+  cat('</div>')
 }
 ```
 
 ```{r model-comparison-close, results='asis'}
 if (nrow(models_summary) > 0) {
-  cat('</div>')
+  cat('</div><!-- end topk-panel -->\n')
 }
 ```
+
+<script>
+// タスク 2.5 & 3.4: アンカーリンク操作によるアコーディオン展開とフォーカス移動、MathJax再描画
+function openModelDetail(accordionId) {
+  var details = document.getElementById(accordionId);
+  if (details) {
+    if (!details.open) {
+      details.open = true;
+    }
+    var heading = document.getElementById('heading-' + accordionId);
+    if (heading) {
+      heading.focus();
+    } else {
+      details.focus();
+    }
+    details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise([details]).catch(function(err) {
+        console.warn('MathJax typeset error:', err);
+      });
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var accordions = document.querySelectorAll('.model-detail-accordion');
+  accordions.forEach(function(acc) {
+    acc.addEventListener('toggle', function() {
+      if (acc.open && window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise([acc]).catch(function(err) {
+          console.warn('MathJax typeset error:', err);
+        });
+      }
+    });
+  });
+});
+</script>
 
 <div class="section-title">&#127942; Top 局所セル診断（効果比 |log(O/E)| 上位セル：Dual-Filter 第1段階）</div>
 

@@ -1,0 +1,24 @@
+{
+  "baseline_commit": "3956f22",
+  "frozen_at": "2026-09-08T11:24:11+0900",
+  "input_csv": {
+    "path": "examples/ucb_admissions.csv",
+    "sha256": "3c869703114951dfac2b3bb72b41ea4efaface26a5fc84e64b3358efe409cf54",
+    "nrow": 24,
+    "total_freq": 4526
+  },
+  "config": {
+    "path": "output/ucb_admissions/run_admit_bias/analysis_config.json",
+    "sha256": "ca9b07e9334baa656dedfaeb0d347853c4ab91b58198ec5a76e46be6e3408c59"
+  },
+  "existing_results": {
+    "path": "output/ucb_admissions/run_admit_bias/evidence_results.json",
+    "sha256": "673ff1d0cdf7a741d2402d02ea63925e01dd6481f76589c6b6d788fece0af4b3"
+  },
+  "reference_fits": {
+    "path": "tests/fixtures/baseline_3956f22/baseline_reference_fits.json",
+    "sha256": "ef5b03b20d8f5860223c6b340b7790d42d6eb7e909e715100cf98f37d7d5e17e",
+    "model_ids": ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9"],
+    "best_model_id": "M5"
+  }
+}
