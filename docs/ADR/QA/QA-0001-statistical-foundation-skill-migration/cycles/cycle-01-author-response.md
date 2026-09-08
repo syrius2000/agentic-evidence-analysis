@@ -47,7 +47,7 @@ outcome: fix-submitted
   - `skill_out/titanic_std_v2/run_run_std_v2/dashboard.html`
   - `skill_out/titanic_100x_v2/run_run_100x_v2/executive_summary.md`
   - `skill_out/titanic_100x_v2/run_run_100x_v2/dashboard.html`
-  - `docs/Artifacts/statistical_foundation_skill_migration_report_001_0906.md`
+  - `docs/Archives/archived_summary_002_0908.md`
 - **修正内容**:
   `skill_out/` 配下の通常標本（$N=2,201$）および 100 倍標本（$N=220,100$）の `executive_summary.md` を、Pass 1 が出力した `evidence_results.json` の完全実測値に基づいて再生成しました。ダッシュボード（`dashboard.html`）も再描画し、要約内の数値と JSON の完全一致を達成しました。
 - **突合 Evidence**:
@@ -81,7 +81,7 @@ outcome: fix-submitted
   - `tests/test_vcd_bayesian_help.R`
   - `tests/test_vcd_bayesian_run_id.R`
   - `tests/legacy_quarantine/`（12 ファイル移動）
-  - `docs/Artifacts/statistical_foundation_skill_migration_report_001_0906.md`
+  - `docs/Archives/archived_summary_002_0908.md`
 - **修正内容**:
   - `tests/test_vcd_bayesian_help.R` を改修し、新 4 軸 CLI オプション（`--base_model`, `--model_family`, `--min_freq`, `--leverage_threshold` 等）の出力を検証する形に更新し、PASS を確認。
   - `tests/test_vcd_bayesian_run_id.R` が検証する出力ディレクトリ隔離性および JSON 契約が PASS することを確認。
@@ -100,7 +100,7 @@ outcome: fix-submitted
   - `.agents/skills/vcd-bayesian-evidence-analysis/SKILL.md`
   - `docs/reference/four_axis_cell_diagnostics.md`
   - `.agents/skills/vcd-bayesian-evidence-analysis/templates/dashboard.Rmd`
-  - `docs/Artifacts/statistical_foundation_skill_migration_report_001_0906.md`
+  - `docs/Archives/archived_summary_002_0908.md`
 - **修正内容**:
   - `pass1_compute.R` の過大 Leverage 判定式を `is_high_lev <- lev >= 0.80` に修正（`is_quarantined <- is_zero | is_sparse | is_high_lev`）。
   - コード、SKILL、リファレンス、ダッシュボード、完了報告書において、「期待度数 $E < 5$（疎セル）、ゼロセル、または Leverage $h \ge 0.80$（過大影響力セル）」を QUARANTINED（隔離・要慎重解釈）とする基準として完全統一しました。
@@ -114,7 +114,7 @@ outcome: fix-submitted
 - **対象ファイル**:
   - `docs/reference/loglinear_models_bic.md`
   - `.agents/skills/vcd-bayesian-evidence-analysis/templates/dashboard.Rmd`
-  - `docs/Artifacts/statistical_foundation_skill_migration_report_001_0906.md`
+  - `docs/Archives/archived_summary_002_0908.md`
 - **修正内容**:
   - 実装（`pass1_compute.R`）および実測値 M1 BIC = 1160.1817 と整合するよう、掲載数式をすべてポアソン完全対数尤度基準の明示式 BIC:
     $$\mathrm{BIC}_{\mathrm{explicit}} = -2\ln L + p\ln N$$
@@ -166,13 +166,13 @@ outcome: fix-submitted
 ### QA-0001-F09: Report claims Cramer's V is sample-size invariant but 1x and 100x differ
 - **Disposition**: `fix-submitted`
 - **対象ファイル**:
-  - `docs/Artifacts/statistical_foundation_skill_migration_report_001_0906.md`
+  - `docs/Archives/archived_summary_002_0908.md`
 - **修正内容**:
   - 完了報告書の記述を修正し、Cramér's V を「標本規模不変」「全く同一」とする過大な主張を撤回しました。
   - `effectsize::cramers_v` による有限標本バイアス補正および度数丸めにより、1 倍（0.5178）と 100 倍（0.5208）の間で約 0.003 の微差が生じる理論的理由を注記。
   - 大標本下でも $V \ge 0.5$（大効果）の実務的連関区分が一貫して維持され、信頼区間が $[0.4798, 1.0000]$ から $[0.5172, 1.0000]$ へと大幅に収縮して推論精度が向上したという正確な数理的事実として記録しました。
 - **Evidence**:
-  `statistical_foundation_skill_migration_report_001_0906.md` セクション 4.1 注1 およびセクション 4.2 の記述。
+  `archived_summary_002_0908.md` に統合された旧統合報告のセクション 4.1 注1 およびセクション 4.2 相当の記述。
 
 ---
 

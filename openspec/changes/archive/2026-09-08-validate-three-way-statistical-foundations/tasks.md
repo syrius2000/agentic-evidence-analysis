@@ -4,7 +4,7 @@ created: 2026-09-06 17:33 (JST)
 update: 2026-09-06 21:55 (JST) (レビュー指摘対応・局所セル診断4軸体系統合・全検証合格)
 author: Codex (GPT-6) & Antigravity
 
-[全体計画](../../../docs/Artifacts/implementation_plan_005_0906.md)と[設計](design.md)に基づく実装者向け一覧。チェックは実際の完了証拠を確認してから付ける。今回の計画作成で実装・分析計算を開始したものではない。
+[統計基盤アーカイブ](../../../docs/Archives/archived_summary_002_0908.md)と[設計](design.md)に基づく実装者向け一覧。チェックは実際の完了証拠を確認してから付ける。今回の計画作成で実装・分析計算を開始したものではない。
 
 変更先は設計で列挙したtests/statistical_foundations/の6ファイル、tests/fixtures/statistical_foundations/の2ファイル、本tasksの進捗、および日本語検証報告に限る。派生入力・設定・実行結果は設計のrunディレクトリに保存する。本番スキル、共有schema、元CSVは変更しない。
 

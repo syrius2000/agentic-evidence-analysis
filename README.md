@@ -81,7 +81,7 @@ graph TD
 > **旧セルScore（$r_i^2 - k \cdot \log(N)$）の廃止について**:  
 > 従来の旧セルScoreは、局所ダミー再適合による尤度比統計量 $\Delta G_i^2$ と大きく乖離し、また標本サイズ $N$ の増大に伴って全セルが正値化する「エビデンス飽和」を引き起こすため、**非推奨・廃止**としました。セル診断は上記 4軸体系に基づき、標本数に不変な Effect（効果量）を最優先として解釈します。
 
-> 数学的定義および統計モデルの詳細は [docs/Artifacts/statistical_validation_001_0906.md](docs/Artifacts/statistical_validation_001_0906.md) を参照してください。
+> 数学的定義および統計モデルの詳細は [docs/Archives/archived_summary_002_0908.md](docs/Archives/archived_summary_002_0908.md) を参照してください。
 
 ---
 
@@ -138,7 +138,7 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
 
 1. `vcd-pass0-consultation` でデータの水準数、欠損、セルの疎密、層別の必要性を確認する。
 2. [docs/reference/stats_categorical.md](docs/reference/stats_categorical.md) で期待度数、Pearson residual、Cramér's V / Fei を確認する。
-3. 大標本または多次元表では [docs/Artifacts/statistical_validation_001_0906.md](docs/Artifacts/statistical_validation_001_0906.md) で 4軸セル診断と明示式BICモデル選択を確認する。
+3. 大標本または多次元表では [docs/Archives/archived_summary_002_0908.md](docs/Archives/archived_summary_002_0908.md) で 4軸セル診断と明示式BICモデル選択の検証履歴を確認する。
 4. [docs/reference/](docs/reference/) 配下の各種リファレンスでモデル選択（GLM/GNM）と尺度の扱いを確認する。
 5. 統計的有意性と実務的意義を峻別したエグゼクティブ・サマリーを作成する。
 

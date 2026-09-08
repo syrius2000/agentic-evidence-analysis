@@ -11,13 +11,13 @@ created_at: "2026-09-06T22:38:17+09:00"
 updated_at: "2026-09-06T23:31:00+09:00"
 subject:
   targets:
-    - "docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md"
+    - "docs/Archives/archived_summary_002_0908.md"
   implementation_revision: "cdce095368a52aa3bfd3f821cc1bca8b7fb1ff77"
 baseline:
-  purpose: ["docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md#1.2"]
-  spec: ["docs/Artifacts/statistical_validation_001_0906.md", "docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md#2"]
-  plan: ["docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md"]
-  tasks: ["docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md#5"]
+  purpose: ["docs/Archives/archived_summary_002_0908.md"]
+  spec: ["docs/Archives/archived_summary_002_0908.md"]
+  plan: ["docs/Archives/archived_summary_002_0908.md"]
+  tasks: ["docs/Archives/archived_summary_002_0908.md"]
 participants:
   implementer:
     agent_id: "antigravity-implementer"

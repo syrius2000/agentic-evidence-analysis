@@ -18,8 +18,8 @@ outcome: findings-issued
 ## Inputs actually reviewed
 
 ### Included
-- Purpose / Plan / Tasks: `docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md`
-- Spec: `docs/Artifacts/statistical_validation_001_0906.md` (referenced for BIC and T^score)
+- Purpose / Plan / Tasks: `docs/Archives/archived_summary_002_0908.md`（旧計画を含む統合アーカイブ）
+- Spec: `docs/Archives/archived_summary_002_0908.md` (BIC and T^scoreの旧検証履歴を含む)
 - Implementation revision `3d5fb36` (8 planned files plus `pass1_compute.R`, `docs/reference/stats_bayesian.md`)
 - Tests: `tests/test_vcd_bayesian_help.R` (executed), leftover Evidence_Score tests (inspected)
 - Independent Pass 1 on Titanic 1x / 100x / 4-way
@@ -31,7 +31,7 @@ outcome: findings-issued
 - completion report (read only after independent Pass 1)
 
 ### Revealed after freeze
-- `docs/Artifacts/statistical_foundation_skill_migration_report_001_0906.md`
+- `docs/Archives/archived_summary_002_0908.md`
 - local gitignored `skill_out/titanic_*` Pass 2/3 artifacts
 
 ## Review risk profile

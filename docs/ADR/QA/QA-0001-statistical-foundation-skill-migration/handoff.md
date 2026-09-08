@@ -15,7 +15,7 @@ current_cycle: 2
 ## 1. 受け手が最初に確認すること
 
 - QAケース: `QA-0001`
-- 対象: `docs/Artifacts/statistical_foundation_skill_migration_plan_001_0906.md`
+- 対象: `docs/Archives/archived_summary_002_0908.md`（旧計画を含む統合アーカイブ）
 - 受け手の役割: `reviewer`
 - 現在の状態: `closed`
 - 次のワークフロー: `reviewer-verification`

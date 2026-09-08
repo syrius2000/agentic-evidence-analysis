@@ -163,4 +163,4 @@ EBICは現行式と根拠文献のモデル空間・組合せ罰則の対応を�
 - [Rの反復比例適合](https://www.stat.ethz.ch/R-manual/R-devel/library/stats/html/loglin.html)
 - [Dirichletと多項分布の共役性・周辺尤度](https://www.ccs.neu.edu/home/vip/teach/DMcourse/5_topicmodel_summ/LDA_TM/dirichlet-conjugate-prior.pdf)
 - [3元表の関連構造](https://online.stat.psu.edu/stat504/Lesson05)
-- [合意した全体計画](../../../docs/Artifacts/implementation_plan_005_0906.md)
+- [統計基盤アーカイブ](../../../docs/Archives/archived_summary_002_0908.md)

@@ -31,7 +31,7 @@ claims:
     statement: "3元表は9候補対数線形モデルを総度数N基準の明示式BICで比較する。"
     source:
       type: specification
-      reference: "plan §2.3 / statistical_validation_001_0906.md §4.2"
+      reference: "archived_summary_002_0908.md（旧計画 §2.3 / 旧検証報告 §4.2）"
     plan_refs: [PLAN-2.3]
     task_refs: [TASK-2.2]
     implementation:

@@ -115,7 +115,7 @@ findings:
         reference: "Rscript tests/test_vcd_bayesian_help.R exit 1: grepl('--threshold_k', help_text) is not TRUE"
         revision: "3d5fb36d1ab02210a721b10fe0c8b56b9a987b09"
       - type: report
-        reference: "statistical_foundation_skill_migration_report_001_0906.md section 5 claims 全件合格 but only enumerates tests/statistical_foundations plus config/reproducibility"
+        reference: "archived_summary_002_0908.md（旧統合報告 section 5相当） claims 全件合格 but only enumerates tests/statistical_foundations plus config/reproducibility"
         revision: "untracked-report"
     limitations: ["Reviewer did not re-run the full statistical_foundations suite; those results remain AUTHOR-CLAIM except where independently recomputed"]
     requested_action: "Migrate or quarantine vcd-bayesian skill tests to the 4-axis contract, rerun them, and correct the report's test-scope claim."
@@ -405,7 +405,7 @@ findings:
       summary: "Updated completion report section 4.1 & 4.2 to withdraw the claim that V is strictly sample-size invariant. Documented effectsize finite-sample bias correction as root cause of the 0.003 discrepancy (0.5178 vs 0.5208) while highlighting consistent substantive interpretation (V >= 0.5) and sharp CI shrinkage."
       revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
       cycle: 1
-      evidence: "statistical_foundation_skill_migration_report_001_0906.md section 4.1 note 1 and section 4.2."
+      evidence: "archived_summary_002_0908.md（旧統合報告 section 4.1 note 1 and section 4.2相当）"
     verification:
       result: fixed-and-verified
       revision: "c0ecbc16057a66c61fcf1e4aeb0b4b207eb08480"
