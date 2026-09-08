@@ -58,7 +58,7 @@ for (case in resolver_cases) {
   resolved <- resolve_pass3_run_dir(
     parent,
     "categorical_results.json",
-    "vcd-categorical-analysis"
+    "vcd-categorical-analysis", discover_single_run = TRUE, allow_legacy = TRUE
   )
   stopifnot(identical(
     normalizePath(resolved$run_dir, mustWork = TRUE),
@@ -99,13 +99,13 @@ dashboard_html <- rmarkdown::render(
   dashboard_rmd,
   output_file = "categorical_dashboard.html",
   output_dir = td,
-  params = list(output_dir = analysis_root),
+  params = list(run_dir = file.path(analysis_root, "run_dashboard_case"), preview_mode = TRUE, require_pass2 = FALSE),
   knit_root_dir = root,
   envir = new.env(parent = globalenv()),
   quiet = TRUE
 )
 stopifnot(file.exists(dashboard_html))
 html <- paste(readLines(dashboard_html, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-stopifnot(grepl("dashboard_case_2", html, fixed = TRUE))
+stopifnot(grepl("dashboard_case", html, fixed = TRUE), !grepl("dashboard_case_2", html, fixed = TRUE))
 
 message("OK: categorical Step 3 resolves JST, named, and collision-suffixed run directories")

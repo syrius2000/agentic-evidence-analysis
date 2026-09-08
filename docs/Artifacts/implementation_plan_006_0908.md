@@ -1,7 +1,7 @@
 # 実行成果物ライフサイクルと実行パス引き継ぎの堅牢化 実装計画書
 
 created: 2026-09-08 18:35 (JST)
-update: 2026-09-08 18:47 (JST)
+update: 2026-09-09 01:10 (JST)
 author: Codex (GPT-6)
 
 ## 1. 概要と目的
@@ -129,7 +129,7 @@ author: Codex (GPT-6)
 
 ## 7. 承認欄
 
-- [ ] 本実装計画書（`docs/Artifacts/implementation_plan_006_0908.md`）の記載内容を確認し、OpenSpec change `harden-run-path-handover` のコード実装（Apply）着手を承認する。
+- [x] 本実装計画書（`docs/Artifacts/implementation_plan_006_0908.md`）の記載内容を確認し、OpenSpec change `harden-run-path-handover` のコード実装（Apply）着手を承認する。
 
 ## 8. 計画FIXの受入条件
 
@@ -138,3 +138,7 @@ author: Codex (GPT-6)
 run 共通ロック、source 消失後の回復証跡、preview 競合、Questionnaire の設問別配置・非ゼロ終了・診断 handover、legacy preview の元 run 外隔離を既存タスクの完了条件に含める。公開 HTML のローカル依存を検証し、完全オフライン化を追加要件にしない。
 
 計画FIXは実装済みを意味しない。実装の明示指示後、既存差分を再確認して着手し、各タスクの検証証拠が得られてからチェックを付ける。
+
+## 9. 検証指摘への修正実装
+
+ユーザーの「発見した問題をきみが解決して」により、本計画と検証報告書 verification_report_001_0908.md の指摘修正を実施する。既存実装差分を退避し、共通ガード、状態遷移、回復証跡、各CLI、回帰検証の順で修正する。統計上の受入基準は変更しない。

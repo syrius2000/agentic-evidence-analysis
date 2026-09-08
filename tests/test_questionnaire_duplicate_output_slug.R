@@ -113,16 +113,23 @@ run_valid_case <- function(case_name, slugs, config = make_config(slugs)) {
   if (!identical(as.integer(status), 0L)) {
     stop(paste(output, collapse = "\n"))
   }
-  stopifnot(file.exists(file.path(output_root, "summary.csv")))
+  target_dir <- output_root
+  if (!file.exists(file.path(target_dir, "summary.csv"))) {
+    run_subdirs <- list.dirs(file.path(output_root, "runs"), full.names = TRUE, recursive = FALSE)
+    if (length(run_subdirs) > 0L) {
+      target_dir <- run_subdirs[length(run_subdirs)]
+    }
+  }
+  stopifnot(file.exists(file.path(target_dir, "summary.csv")))
   for (slug in slugs) {
-    stopifnot(file.exists(file.path(output_root, slug, "report.html")))
+    stopifnot(file.exists(file.path(target_dir, slug, "report.html")))
     stopifnot(file.exists(file.path(
-      output_root,
+      target_dir,
       slug,
       "questionnaire_results.json"
     )))
   }
-  invisible(output_root)
+  invisible(target_dir)
 }
 
 run_invalid_case(

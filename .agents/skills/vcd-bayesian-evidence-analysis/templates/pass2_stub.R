@@ -1,38 +1,80 @@
 #!/usr/bin/env Rscript
-# pass2_stub.R - LLM未使用でexecutive_summary.mdの骨子（スタブ）を生成する
-suppressPackageStartupMessages(library(jsonlite))
+# pass2_stub.R - LLM未使用でexecutive_summary_preview.mdの骨子（スタブ）を生成する
+suppressPackageStartupMessages({
+  library(jsonlite)
+})
+
+# run_scope.R の読み込み
+find_agent_repo <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in seq_len(25L)) {
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
+      return(d)
+    }
+    parent <- dirname(d)
+    if (parent == d) {
+      break
+    }
+    d <- parent
+  }
+  getwd()
+}
+source(file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
 
 args <- commandArgs(trailingOnly = TRUE)
-json_path <- "evidence_results.json"
+json_path <- NULL
 out_path <- NULL
 run_dir <- NULL
+allow_legacy <- FALSE
 
-i <- 1
+i <- 1L
 while (i <= length(args)) {
   if (args[i] == "--json" && i < length(args)) {
-    json_path <- args[i + 1]
-    i <- i + 2
+    json_path <- args[i + 1L]
+    i <- i + 2L
   } else if (args[i] == "--output" && i < length(args)) {
-    out_path <- args[i + 1]
-    i <- i + 2
+    out_path <- args[i + 1L]
+    i <- i + 2L
   } else if (args[i] == "--run-dir" && i < length(args)) {
-    run_dir <- args[i + 1]
-    i <- i + 2
+    run_dir <- args[i + 1L]
+    i <- i + 2L
+  } else if (args[i] == "--allow-legacy-run-meta") {
+    allow_legacy <- TRUE
+    i <- i + 1L
   } else {
-    i <- i + 1
+    i <- i + 1L
   }
 }
 
-if (!is.null(run_dir) && !file.exists(json_path)) {
-  json_path <- file.path(run_dir, "evidence_results.json")
+if (!is.null(run_dir) && nzchar(trimws(run_dir))) {
+  norm_run_dir <- normalizePath(assert_no_symlink(trimws(run_dir)), winslash = "/", mustWork = TRUE)
+  # --run-dir 指定時はカレントディレクトリのファイルを優先せず、必ず run_dir 直下を読み込む
+  json_path <- file.path(norm_run_dir, "evidence_results.json")
+  if (is.null(out_path) || !nzchar(out_path)) {
+    out_path <- file.path(norm_run_dir, "executive_summary_preview.md")
+  }
+  # プレビュー上書き防止チェック
+  # 公開時の共通ガードでlegacy出力先・封印・上書きを検証する。
+} else {
+  if (is.null(json_path)) json_path <- "evidence_results.json"
+  if (is.null(out_path) || !nzchar(out_path)) {
+    out_path <- file.path(dirname(normalizePath(json_path, winslash = "/", mustWork = FALSE)), "executive_summary_preview.md")
+  }
 }
 
 if (!file.exists(json_path)) {
-  stop("Error: JSON file not found: ", json_path, " (Pass1 の run_output_dir か --run-dir を確認してください)")
+  stop("Error: JSON file not found: ", json_path, " (Pass 1 の run_output_dir または --run-dir を確認してください)")
 }
 
-if (is.null(out_path) || !nzchar(out_path)) {
-  out_path <- file.path(dirname(normalizePath(json_path, winslash = "/", mustWork = TRUE)), "executive_summary.md")
+# run_meta.json の検証（存在する場合）
+meta_path <- if (!is.null(run_dir)) file.path(norm_run_dir, "run_meta.json") else file.path(dirname(normalizePath(json_path, winslash = "/", mustWork = TRUE)), "run_meta.json")
+run_meta <- if (file.exists(meta_path)) tryCatch(jsonlite::fromJSON(meta_path, simplifyVector = FALSE), error = function(e) NULL) else NULL
+
+if (!is.null(run_meta) && identical(run_meta$interface_version, "1.0")) {
+  if (!isTRUE(allow_legacy)) {
+    stop("[ERROR] legacy run (v1.0) のプレビューを生成するには --allow-legacy-run-meta が必要です: ", meta_path)
+  }
+  message("[WARN] --allow-legacy-run-meta により legacy run (v1.0) のプレビュー生成を継続します。")
 }
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
@@ -223,5 +265,10 @@ if (!is.null(top_df) && nrow(top_df) > 0) {
   md_lines <- c(md_lines, "")
 }
 
-writeLines(enc2utf8(md_lines), out_path, useBytes = FALSE)
-cat(sprintf("Stub summary written to %s\n", out_path))
+if (is.null(run_dir)) stop("[ERROR] --run-dir で実runを指定してください")
+preview_output <- NULL
+idx <- match("--preview-output-dir", args)
+if (!is.na(idx) && idx < length(args)) preview_output <- args[idx + 1L]
+if (basename(out_path) != "executive_summary_preview.md") stop("[ERROR] stubの出力名はexecutive_summary_preview.md固定です")
+publish_run_preview(norm_run_dir, "executive_summary_preview.md",
+  function(target) writeLines(enc2utf8(md_lines), target), allow_legacy, preview_output)

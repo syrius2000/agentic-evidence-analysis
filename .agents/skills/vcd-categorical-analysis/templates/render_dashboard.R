@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# Pass 3: render_dashboard.R
+# Pass 3: render_dashboard.R (vcd-categorical-analysis)
 # --run-dir による実 run 直接受け入れ、プレビュー生成（dashboard_preview.html）および本番封印確定（dashboard.html / finalize_pass3）
 
 suppressPackageStartupMessages({
@@ -70,7 +70,7 @@ while (i <= length(args)) {
   if (identical(args[i], "--run-dir") && i < length(args)) {
     run_dir_arg <- args[i + 1L]
     i <- i + 2L
-  } else if ((identical(args[i], "--output_dir") || identical(args[i], "--output-dir")) && i < length(args)) {
+  } else if ((identical(args[i], "--output_dir") || identical(args[i], "--output-dir") || identical(args[i], "--out")) && i < length(args)) {
     out_root_arg <- args[i + 1L]
     i <- i + 2L
   } else if (identical(args[i], "--rmd") && i < length(args)) {
@@ -87,7 +87,7 @@ run_dir <- if (!is.null(run_dir_arg) && nzchar(trimws(run_dir_arg))) {
 } else if (!is.null(out_root_arg) && nzchar(trimws(out_root_arg))) {
   rs <- resolve_pass3_run_dir(
     out_root_arg,
-    "evidence_results.json",
+    "categorical_results.json",
     discover_single_run = discover_single,
     allow_legacy = allow_legacy
   )

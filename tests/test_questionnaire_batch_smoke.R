@@ -39,6 +39,11 @@ cat("config :", config_path, "\n")
 cat("runner :", runner_path, "\n")
 cat("out    :", out_dir, "\n\n")
 
+if (dir.exists(out_dir)) {
+  unlink(out_dir, recursive = TRUE)
+}
+dir.create(out_dir, recursive = TRUE)
+
 # ---- バッチ実行 ----
 cmd <- sprintf(
   'Rscript --vanilla "%s" --data "%s" --question-config "%s" --out "%s"',

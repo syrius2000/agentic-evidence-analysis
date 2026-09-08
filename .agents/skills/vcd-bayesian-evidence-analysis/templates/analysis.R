@@ -45,6 +45,8 @@ parse_args <- function(args) {
     top_k = 10L,
     large_n_threshold = 2000,
     base_model = "M1",
+    supersedes_run = NULL,
+    supersede_reason = NULL,
     show_help = FALSE,
     show_help_stats = FALSE
   )
@@ -67,6 +69,14 @@ parse_args <- function(args) {
       "--run-id" = {
         i <- i + 1L
         result$run_id <- args[i]
+      },
+      "--supersedes-run" = {
+        i <- i + 1L
+        result$supersedes_run <- args[i]
+      },
+      "--supersede-reason" = {
+        i <- i + 1L
+        result$supersede_reason <- args[i]
       },
       "--dataset_name" = {
         i <- i + 1L
@@ -211,13 +221,21 @@ rid <- if (is.null(cfg$run_id)) {
   list(run_id = sanitize_run_slug(cfg$run_id), method = "manual")
 }
 out_root <- cfg$output_dir
-artifact_dir <- run_output_dir_from_root(out_root, rid$run_id)
-if (!dir.exists(artifact_dir)) {
-  dir.create(artifact_dir, recursive = TRUE)
+assert_valid_out_root(out_root)
+artifact_dir <- reserve_run_output_dir(out_root, "vcd-bayesian-evidence-analysis", if (is.null(cfg$run_id)) NULL else rid$run_id)
+
+# supersede 元 run の検証
+supersede_info <- NULL
+if (!is.null(cfg$supersedes_run) && nzchar(trimws(cfg$supersedes_run))) {
+  supersede_info <- verify_superseded_run(cfg$supersedes_run, "vcd-bayesian-evidence-analysis", current_run_dir = artifact_dir)
 }
 
-# run_meta.json 出力
-write_run_meta(out_root, artifact_dir, "vcd-bayesian-evidence-analysis", rid$run_id, cfg$input)
+# 設定スナップショット保存
+cfg_snap <- if (!is.null(cfg$config_path) && file.exists(cfg$config_path)) {
+  save_config_snapshot(artifact_dir, cfg$config_path, config_origin = "pass0_file", config_source_path = cfg$config_path)
+} else {
+  save_config_snapshot(artifact_dir, cfg, config_origin = "resolved_cli")
+}
 
 message(paste("[INFO] run_id:", rid$run_id, "(", rid$method %||% "hash", ")"))
 message(paste("[INFO] 出力ディレクトリ:", artifact_dir))
@@ -356,6 +374,35 @@ json_path <- file.path(artifact_dir, "evidence_results.json")
 write_json(output_results, json_path, pretty = TRUE, auto_unbox = TRUE)
 message(paste("[INFO] JSON出力:", json_path))
 
+# マニフェスト出力 (results_manifest.json)
+h_ev <- sha256_file(json_path)
+manifest_artifacts <- list(
+  list(path = "evidence_results.json", role = "primary_results", sha256 = h_ev)
+)
+manifest_res <- write_results_manifest(artifact_dir, "vcd-bayesian-evidence-analysis", manifest_artifacts)
+message(paste("[INFO] マニフェスト出力:", manifest_res$manifest_path))
+
+# run_meta.json (v2.0) 出力
+extra_meta <- list(
+  inputs = if (is.null(cfg$input)) list(list(role = "data", source_kind = "builtin", source_path = "builtin", snapshot_policy = "hash_only", sha256 = sha256_df(df))) else NULL,
+  requested_run_id = cfg$run_id,
+  supersedes_run = if (!is.null(supersede_info)) supersede_info$source_run_dir else NULL,
+  superseded_results_manifest_sha256 = if (!is.null(supersede_info)) supersede_info$superseded_results_manifest_sha256 else NULL,
+  supersede_reason = cfg$supersede_reason,
+  inputs_changed = if (!is.null(supersede_info)) !identical(get_run_input_sha256(supersede_info$meta), if (!is.null(cfg$input)) sha256_file(cfg$input) else NULL) else NULL,
+  config_changed = if (!is.null(supersede_info)) !identical(supersede_info$meta$config_sha256, cfg_snap$config_sha256) else NULL,
+  results_manifest_sha256 = manifest_res$manifest_sha256,
+  config_origin = cfg_snap$config_origin,
+  config_source_path = cfg_snap$config_source_path,
+  config_snapshot = cfg_snap$config_snapshot,
+  config_sha256 = cfg_snap$config_sha256
+)
+write_run_meta(out_root, artifact_dir, "vcd-bayesian-evidence-analysis", rid$run_id, cfg$input, extra = extra_meta)
+
+# 機械可読ハンドオーバー出力 (run_handover.json)
+write_run_handover(artifact_dir, "vcd-bayesian-evidence-analysis", manifest_res$manifest_sha256, config_path = cfg_snap$config_snapshot)
+message(paste("[INFO] ハンドオーバー出力:", file.path(artifact_dir, "run_handover.json")))
+
 # --- [Step 6: DTテーブル (dt_table.html) の出力] ---
 dt_display <- cell_data
 col_rename <- c(
@@ -407,8 +454,17 @@ dt_widget <- datatable(
   )
 
 dt_path <- file.path(artifact_dir, "dt_table.html")
-saveWidget(dt_widget, dt_path, selfcontained = TRUE, libdir = NULL)
-message(paste("[INFO] DTテーブル出力:", dt_path))
+tryCatch({
+  saveWidget(dt_widget, dt_path, selfcontained = TRUE, libdir = NULL)
+  message(paste("[INFO] DTテーブル出力:", dt_path))
+}, error = function(e) {
+  tryCatch({
+    saveWidget(dt_widget, dt_path, selfcontained = FALSE, libdir = file.path(artifact_dir, "dt_libs"))
+    message(paste("[INFO] DTテーブル出力 (selfcontained=FALSE fallback):", dt_path))
+  }, error = function(e2) {
+    warning("[WARN] DTテーブルの保存をスキップしました: ", e2$message)
+  })
+})
 
 # --- [Step 7: 完了サマリー出力] ---
 cat("\n=================================================================\n")

@@ -1,6 +1,6 @@
 # VCD Categorical Analysis Pipeline (v2.1)
-# 2-pass mode: --profile (Pass 1) or --render --config <path> (Pass 2)
-# Outputs under ./skill_out/vcd_categorical/
+# 2-pass mode: --profile (Pass 0) or --render --config <path> (Pass 1 compute)
+# Outputs under ./skill_out/vcd_categorical/ or specified output_dir
 
 # --- Packages ---
 if (!base::requireNamespace("pacman", quietly = TRUE)) utils::install.packages("pacman", repos = "https://cloud.r-project.org")
@@ -29,6 +29,7 @@ mode <- if ("--profile" %in% args) "profile" else "render"
 get_arg_val <- function(arg_name, default = NULL) {
   if (arg_name %in% args) {
     idx <- base::which(args == arg_name)
+    idx <- idx[base::length(idx)]
     if (idx < base::length(args)) {
       return(args[idx + 1])
     }
@@ -43,13 +44,17 @@ data_path <- NULL
 vars_arg <- "Hair,Eye,Sex"
 freq_col <- "Freq"
 data_label <- "data"
-output_dir <- "./skill_out/vcd_categorical/"
+output_dir <- "./skill_out/vcd_categorical"
 run_id_raw <- get_arg_val("--run-id")
+supersedes_run_arg <- get_arg_val("--supersedes-run")
+supersede_reason_arg <- get_arg_val("--supersede-reason")
+
+config_data <- NULL
 
 # JSON 設定の読み込み (Pass 0 連携用)
 if (!base::is.null(config_path) && base::file.exists(config_path)) {
   base::message("[INFO] 設定ファイルを読み込み中: ", config_path)
-  config_data <- jsonlite::fromJSON(config_path)
+  config_data <- jsonlite::fromJSON(config_path, simplifyVector = FALSE)
 
   # マッピング: JSONキー -> スクリプト内部変数/引数名
   if (!base::is.null(config_data$input)) data_path <- config_data$input
@@ -57,11 +62,12 @@ if (!base::is.null(config_path) && base::file.exists(config_path)) {
   if (!base::is.null(config_data$freq)) freq_col <- config_data$freq
   if (!base::is.null(config_data$output_dir)) output_dir <- config_data$output_dir
   if (!base::is.null(config_data$run_id)) run_id_raw <- config_data$run_id
-
-  # vcd-categorical 特有の引数
-  if (!base::is.null(config_data$row_var)) row_var_json <- config_data$row_var
-  if (!base::is.null(config_data$col_var)) col_var_json <- config_data$col_var
-  if (!base::is.null(config_data$layer_var)) layer_var_json <- config_data$layer_var
+  if (!base::is.null(config_data$supersedes_run) && base::is.null(supersedes_run_arg)) {
+    supersedes_run_arg <- config_data$supersedes_run
+  }
+  if (!base::is.null(config_data$supersede_reason) && base::is.null(supersede_reason_arg)) {
+    supersede_reason_arg <- config_data$supersede_reason
+  }
 }
 
 # CLI 引数による上書き（CLI 優先）
@@ -78,283 +84,6 @@ if (!base::is.null(data_path) && !base::file.exists(data_path)) {
   base::stop(
     "[ERROR] ", data_source, " で指定した入力ファイルが存在しません: ",
     data_path
-  )
-}
-
-sanitize_run_slug <- function(x) {
-  if (base::is.null(x) || !base::nzchar(base::trimws(base::as.character(x)[1]))) {
-    return(NULL)
-  }
-  x <- base::trimws(base::as.character(x)[1])
-  if (base::tolower(x) == "auto") {
-    return(base::format(base::Sys.time(), "%Y%m%d_%H%M%S", tz = "Asia/Tokyo"))
-  }
-  x <- base::gsub("[/\\\\]", "_", x)
-  x <- base::gsub("^\\.+|\\.+$", "", x)
-  if (!base::nzchar(x)) {
-    base::stop("無効な --run-id です")
-  }
-  x
-}
-out_root_for_meta <- base::sub("/+$", "", output_dir)
-run_slug <- sanitize_run_slug(run_id_raw)
-if (base::is.null(run_slug)) {
-  run_slug <- base::format(base::Sys.time(), "%Y%m%d_%H%M%S", tz = "Asia/Tokyo")
-}
-base_run_slug <- run_slug
-requested_run_id <- base_run_slug
-
-has_input_file <- !base::is.null(data_path) && base::file.exists(data_path)
-if (has_input_file) {
-  signature_input <- base::list(
-    kind = "file",
-    sha256 = sha256_file(data_path)
-  )
-  signature_vars <- vars
-  signature_freq <- freq_col
-} else {
-  builtin_df_for_signature <- base::as.data.frame(datasets::HairEyeColor)
-  signature_input <- base::list(
-    kind = "builtin:datasets::HairEyeColor",
-    sha256 = sha256_df(builtin_df_for_signature)
-  )
-  signature_vars <- c("Hair", "Eye", "Sex")
-  signature_freq <- "Freq"
-}
-analysis_signature <- digest::digest(
-  base::list(
-    interface_version = "1.0",
-    input = signature_input,
-    vars = base::unname(base::as.character(signature_vars)),
-    freq = base::as.character(signature_freq)
-  ),
-  algo = "sha256"
-)
-
-prefix16 <- run_id_short16(run_slug)
-
-reserve_run_output_dir <- function(out_root, run_prefix, requested_slug) {
-  if (!base::dir.exists(out_root)) {
-    root_created <- base::dir.create(
-      out_root,
-      recursive = TRUE,
-      showWarnings = FALSE
-    )
-    if (!isTRUE(root_created) && !base::dir.exists(out_root)) {
-      base::stop("[ERROR] out rootを作成できません: ", out_root)
-    }
-  }
-
-  suffix <- 1L
-  repeat {
-    dir_name <- if (suffix == 1L) {
-      base::paste0("run_", run_prefix)
-    } else {
-      base::sprintf("run_%s_%d", run_prefix, suffix)
-    }
-    candidate <- base::file.path(out_root, dir_name)
-    reserved <- base::dir.create(
-      candidate,
-      recursive = FALSE,
-      showWarnings = FALSE
-    )
-    if (isTRUE(reserved)) {
-      resolved_run_id <- if (suffix == 1L) {
-        requested_slug
-      } else {
-        base::sprintf("%s_%d", requested_slug, suffix)
-      }
-      return(base::list(path = candidate, run_id = resolved_run_id))
-    }
-    if (!base::dir.exists(candidate)) {
-      base::stop("[ERROR] run directoryを予約できません: ", candidate)
-    }
-    suffix <- suffix + 1L
-  }
-}
-
-update_run_state <- function(run_dir, new_state) {
-  allowed_states <- c(
-    "allocated",
-    "profile_complete",
-    "render_in_progress",
-    "render_complete"
-  )
-  if (!(new_state %in% allowed_states)) {
-    base::stop("[ERROR] 不明なrun stateです: ", new_state)
-  }
-  meta_path <- base::file.path(run_dir, "run_meta.json")
-  if (!base::file.exists(meta_path)) {
-    base::stop("[ERROR] run_meta.json が存在しません: ", meta_path)
-  }
-  meta <- jsonlite::fromJSON(meta_path, simplifyVector = FALSE)
-  meta$run_state <- new_state
-  meta$updated_at <- base::format(base::Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
-  jsonlite::write_json(
-    meta,
-    meta_path,
-    auto_unbox = TRUE,
-    pretty = TRUE,
-    null = "null"
-  )
-  base::invisible(meta)
-}
-
-read_run_meta <- function(candidate) {
-  base::tryCatch(
-    jsonlite::fromJSON(base::file.path(candidate, "run_meta.json")),
-    error = function(e) NULL
-  )
-}
-
-is_resumable_profile_run <- function(
-  candidate,
-  meta,
-  expected_requested_run_id,
-  expected_analysis_signature
-) {
-  is_same_run <- !base::is.null(meta) &&
-    !base::is.null(meta$requested_run_id) &&
-    !base::is.null(meta$analysis_signature) &&
-    base::identical(
-      base::as.character(meta$requested_run_id),
-      expected_requested_run_id
-    ) &&
-    base::identical(
-      base::as.character(meta$analysis_signature),
-      expected_analysis_signature
-    )
-  is_profile_complete <- !base::is.null(meta) &&
-    !base::is.null(meta$run_state) &&
-    base::identical(
-      base::as.character(meta$run_state),
-      "profile_complete"
-    )
-  is_profile_pending <- base::file.exists(base::file.path(
-    candidate,
-    "data_profile.json"
-  )) &&
-    !base::file.exists(base::file.path(
-      candidate,
-      "categorical_results.json"
-    ))
-  is_same_run && is_profile_complete && is_profile_pending
-}
-
-claim_resumable_profile_run <- function(
-  out_root,
-  run_prefix,
-  expected_requested_run_id,
-  expected_analysis_signature
-) {
-  if (!base::dir.exists(out_root)) {
-    return(NULL)
-  }
-  base_name <- base::paste0("run_", run_prefix)
-  dirs <- base::list.dirs(out_root, recursive = FALSE, full.names = TRUE)
-  dir_names <- base::basename(dirs)
-  suffix_text <- base::ifelse(
-    dir_names == base_name,
-    "1",
-    base::substring(dir_names, base::nchar(base_name) + 2L)
-  )
-  candidate_mask <- dir_names == base_name |
-    (base::startsWith(dir_names, base::paste0(base_name, "_")) &
-      base::grepl("^[0-9]+$", suffix_text))
-  dirs <- dirs[candidate_mask]
-  suffix_text <- suffix_text[candidate_mask]
-  if (base::length(dirs) == 0L) {
-    return(NULL)
-  }
-
-  suffix_num <- base::as.integer(suffix_text)
-  for (idx in base::order(suffix_num, decreasing = TRUE)) {
-    candidate <- dirs[idx]
-    meta <- read_run_meta(candidate)
-    if (!is_resumable_profile_run(
-      candidate,
-      meta,
-      expected_requested_run_id,
-      expected_analysis_signature
-    )) {
-      next
-    }
-
-    claim_dir <- base::file.path(candidate, ".render_claim")
-    claim_acquired <- base::dir.create(
-      claim_dir,
-      recursive = FALSE,
-      showWarnings = FALSE
-    )
-    if (!isTRUE(claim_acquired)) {
-      return(NULL)
-    }
-
-    claimed_meta <- read_run_meta(candidate)
-    if (!is_resumable_profile_run(
-      candidate,
-      claimed_meta,
-      expected_requested_run_id,
-      expected_analysis_signature
-    )) {
-      return(NULL)
-    }
-
-    update_run_state(candidate, "render_in_progress")
-    base::unlink(claim_dir, recursive = TRUE, force = TRUE)
-    return(base::list(
-      path = candidate,
-      run_id = base::as.character(claimed_meta$run_id)
-    ))
-  }
-  NULL
-}
-
-stable_explicit_run_id <- !base::is.null(run_id_raw) &&
-  base::nzchar(base::trimws(base::as.character(run_id_raw)[1])) &&
-  base::tolower(base::trimws(base::as.character(run_id_raw)[1])) != "auto"
-resumed_profile_run <- NULL
-if (mode == "render" && stable_explicit_run_id) {
-  resumed_profile_run <- claim_resumable_profile_run(
-    out_root_for_meta,
-    prefix16,
-    requested_run_id,
-    analysis_signature
-  )
-}
-
-if (!base::is.null(resumed_profile_run)) {
-  output_dir <- resumed_profile_run$path
-  run_slug <- resumed_profile_run$run_id
-  base::message("[INFO] profile run を render で継続: ", output_dir)
-} else {
-  reservation <- reserve_run_output_dir(
-    out_root_for_meta,
-    prefix16,
-    base_run_slug
-  )
-  output_dir <- reservation$path
-  run_slug <- reservation$run_id
-}
-base::message("[INFO] run 出力先: ", output_dir)
-
-if (!base::dir.exists(output_dir)) {
-  base::stop("[ERROR] run directoryの予約を確認できません: ", output_dir)
-}
-
-# run_meta.json の書き出し
-if (base::is.null(resumed_profile_run)) {
-  write_run_meta(
-    out_root = out_root_for_meta,
-    run_output_dir = output_dir,
-    skill = "vcd-categorical-analysis",
-    run_id = run_slug,
-    input_data_path = data_path,
-    extra = base::list(
-      requested_run_id = requested_run_id,
-      analysis_signature = analysis_signature,
-      run_state = "allocated"
-    )
   )
 }
 
@@ -387,11 +116,6 @@ validate_config <- function(raw) {
   }
   if (!base::is.null(raw$plot_mode) && raw$plot_mode %in% c("auto", "always", "residual_only")) {
     cfg$plot_mode <- raw$plot_mode
-  }
-
-  unknown_keys <- base::setdiff(base::names(raw), base::names(cfg))
-  if (base::length(unknown_keys) > 0) {
-    base::message("[WARNING] Unknown config keys ignored: ", base::paste(unknown_keys, collapse = ", "))
   }
 
   return(cfg)
@@ -452,47 +176,55 @@ apply_aggregation <- function(df, vars, freq_col, config) {
     return(df)
   }
 
+  # 1. Low frequency category collapse
   if (config$collapse_below_n > 0) {
     for (v in vars) {
-      freq_by_level <- base::tapply(df[[freq_col]], df[[v]], base::sum, na.rm = TRUE)
-      minor_levels <- base::names(freq_by_level[freq_by_level <= config$collapse_below_n])
-      if (base::length(minor_levels) > 0) {
-        df[[v]] <- base::ifelse(df[[v]] %in% minor_levels, "Other", base::as.character(df[[v]]))
+      marginal <- base::tapply(df[[freq_col]], df[[v]], base::sum, na.rm = TRUE)
+      rare_levels <- base::names(marginal)[marginal < config$collapse_below_n]
+      if (base::length(rare_levels) > 0) {
+        levels(df[[v]])[levels(df[[v]]) %in% rare_levels] <- "Other"
+        base::message("[COLLAPSE] Collapsed ", base::length(rare_levels), " rare level(s) into 'Other' for: ", v)
       }
     }
   }
 
-  if (config$max_levels_per_var < 999) {
+  # 2. Maximum category truncation (Top-N + Other)
+  if (config$max_levels_per_var < 999L) {
     for (v in vars) {
-      freq_by_level <- base::tapply(df[[freq_col]], df[[v]], base::sum, na.rm = TRUE)
-      if (base::length(freq_by_level) > config$max_levels_per_var) {
-        sorted_levels <- base::names(base::sort(freq_by_level, decreasing = TRUE))
-        keep_levels <- utils::head(sorted_levels, config$max_levels_per_var)
-        df[[v]] <- base::ifelse(df[[v]] %in% keep_levels, base::as.character(df[[v]]), "Other")
+      if (base::nlevels(df[[v]]) > config$max_levels_per_var) {
+        marginal <- base::tapply(df[[freq_col]], df[[v]], base::sum, na.rm = TRUE)
+        top_levels <- base::names(base::sort(marginal, decreasing = TRUE))[1:(config$max_levels_per_var - 1L)]
+        other_levels <- base::setdiff(levels(df[[v]]), top_levels)
+        levels(df[[v]])[levels(df[[v]]) %in% other_levels] <- "Other"
+        base::message("[TRUNCATE] Kept top ", config$max_levels_per_var - 1L, " levels and grouped others for: ", v)
       }
     }
   }
 
-  agg_fml <- stats::as.formula(base::paste(freq_col, "~", base::paste(vars, collapse = " + ")))
-  df <- stats::aggregate(agg_fml, data = df, FUN = base::sum, na.rm = TRUE)
-
-  for (v in vars) {
-    df[[v]] <- base::droplevels(base::factor(df[[v]]))
+  # 3. Stratification filter
+  if (base::length(config$strata_to_render) > 0 && base::length(vars) >= 3) {
+    layer_var <- vars[3]
+    df <- df[df[[layer_var]] %in% config$strata_to_render, , drop = FALSE]
+    df[[layer_var]] <- base::droplevels(df[[layer_var]])
+    base::message("[STRATA] Filtered to strata: ", base::paste(config$strata_to_render, collapse = ", "))
   }
-  return(df)
+
+  # Re-aggregate table structure after level manipulation
+  fml <- stats::as.formula(base::paste(freq_col, "~", base::paste(vars, collapse = " + ")))
+  agg_df <- stats::aggregate(fml, data = df, FUN = base::sum, na.rm = TRUE)
+  return(agg_df)
 }
 
 # ============================================================
 # generate_profile
 # ============================================================
 generate_profile <- function(df, vars, freq_col, output_dir, config = NULL, out_filename = "data_profile.json") {
-  if (!base::is.null(config)) {
-    df <- apply_aggregation(df, vars, freq_col, config)
-  }
-
   var_info <- base::lapply(vars, function(v) {
-    lvls <- base::levels(df[[v]])
-    base::list(n_levels = base::length(lvls), levels = lvls)
+    base::list(
+      name = v,
+      n_levels = base::nlevels(df[[v]]),
+      levels = base::levels(df[[v]])
+    )
   })
   base::names(var_info) <- vars
 
@@ -525,6 +257,9 @@ generate_profile <- function(df, vars, freq_col, output_dir, config = NULL, out_
     warning = warning_msg
   )
 
+  if (!base::dir.exists(output_dir)) {
+    base::dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  }
   jsonlite::write_json(profile, base::file.path(output_dir, out_filename),
     auto_unbox = TRUE, pretty = TRUE, null = "null"
   )
@@ -599,7 +334,7 @@ generate_data <- function(df, vars, freq_col, output_dir, config, data_label) {
     ), ]
     utils::write.csv(sig_compact, base::file.path(
       output_dir,
-      base::paste0("residuals_", data_label, "_significant.csv")
+      base::paste0("significant_cells_", data_label, ".csv")
     ), row.names = FALSE)
   }
 
@@ -607,78 +342,11 @@ generate_data <- function(df, vars, freq_col, output_dir, config, data_label) {
     base::paste(freq_col, "~", base::paste(vars, collapse = " + "))
   ), data = df)
 
-  anova_p <- if (!base::is.null(anova_res) && base::nrow(anova_res) >= 2) anova_res$`Pr(>Chi)`[2] else NA
-
-  strata_info <- NULL
-  if (base::length(vars) >= 3) {
-    strata_var <- vars[3]
-    strata_levels <- base::levels(df[[strata_var]])
-    max_res_per <- base::sapply(strata_levels, function(lv) {
-      sub <- res_main[res_main[[strata_var]] == lv, ]
-      if (base::nrow(sub) == 0) {
-        return(NA)
-      }
-      base::max(sub$abs_pearson_res, na.rm = TRUE)
-    }, USE.NAMES = TRUE)
-
-    cv_per <- base::sapply(strata_levels, function(lv) {
-      sub_tab <- stats::xtabs(
-        stats::as.formula(
-          base::paste(freq_col, "~", base::paste(vars[1:2], collapse = " + "))
-        ),
-        data = df[df[[strata_var]] == lv, ]
-      )
-      base::tryCatch(vcd::assocstats(sub_tab)$cramer, error = function(e) NA)
-    }, USE.NAMES = TRUE)
-
-    n_sig_5 <- base::sum(res_combined$abs_pearson_res >= 1.96, na.rm = TRUE)
-    n_sig_1 <- base::sum(res_combined$abs_pearson_res >= 2.58, na.rm = TRUE)
-    strata_info <- base::list(
-      strata_var = strata_var,
-      n_strata = base::length(strata_levels),
-      max_abs_res_per_stratum = as.list(max_res_per),
-      cramers_v_per_stratum = as.list(cv_per),
-      n_significant_cells_5pct = n_sig_5,
-      n_significant_cells_1pct = n_sig_1,
-      total_cells = base::nrow(res_combined)
-    )
-  }
-
-  summary_obj <- base::list(
-    interface_version = "2.1",
-    test_used = "stats::anova (Poisson GLM)",
-    models_tested = c("Main Effects (A+B[+C])", "2-way ((A+B[+C])^2)"),
-    deviance_main = if (!base::is.null(fit_main)) fit_main$deviance else NA,
-    df_main = if (!base::is.null(fit_main)) fit_main$df.residual else NA,
-    deviance_2way = if (!base::is.null(fit_2way)) fit_2way$deviance else NA,
-    df_2way = if (!base::is.null(fit_2way)) fit_2way$df.residual else NA,
-    p_value_main_vs_2way = anova_p,
-    cramers_v_marginal = base::tryCatch(
-      vcd::assocstats(base::margin.table(tab, c(1, 2)))$cramer,
-      error = function(e) NA
-    ),
-    top_residuals_main = if (!base::is.null(res_main)) {
-      idx <- utils::head(base::order(-res_main$abs_pearson_res), 5)
-      base::lapply(idx, function(i) base::list(cell = res_main$cell_label[i], res = res_main$pearson_res[i]))
-    } else {
-      NULL
-    },
-    top_residuals_2way = if (!base::is.null(res_2way)) {
-      idx <- utils::head(base::order(-res_2way$abs_pearson_res), 5)
-      base::lapply(idx, function(i) base::list(cell = res_2way$cell_label[i], res = res_2way$pearson_res[i]))
-    } else {
-      NULL
-    },
-    strata_summary = strata_info
-  )
-
-  jsonlite::write_json(summary_obj, base::file.path(
-    output_dir,
-    base::paste0("summary_", data_label, ".json")
-  ), auto_unbox = TRUE, pretty = TRUE, null = "null")
-
-  base::message("[DATA] JSON/CSV written for: ", data_label)
-  return(base::list(df = df, tab = tab, res_combined = res_combined))
+  return(base::list(
+    res_combined = res_combined,
+    tab = tab,
+    anova = anova_res
+  ))
 }
 
 # ============================================================
@@ -689,65 +357,64 @@ generate_gt_matrix <- function(res_df, vars, freq_col, output_dir, config, data_
     return()
   }
 
-  v1_idx <- base::max(1, base::min(base::length(vars), config$gt_matrix_vars[1]))
-  v2_idx <- base::max(1, base::min(base::length(vars), config$gt_matrix_vars[2]))
+  v_row <- vars[config$gt_matrix_vars[1]]
+  v_col <- vars[config$gt_matrix_vars[2]]
 
-  row_var <- vars[v1_idx]
-  col_var <- vars[v2_idx]
+  models <- base::unique(res_df$model_type)
 
-  build_matrix <- function(sub_df, suffix) {
-    agg <- stats::aggregate(
-      stats::as.formula(base::paste("pearson_res ~", row_var, "+", col_var)),
-      data = sub_df, FUN = base::mean, na.rm = TRUE
-    )
-    wide <- stats::reshape(agg, idvar = row_var, timevar = col_var, direction = "wide")
-    base::names(wide) <- base::gsub("^pearson_res\\.", "", base::names(wide))
-    row_names <- wide[[row_var]]
-    wide[[row_var]] <- NULL
+  for (m in models) {
+    sub_df <- res_df[res_df$model_type == m, ]
 
-    mx <- base::max(base::abs(base::unlist(wide)), na.rm = TRUE)
-    if (!base::is.finite(mx) || mx < 1e-12) mx <- 1
+    if (base::length(vars) >= 3) {
+      strata_var <- vars[3]
+      strata_levels <- base::unique(sub_df[[strata_var]])
+      for (s in strata_levels) {
+        strata_df <- sub_df[sub_df[[strata_var]] == s, ]
+        fml_strata <- stats::as.formula(base::paste("pearson_res ~", v_row, "+", v_col))
+        mat <- stats::xtabs(fml_strata, data = strata_df)
+        mat_df <- base::as.data.frame.matrix(mat)
+        mat_df <- base::cbind(Row_Variable = base::rownames(mat_df), mat_df)
 
-    tbl <- gt::gt(base::cbind(data.frame(V1 = row_names), wide), rowname_col = "V1") |>
-      gt::fmt_number(decimals = 3) |>
-      gt::data_color(
-        columns = base::names(wide),
-        domain = c(-mx, mx), palette = c("#D73027", "#FFFFFF", "#4575B4")
-      ) |>
-      gt::tab_header(title = base::paste("Pearson Residuals:", suffix)) |>
-      gt::tab_stubhead(label = row_var) |>
-      gt::tab_style(
-        style = gt::cell_borders(sides = "all", weight = gt::px(2), color = "#333333"),
-        locations = gt::cells_body(
-          columns = base::names(wide),
-          rows = base::apply(wide, 1, function(r) base::any(base::abs(r) >= 1.96, na.rm = TRUE))
-        )
-      )
-    fname <- base::paste0("matrix_", suffix, ".html")
-    gt::gtsave(tbl, base::file.path(output_dir, fname))
-    base::message("[GT] ", fname)
-  }
+        gt_tbl <- gt::gt(mat_df) |>
+          gt::tab_header(
+            title = base::paste("Pearson Residuals Matrix:", m),
+            subtitle = base::paste("Stratum [", strata_var, "=", s, "] | Row:", v_row, "x Col:", v_col)
+          ) |>
+          gt::fmt_number(columns = -Row_Variable, decimals = 3) |>
+          gt::data_color(
+            columns = -Row_Variable,
+            palette = c("#D73027", "#FFFFFF", "#4575B4"),
+            domain = c(-3.0, 3.0)
+          )
 
-  main_df <- res_df[res_df$model_type == "Main Effects (A+B[+C])", ]
-  if (base::nrow(main_df) == 0) {
-    return()
-  }
-
-  # Marginal gt matrix is built using variables 1 and 2 normally
-  build_matrix(main_df, base::paste0("marginal_", data_label))
-
-  if (base::length(vars) >= 3) {
-    strata_var <- vars[3]
-    strata_to_render <- if (base::length(config$strata_to_render) > 0) {
-      config$strata_to_render
-    } else {
-      base::levels(base::factor(main_df[[strata_var]]))
-    }
-    for (lv in strata_to_render) {
-      sub <- main_df[main_df[[strata_var]] == lv, ]
-      if (base::nrow(sub) > 0) {
-        build_matrix(sub, base::paste0(data_label, "_", lv))
+        safe_s <- base::gsub("[^A-Za-z0-9_]", "_", s)
+        safe_m <- base::gsub("[^A-Za-z0-9_]", "_", m)
+        fname <- base::paste0("gt_matrix_", safe_m, "_", safe_s, "_", data_label, ".html")
+        gt::gtsave(gt_tbl, base::file.path(output_dir, fname))
+        base::message("[GT] ", fname)
       }
+    } else {
+      fml_2way <- stats::as.formula(base::paste("pearson_res ~", v_row, "+", v_col))
+      mat <- stats::xtabs(fml_2way, data = sub_df)
+      mat_df <- base::as.data.frame.matrix(mat)
+      mat_df <- base::cbind(Row_Variable = base::rownames(mat_df), mat_df)
+
+      gt_tbl <- gt::gt(mat_df) |>
+        gt::tab_header(
+          title = base::paste("Pearson Residuals Matrix:", m),
+          subtitle = base::paste("Row:", v_row, "x Col:", v_col)
+        ) |>
+        gt::fmt_number(columns = -Row_Variable, decimals = 3) |>
+        gt::data_color(
+          columns = -Row_Variable,
+          palette = c("#D73027", "#FFFFFF", "#4575B4"),
+          domain = c(-3.0, 3.0)
+        )
+
+      safe_m <- base::gsub("[^A-Za-z0-9_]", "_", m)
+      fname <- base::paste0("gt_matrix_", safe_m, "_", data_label, ".html")
+      gt::gtsave(gt_tbl, base::file.path(output_dir, fname))
+      base::message("[GT] ", fname)
     }
   }
 }
@@ -795,8 +462,18 @@ generate_dt_table <- function(res_df, vars, output_dir, config, data_label) {
     DT::formatStyle("pearson_res", backgroundColor = DT::styleInterval(brks[-1], clrs))
 
   fname <- base::paste0("dt_residuals_", data_label, ".html")
-  htmlwidgets::saveWidget(widget, base::file.path(base::normalizePath(output_dir), fname), selfcontained = TRUE)
-  base::message("[DT] ", fname)
+  out_html_path <- base::file.path(base::normalizePath(output_dir), fname)
+  base::tryCatch({
+    htmlwidgets::saveWidget(widget, out_html_path, selfcontained = TRUE)
+    base::message("[DT] ", fname)
+  }, error = function(e) {
+    base::tryCatch({
+      htmlwidgets::saveWidget(widget, out_html_path, selfcontained = FALSE, libdir = base::file.path(base::normalizePath(output_dir), "dt_libs"))
+      base::message("[DT] ", fname, " (selfcontained=FALSE fallback)")
+    }, error = function(e2) {
+      base::warning("[WARN] DTテーブルの保存をスキップしました: ", e2$message)
+    })
+  })
 }
 
 # ============================================================
@@ -844,13 +521,12 @@ generate_plots <- function(tab, vars, output_dir, config, data_label) {
 # generate_categorical_results_json (for Pass 3 Dashboard)
 # ============================================================
 generate_categorical_results_json <- function(df, vars, freq_col, output_dir, res_combined, data_label) {
-  # dashboard.Rmd が期待する構造
   output <- list(
     interface_version = "1.0",
     dataset_name = data_label,
     dimensions = vars,
     n_total = sum(df[[freq_col]], na.rm = TRUE),
-    cramers_v = tryCatch(vcd::assocstats(xtabs(as.formula(paste(freq_col, "~", paste(vars[1:2], collapse = " + "))), data = df))$cramer, error = function(e) NA),
+    cramers_v = tryCatch(as.numeric(vcd::assocstats(xtabs(as.formula(paste(freq_col, "~", paste(vars[1:2], collapse = " + "))), data = df))$cramer), error = function(e) NA_real_),
     full_data = res_combined
   )
 
@@ -861,37 +537,212 @@ generate_categorical_results_json <- function(df, vars, freq_col, output_dir, re
 # ============================================================
 # Main dispatcher
 # ============================================================
-if (mode == "render" && base::is.null(resumed_profile_run)) {
-  update_run_state(output_dir, "render_in_progress")
-}
 
 # 1. Load data and auto-aggregate if needed
 df <- load_input_data()
 
 if (mode == "profile") {
-  generate_profile(df, vars, freq_col, output_dir, config = NULL, out_filename = "data_profile.json")
-  update_run_state(output_dir, "profile_complete")
-} else {
-  raw_config <- if (!base::is.null(config_path) && base::file.exists(config_path)) {
-    jsonlite::read_json(config_path)
-  } else {
-    base::list()
+  # --- Pass 0 Profile Mode ---
+  # 正式な run ディレクトリは作成せず、指定またはカレントディレクトリ直下に data_profile.json を出力
+  profile_out_dir <- if (!base::is.null(output_dir) && base::nzchar(output_dir)) output_dir else "."
+  if (!base::dir.exists(profile_out_dir)) {
+    base::dir.create(profile_out_dir, recursive = TRUE, showWarnings = FALSE)
   }
-  config <- validate_config(raw_config)
-
-  # Pass 2: Apply aggregation first, then generate post-profile from aggregated data
-  df_agg <- apply_aggregation(df, vars, freq_col, config)
-  generate_profile(df_agg, vars, freq_col, output_dir, config = NULL, out_filename = "data_profile_post.json")
-
-  # Generate data, tables, plots (generate_data applies aggregation internally)
-  res <- generate_data(df, vars, freq_col, output_dir, config, data_label)
-  generate_gt_matrix(res$res_combined, vars, freq_col, output_dir, config, data_label)
-  generate_dt_table(res$res_combined, vars, output_dir, config, data_label)
-  generate_plots(res$tab, vars, output_dir, config, data_label)
-
-  # 追加: ダッシュボード連携用 JSON
-  generate_categorical_results_json(df_agg, vars, freq_col, output_dir, res$res_combined, data_label)
-
-  update_run_state(output_dir, "render_complete")
-  base::message("[DONE] All outputs generated for: ", data_label)
+  generate_profile(df, vars, freq_col, profile_out_dir, config = NULL, out_filename = "data_profile.json")
+  base::message("[DONE] Pass 0 profile generated at: ", profile_out_dir)
+  quit(status = 0L)
 }
+
+# --- Pass 1 Render (Compute) Mode ---
+# 唯一の正式 run 作成主体
+
+# 親ディレクトリ検証 (FAIL-FAST)
+out_root <- if (!base::is.null(output_dir) && base::nzchar(output_dir)) output_dir else "./skill_out/vcd_categorical"
+assert_valid_out_root(out_root)
+
+# run_id のサニタイズ・決定
+sanitize_run_slug <- function(x) {
+  if (base::is.null(x) || !base::nzchar(base::trimws(base::as.character(x)[1]))) {
+    return(NULL)
+  }
+  x <- base::trimws(base::as.character(x)[1])
+  if (base::tolower(x) == "auto") {
+    return(base::format(base::Sys.time(), "%Y%m%d_%H%M%S", tz = "Asia/Tokyo"))
+  }
+  x <- base::gsub("[/\\\\]", "_", x)
+  x <- base::gsub("^\\.+|\\.+$", "", x)
+  if (!base::nzchar(x)) {
+    base::stop("無効な --run-id です")
+  }
+  x
+}
+
+run_slug <- sanitize_run_slug(run_id_raw)
+if (base::is.null(run_slug)) {
+  run_slug <- base::format(base::Sys.time(), "%Y%m%d_%H%M%S", tz = "Asia/Tokyo")
+}
+prefix16 <- run_id_short16(run_slug)
+
+# 原子的な run ディレクトリの予約・作成
+run_dir <- reserve_run_output_dir(out_root, "vcd-categorical-analysis", run_slug)
+resolved_run_id <- base::sub("^run_", "", base::basename(run_dir))
+base::message("[INFO] run 出力先: ", run_dir)
+
+# supersede 元の検証 (指定時)
+supersedes_run <- supersedes_run_arg
+superseded_manifest_sha256 <- NULL
+if (!base::is.null(supersedes_run) && base::nzchar(supersedes_run)) {
+  sup_info <- verify_superseded_run(supersedes_run, "vcd-categorical-analysis", current_run_dir = run_dir)
+  superseded_manifest_sha256 <- sup_info$superseded_results_manifest_sha256
+  base::message("[INFO] supersede 元 run 検証合格: ", supersedes_run)
+}
+
+# 設定スナップショットの保存
+if (base::is.null(config_data)) {
+  config_data <- base::list(
+    input = data_path,
+    vars = vars,
+    freq = freq_col,
+    output_dir = out_root,
+    run_id = run_slug
+  )
+}
+save_config_snapshot(run_dir, if (!base::is.null(config_path)) config_path else config_data, config_origin = if (!base::is.null(config_path)) "pass0_file" else "resolved_cli", config_source_path = config_path)
+
+# メタデータ (run_meta.json) の作成
+has_input_file <- !base::is.null(data_path) && base::file.exists(data_path)
+if (has_input_file) {
+  signature_input <- base::list(
+    kind = "file",
+    sha256 = sha256_file(data_path)
+  )
+  signature_vars <- vars
+  signature_freq <- freq_col
+} else {
+  builtin_df_for_signature <- base::as.data.frame(datasets::HairEyeColor)
+  signature_input <- base::list(
+    kind = "builtin:datasets::HairEyeColor",
+    sha256 = sha256_df(builtin_df_for_signature)
+  )
+  signature_vars <- c("Hair", "Eye", "Sex")
+  signature_freq <- "Freq"
+}
+analysis_signature <- digest::digest(
+  base::list(
+    interface_version = "1.0",
+    input = signature_input,
+    vars = base::unname(base::as.character(signature_vars)),
+    freq = base::as.character(signature_freq)
+  ),
+  algo = "sha256"
+)
+
+extra_meta <- base::list(
+  requested_run_id = run_slug,
+  inputs = if (!has_input_file) base::list(base::list(role = "data", source_kind = "builtin", source_path = "datasets::HairEyeColor", snapshot_policy = "hash_only", sha256 = signature_input$sha256)) else NULL,
+  analysis_signature = analysis_signature
+)
+if (!base::is.null(supersedes_run) && base::nzchar(supersedes_run)) {
+  extra_meta$supersedes_run <- base::normalizePath(supersedes_run, winslash = "/")
+  extra_meta$superseded_results_manifest_sha256 <- superseded_manifest_sha256
+  if (!base::is.null(supersede_reason_arg) && base::nzchar(supersede_reason_arg)) {
+    extra_meta$supersede_reason <- supersede_reason_arg
+  }
+}
+
+write_run_meta(
+  out_root = out_root,
+  run_output_dir = run_dir,
+  skill = "vcd-categorical-analysis",
+  run_id = resolved_run_id,
+  input_data_path = data_path,
+  extra = extra_meta
+)
+
+# 実行
+raw_config <- if (!base::is.null(config_path) && base::file.exists(config_path)) {
+  jsonlite::read_json(config_path)
+} else {
+  base::list()
+}
+config <- validate_config(raw_config)
+
+# Pass 1 compute: Apply aggregation first, then generate post-profile from aggregated data
+df_agg <- apply_aggregation(df, vars, freq_col, config)
+generate_profile(df_agg, vars, freq_col, run_dir, config = NULL, out_filename = "data_profile_post.json")
+
+# Generate data, tables, plots
+res <- generate_data(df, vars, freq_col, run_dir, config, data_label)
+generate_gt_matrix(res$res_combined, vars, freq_col, run_dir, config, data_label)
+generate_dt_table(res$res_combined, vars, run_dir, config, data_label)
+generate_plots(res$tab, vars, run_dir, config, data_label)
+
+# ダッシュボード連携用 JSON
+generate_categorical_results_json(df_agg, vars, freq_col, run_dir, res$res_combined, data_label)
+
+# マニフェスト (results_manifest.json) 出力
+# 成果物リストの収集
+manifest_artifacts <- base::list(
+  base::list(
+    path = "categorical_results.json",
+    role = "primary_results",
+    question_id = NULL
+  ),
+  base::list(
+    path = "data_profile_post.json",
+    role = "diagnostic",
+    question_id = NULL
+  ),
+  base::list(
+    path = base::paste0("residuals_", data_label, ".csv"),
+    role = "intermediate",
+    question_id = NULL
+  )
+)
+
+sig_cells_path <- base::paste0("significant_cells_", data_label, ".csv")
+if (base::file.exists(base::file.path(run_dir, sig_cells_path))) {
+  manifest_artifacts <- base::c(manifest_artifacts, base::list(base::list(
+    path = sig_cells_path,
+    role = "intermediate",
+    question_id = NULL
+  )))
+}
+
+# GT / DT HTML ファイル
+all_run_files <- base::list.files(run_dir)
+for (f in all_run_files) {
+  if (base::grepl("^gt_matrix_.*\\.html$", f) || base::grepl("^dt_residuals_.*\\.html$", f)) {
+    manifest_artifacts <- base::c(manifest_artifacts, base::list(base::list(
+      path = f,
+      role = "summary_table",
+      question_id = NULL
+    )))
+  } else if (base::grepl("^(mosaic|assoc|cotab)_.*\\.png$", f)) {
+    manifest_artifacts <- base::c(manifest_artifacts, base::list(base::list(
+      path = f,
+      role = "figure",
+      question_id = NULL
+    )))
+  }
+}
+
+manifest_res <- write_results_manifest(run_dir, "vcd-categorical-analysis", manifest_artifacts)
+base::message("[INFO] results_manifest.json 出力完了 (sha256: ", manifest_res$manifest_sha256, ")")
+
+# run_meta.json を更新 (results_manifest_sha256 を反映)
+extra_meta$results_manifest_sha256 <- manifest_res$manifest_sha256
+write_run_meta(
+  out_root = out_root,
+  run_output_dir = run_dir,
+  skill = "vcd-categorical-analysis",
+  run_id = resolved_run_id,
+  input_data_path = data_path,
+  extra = extra_meta
+)
+
+# ハンドオーバー出力 (run_handover.json)
+write_run_handover(run_dir, "vcd-categorical-analysis", manifest_res$manifest_sha256)
+base::message("[INFO] run_handover.json 出力完了")
+
+base::message("[DONE] Pass 1 compute completed for: ", data_label)

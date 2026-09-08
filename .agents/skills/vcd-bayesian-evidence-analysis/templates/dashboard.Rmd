@@ -10,6 +10,8 @@ output:
     mathjax: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
 params:
   output_dir: "./skill_out/vcd_bayesian"
+  run_dir: NULL
+  preview_mode: false
   require_pass2: true
 ---
 
@@ -41,12 +43,25 @@ find_agent_repo <- function() {
 }
 source(file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
 
-rs <- resolve_pass3_run_dir(params$output_dir, "evidence_results.json")
-output_dir <- rs$run_dir
-run_meta <- rs$run_meta
+# run_dir の直接受け入れと二重探索バイパス
+output_dir <- if (!is.null(params$run_dir) && nzchar(trimws(params$run_dir))) {
+  normalizePath(trimws(params$run_dir), winslash = "/", mustWork = TRUE)
+} else {
+  rs <- resolve_pass3_run_dir(params$output_dir, "evidence_results.json")
+  rs$run_dir
+}
+
+meta_file <- file.path(output_dir, "run_meta.json")
+run_meta <- if (file.exists(meta_file)) {
+  tryCatch(jsonlite::fromJSON(meta_file, simplifyVector = FALSE), error = function(e) NULL)
+} else NULL
+
 json_path <- file.path(output_dir, "evidence_results.json")
 summ_path <- file.path(output_dir, "executive_summary.md")
-require_pass2 <- isTRUE(params$require_pass2 %||% TRUE)
+preview_summ_path <- file.path(output_dir, "executive_summary_preview.md")
+
+preview_mode <- isTRUE(params$preview_mode) || (!file.exists(summ_path) && file.exists(preview_summ_path))
+require_pass2 <- isTRUE(params$require_pass2 %||% (!preview_mode))
 
 if (!file.exists(json_path)) {
   stop(paste("evidence_results.json が見つかりません:", json_path))
@@ -56,7 +71,7 @@ if (require_pass2 && !file.exists(summ_path)) {
   stop(paste0(
     "executive_summary.md が見つかりません（Pass 2 未完了）: ", summ_path, "\n",
     "Pass 2 で生成してから Pass 3 を実行してください。\n",
-    "プレビューのみ必要な場合は params$require_pass2 = FALSE を指定してください。"
+    "プレビューのみ必要な場合は params$require_pass2 = FALSE または params$preview_mode = TRUE を指定してください。"
   ))
 }
 
@@ -190,7 +205,7 @@ if (!is.null(definitions)) {
         fmla_str <- as.character(s_row$formula[1])
       }
     }
-    
+
     if (!is.null(fmla_str) && nzchar(trimws(fmla_str)) && !is.null(def$generators)) {
       exp_terms <- expand_gen_terms_rmd(def$generators, factor_map)
       fmla_obj <- tryCatch(as.formula(fmla_str), error = function(e) NULL)
@@ -237,7 +252,7 @@ if (!is.null(best_model_id) && nrow(models_summary) > 0 && "model_id" %in% names
 }
 
 # 効果量情報
-cramers_v <- res$effects$cramers_v %||% res$cramers_v
+cramers_v <- suppressWarnings(as.numeric(res$effects$cramers_v %||% res$cramers_v))
 cramers_v_ci <- res$effects$cramers_v_ci %||% c(res$effects$cramers_v_ci_low %||% res$cramers_v_ci_low, res$effects$cramers_v_ci_high %||% res$cramers_v_ci_high)
 effect_status <- res$effects$effect_status %||% res$effect_status %||% "unknown"
 effect_reason <- res$effects$effect_reason %||% res$effect_reason %||% ""
@@ -267,6 +282,11 @@ quarantined_count <- res$cells$quarantined_count %||% (if ("stability_status" %i
 # AI サマリーの読み込み
 if (file.exists(summ_path)) {
   summary_text <- paste(readLines(summ_path, encoding = "UTF-8"), collapse = "\n")
+} else if (file.exists(preview_summ_path)) {
+  summary_text <- paste0(
+    "> **【プレビュー】** 本考察はスタブ（executive_summary_preview.md）から読み込まれた暫定サマリーです。AI 専門家による本番考察ではありません。\n\n",
+    paste(readLines(preview_summ_path, encoding = "UTF-8"), collapse = "\n")
+  )
 } else {
   summary_text <- paste0(
     "### AI エグゼクティブ・サマリー（未生成）\n\n",
@@ -611,6 +631,15 @@ cat(paste0(
   },
   "</div></div>"
 ))
+
+if (isTRUE(preview_mode)) {
+  cat(paste0(
+    '<div class="notice-box notice-warning" style="border-left: 6px solid #f59e0b; background: #fffbeb; padding: 14px 18px; margin-bottom: 20px;">',
+    '<h4 style="margin: 0 0 6px 0; color: #b45309; font-weight: bold;">&#9888; プレビュー版ダッシュボード (未確定・未封印)</h4>',
+    '<div>本ダッシュボードはプレビュー出力（dashboard_preview.html）です。AI 専門家による本番考察（Pass 2: executive_summary.md）は未確定（またはスタブ）であり、run は封印（sealed）されていません。本番確定成果物が必要な場合は、Pass 2 AI 考察を確定後に本番ダッシュボードを生成してください。</div>',
+    '</div>'
+  ))
+}
 ```
 
 ```{r factor-legend, results='asis'}
@@ -695,16 +724,16 @@ cat(paste0(
   '<div class="label">最良モデル (明示式BIC)</div>',
   model_assumption_desc,
   '</div>',
-  
+
   '<div class="stat-card effect-card"><div class="value">', cv_summary_str, "</div>",
   '<div class="label">全体効果量 V ', cv_ci_str, '</div></div>',
-  
+
   '<div class="stat-card regular-card"><div class="value">', regular_count, " / ", n_cells, "</div>",
   '<div class="label">安定セル (', pct_regular, '% REGULAR)</div></div>',
-  
+
   '<div class="stat-card quarantine-card"><div class="value">', quarantined_count, "</div>",
   '<div class="label">隔離セル (QUARANTINED)</div></div>',
-  
+
   '<div class="stat-card sample-card"><div class="value">N = ', format(n_total, big.mark = ","), "</div>",
   '<div class="label">総観測度数 (log N = ', sprintf("%.2f", as.numeric(log_n)), ')</div></div>',
   "</div>"
@@ -741,7 +770,7 @@ cat("\n</div>\n")
 if (nrow(models_summary) > 0) {
   cat('<div class="section-title">&#9879; 対数線形モデル比較（総度数 N 基準の明示式BIC）</div>')
   cat('<div class="topk-panel" style="margin-bottom:24px;">')
-  
+
   # タスク 2.3: ブラケット解説および BIC・ΔBIC の定義・比較方向の注記
   cat('<div class="notice-box notice-info" style="margin-bottom:16px;">')
   cat('<strong>記法の見方とモデル選択基準</strong>:<br>')
@@ -755,7 +784,7 @@ if (nrow(models_summary) > 0) {
 ```{r model-table}
 if (nrow(models_summary) > 0) {
   m_tab <- models_summary
-  
+
   # 適合失敗モデルの判定関数（WARNING 2: 失敗候補を有効候補と分離）
   is_failed_row <- function(row) {
     st <- if ("status" %in% names(row) && !is.na(row$status[1])) as.character(row$status[1]) else ""
@@ -763,7 +792,7 @@ if (nrow(models_summary) > 0) {
     bic_val <- if ("bic" %in% names(row) && !is.na(row$bic[1])) as.numeric(row$bic[1]) else NA_real_
     identical(st, "FAILED") || nzchar(err) || is.na(bic_val) || is.infinite(bic_val)
   }
-  
+
   failed_flags <- vapply(seq_len(nrow(m_tab)), function(i) is_failed_row(m_tab[i, , drop = FALSE]), logical(1))
   valid_indices <- which(!failed_flags)
   valid_min_bic <- if (length(valid_indices) > 0 && "bic" %in% names(m_tab)) {
@@ -771,7 +800,7 @@ if (nrow(models_summary) > 0) {
   } else {
     NA_real_
   }
-  
+
   # ΔBIC の算出（有効候補のみから最小BICを基準とし、失敗候補は NA とする）
   m_tab$delta_bic <- vapply(seq_len(nrow(m_tab)), function(i) {
     if (failed_flags[i] || is.na(valid_min_bic) || !"bic" %in% names(m_tab)) {
@@ -780,7 +809,7 @@ if (nrow(models_summary) > 0) {
       as.numeric(m_tab$bic[i]) - valid_min_bic
     }
   }, numeric(1))
-  
+
   # タスク 2.3: 6列DT表の構築
   # 1. モデルと仮定（短い説明 + アンカーリンク）
   # 2. 生成クラス（等幅テキスト）
@@ -788,13 +817,13 @@ if (nrow(models_summary) > 0) {
   # 4. 逸脱度
   # 5. BIC
   # 6. ΔBIC
-  
+
   m_ids <- as.character(m_tab$model_id)
-  
+
   model_assumption_col <- vapply(seq_along(m_ids), function(i) {
     mid <- m_ids[i]
     target_accordion_id <- sprintf("model-detail-%s", mid)
-    
+
     if (is_model_suppressed(mid)) {
       # CRITICAL: 不整合検知時は数学的説明を安全に保留
       sprintf('<strong>%s</strong>: <span style="color:#b91c1c;">[数学的定義保留: 不整合検知]</span> <a href="#%s" class="model-detail-link" onclick="openModelDetail(\'%s\'); return false;">数式・定義</a>',
@@ -810,7 +839,7 @@ if (nrow(models_summary) > 0) {
               htmltools::htmlEscape(mid), htmltools::htmlEscape(short_desc), target_accordion_id, target_accordion_id)
     }
   }, character(1))
-  
+
   generators_col <- vapply(seq_along(m_ids), function(i) {
     mid <- m_ids[i]
     if (is_model_suppressed(mid)) {
@@ -824,12 +853,12 @@ if (nrow(models_summary) > 0) {
       }
     }
   }, character(1))
-  
+
   df_res_col <- m_tab$df_residual %||% m_tab$df
   dev_col <- m_tab$deviance
   bic_col <- m_tab$bic
   dbic_col <- m_tab$delta_bic
-  
+
   table_6col <- data.frame(
     "モデルと仮定" = model_assumption_col,
     "生成クラス" = generators_col,
@@ -840,10 +869,10 @@ if (nrow(models_summary) > 0) {
     stringsAsFactors = FALSE,
     check.names = FALSE
   )
-  
+
   # 最良行の強調（WARNING: 適合失敗モデルの場合は強調を抑止）
   best_row_idx <- if (!is.null(best_model_id) && !best_model_is_failed) which(m_ids == best_model_id) else integer(0)
-  
+
   dt_models <- datatable(
     table_6col,
     escape = FALSE,
@@ -852,7 +881,7 @@ if (nrow(models_summary) > 0) {
     options = list(dom = "t", paging = FALSE, ordering = FALSE)
   ) |>
     formatRound(c("逸脱度", "BIC", "ΔBIC"), digits = 2)
-  
+
   if (length(best_row_idx) == 1L) {
     dt_models <- dt_models |>
       formatStyle(
@@ -862,7 +891,7 @@ if (nrow(models_summary) > 0) {
         fontWeight = styleEqual(table_6col$`モデルと仮定`[best_row_idx], "bold")
       )
   }
-  
+
   dt_models
 }
 ```
@@ -872,33 +901,33 @@ if (nrow(models_summary) > 0) {
 if (nrow(models_summary) > 0) {
   cat('<div style="margin-top:20px;">')
   cat('<h4 style="font-size:14px; font-weight:700; color:#1b365d; margin-bottom:12px;">&#128269; 各候補モデルの数理定義・構造仮定詳細</h4>')
-  
+
   candidate_ids <- if (dimension == 3L) paste0("M", 1:9) else paste0("M", 1:2)
-  
+
   should_open_id <- if (!is_model_suppressed(best_model_id %||% "") && !best_model_is_failed && !is.null(best_model_id) && best_model_in_summary && best_model_id %in% candidate_ids) {
     best_model_id
   } else {
     ""
   }
-  
+
   for (mid in candidate_ids) {
     accordion_id <- sprintf("model-detail-%s", mid)
     heading_id <- sprintf("heading-%s", accordion_id)
     is_open <- (mid == should_open_id)
     open_attr <- if (is_open) " open" else ""
-    
+
     sum_row <- if (mid %in% models_summary$model_id) {
       models_summary[models_summary$model_id == mid, , drop = FALSE]
     } else {
       NULL
     }
-    
+
     def <- if (!is.null(definitions) && mid %in% names(definitions)) {
       definitions[[mid]]
     } else {
       NULL
     }
-    
+
     # 適合失敗判定（タスク 3.3）
     has_failed <- FALSE
     fail_msg <- ""
@@ -910,7 +939,7 @@ if (nrow(models_summary) > 0) {
         fail_msg <- if (nzchar(err)) err else "収束不良等のため適合失敗"
       }
     }
-    
+
     status_badge <- if (has_failed) {
       sprintf(' <span style="background:#dc2626; color:white; font-size:11px; padding:2px 6px; border-radius:4px;">適合失敗: %s</span>', htmltools::htmlEscape(fail_msg))
     } else if (!is.null(sum_row) && !best_model_is_failed && !is.null(best_model_id) && mid == best_model_id && best_model_in_summary) {
@@ -920,7 +949,7 @@ if (nrow(models_summary) > 0) {
     } else {
       ""
     }
-    
+
     bracket_or_suppressed <- if (is_model_suppressed(mid)) {
       "数学的定義保留"
     } else if (is.null(def)) {
@@ -928,17 +957,17 @@ if (nrow(models_summary) > 0) {
     } else {
       def$bracket_notation %||% (sum_row$model_name[1] %||% "モデル")
     }
-    
+
     summary_title <- sprintf('%s: %s%s',
                              htmltools::htmlEscape(mid),
                              htmltools::htmlEscape(bracket_or_suppressed),
                              status_badge)
-    
+
     cat(sprintf('<details id="%s" class="model-detail-accordion"%s>', accordion_id, open_attr))
     cat(sprintf('<summary><span><strong>%s</strong></span><span style="font-size:12px; color:#64748b;">開閉</span></summary>', summary_title))
     cat('<div class="model-detail-content">')
     cat(sprintf('<h5 id="%s" tabindex="-1" style="outline:none;">モデル %s の数理定義と構造仮定</h5>', heading_id, htmltools::htmlEscape(mid)))
-    
+
     if (is_model_suppressed(mid)) {
       # CRITICAL: 不整合検知時は数学的定義の表示を完全保留
       cat('<div class="notice-box notice-warning">')
@@ -955,14 +984,14 @@ if (nrow(models_summary) > 0) {
         cat(' &nbsp;|&nbsp; <strong>実変数展開</strong>: <code>', htmltools::htmlEscape(def$bracket_expanded), '</code>')
       }
       cat('</p>')
-      
+
       indep_disp <- def$independence$description_ja %||% def$independence_ja %||% def$description_ja %||% def$independence$base_description %||% "制約なし"
       cat('<p><strong>独立性仮定</strong>: ', htmltools::htmlEscape(indep_disp), '</p>')
-      
+
       if (!is.null(def$formula_description_ja)) {
         cat('<p><strong>モデル構造説明</strong>: ', htmltools::htmlEscape(def$formula_description_ja), '</p>')
       }
-      
+
       if (!is.null(def$formula_latex)) {
         cat('<div class="formula-box">')
         cat('<strong>ポアソン対数線形回帰式</strong>:<br>')
@@ -970,12 +999,12 @@ if (nrow(models_summary) > 0) {
         cat('<div style="font-size:11.5px; color:#64748b; margin-top:4px;">※ パラメータにはゼロ和制約または基準水準制約が適用されます。</div>')
         cat('</div>')
       }
-      
+
       if (!is.null(def$fitted_formula)) {
         cat('<p style="font-size:12px; color:#475569;"><strong>実際の適合 formula (R)</strong>: <code>', htmltools::htmlEscape(def$fitted_formula), '</code></p>')
       }
     }
-    
+
     if (has_failed) {
       cat(sprintf('<div style="margin-top:10px; font-size:12.5px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:8px 12px; border-radius:4px;"><strong>適合状態: 評価失敗</strong>（理由: %s）※ 通常のモデル順位付けから除外されています。</div>', htmltools::htmlEscape(fail_msg)))
     } else if (!is.null(sum_row) && nrow(sum_row) > 0 && !is.na(sum_row$bic[1])) {
@@ -987,7 +1016,7 @@ if (nrow(models_summary) > 0) {
     } else {
       cat('<div style="margin-top:10px; font-size:12px; color:#94a3b8;">適合数値: 未収録（適合エラーまたは評価除外）</div>')
     }
-    
+
     cat('</div>')
     cat('</details>')
   }
@@ -1016,7 +1045,7 @@ function openModelDetail(accordionId) {
       details.focus();
     }
     details.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    
+
     if (window.MathJax && window.MathJax.typesetPromise) {
       window.MathJax.typesetPromise([details]).catch(function(err) {
         console.warn('MathJax typeset error:', err);

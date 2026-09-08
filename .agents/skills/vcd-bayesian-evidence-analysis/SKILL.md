@@ -71,11 +71,27 @@ $$\mathrm{BIC}_{\mathrm{explicit}} = -2 \ln L + p \cdot \ln(N)$$
 
 `analysis.R --config` は、Pass 1 の統計計算前に `analysis_config.json` を検証します。必須キー、`vars` / `freq` の入力CSV列との一致、数値パラメータの型が不正な場合は日本語エラーで停止します。未知キーは警告を出しつつ読み込みます。
 
-## 実行手順（3-Pass・順序厳守）
+## 共通 4-Pass 正式対応表
 
-**必須の流れ:** Pass 1 完了 → Pass 2 で `executive_summary.md` を `output_dir` に保存 → 必要に応じて Pass 2.5 で `quality_check.md` を保存 → Pass 3 で `dashboard.html` を生成。Pass 3 は既定で `executive_summary.md` が無いと **エラーで停止**する（`dashboard.Rmd` の `params$require_pass2`、既定 `TRUE`）。プレビュー専用で Pass 2 を省略する場合のみ `require_pass2 = FALSE` を指定する。
+| 共通 4-Pass | Bayesian (`vcd-bayesian-evidence-analysis`) |
+| :--- | :--- |
+| **Pass 0** (Consultation) | `vcd-pass0-consultation` / `inspect_data.R` によるデータ検分と `analysis_config.json` 単一正本策定（正式 run 作成なし） |
+| **Pass 1** (Statistical Compute) | `templates/analysis.R`（4軸セル診断計算、`results_manifest.json`、実 run 原子的予約隔離、`run_handover.json`） |
+| **Pass 2** (Expert Narrative) | `executive_summary.md`（AI 専門家考察）または `pass2_stub.R`（プレビュー用スタブ）。staging 領域から `finalize_run_stage.R` による本番確定 |
+| **Pass 3** (Dashboard / Report) | `templates/render_dashboard.R`。`--preview`（未封印）または本番確定（`finalize_pass3` 経由で `dashboard.html` 生成、`run_state = "sealed"` 封印） |
+
+## 実行手順（4-Pass・順序厳守）
+
+**必須の流れ:** Pass 0（設定策定）→ Pass 1（統計計算・run 予約隔離・マニフェスト出力）→ Pass 2（AI 考察ドラフトを staging に作成し `finalize_run_stage.R` で確定）→ Pass 3（`render_dashboard.R --run-dir <path>` で本番レンダリングし `sealed` 封印）。
 
 ### Pass 1: R Engine（統計計算）
+
+```bash
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
+  --config output/titanic/run_v1/analysis_config.json
+```
+
+または明示オプション指定:
 
 ```bash
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
@@ -89,156 +105,128 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
   --large_n_threshold 2000
 ```
 
-Pass 0 が生成した config を使う場合:
-
-```bash
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
-  --config output/titanic/run_v1/analysis_config.json
-```
-
 | オプション | 既定値 | 説明 |
 | :--- | :--- | :--- |
-| `--run-id` | （なし） | 指定時は `<--output_dir>/run_<prefix>/` に隔離（`prefix` = 解決後 `run_id` の先頭16文字。未指定時は入力から算出したハッシュの先頭16文字）。`auto` は JST タイムスタンプに展開される |
+| `--config` | （なし） | Pass 0 で生成された `analysis_config.json` パス（推奨） |
+| `--input` | （内蔵 `HairEyeColor`） | 入力 CSV ファイルパス |
+| `--output_dir` | `./skill_out/vcd_bayesian/` | 出力親ディレクトリ（out_root） |
+| `--run-id` | （なし） | 指定時は `<--output_dir>/run_<prefix>/` に隔離（`prefix` = 解決後 `run_id` の先頭16文字。未指定時は入力から算出したハッシュの先頭16文字）。同一秒重複時は `_2` 等のサフィックスで原子的分離 |
 | `--vars` | （全変数） | 分析対象カテゴリ変数（2変数または3変数をカンマ区切りで指定） |
 | `--freq` | `Freq` | 度数列名（存在しない場合は1行=1件としてカウント） |
-| `--response_var` | （なし） | 3次元以上でCramér's Vを算出するための応答変数。指定時は「予測側水準の組み合わせ × 応答変数」の2次元表へ畳み込んで全体効果量を算出する |
+| `--response_var` | （なし） | 3次元以上で Cramér's V を算出するための応答変数 |
 | `--base_model` | `M1` | 局所セル診断の基準モデル（M1: 相互独立モデル 〜 M9: 飽和モデル） |
 | `--top_k` | 10 | Top-K 表示件数（効果比またはScore統計量上位セル） |
 | `--large_n_threshold` | 2000 | 大規模データモード切替閾値（N > 2,000 で Effect 優先 Dual-Filter を適用） |
-| `--config` | （なし） | Pass 0 で生成された `analysis_config.json` パス |
+| `--supersedes-run` | （なし） | 改定・再分析元となる確定済み実 run ディレクトリパス |
+| `--allow-legacy-run-meta` | （なし） | レガシー run (v1.0) のメタデータ読み取りを許可するフラグ |
 | `--help` | - | CLI ヘルプを表示 |
 | `--help_stats` | - | 統計指標ガイドを表示 |
 
-※ `--input` が無い場合は R 組み込みの `HairEyeColor` データセットを使用する。
-※ 本スキルは **2元表または3元表（2変数または3変数）** を対象とします。4変数以上を分析する場合は、Pass 0 にて次元削減・層別化・3変数への絞り込みを行ってください。
-※ `--response_var` は `--vars` に含める。未指定または算出不可の場合、Cramér's Vは未算出理由付きで記録される。
+#### 成果物マニフェスト (`results_manifest.json`)
+Pass 1 完了時に、実ファイルバイト列に対する SHA-256 ハッシュを記録した `results_manifest.json` が出力されます。
+- **スキーマ制約**: `path` は実 run ディレクトリからの相対パス（POSIX 形式、一意）、`sha256` は 64 桁の 16 進小文字。
+- **role allowlist**: `primary_results`, `diagnostic`, `intermediate`, `summary_table`, `figure`, `canonical_result`, `question_result` のみ許容。
 
-### Pass 2: AI 考察生成（本スキル）
+#### データの hash_only 原則
+設定ファイル（`analysis_config.json`）のスナップショットは run 内に保存されますが、巨大な外部元生データは無断で run 内にコピーされず、入力検証およびハッシュ値（SHA-256）のみが `run_meta.json` に安全に記録されます。
 
-Pass 1 が生成した `evidence_results.json` を読み込み、以下の **日本語エグゼクティブ・サマリー** を `executive_summary.md` として生成する。
+### Pass 2: AI 考察生成と本番確定プロトコル
 
-**AI プロンプト指示**:
+Pass 1 が生成した `evidence_results.json` を読み込み、以下の **日本語エグゼクティブ・サマリー** を作成します。
 
-あなたは **計量薬理学・医療統計の専門家** です。`evidence_results.json` を入力として受け取り、以下の4節構成で日本語考察を執筆してください。
+#### プレビュースタブ生成（一回限り）
+AI による本番執筆前に、プレビュー確認用のスタブを作成できます:
+```bash
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/pass2_stub.R \
+  --run-dir <run_dir>
+```
+※ `executive_summary_preview.md` が生成され、`pass_status$pass2` は `stub_generated` に更新されます。同名プレビューの上書き再実行は拒絶されます。
 
-#### 節1: 全体的な関連性の評価（モデル選択BIC + 全体効果量）
+#### 本番 Pass 2 確定手順
+1. AI は考察 Markdown を **run 内の staging 領域** (`<run_dir>/staging/executive_summary.md`) にドラフト保存します。
+2. 共通 CLI ラッパーを用いて本番確定を実行します:
+```bash
+Rscript .agents/shared/finalize_run_stage.R \
+  --stage pass2 \
+  --run-dir <run_dir> \
+  --source-artifact <run_dir>/staging/executive_summary.md \
+  --target-name executive_summary.md \
+  --expected-results-manifest-sha256 <sha256>
+```
+- **排他ロック**: `<out_root>/.run_locks/<run_lock_id>/`（全64桁ハッシュ）にて信頼境界検証付き排他ロックを取得して保護されます。
+- **stale ロック回復**: ロック保持プロセスが死滅し一定時間経過した場合は、`--recover-stale-lock` フラグで監査ログ (`audit.jsonl`) を残して安全に回復できます（生存 PID や他ホストのロックは拒絶）。
+- **promotion**: 検証成功後に staging から本番配置（`executive_summary.md`）へ原子的に昇格され、メタデータが `completed` に更新されます。
 
-- **重要: 見出しには必ず `####` (H4) を使用してください。**
-- 冒頭で主要結論、実務上の意味、解釈保留の有無を先に記述
-- 最良モデル（`models.best_model_id`、例: 条件付き独立M5、均一連関M8、飽和M9）と相互独立M1との明示式BICの差を明示
-- **数理定義辞書の参照（必須）**: 自己判断でモデル記号を解釈せず、必ず `models.factor_map` および `models.definitions[[best_model_id]]` から生成クラス（`bracket_notation`）、実変数展開（`bracket_expanded`）、および構造仮定（`independence.description_ja`）を引用して正確に記述すること
-  - **M5とM7の取り違え厳禁**: M5（$[AB][AC]$: $B \perp C \mid A$、学科所与で性別と合否が条件付き独立）と M7（$[AC][BC]$: $A \perp B \mid C$、合否所与で学科と性別が条件付き独立）は全く異なる構造仮定であるため、絶対に混同しないこと
-- **相対的採択と非断定基準**: 明示式BICによるモデル採択は候補モデル群における **相対的優位性** の支持であり、モデルの絶対的適合性や「差別・バイアスの不存在」を数学的に証明するものではないことを明記すること
-- `effects.primary_metric`（Cramér's V）の数値を明示し、Cohen基準（>0.1小, >0.3中, >0.5大）で実質的意義を評価
-- Cramér's V は全体効果量であり、個々のセルへ割り付ける指標ではないことを明示
-- 対象次元数と変数名を明記
+**AI 執筆ガイドライン（4節構成・日本語厳守）**:
+- `#### 節1: 全体的な関連性の評価（モデル選択BIC + 全体効果量）`
+- `#### 節2: 局所セル診断の4軸評価（Effect / Evidence / Influence / Stability）`
+- `#### 節3: 多次元交互作用の解釈（層別エビデンスと条件付き割合差）`
+- `#### 節4: 結論と実務的示唆`
 
-#### 節2: 局所セル診断の4軸評価（Effect / Evidence / Influence / Stability）
+### Pass 2.5: 品質確認 (quality_check.md)
 
-- **重要: 見出しには必ず `####` (H4) を使用してください。**
-- 旧セルScore（$r^2 - k \ln N$）が大標本でのエビデンス飽和や局所LRT乖離により廃止された背景に言及
-- 4軸フレームワークの定義を解説：
-  - **Effect（実質的効果量）**: 標本数 $N$ に不変な局所効果比 $\log(O/E)$ および標準化差 $e_i$。大標本における最優先の意思決定根拠。
-  - **Evidence（証拠強度）**: 標本数 $N$ に比例して増大する検定統計量（Leverage補正Score統計量 $T_i^{\rm score} = \frac{r_{P,i}^2}{1 - h_{ii}}$）および局所対数P値。
-  - **Influence（構造影響度）**: モデル適合に対するセルの梃子力（Hat行列対角成分 $h_{ii}$）。
-  - **Stability（数値的安定性）**: 観測度数ゼロ（$O_i=0$）、疎セル（$E_i < 5.0$）、または過大レバレッジ（$h_{ii} \ge 0.80$）のいずれかに該当するセルを隔離（`QUARANTINED` vs `REGULAR`）。
-- 正常セル（REGULAR）の比率を記載
+Pass 2 の後、必要に応じて `quality_check.md` を run ディレクトリに保存します。P値偏重や因果断定を避け、効果量、残差方向、スパースセル、集約による情報損失、解釈保留事項が適切に整理されていることを確認します。
 
-#### 節3: 多次元交互作用の解釈（層別エビデンスと条件付き割合差）
+### Pass 3: ダッシュボード生成と sealed 封印
 
-- **重要: 見出しには必ず `####` (H4) を使用してください。**
-- `cells.top_k_data` に含まれる **上位セル**（局所効果比 $\log(O/E)$ または Score統計量順）を具体的数値付きで記述
-- **レイアウト**: セル一覧は長文の連続を避け、読みやすい **Markdown表**（`| 変数 | 観測 | 期待 | log(O/E) | Score統計量 | Leverage | 診断状態 |`）で整列させる
-- 応答変数 `response_var` がある場合、`posterior.conditional_differences` から層別の条件付き生存率や層間差（平均、95%信用区間、優位確率）を比較・考察
+ダッシュボード生成は必ず `--run-dir` で実 run ディレクトリを直接指定します（暗黙探索は完全廃止）。
 
-#### 節4: 結論と実務的示唆
-
-- **重要: 見出しには必ず `####` (H4) を変えずに使用してください。**
-- 分析全体の要約（2〜3文）
-- 実務・学術的に重要な発見の強調
-- 欠損、スパースセル、過剰水準、集約、サンプルサイズに由来する限界
-- 次アクション（再分類、層別、追加確認、報告上の注意点）
-
-**禁止事項**:
-
-- 英語での考察出力（数式・変数名を除く）
-- 旧エビデンススコア（$r^2 - k \ln N$）を主たる根拠として使用すること
-- P値のみを根拠として効果の大きさを論じること
-- 2次元データとして3次元データを解釈すること
-- 時間順序や介入情報がない結果から因果を断定すること
-- **モデル仮定の採択を根拠として、差別やバイアスの不存在を絶対的に断定すること**
-- **`models.definitions` を参照せずにモデルの構造仮定を推測・誤認して記述すること（特に M5 と M7 の取り違え）**
-
-#### 大規模データモード（N > 1,000 の場合）
-`large_sample_mode` が `true` の場合、以下を必ず考察に含めること：
-
-- Cramér's V の値と Cohen 基準による評価を冒頭に明示
-- 検定統計量（Score統計量やP値）の肥大化に惑わされず、**標本数不変の Effect 軸（$\log(O/E)$、割合差）を最優先として実質的意義を判断する Dual-Filter ルール**を明記
-- 100倍拡大等で検定統計量が巨大化しても、効果量が同一であることを対比
-
-### Pass 2.5: 品質確認
-
-Pass 2 の後、必要に応じて `quality_check.md` を `executive_summary.md` と同じ run 出力ディレクトリに保存する。
-
-**確認項目**:
-
-- `executive_summary.md` が結論、根拠、限界、解釈保留、次アクションを含む。
-- 効果量（Effect）、検定統計量（Evidence）、構造影響度（Influence）、安定性（Stability）を読み分けている。
-- 旧エビデンススコアを根拠としていない。
-- 大標本効果、スパースセル、過剰水準、集約による情報損失を必要に応じて明示している。
-- `evidence_results.json`、Top-K表、`dt_table.html`、`dashboard.html`予定の図表と本文が矛盾していない。
-- 重大な未解決事項がある場合は完了扱いにせず、ブロッカーまたは解釈保留として報告する。
-
-### Pass 3: ダッシュボード生成
-
-`dashboard.html` は **`evidence_results.json` と同じ `run_<prefix>/` ディレクトリ**（`run_output_dir_from_root` と同じ規則）に出力する。Pass 1 と同じ **out_root** を `--output_dir` に渡す（Rmd の `params$output_dir` は out_root のまま、HTML の保存先だけが `run_<prefix>/` 配下になる）。
-
+#### プレビューダッシュボード生成（未封印）
 ```bash
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R \
-  --output_dir ./skill_out/vcd_bayesian/
+  --run-dir <run_dir> \
+  --preview
 ```
+※ `dashboard_preview.html` が生成されます。`run_state` は `active`（未封印）のまま保持され、後から本番確定が可能です。
 
-プレビュー専用（Pass 2 省略）:
-
+#### 本番ダッシュボード確定と sealed 封印
 ```bash
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R \
-  --output_dir ./skill_out/vcd_bayesian/ \
-  --no-require-pass2
+  --run-dir <run_dir>
 ```
+- Pass 2 が確定済み（`completed`）であることを検証します。
+- レンダリングされた HTML は staging 経由で検証され、`dashboard.html` として本番確定配置されます。
+- `dashboard.Rmd` は `self_contained: true` に準拠し、生成された HTML はローカル一時ファイルに依存しない単一ファイル完結性を持ちます。
+- 確定と同時に **`run_state = "sealed"`** に遷移し、run は完全に封印されます。**封印後の成果物追加・変更・上書きはすべて拒絶されます。**
 
-| フラグ / `dashboard.Rmd` パラメータ | 既定 | 説明 |
+### クラッシュ回復と冪等性
+promotion 完了後、run_meta 更新前にクラッシュした場合でも、既存成果物の実ファイルバイト列ハッシュが期待値と一致していれば、finalizer の再実行によって安全かつ冪等にメタデータを同期・回復できます。
+
+### 確定済み run の改定 (`--supersedes-run`)
+`sealed` 封印済みの run に対して再分析やパラメータ変更を行う場合は、元 run を直接改ざんせず、Pass 1 に `--supersedes-run <old_run_dir>` を指定して新しい run を予約・作成します。元 run の実ファイルハッシュ再計算と系統記録（lineage）が安全に保持されます。
+
+### パス・リンク表現基準
+- **リポジトリ内ファイル**: 相対パス（例: `[dashboard.html](run_xxx/dashboard.html)`）で記述する。`file:///` 絶対 URL は禁止。
+- **リポジトリ外ファイル**: 正規化された絶対パスで記述する。
+- **`run_meta.json` 内**: 実 run ディレクトリ基準の相対パスで記録する。
+
+### AI 完了報告の 4 大要素（必須）
+分析完了をユーザーへ報告する際は、以下の 4 要素を必ず明記してください：
+1. **ダッシュボードリンク**: `[dashboard.html](相対パス)`
+2. **確定実 run パス**: 実際に生成・封印された `run_output_dir`
+3. **設定・計算結果リンク**: `analysis_config.json`, `evidence_results.json`, `results_manifest.json` への相対リンク
+4. **進行・封印状態**: `run_state` が `sealed` であること、および各 Pass の完了ステータス
+
+## 生成ファイル一覧
+
+| 出力ファイル | 役割 / タイミング | 説明 |
 | :--- | :--- | :--- |
-| `--no-require-pass2` | （指定しない） | 指定時のみ `executive_summary.md` なしでレンダー（プレビュー専用） |
-| `require_pass2`（Rmd） | `TRUE` | `render_dashboard.R` では既定で `TRUE`。上記フラグで `FALSE` になる |
+| `run_meta.json` | Pass 1〜3 | 実行メタデータ・成果物ハッシュ・状態管理（v2.0 形式） |
+| `evidence_results.json` | Pass 1 | 4軸セル診断モジュール構造（一次計算結果） |
+| `results_manifest.json` | Pass 1 | 実ファイルバイト列ハッシュを含む成果物マニフェスト |
+| `run_handover.json` | Pass 1 | 後続 Pass への確定パス・引数引き継ぎ情報 |
+| `analysis_config.json` | Pass 1 | 実行設定のスナップショット |
+| `dt_table.html` | Pass 1 | インタラクティブ DT テーブル |
+| `executive_summary_preview.md` | Pass 2 (Preview) | プレビュー用スタブ考察（一回限り） |
+| `executive_summary.md` | Pass 2 (本番) | AI 専門家による確定版日本語エグゼクティブサマリー |
+| `dashboard_preview.html` | Pass 3 (Preview) | プレビュー用ダッシュボード（未封印） |
+| `dashboard.html` | Pass 3 (本番) | 単一ファイル完結型統合 HTML ダッシュボード（`sealed` 封印トリガー） |
 
-## 確認ゲート
+## 確定・回復時の共通契約
 
-- 別データの解析を続ける場合は **`--run-id`** で `run_<prefix>/` を分けるか、`--output_dir` 自体を変えて上書きを避ける。`vcd-categorical-analysis` の成果物を参照する場合は、同スキルの現行レイアウト `<out>/run_<first16>[_N]/` を使う。
-- `output_dir` に既存の `evidence_results.json` / `dashboard.html` がある場合、上書き実行の可否を確認する。
-- `require_pass2 = FALSE` で Pass 3 を先行する場合、プレビュー目的であることを確認し、本番成果物に使わないことを明示する。
-
-## 生成されるファイル
-
-| 出力 | 説明 |
-| :--- | :--- |
-| `run_meta.json` | Pass 1 時に `run_<prefix>/` に出力。`out_root` は `--output_dir`、`run_output_dir` は当該 `run_<prefix>/`（`.agents/shared/run_scope.R` の `write_run_meta`） |
-| `evidence_results.json` | `provenance/input_summary/models/effects/cells/posterior` の4軸セル診断モジュール構造（Pass 1） |
-| `dt_table.html` | 列フィルタ付きインタラクティブDTテーブル（+青/−赤色分け）（Pass 1）。`evidence_results.json` と同じ **`run_<prefix>/` 成果ディレクトリ**に保存される（`selfcontained` 時は同隣に補助ファイルが増える場合あり） |
-| `executive_summary.md` | AI日本語エグゼクティブサマリー（Pass 2） |
-| `quality_check.md` | AIレビュー・指標解釈・図表整合・解釈保留の品質確認（Pass 2.5） |
-| `dashboard.html` | Top-K＋折りたたみ全テーブル＋用語解説統合HTMLダッシュボード（Pass 3）。**`run_<prefix>/` 直下**（`dt_table.html` と同階層） |
-
-## アンチパターン対策
-
-| # | アンチパターン | 対策 |
-| :--- | :--- | :--- |
-| A | 2次元への固執 | 次元数を `dim(table)` で自動判定、常に Poisson GLM を使用 |
-| B | レンダリングパス失敗 | Pass 3 は `render_dashboard.R` を使い、リポジトリルートを `knit_root_dir` に固定する |
-| C | 英語のみ出力 | すべての出力（ラベル・UI・考察）を日本語にデフォルト設定 |
-| D | Pass 2 を飛ばして Pass 3 のみ実行 | 既定 `require_pass2 = TRUE` で `executive_summary.md` 必須。意図的プレビューのみ `FALSE` |
-| E | レビュー過剰主張 | `quality_check.md` でP値・検定統計量偏重、因果断定、効果比と検定統計量の混同、図表矛盾を確認 |
-
-## 連携スキル
-
-- **前処理**: `vcd-categorical-analysis` （残差分析・モザイクプロット）
-- **レポート**: `vcd-categorical-reporting` （AI判断レポート生成）
+- 本番確定とpreview公開は、共通 `run.lock` の下で状態を再読して実行する。既に封印されたrunや完了済み工程は再確定しない。
+- Pass 2はmanifestの期待ハッシュを引き継ぐ。Pass 3は確定済み考察の記録ハッシュと由来manifestを描画前後に照合する。改定は新runで実施する。
+- promotion中断時は、元の `--source-artifact` と期待ハッシュで確定CLIを再実行する。sourceが消失していても、run外の `transaction_<stage>.json` と公開先が一致するときに回復する。ロックが残った場合のみ `--recover-stale-lock` を明示する。証跡を削除・捏造しない。
+- legacy previewは `--allow-legacy-run-meta --preview --preview-output-dir <元run外の出力先>` を指定する。元runは読み取り専用とし、同名previewは上書きしない。
+- Questionnaireのpartial/failedは非ゼロ終了し、停止理由付きhandoverの本番next_actionsは空となる。診断成果物を確認して新しいrunへ進む。
+- `run_handover.json` の `cwd` へ移動し、提示された `argv` を実行する。存在しないstubコマンドを推測して追加しない。

@@ -22,10 +22,10 @@ repo_root <- find_repo_root()
 # 1. pass2_stub.R の実行検証 (タスク 4.5 (2))
 # -----------------------------------------------------------------------------
 test_that("タスク 4.5: pass2_stub.R の出力が構造化定義（bracket_expanded, description_ja）および相対採択注記を含む", {
-  test_dir <- file.path(repo_root, "output/test_stub_eval")
+  test_dir <- tempfile("test_stub_eval_")
   if (dir.exists(test_dir)) unlink(test_dir, recursive = TRUE)
   dir.create(test_dir, recursive = TRUE)
-  
+
   # analysis.R でテスト用 run を生成
   cmd_analysis <- sprintf(
     "Rscript %s --input %s --vars Dept,Gender,Admit --freq Freq --response_var Admit --output_dir %s --run-id stub_test",
@@ -34,34 +34,35 @@ test_that("タスク 4.5: pass2_stub.R の出力が構造化定義（bracket_exp
     shQuote(test_dir)
   )
   system(cmd_analysis, intern = TRUE)
-  
+
   run_dirs <- list.dirs(test_dir, full.names = TRUE, recursive = FALSE)
   expect_true(length(run_dirs) >= 1L)
   run_dir <- run_dirs[1]
   json_path <- file.path(run_dir, "evidence_results.json")
   expect_true(file.exists(json_path))
-  
-  stub_summary_path <- file.path(run_dir, "executive_summary.md")
-  
-  # pass2_stub.R を実行
-  cmd_stub <- sprintf(
-    "Rscript %s --json %s --output %s",
-    shQuote(file.path(repo_root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/pass2_stub.R")),
-    shQuote(json_path),
-    shQuote(stub_summary_path)
-  )
-  system(cmd_stub, intern = TRUE)
-  
-  expect_true(file.exists(stub_summary_path))
-  summary_text <- paste(readLines(stub_summary_path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
-  
+
+  source(file.path(repo_root, ".agents/shared/run_scope.R"))
+  pass2_stub_script <- file.path(repo_root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/pass2_stub.R")
+  # 解釈保留の各fixtureは独立した未確定runに保存する。既存runは改ざんしない。
+  render_stub_fixture <- function(result) {
+    fixture <- reserve_run_output_dir(test_dir, "vcd-bayesian-evidence-analysis")
+    jsonlite::write_json(result, file.path(fixture,"evidence_results.json"), auto_unbox=TRUE, pretty=TRUE)
+    manifest <- write_results_manifest(fixture,"vcd-bayesian-evidence-analysis",list(list(path="evidence_results.json",role="primary_results")))
+    write_run_meta(test_dir,fixture,"vcd-bayesian-evidence-analysis",basename(fixture),extra=list(results_manifest_sha256=manifest$manifest_sha256))
+    status <- system2("Rscript",shQuote(c(pass2_stub_script,"--run-dir",fixture)))
+    expect_equal(status,0L)
+    paste(readLines(file.path(fixture,"executive_summary_preview.md"),encoding="UTF-8"),collapse="\n")
+  }
+  json_data <- jsonlite::fromJSON(json_path,simplifyVector=FALSE)
+  summary_text <- render_stub_fixture(json_data)
+
   # 構造化定義情報の反映確認
   expect_match(summary_text, "最良モデルID.*: M5")
   expect_match(summary_text, "生成クラス（ブラケット記法）.*: `\\[AB\\]\\[AC\\]`")
   expect_match(summary_text, "実変数展開.*: `\\[Dept, Gender\\]\\[Dept, Admit\\]`")
   expect_match(summary_text, "構造仮定.*: Dept.*で層別したとき.*Gender.*と.*Admit.*は条件付き独立")
   expect_match(summary_text, "適合式 \\(R\\).*: `Freq ~ Dept \\* Gender \\+ Dept \\* Admit`")
-  
+
   # 相対採択原則・非断定注記の反映確認
   expect_match(summary_text, "解釈上の重要注意（相対採択の原則）")
   expect_match(summary_text, "相対的優位性を支持するものであり.*差別の不存在を証明するものではありません")
@@ -72,17 +73,13 @@ test_that("タスク 4.5: pass2_stub.R の出力が構造化定義（bracket_exp
   json_data <- jsonlite::fromJSON(json_path, simplifyVector = FALSE)
   json_broken <- json_data
   json_broken$models$definitions$M5$fitted_formula <- "Freq ~ ("
-  jsonlite::write_json(json_broken, json_path, auto_unbox = TRUE, pretty = TRUE)
-  system(sprintf("Rscript %s --json %s --output %s", shQuote(pass2_stub_script), shQuote(json_path), shQuote(stub_summary_path)))
-  summary_broken <- paste(readLines(stub_summary_path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+  summary_broken <- render_stub_fixture(json_broken)
   expect_match(summary_broken, "数学的定義保留: 適合式と生成クラスの不整合検知")
 
   # 異常系2: 未知の notation_version (2.0.0) での保留
   json_unknown <- json_data
   json_unknown$models$notation_version <- "2.0.0"
-  jsonlite::write_json(json_unknown, json_path, auto_unbox = TRUE, pretty = TRUE)
-  system(sprintf("Rscript %s --json %s --output %s", shQuote(pass2_stub_script), shQuote(json_path), shQuote(stub_summary_path)))
-  summary_unknown <- paste(readLines(stub_summary_path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+  summary_unknown <- render_stub_fixture(json_unknown)
   expect_match(summary_unknown, "数学的定義保留: 適合式と生成クラスの不整合検知")
 
   # 異常系3: 最良モデルが適合失敗 (FAILED) の場合の最良モデル判定保留
@@ -94,12 +91,10 @@ test_that("タスク 4.5: pass2_stub.R の出力が構造化定義（bracket_exp
     }
     m
   })
-  jsonlite::write_json(json_failed, json_path, auto_unbox = TRUE, pretty = TRUE)
-  system(sprintf("Rscript %s --json %s --output %s", shQuote(pass2_stub_script), shQuote(json_path), shQuote(stub_summary_path)))
-  summary_failed <- paste(readLines(stub_summary_path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+  summary_failed <- render_stub_fixture(json_failed)
   expect_match(summary_failed, "適合失敗モデルのため判定保留")
   expect_match(summary_failed, "M5 \\(適合失敗\\)")
-  
+
   unlink(test_dir, recursive = TRUE)
 })
 
@@ -111,7 +106,7 @@ audit_ai_narrative <- function(narrative, results_json) {
   issues <- character(0)
   best_id <- results_json$models$best_model_id
   best_def <- results_json$models$definitions[[best_id]]
-  
+
   # M5 と M7 の取り違え検出
   if (best_id == "M5") {
     # M7 の特徴（合否で層別、[AC][BC]、Admitで層別）が含まれている場合は検出
@@ -122,7 +117,7 @@ audit_ai_narrative <- function(narrative, results_json) {
       issues <- c(issues, "合否(Admit)所与での条件付き独立というM7の誤った構造仮定が記述されています")
     }
   }
-  
+
   # 差別不存在等の絶対的断定の検出
   assertion_patterns <- c(
     "差別(は|が)(完全に)?存在しないことが証明",
@@ -135,7 +130,7 @@ audit_ai_narrative <- function(narrative, results_json) {
       issues <- c(issues, sprintf("モデル採択を根拠とする差別不存在の過度の断定表現が検出されました: '%s'", pat))
     }
   }
-  
+
   # 正しい定義の引用確認
   if (!is.null(best_def)) {
     has_bracket <- grepl(gsub("\\[", "\\\\[", gsub("\\]", "\\\\]", best_def$bracket_notation)), narrative)
@@ -143,7 +138,7 @@ audit_ai_narrative <- function(narrative, results_json) {
       issues <- c(issues, sprintf("最良モデル %s の正本ブラケット記法 %s が考察に引用されていません", best_id, best_def$bracket_notation))
     }
   }
-  
+
   issues
 }
 
@@ -162,7 +157,7 @@ test_that("タスク 4.5: 考察監査ロジックが M7/M5 取り違えおよ�
       )
     )
   )
-  
+
   # サンプル 1: M7 と M5 の取り違え（不合格と判定されるべき）
   sample_confused <- paste(
     "最良モデルは M5 [AC][BC] であり、合否(Admit)で層別したときに学科と性別が独立であることを示しています。",
@@ -172,7 +167,7 @@ test_that("タスク 4.5: 考察監査ロジックが M7/M5 取り違えおよ�
   expect_true(length(issues_confused) >= 2L)
   expect_true(any(grepl("M7のブラケット記法", issues_confused)))
   expect_true(any(grepl("M7の誤った構造仮定", issues_confused)))
-  
+
   # サンプル 2: 差別不存在の断定（不合格と判定されるべき）
   sample_assertive <- paste(
     "明示式BICにより最良モデル M5 [AB][AC] が採択されました。",
@@ -181,7 +176,7 @@ test_that("タスク 4.5: 考察監査ロジックが M7/M5 取り違えおよ�
   issues_assertive <- audit_ai_narrative(sample_assertive, res_mock)
   expect_true(length(issues_assertive) >= 1L)
   expect_true(any(grepl("差別不存在の過度の断定表現", issues_assertive)))
-  
+
   # サンプル 3: 正しい AI 考察（合格と判定されるべき）
   sample_sound <- paste(
     "明示式BICに基づき、最良モデルとして M5（生成クラス [AB][AC]、実変数展開 [Dept, Gender][Dept, Admit]）が採択された。",

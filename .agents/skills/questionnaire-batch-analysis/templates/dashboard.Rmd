@@ -3,9 +3,13 @@ title: "アンケートバッチ分析ダッシュボード"
 output:
   html_document:
     theme: flatly
+    self_contained: true
     mathjax: "default"
 params:
   output_dir: "./skill_out/questionnaire"
+  run_dir: NULL
+  preview_mode: false
+  require_pass2: true
 ---
 
 ```{r setup, include=FALSE}
@@ -54,32 +58,82 @@ find_agent_repo <- function() {
 }
 source(file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
 
-rs <- resolve_pass3_run_dir(params$output_dir, "summary.csv")
-run_dir <- rs$run_dir
-run_meta <- rs$run_meta
-json_path <- find_questionnaire_json_under_run(run_dir)
-output_dir <- dirname(json_path)
-summ_path <- file.path(run_dir, "executive_summary.md")
+# run_dir の直接受け入れと二重探索バイパス
+run_dir <- if (!is.null(params$run_dir) && nzchar(trimws(params$run_dir))) {
+  normalizePath(trimws(params$run_dir), winslash = "/", mustWork = TRUE)
+} else {
+  rs <- resolve_pass3_run_dir(params$output_dir, "summary.csv")
+  rs$run_dir
+}
 
-if (file.exists(json_path)) {
+meta_file <- file.path(run_dir, "run_meta.json")
+run_meta <- if (file.exists(meta_file)) {
+  tryCatch(jsonlite::fromJSON(meta_file, simplifyVector = FALSE), error = function(e) NULL)
+} else NULL
+
+summ_path <- file.path(run_dir, "cross_question_summary.md")
+if (!file.exists(summ_path) && file.exists(file.path(run_dir, "executive_summary.md"))) {
+  summ_path <- file.path(run_dir, "executive_summary.md")
+}
+
+preview_summ_path <- file.path(run_dir, "cross_question_summary_preview.md")
+if (!file.exists(preview_summ_path) && file.exists(file.path(run_dir, "executive_summary_preview.md"))) {
+  preview_summ_path <- file.path(run_dir, "executive_summary_preview.md")
+}
+
+preview_mode <- isTRUE(params$preview_mode) || (!file.exists(summ_path) && file.exists(preview_summ_path))
+require_pass2 <- isTRUE(params$require_pass2 %||% (!preview_mode))
+
+if (require_pass2 && !file.exists(summ_path)) {
+  stop(paste0(
+    "cross_question_summary.md が見つかりません（Pass 2 未完了）: ", summ_path, "\n",
+    "Pass 2 で設問横断考察を生成してから Pass 3 を実行してください。\n",
+    "プレビューのみ必要な場合は params$require_pass2 = FALSE または params$preview_mode = TRUE を指定してください。"
+  ))
+}
+
+# 設問結果の取得
+json_path <- tryCatch(find_questionnaire_json_under_run(run_dir), error = function(e) NULL)
+
+if (!is.null(json_path) && file.exists(json_path)) {
   res <- jsonlite::fromJSON(json_path)
   dataset_nm <- res$survey_id %||% "Survey"
   q_label <- res$question_label %||% res$question_id
-  n_total <- res$n_used
+  n_total <- res$n_used %||% res$n_total
   cramers_v <- res$cramers_v
-  max_res <- res$max_abs_pearson_res
-  p_val <- res$p_value
+  max_res <- res$residuals$max_abs %||% res$max_abs_pearson_res
+  p_val <- res$statistic$p_value %||% res$p_value
+  fig_path <- file.path(dirname(json_path), "figures", "residual_plot.png")
 } else {
-  stop("questionnaire_results.json が見つかりません。Pass 1 を実行してください。")
+  # summary.csv から基本情報を取得
+  summary_file <- file.path(run_dir, "summary.csv")
+  if (file.exists(summary_file)) {
+    s_df <- utils::read.csv(summary_file, stringsAsFactors = FALSE)
+    dataset_nm <- if (nrow(s_df) > 0) s_df$survey_id[1] else "Survey"
+    q_label <- paste0(nrow(s_df), " 設問バッチ")
+    n_total <- if (nrow(s_df) > 0) max(s_df$n_total, na.rm = TRUE) else 0
+    cramers_v <- if (nrow(s_df) > 0) mean(s_df$cramer_v_marginal, na.rm = TRUE) else NA
+    max_res <- if (nrow(s_df) > 0) max(s_df$max_abs_pearson_res, na.rm = TRUE) else NA
+    p_val <- NA
+    fig_path <- NULL
+  } else {
+    stop("summary.csv が見つかりません。Pass 1 を実行してください。")
+  }
 }
 
 if (file.exists(summ_path)) {
   summary_text <- paste(readLines(summ_path, encoding = "UTF-8"), collapse = "\n")
+} else if (file.exists(preview_summ_path)) {
+  summary_text <- paste(
+    "### 【プレビュー】設問横断考察（ドラフト）\n\n",
+    "> **注意**: このサマリーはドラフト段階のプレビューです。最終確定版ではありません。\n\n",
+    paste(readLines(preview_summ_path, encoding = "UTF-8"), collapse = "\n")
+  )
 } else {
   summary_text <- paste0(
-    "### AI エグゼクティブ・サマリー（未生成）\n\n",
-    "> **Pass 2 未実行**: `executive_summary.md` が見つかりません。\n>\n",
-    "> SKILL.md の指示に従い AI 考察を生成し保存してください。\n"
+    "### 設問横断考察サマリー（未生成）\n\n",
+    "> **Pass 2 未実行**: `cross_question_summary.md` が見つかりません。\n>\n",
+    "> SKILL.md の指示に従い AI 設問横断考察を生成し保存してください。\n"
   )
 }
 ```
@@ -100,6 +154,17 @@ body {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.preview-banner {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
 .header-banner {
@@ -183,6 +248,17 @@ body {
 
 <div class="dashboard-container">
 
+```{r preview-banner, results='asis'}
+if (preview_mode) {
+  cat(paste0(
+    '<div class="preview-banner">',
+    '⚠️ <b>【プレビュー表示】</b> このダッシュボードは Pass 2 設問横断考察確定前の一時プレビュー（dashboard_preview.html）です。',
+    '確定版ダッシュボード（dashboard.html）および sealed 封印は Pass 2 確定後に生成されます。',
+    '</div>'
+  ))
+}
+```
+
 ```{r header-banner, results='asis'}
 run_line <- if (!is.null(run_meta) && !is.null(run_meta$run_id)) {
   paste0('<span><b>run_id:</b> ', run_meta$run_id, '</span>',
@@ -229,7 +305,7 @@ cat(paste0(
 ))
 ```
 
-<div class="section-title">&#129504; AI エグゼクティブ・サマリー（Pass 2 出力）</div>
+<div class="section-title">&#129504; 設問横断考察（Pass 2 出力）</div>
 
 ```{r ai-summary, results='asis'}
 cat('<div class="ai-summary-box">\n')
@@ -237,11 +313,14 @@ cat(knitr::knit(text = summary_text, quiet = TRUE))
 cat("\n</div>\n")
 ```
 
-<div class="section-title">&#128200; ピアソン残差プロット</div>
-
-<div class="img-container">
-<img src="figures/residual_plot.png" alt="residual plot" style="max-width:100%; border-radius:4px;">
-</div>
+```{r residual-plot, results='asis'}
+if (!is.null(fig_path) && file.exists(fig_path)) {
+  cat('<div class="section-title">&#128200; ピアソン残差プロット</div>\n')
+  cat('<div class="img-container">\n')
+  cat(sprintf('<img src="%s" alt="residual plot" style="max-width:100%%; border-radius:4px;">\n', fig_path))
+  cat('</div>\n')
+}
+```
 
 <details class="glossary-box" style="background:#fff; padding:15px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.05); font-size:12px; margin-top:24px;">
 <summary style="font-weight:bold; color:#1a3a5c; cursor:pointer;">&#128218; 統計指標の用語解説</summary>

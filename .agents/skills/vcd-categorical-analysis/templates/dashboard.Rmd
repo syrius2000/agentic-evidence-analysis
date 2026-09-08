@@ -1,13 +1,17 @@
 ---
 title: "カテゴリカル分析ダッシュボード"
 author: "vcd-categorical-analysis"
-date: "`r Sys.Date()`"
+date: "`r format(Sys.time(), '%Y年%m月%d日 %H:%M', tz='Asia/Tokyo')`"
 output:
   html_document:
     theme: flatly
+    self_contained: true
     mathjax: "default"
 params:
-  output_dir: "./skill_out/vcd_categorical/"
+  output_dir: "./skill_out/vcd_categorical"
+  run_dir: NULL
+  preview_mode: false
+  require_pass2: true
 ---
 
 ```{r setup, include=FALSE}
@@ -54,22 +58,44 @@ find_agent_repo <- function() {
 }
 source(file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
 
-rs <- resolve_pass3_run_dir(params$output_dir, "categorical_results.json")
-output_dir <- rs$run_dir
-run_meta <- rs$run_meta
+# run_dir の直接受け入れと二重探索バイパス
+output_dir <- if (!is.null(params$run_dir) && nzchar(trimws(params$run_dir))) {
+  normalizePath(trimws(params$run_dir), winslash = "/", mustWork = TRUE)
+} else {
+  rs <- resolve_pass3_run_dir(params$output_dir, "categorical_results.json")
+  rs$run_dir
+}
+
+meta_file <- file.path(output_dir, "run_meta.json")
+run_meta <- if (file.exists(meta_file)) {
+  tryCatch(jsonlite::fromJSON(meta_file, simplifyVector = FALSE), error = function(e) NULL)
+} else NULL
+
 json_path <- file.path(output_dir, "categorical_results.json")
 summ_path <- file.path(output_dir, "executive_summary.md")
+preview_summ_path <- file.path(output_dir, "executive_summary_preview.md")
 
-if (file.exists(json_path)) {
-  res <- jsonlite::fromJSON(json_path)
-  dataset_nm <- res$dataset_name %||% "Dataset"
-  dims <- res$dimensions
-  n_total <- res$n_total
-  cramers_v <- res$cramers_v
-  full_data <- as.data.frame(res$full_data)
-} else {
+preview_mode <- isTRUE(params$preview_mode) || (!file.exists(summ_path) && file.exists(preview_summ_path))
+require_pass2 <- isTRUE(params$require_pass2 %||% (!preview_mode))
+
+if (!file.exists(json_path)) {
   stop("categorical_results.json が見つかりません。Pass 1 を実行し、run 出力ディレクトリ（run_*）を指定してください。")
 }
+
+if (require_pass2 && !file.exists(summ_path)) {
+  stop(paste0(
+    "executive_summary.md が見つかりません（Pass 2 未完了）: ", summ_path, "\n",
+    "Pass 2 で生成してから Pass 3 を実行してください。\n",
+    "プレビューのみ必要な場合は params$require_pass2 = FALSE または params$preview_mode = TRUE を指定してください。"
+  ))
+}
+
+res <- jsonlite::fromJSON(json_path)
+dataset_nm <- res$dataset_name %||% "Dataset"
+dims <- res$dimensions
+n_total <- res$n_total
+cramers_v <- res$cramers_v
+full_data <- as.data.frame(res$full_data)
 
 # データ整形
 freq_col <- if ("Freq" %in% names(full_data)) "Freq" else names(full_data)[ncol(full_data)]
@@ -87,6 +113,12 @@ n_sig <- sum(full_data$abs_pearson_res >= 1.96, na.rm = TRUE)
 # AI サマリーの読み込み
 if (file.exists(summ_path)) {
   summary_text <- paste(readLines(summ_path, encoding = "UTF-8"), collapse = "\n")
+} else if (file.exists(preview_summ_path)) {
+  summary_text <- paste(
+    "### 【プレビュー】AI エグゼクティブ・サマリー（ドラフト）\n\n",
+    "> **注意**: このサマリーはドラフト段階のプレビューです。最終確定版ではありません。\n\n",
+    paste(readLines(preview_summ_path, encoding = "UTF-8"), collapse = "\n")
+  )
 } else {
   summary_text <- paste0(
     "### AI エグゼクティブ・サマリー（未生成）\n\n",
@@ -112,6 +144,17 @@ body {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.preview-banner {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 15px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
 .header-banner {
@@ -197,6 +240,17 @@ body {
 ```
 
 <div class="dashboard-container">
+
+```{r preview-banner, results='asis'}
+if (preview_mode) {
+  cat(paste0(
+    '<div class="preview-banner">',
+    '⚠️ <b>【プレビュー表示】</b> このダッシュボードは Pass 2 AI 考察確定前の一時プレビュー（dashboard_preview.html）です。',
+    '確定版ダッシュボード（dashboard.html）および sealed 封印は Pass 2 確定後に生成されます。',
+    '</div>'
+  ))
+}
+```
 
 ```{r header-banner, results='asis'}
 run_line <- if (!is.null(run_meta) && !is.null(run_meta$run_id)) {

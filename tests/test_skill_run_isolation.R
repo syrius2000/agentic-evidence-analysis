@@ -31,7 +31,7 @@ st2 <- system2("Rscript", c(bayes, "--input", a2, "--output_dir", td))
 check("bayesian two runs exit 0", identical(as.integer(st1), 0L) && identical(as.integer(st2), 0L))
 
 runs <- list.dirs(td, recursive = FALSE, full.names = TRUE)
-runs <- runs[grepl("/run_[0-9a-f]{16}$", runs)]
+runs <- runs[grepl("/run_([0-9a-f]{16}|[0-9]{8}_[0-9]{6})(_[0-9]+)?$", runs)]
 check("two run_* directories exist", length(runs) == 2L)
 
 meta_paths <- list.files(td, pattern = "^run_meta\\.json$", full.names = TRUE, recursive = TRUE)

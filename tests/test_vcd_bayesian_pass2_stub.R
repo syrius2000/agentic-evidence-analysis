@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # tests/test_vcd_bayesian_pass2_stub.R
-# TDD RED: pass2_stub.R が存在し、JSONからexecutive_summary.mdを生成できることを確認
+# TDD RED: pass2_stub.R が存在し、JSONからexecutive_summary_preview.mdを生成できることを確認
 root <- normalizePath(".", mustWork = TRUE)
 if (!file.exists(file.path(root, ".agents")) && identical(basename(root), "tests")) {
   root <- normalizePath(file.path(root, ".."), mustWork = TRUE)
@@ -26,7 +26,7 @@ check("pass2_stub.R exists", file.exists(stub_script))
 tmp <- tempfile("pass2_stub_test_")
 dir.create(tmp)
 json_path <- file.path(tmp, "evidence_results.json")
-out_path <- file.path(tmp, "executive_summary.md")
+out_path <- file.path(tmp, "executive_summary_preview.md")
 
 json_content <- '{
   "dataset_name": "test",
@@ -42,11 +42,14 @@ json_content <- '{
   "warnings": ["Cramér\'s V is Small (0.25 < 0.3)"]
 }'
 writeLines(json_content, json_path)
+source(file.path(root,".agents/shared/run_scope.R"))
+m <- write_results_manifest(tmp,"vcd-bayesian-evidence-analysis",list(list(path="evidence_results.json",role="primary_results")))
+write_run_meta(dirname(tmp),tmp,"vcd-bayesian-evidence-analysis","stub",extra=list(results_manifest_sha256=m$manifest_sha256))
 
 if (file.exists(stub_script)) {
-  status <- system2("Rscript", c(stub_script, "--json", json_path, "--output", out_path))
+  status <- system2("Rscript", c(stub_script, "--run-dir", tmp))
   check("pass2_stub.R executes successfully", status == 0L)
-  check("executive_summary.md created", file.exists(out_path))
+  check("executive_summary_preview.md created", file.exists(out_path))
   if (file.exists(out_path)) {
     md <- readLines(out_path)
     md_text <- paste(md, collapse = "\n")
