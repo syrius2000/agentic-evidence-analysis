@@ -134,3 +134,20 @@ validate_analysis_config <- function(config_data, config_path = NULL, repo_root 
 
   invisible(list(input = resolved_input))
 }
+
+merge_config_file <- function(config_path, current_cfg) {
+  if (!file.exists(config_path)) {
+    stop(paste("[ERROR] 設定ファイルが見つかりません:", config_path), call. = FALSE)
+  }
+  raw_config <- jsonlite::fromJSON(config_path, simplifyVector = TRUE)
+  repo_root <- if (exists("find_agent_repo", mode = "function")) find_agent_repo() else getwd()
+  val_res <- validate_analysis_config(raw_config, config_path = config_path, repo_root = repo_root)
+  if (!is.null(val_res$input)) {
+    raw_config$input <- val_res$input
+  }
+  for (key in names(raw_config)) {
+    current_cfg[[key]] <- raw_config[[key]]
+  }
+  current_cfg
+}
+
