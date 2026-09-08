@@ -128,31 +128,44 @@ test_that("タスク 3.2: 内部不整合データ（次元不一致、参照不
   html_c_in_2way <- render_test_fixture(d_c_in_2way, "c_in_2way")
   expect_match(html_c_in_2way, "2元表データですが因子記号Cが定義に含まれています", info = "2元表C混入警告が表示されること")
   
-  # 4. 実適合式と定義適合式の不一致
+  # 4. 実適合式と定義適合式の不一致（CRITICAL 2: 全域で数学的説明が保留されることの確認）
   d_formula_mismatch <- base_data
-  # models$summary に formula 列を追加して不一致を発生させる
-  d_formula_mismatch$models$summary <- lapply(d_formula_mismatch$models$summary, function(m) {
-    if (m$model_id == "M1") {
-      m$formula <- "Freq ~ Dept + Gender + Admit + Dept:Gender:Admit"  # 飽和モデルの式を故意に設定
-    }
-    m
-  })
+  d_formula_mismatch$models$definitions$M1$fitted_formula <- "Freq ~ Dept * Gender * Admit" # M1([A][B][C]) に飽和式の展開項
   html_formula_mismatch <- render_test_fixture(d_formula_mismatch, "formula_mismatch")
-  expect_match(html_formula_mismatch, "モデル M1 の記録適合式.*と数理定義の適合式.*が一致しません", info = "適合式不一致警告が表示されること")
+  expect_match(html_formula_mismatch, "モデル M1 の適合式.*展開項と生成クラスが一致しません", info = "項レベル不一致警告が表示されること")
+  expect_match(html_formula_mismatch, "M1.*数学的定義保留: 不整合検知", info = "比較表で定義が保留されること")
+  expect_match(html_formula_mismatch, "数学的定義保留.*適合式と生成クラス.*不整合.*表示を安全のため保留", info = "詳細アコーディオン内で定義が保留されること")
+  expect_false(grepl("主効果A, B, Cのみを含む相互独立モデル", html_formula_mismatch), info = "不整合モデルの定義文が表示されないこと")
+  
+  # 5. 壊れた適合式の構文解析エラー（CRITICAL: 構文エラーを握りつぶさず不整合検知すること）
+  d_broken_formula <- base_data
+  d_broken_formula$models$definitions$M1$fitted_formula <- "Freq ~ ("
+  html_broken_formula <- render_test_fixture(d_broken_formula, "broken_formula")
+  expect_match(html_broken_formula, "モデル M1 の適合式.*構文解析に失敗しました", info = "構文解析エラーが警告として表示されること")
+  expect_match(html_broken_formula, "M1.*数学的定義保留: 不整合検知", info = "壊れた適合式のモデル定義が比較表で保留されること")
+  expect_match(html_broken_formula, "数学的定義保留.*適合式と生成クラス.*不整合.*表示を安全のため保留", info = "壊れた適合式のモデル詳細がアコーディオンで保留されること")
+
+  # 6. best_model_id 欠落時（WARNING 1: M1 を勝手に補完せず、初期展開もしない）
+  d_missing_best <- base_data
+  d_missing_best$models$best_model_id <- NULL
+  d_missing_best$model_selection$best_model <- NULL
+  html_missing_best <- render_test_fixture(d_missing_best, "missing_best_model")
+  expect_match(html_missing_best, "未選定", info = "最良モデルカードが未選定と表示されること")
+  expect_false(grepl('class="model-detail-accordion" open', html_missing_best), info = "best_model_id 欠落時にアコーディオンが勝手に初期展開されないこと")
 })
 
 # -----------------------------------------------------------------------------
 # タスク 3.3: 記録済み適合失敗 & 未知バージョンのハンドリング
 # -----------------------------------------------------------------------------
-test_that("タスク 3.3: 記録済み適合失敗データに対し保存された理由が表示され通常順位付けと分離される", {
+test_that("タスク 3.3: 記録済み適合失敗データに対し保存された理由が表示され通常順位付けと分離される (WARNING 2)", {
   d_failed <- base_data
-  # M2 を適合失敗として記録
+  # M2 を適合失敗として記録（有限の異常BIC = 100 を与えても最小BIC基準を奪わないことの確認）
   d_failed$models$summary <- lapply(d_failed$models$summary, function(m) {
     if (m$model_id == "M2") {
       m$status <- "FAILED"
       m$error_message <- "収束不良: Fisher Scoringが反復上限に到達"
-      m$deviance <- NA_real_
-      m$bic <- NA_real_
+      m$deviance <- 10.0
+      m$bic <- 100.0  # M5のBIC(479)より小さいが、FAILEDのため最小BIC基準にならない
     } else {
       m$status <- "SUCCESS"
       m$error_message <- ""
@@ -164,16 +177,33 @@ test_that("タスク 3.3: 記録済み適合失敗データに対し保存され
   
   expect_match(html_failed, "適合失敗:\\s*収束不良: Fisher Scoringが反復上限に到達", info = "アコーディオンタイトルに失敗理由が表示されること")
   expect_match(html_failed, "適合状態:\\s*評価失敗.*理由:\\s*収束不良.*通常のモデル順位付けから除外されています", info = "詳細内部に除外警告が表示されること")
+  # M5 (有効最小BICモデル) の delta_bic が 0.00 であること（M2のbic 100に狂わされないこと）
+  expect_match(html_failed, "M5.*\\s+0\\.00", info = "有効モデルのみから最小BICが計算されM5のΔBICが0となること")
+
+  # WARNING: 適合失敗モデルが best_model_id に指定されていた場合、最良モデル強調・初期展開を抑止すること
+  d_failed_best <- d_failed
+  d_failed_best$models$best_model_id <- "M2"
+  d_failed_best$model_selection$best_model <- "M2"
+  html_failed_best <- render_test_fixture(d_failed_best, "failed_best_model")
+  expect_match(html_failed_best, "適合失敗（最良判定保留）", info = "カードで最良モデル判定保留となること")
+  expect_false(grepl('class="model-detail-accordion" open', html_failed_best), info = "失敗モデルが最良モデルとして初期展開されないこと")
+  expect_false(grepl('background-color:#f0fdf4', html_failed_best), info = "失敗モデルが比較表で最良行強調されないこと")
 })
 
-test_that("タスク 3.3: 未知の notation_version (2.0.0) に対し警告が表示され安全に処理される", {
+test_that("タスク 3.3: 未知の notation_version (2.0.0) に対し警告が表示され、カード・比較表・詳細の全域で安全に保留される (CRITICAL)", {
   d_unknown_ver <- base_data
   d_unknown_ver$models$notation_version <- "2.0.0"
   
   html_unknown_ver <- render_test_fixture(d_unknown_ver, "unknown_ver")
   
   expect_match(html_unknown_ver, "未知の notation_version です: 2.0.0", info = "未知バージョン警告が表示されること")
-  expect_match(html_unknown_ver, "内部不整合（仮定保留）", info = "安全のため仮定保留されること")
+  expect_match(html_unknown_ver, "内部不整合（仮定保留）", info = "主要カードで安全のため仮定保留されること")
+  expect_match(html_unknown_ver, "M5.*数学的定義保留: 不整合検知", info = "比較表で全モデルの定義が保留されること")
+  expect_match(html_unknown_ver, "数学的定義保留.*全体定義に不整合が存在するため", info = "詳細アコーディオン内で全モデルの定義が保留されること")
+  expect_match(html_unknown_ver, "<summary>\\s*<span><strong>M5: 数学的定義保留", info = "詳細アコーディオンの見出しでも生成クラスではなく数学的定義保留と表示されること")
+  expect_match(html_unknown_ver, "<summary>\\s*<span><strong>M1: 数学的定義保留", info = "M1等の他モデルの見出しでも数学的定義保留と表示されること")
+  expect_false(grepl("<summary>\\s*<span><strong>M5: \\[AB\\]\\[AC\\]", html_unknown_ver), info = "詳細見出しに生成クラスが露出しないこと")
+  expect_false(grepl("条件付き独立である", html_unknown_ver), info = "未知バージョン時に構造仮定の文言が表示されないこと")
 })
 
 # -----------------------------------------------------------------------------

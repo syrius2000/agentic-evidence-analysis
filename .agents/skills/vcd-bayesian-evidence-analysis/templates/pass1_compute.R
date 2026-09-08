@@ -29,193 +29,199 @@ sanitize_run_slug <- function(x) {
 
 # --- [1. モデル仕様辞書と生成クラス（generators）正本定義] ---
 
+# --- [1. モデル仕様辞書と生成クラス（generators）正本定義] ---
+
+# 辞書本体は最小限の構成メタデータ（id, model_key, name, order, generators）のみを定義する。
+# ブラケット表記、独立性構造、LaTeX数式、展開項、日本語説明はすべて generators から一元的に自動導出する。
+
 MODEL_SPECS_3WAY <- list(
-  M1 = list(
-    id = "M1",
-    model_key = "3way_M1",
-    name = "mutual_independence",
-    order = 1,
-    generators = list(c("A"), c("B"), c("C")),
-    bracket_notation = "[A][B][C]",
-    independence = list(
+  M1 = list(id = "M1", model_key = "3way_M1", name = "mutual_independence", order = 1, generators = list(c("A"), c("B"), c("C"))),
+  M2 = list(id = "M2", model_key = "3way_M2", name = "assoc_AB", order = 2, generators = list(c("A", "B"), c("C"))),
+  M3 = list(id = "M3", model_key = "3way_M3", name = "assoc_AC", order = 2, generators = list(c("A", "C"), c("B"))),
+  M4 = list(id = "M4", model_key = "3way_M4", name = "assoc_BC", order = 2, generators = list(c("B", "C"), c("A"))),
+  M5 = list(id = "M5", model_key = "3way_M5", name = "cond_indep_BC_given_A", order = 2, generators = list(c("A", "B"), c("A", "C"))),
+  M6 = list(id = "M6", model_key = "3way_M6", name = "cond_indep_AC_given_B", order = 2, generators = list(c("A", "B"), c("B", "C"))),
+  M7 = list(id = "M7", model_key = "3way_M7", name = "cond_indep_AB_given_C", order = 2, generators = list(c("A", "C"), c("B", "C"))),
+  M8 = list(id = "M8", model_key = "3way_M8", name = "homogeneous_association", order = 2, generators = list(c("A", "B"), c("A", "C"), c("B", "C"))),
+  M9 = list(id = "M9", model_key = "3way_M9", name = "saturated", order = 3, generators = list(c("A", "B", "C")))
+)
+
+MODEL_SPECS_2WAY <- list(
+  M1 = list(id = "M1", model_key = "2way_M1", name = "mutual_independence", order = 1, generators = list(c("A"), c("B"))),
+  M2 = list(id = "M2", model_key = "2way_M2", name = "saturated", order = 2, generators = list(c("A", "B")))
+)
+
+# generators からブラケット記法（例: [AB][AC]）を一元導出
+build_bracket_notation <- function(generators) {
+  gen_strs <- vapply(generators, function(gen) {
+    sprintf("[%s]", paste(sort(as.character(gen)), collapse = ""))
+  }, character(1))
+  paste(gen_strs, collapse = "")
+}
+
+# generators から独立性構造を一元導出
+derive_independence_structure <- function(generators, factor_map = NULL) {
+  # 正規化ブラケット表記をキーとして構造判定
+  norm_bracket <- build_bracket_notation(generators)
+  
+  if (norm_bracket == "[A][B]") {
+    return(list(
+      kind = "mutual_independence",
+      statements = list(
+        list(left = I(c("A")), right = I(c("B")), given = I(character(0)))
+      ),
+      base_description = "AとBは独立である"
+    ))
+  } else if (norm_bracket == "[AB]") {
+    return(list(
+      kind = "no_independence_constraint",
+      statements = list(),
+      base_description = "飽和モデル（2因子交互作用まで含む）"
+    ))
+  } else if (norm_bracket == "[A][B][C]") {
+    return(list(
       kind = "mutual_independence",
       statements = list(
         list(left = I(c("A")), right = I(c("B")), given = I(character(0))),
         list(left = I(c("A", "B")), right = I(c("C")), given = I(character(0)))
       ),
       base_description = "3因子が相互に独立である"
-    ),
-    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C",
-    formula_description_ja = "主効果A, B, Cのみを含む相互独立モデル（交互作用を含まない）"
-  ),
-  M2 = list(
-    id = "M2",
-    model_key = "3way_M2",
-    name = "assoc_AB",
-    order = 2,
-    generators = list(c("A", "B"), c("C")),
-    bracket_notation = "[AB][C]",
-    independence = list(
+    ))
+  } else if (norm_bracket == "[AB][C]") {
+    return(list(
       kind = "joint_independence",
       statements = list(
         list(left = I(c("A", "B")), right = I(c("C")), given = I(character(0)))
       ),
       base_description = "(A, B) と C は結合独立である"
-    ),
-    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB}",
-    formula_description_ja = "主効果A, B, Cおよび2因子交互作用ABを含む結合独立モデル"
-  ),
-  M3 = list(
-    id = "M3",
-    model_key = "3way_M3",
-    name = "assoc_AC",
-    order = 2,
-    generators = list(c("A", "C"), c("B")),
-    bracket_notation = "[AC][B]",
-    independence = list(
+    ))
+  } else if (norm_bracket == "[AC][B]") {
+    return(list(
       kind = "joint_independence",
       statements = list(
         list(left = I(c("A", "C")), right = I(c("B")), given = I(character(0)))
       ),
       base_description = "(A, C) と B は結合独立である"
-    ),
-    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ik}^{AC}",
-    formula_description_ja = "主効果A, B, Cおよび2因子交互作用ACを含む結合独立モデル"
-  ),
-  M4 = list(
-    id = "M4",
-    model_key = "3way_M4",
-    name = "assoc_BC",
-    order = 2,
-    generators = list(c("B", "C"), c("A")),
-    bracket_notation = "[BC][A]",
-    independence = list(
+    ))
+  } else if (norm_bracket == "[BC][A]") {
+    return(list(
       kind = "joint_independence",
       statements = list(
         list(left = I(c("B", "C")), right = I(c("A")), given = I(character(0)))
       ),
       base_description = "(B, C) と A は結合独立である"
-    ),
-    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{jk}^{BC}",
-    formula_description_ja = "主効果A, B, Cおよび2因子交互作用BCを含む結合独立モデル"
-  ),
-  M5 = list(
-    id = "M5",
-    model_key = "3way_M5",
-    name = "cond_indep_BC_given_A",
-    order = 2,
-    generators = list(c("A", "B"), c("A", "C")),
-    bracket_notation = "[AB][AC]",
-    independence = list(
+    ))
+  } else if (norm_bracket == "[AB][AC]") {
+    return(list(
       kind = "conditional_independence",
       statements = list(
         list(left = I(c("B")), right = I(c("C")), given = I(c("A")))
       ),
       base_description = "Aで層別したとき、BとCは条件付き独立である"
-    ),
-    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{ik}^{AC}",
-    formula_description_ja = "主効果A, B, Cおよび2因子交互作用AB, ACを含む条件付き独立モデル（BC交互作用を含まない）"
-  ),
-  M6 = list(
-    id = "M6",
-    model_key = "3way_M6",
-    name = "cond_indep_AC_given_B",
-    order = 2,
-    generators = list(c("A", "B"), c("B", "C")),
-    bracket_notation = "[AB][BC]",
-    independence = list(
+    ))
+  } else if (norm_bracket == "[AB][BC]") {
+    return(list(
       kind = "conditional_independence",
       statements = list(
         list(left = I(c("A")), right = I(c("C")), given = I(c("B")))
       ),
       base_description = "Bで層別したとき、AとCは条件付き独立である"
-    ),
-    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{jk}^{BC}",
-    formula_description_ja = "主効果A, B, Cおよび2因子交互作用AB, BCを含む条件付き独立モデル（AC交互作用を含まない）"
-  ),
-  M7 = list(
-    id = "M7",
-    model_key = "3way_M7",
-    name = "cond_indep_AB_given_C",
-    order = 2,
-    generators = list(c("A", "C"), c("B", "C")),
-    bracket_notation = "[AC][BC]",
-    independence = list(
+    ))
+  } else if (norm_bracket == "[AC][BC]") {
+    return(list(
       kind = "conditional_independence",
       statements = list(
         list(left = I(c("A")), right = I(c("B")), given = I(c("C")))
       ),
       base_description = "Cで層別したとき、AとBは条件付き独立である"
-    ),
-    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ik}^{AC} + \\lambda_{jk}^{BC}",
-    formula_description_ja = "主効果A, B, Cおよび2因子交互作用AC, BCを含む条件付き独立モデル（AB交互作用を含まない）"
-  ),
-  M8 = list(
-    id = "M8",
-    model_key = "3way_M8",
-    name = "homogeneous_association",
-    order = 2,
-    generators = list(c("A", "B"), c("A", "C"), c("B", "C")),
-    bracket_notation = "[AB][AC][BC]",
-    independence = list(
+    ))
+  } else if (norm_bracket == "[AB][AC][BC]") {
+    return(list(
       kind = "no_independence_constraint",
       statements = list(),
       base_description = "全2因子交互作用を含み、3因子交互作用を含まない（均一連関）"
-    ),
-    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{ik}^{AC} + \\lambda_{jk}^{BC}",
-    formula_description_ja = "全2因子交互作用を含み、3因子交互作用を含まない均一連関モデル"
-  ),
-  M9 = list(
-    id = "M9",
-    model_key = "3way_M9",
-    name = "saturated",
-    order = 3,
-    generators = list(c("A", "B", "C")),
-    bracket_notation = "[ABC]",
-    independence = list(
+    ))
+  } else if (norm_bracket == "[ABC]") {
+    return(list(
       kind = "no_independence_constraint",
       statements = list(),
       base_description = "飽和モデル（3因子交互作用まで含む）"
-    ),
-    formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{ik}^{AC} + \\lambda_{jk}^{BC} + \\lambda_{ijk}^{ABC}",
-    formula_description_ja = "3因子交互作用まで含む飽和モデル（自由度0）"
-  )
-)
-
-MODEL_SPECS_2WAY <- list(
-  M1 = list(
-    id = "M1",
-    model_key = "2way_M1",
-    name = "mutual_independence",
-    order = 1,
-    generators = list(c("A"), c("B")),
-    bracket_notation = "[A][B]",
-    independence = list(
-      kind = "mutual_independence",
-      statements = list(
-        list(left = I(c("A")), right = I(c("B")), given = I(character(0)))
-      ),
-      base_description = "AとBは独立である"
-    ),
-    formula_latex = "\\log \\mu_{ij} = \\lambda + \\lambda_i^A + \\lambda_j^B",
-    formula_description_ja = "主効果A, Bのみを含む独立モデル"
-  ),
-  M2 = list(
-    id = "M2",
-    model_key = "2way_M2",
-    name = "saturated",
-    order = 2,
-    generators = list(c("A", "B")),
-    bracket_notation = "[AB]",
-    independence = list(
-      kind = "no_independence_constraint",
+    ))
+  } else {
+    return(list(
+      kind = "custom_generator",
       statements = list(),
-      base_description = "飽和モデル（2因子交互作用まで含む）"
-    ),
-    formula_latex = "\\log \\mu_{ij} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_{ij}^{AB}",
-    formula_description_ja = "2因子交互作用を含む飽和モデル（自由度0）"
-  )
-)
+      base_description = sprintf("カスタム生成クラスモデル（%s）", norm_bracket)
+    ))
+  }
+}
+
+# generators から LaTeX 数式および日本語説明を一元導出
+derive_formula_metadata <- function(generators, factor_map = NULL) {
+  norm_bracket <- build_bracket_notation(generators)
+  
+  if (norm_bracket == "[A][B]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ij} = \\lambda + \\lambda_i^A + \\lambda_j^B",
+      formula_description_ja = "主効果A, Bのみを含む独立モデル"
+    ))
+  } else if (norm_bracket == "[AB]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ij} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_{ij}^{AB}",
+      formula_description_ja = "2因子交互作用を含む飽和モデル（自由度0）"
+    ))
+  } else if (norm_bracket == "[A][B][C]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C",
+      formula_description_ja = "主効果A, B, Cのみを含む相互独立モデル（交互作用を含まない）"
+    ))
+  } else if (norm_bracket == "[AB][C]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB}",
+      formula_description_ja = "主効果A, B, Cおよび2因子交互作用ABを含む結合独立モデル"
+    ))
+  } else if (norm_bracket == "[AC][B]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ik}^{AC}",
+      formula_description_ja = "主効果A, B, Cおよび2因子交互作用ACを含む結合独立モデル"
+    ))
+  } else if (norm_bracket == "[BC][A]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{jk}^{BC}",
+      formula_description_ja = "主効果A, B, Cおよび2因子交互作用BCを含む結合独立モデル"
+    ))
+  } else if (norm_bracket == "[AB][AC]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{ik}^{AC}",
+      formula_description_ja = "主効果A, B, Cおよび2因子交互作用AB, ACを含む条件付き独立モデル（BC交互作用を含まない）"
+    ))
+  } else if (norm_bracket == "[AB][BC]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{jk}^{BC}",
+      formula_description_ja = "主効果A, B, Cおよび2因子交互作用AB, BCを含む条件付き独立モデル（AC交互作用を含まない）"
+    ))
+  } else if (norm_bracket == "[AC][BC]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ik}^{AC} + \\lambda_{jk}^{BC}",
+      formula_description_ja = "主効果A, B, Cおよび2因子交互作用AC, BCを含む条件付き独立モデル（AB交互作用を含まない）"
+    ))
+  } else if (norm_bracket == "[AB][AC][BC]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{ik}^{AC} + \\lambda_{jk}^{BC}",
+      formula_description_ja = "全2因子交互作用を含み、3因子交互作用を含まない均一連関モデル"
+    ))
+  } else if (norm_bracket == "[ABC]") {
+    return(list(
+      formula_latex = "\\log \\mu_{ijk} = \\lambda + \\lambda_i^A + \\lambda_j^B + \\lambda_k^C + \\lambda_{ij}^{AB} + \\lambda_{ik}^{AC} + \\lambda_{jk}^{BC} + \\lambda_{ijk}^{ABC}",
+      formula_description_ja = "3因子交互作用まで含む飽和モデル（自由度0）"
+    ))
+  } else {
+    return(list(
+      formula_latex = sprintf("\\log \\mu = \\text{generators(%s)}", norm_bracket),
+      formula_description_ja = sprintf("生成クラス %s に対応するポアソン対数線形モデル", norm_bracket)
+    ))
+  }
+}
 
 # 因子記号と実変数の対応マップ構築
 build_factor_map <- function(vars) {
@@ -288,20 +294,26 @@ validate_formula_terms <- function(fmla, generators, factor_map) {
   invisible(TRUE)
 }
 
-# モデル仕様から実変数を反映したメタデータ（bracket_expanded, description_ja）を導出
+# モデル仕様から実変数を反映したメタデータ（bracket_notation, bracket_expanded, independence, formula_latex 等）を一元導出
 derive_model_metadata <- function(spec, factor_map, fit = NULL) {
   sym_to_var <- vapply(factor_map, function(x) x$variable, character(1))
   sym_to_label <- vapply(factor_map, function(x) x$label, character(1))
   
+  generators <- spec$generators
+  bracket_notation <- build_bracket_notation(generators)
+  
   # bracket_expanded (例: [Dept, Gender][Dept, Admit])
-  gen_expanded <- vapply(spec$generators, function(gen) {
+  gen_expanded <- vapply(generators, function(gen) {
     real_vars <- sym_to_var[gen]
     sprintf("[%s]", paste(real_vars, collapse = ", "))
   }, character(1))
   bracket_expanded <- paste(gen_expanded, collapse = "")
   
+  # 独立性構造の一元導出
+  indep_raw <- derive_independence_structure(generators, factor_map)
+  
   # 日本語説明の生成（変数名を埋め込む）
-  desc_ja <- spec$independence$base_description
+  desc_ja <- indep_raw$base_description
   for (sym in names(factor_map)) {
     var_name <- sym_to_var[[sym]]
     label <- sym_to_label[[sym]]
@@ -317,10 +329,13 @@ derive_model_metadata <- function(spec, factor_map, fit = NULL) {
     NULL
   }
   
+  # 数式メタデータの一元導出
+  fmla_meta <- derive_formula_metadata(generators, factor_map)
+  
   # independence statements の left, right, given に AsIs を保持
   indep_clean <- list(
-    kind = spec$independence$kind,
-    statements = lapply(spec$independence$statements, function(st) {
+    kind = indep_raw$kind,
+    statements = lapply(indep_raw$statements, function(st) {
       list(
         left = I(as.character(st$left)),
         right = I(as.character(st$right)),
@@ -333,14 +348,33 @@ derive_model_metadata <- function(spec, factor_map, fit = NULL) {
   list(
     model_id = spec$id,
     model_key = spec$model_key,
-    generators = lapply(spec$generators, function(g) I(as.character(g))),
-    bracket_notation = spec$bracket_notation,
+    generators = lapply(generators, function(g) I(as.character(g))),
+    bracket_notation = bracket_notation,
     bracket_expanded = bracket_expanded,
     independence = indep_clean,
     fitted_formula = fitted_fmla_str,
-    formula_latex = spec$formula_latex,
-    formula_description_ja = spec$formula_description_ja
+    formula_latex = fmla_meta$formula_latex,
+    formula_description_ja = fmla_meta$formula_description_ja
   )
+}
+
+# モデル定義と実適合式の項レベル整合性検証関数
+is_definition_consistent_with_formula <- function(definition, fitted_formula_str, factor_map) {
+  if (is.null(definition) || is.null(fitted_formula_str) || !nzchar(trimws(fitted_formula_str))) {
+    return(FALSE)
+  }
+  expected_terms <- expand_generator_terms(definition$generators, factor_map)
+  fmla <- tryCatch(as.formula(fitted_formula_str), error = function(e) NULL)
+  if (is.null(fmla)) return(FALSE)
+  
+  f_terms <- tryCatch(attr(stats::terms(fmla), "term.labels"), error = function(e) NULL)
+  if (is.null(f_terms)) return(FALSE)
+  
+  f_terms_norm <- vapply(strsplit(f_terms, ":"), function(parts) {
+    paste(sort(parts), collapse = ":")
+  }, character(1))
+  
+  setequal(expected_terms, f_terms_norm)
 }
 
 

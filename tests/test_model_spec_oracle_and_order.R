@@ -97,20 +97,22 @@ oracle_2way <- list(
 )
 
 # -----------------------------------------------------------------------------
-# テスト 1: R エンジン内部辞書と Oracle の完全一致検証
+# テスト 1: R エンジン導出メタデータと Oracle の完全一致検証
 # -----------------------------------------------------------------------------
 test_that("タスク 4.1: 3元表モデル M1〜M9 の生成クラスと構造化独立性が Oracle と完全一致する", {
   expect_identical(names(MODEL_SPECS_3WAY), names(oracle_3way))
+  f_map_3way <- build_factor_map(c("A", "B", "C"))
   
   for (mid in names(oracle_3way)) {
-    act <- MODEL_SPECS_3WAY[[mid]]
+    spec <- MODEL_SPECS_3WAY[[mid]]
+    act <- derive_model_metadata(spec, f_map_3way)
     exp <- oracle_3way[[mid]]
     
     expect_identical(act$bracket_notation, exp$bracket, info = sprintf("%s bracket mismatch", mid))
     expect_identical(act$independence$kind, exp$kind, info = sprintf("%s kind mismatch", mid))
     
     # generators の各要素一致
-    act_gens <- lapply(act$generators, sort)
+    act_gens <- lapply(act$generators, function(x) sort(as.character(x)))
     exp_gens <- lapply(exp$generators, sort)
     expect_identical(act_gens, exp_gens, info = sprintf("%s generators mismatch", mid))
     
@@ -128,15 +130,17 @@ test_that("タスク 4.1: 3元表モデル M1〜M9 の生成クラスと構造�
 
 test_that("タスク 4.1: 2元表モデル M1〜M2 の生成クラスと構造化独立性が Oracle と完全一致する", {
   expect_identical(names(MODEL_SPECS_2WAY), names(oracle_2way))
+  f_map_2way <- build_factor_map(c("A", "B"))
   
   for (mid in names(oracle_2way)) {
-    act <- MODEL_SPECS_2WAY[[mid]]
+    spec <- MODEL_SPECS_2WAY[[mid]]
+    act <- derive_model_metadata(spec, f_map_2way)
     exp <- oracle_2way[[mid]]
     
     expect_identical(act$bracket_notation, exp$bracket, info = sprintf("%s bracket mismatch", mid))
     expect_identical(act$independence$kind, exp$kind, info = sprintf("%s kind mismatch", mid))
     
-    act_gens <- lapply(act$generators, sort)
+    act_gens <- lapply(act$generators, function(x) sort(as.character(x)))
     exp_gens <- lapply(exp$generators, sort)
     expect_identical(act_gens, exp_gens, info = sprintf("%s generators mismatch", mid))
     

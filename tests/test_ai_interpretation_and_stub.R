@@ -65,6 +65,40 @@ test_that("タスク 4.5: pass2_stub.R の出力が構造化定義（bracket_exp
   # 相対採択原則・非断定注記の反映確認
   expect_match(summary_text, "解釈上の重要注意（相対採択の原則）")
   expect_match(summary_text, "相対的優位性を支持するものであり.*差別の不存在を証明するものではありません")
+
+  pass2_stub_script <- file.path(repo_root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/pass2_stub.R")
+
+  # 異常系1: 壊れた適合式 (Freq ~ () での構文エラー検出と保留
+  json_data <- jsonlite::fromJSON(json_path, simplifyVector = FALSE)
+  json_broken <- json_data
+  json_broken$models$definitions$M5$fitted_formula <- "Freq ~ ("
+  jsonlite::write_json(json_broken, json_path, auto_unbox = TRUE, pretty = TRUE)
+  system(sprintf("Rscript %s --json %s --output %s", shQuote(pass2_stub_script), shQuote(json_path), shQuote(stub_summary_path)))
+  summary_broken <- paste(readLines(stub_summary_path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+  expect_match(summary_broken, "数学的定義保留: 適合式と生成クラスの不整合検知")
+
+  # 異常系2: 未知の notation_version (2.0.0) での保留
+  json_unknown <- json_data
+  json_unknown$models$notation_version <- "2.0.0"
+  jsonlite::write_json(json_unknown, json_path, auto_unbox = TRUE, pretty = TRUE)
+  system(sprintf("Rscript %s --json %s --output %s", shQuote(pass2_stub_script), shQuote(json_path), shQuote(stub_summary_path)))
+  summary_unknown <- paste(readLines(stub_summary_path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+  expect_match(summary_unknown, "数学的定義保留: 適合式と生成クラスの不整合検知")
+
+  # 異常系3: 最良モデルが適合失敗 (FAILED) の場合の最良モデル判定保留
+  json_failed <- json_data
+  json_failed$models$summary <- lapply(json_failed$models$summary, function(m) {
+    if (m$model_id == "M5") {
+      m$status <- "FAILED"
+      m$error_message <- "収束不良"
+    }
+    m
+  })
+  jsonlite::write_json(json_failed, json_path, auto_unbox = TRUE, pretty = TRUE)
+  system(sprintf("Rscript %s --json %s --output %s", shQuote(pass2_stub_script), shQuote(json_path), shQuote(stub_summary_path)))
+  summary_failed <- paste(readLines(stub_summary_path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+  expect_match(summary_failed, "適合失敗モデルのため判定保留")
+  expect_match(summary_failed, "M5 \\(適合失敗\\)")
   
   unlink(test_dir, recursive = TRUE)
 })
