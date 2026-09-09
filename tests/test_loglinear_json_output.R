@@ -17,6 +17,7 @@ find_repo_root <- function() {
   getwd()
 }
 repo_root <- find_repo_root()
+source(file.path(repo_root, "tests", "helpers", "pass0_test_helpers.R"))
 
 test_that("タスク 1.5: analysis.R が出力する evidence_results.json が型契約と数理構造を満たす", {
   test_out_dir <- file.path(repo_root, "output/test_json_schema")
@@ -24,11 +25,19 @@ test_that("タスク 1.5: analysis.R が出力する evidence_results.json が�
     unlink(test_out_dir, recursive = TRUE)
   }
   
-  # analysis.R をテスト用 run_id で実行
-  cmd <- sprintf("Rscript %s --input %s --vars Dept,Gender,Admit --freq Freq --response_var Admit --output_dir %s --run-id test_schema",
+  config_path <- make_pass0_test_config(
+    "vcd-bayesian-evidence-analysis",
+    file.path(repo_root, "examples", "ucb_admissions.csv"),
+    test_out_dir,
+    "test_schema",
+    vars = c("Dept", "Gender", "Admit"),
+    freq = "Freq",
+    response_var = "Admit",
+    repo_root = repo_root
+  )
+  cmd <- sprintf("Rscript %s --config %s",
                  shQuote(file.path(repo_root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R")),
-                 shQuote(file.path(repo_root, "examples/ucb_admissions.csv")),
-                 shQuote(test_out_dir))
+                 shQuote(config_path))
   
   ret <- system(cmd, intern = TRUE)
   

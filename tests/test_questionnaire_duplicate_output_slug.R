@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
 root <- normalizePath(".", mustWork = TRUE)
+source(file.path(root, "tests", "helpers", "pass0_test_helpers.R"))
 runner <- file.path(
   root,
   ".agents",
@@ -56,6 +57,10 @@ run_invalid_case <- function(case_name, slugs, message_pattern, outside_paths = 
   config_path <- file.path(td, paste0(case_name, "_questions.csv"))
   output_root <- file.path(td, paste0(case_name, "_output"))
   utils::write.csv(make_config(slugs), config_path, row.names = FALSE, na = "")
+  analysis_config_path <- make_pass0_test_config(
+    "questionnaire-batch-analysis", data_path, output_root, paste0(case_name, "_run"),
+    question_config = config_path, repo_root = root
+  )
 
   output <- suppressWarnings(
     system2(
@@ -63,12 +68,8 @@ run_invalid_case <- function(case_name, slugs, message_pattern, outside_paths = 
       c(
         "--vanilla",
         runner,
-        "--data",
-        data_path,
-        "--question-config",
-        config_path,
-        "--out",
-        output_root
+        "--config",
+        analysis_config_path
       ),
       stdout = TRUE,
       stderr = TRUE
@@ -89,6 +90,10 @@ run_valid_case <- function(case_name, slugs, config = make_config(slugs)) {
   config_path <- file.path(td, paste0(case_name, "_questions.csv"))
   output_root <- file.path(td, paste0(case_name, "_output"))
   utils::write.csv(config, config_path, row.names = FALSE, na = "")
+  analysis_config_path <- make_pass0_test_config(
+    "questionnaire-batch-analysis", data_path, output_root, paste0(case_name, "_run"),
+    question_config = config_path, repo_root = root
+  )
 
   output <- suppressWarnings(
     system2(
@@ -96,12 +101,8 @@ run_valid_case <- function(case_name, slugs, config = make_config(slugs)) {
       c(
         "--vanilla",
         runner,
-        "--data",
-        data_path,
-        "--question-config",
-        config_path,
-        "--out",
-        output_root
+        "--config",
+        analysis_config_path
       ),
       stdout = TRUE,
       stderr = TRUE

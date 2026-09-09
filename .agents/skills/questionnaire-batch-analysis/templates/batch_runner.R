@@ -20,6 +20,7 @@ find_agent_repo <- function() {
   getwd()
 }
 source(file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
+source(file.path(find_agent_repo(), ".agents", "shared", "pass0_contract.R"))
 
 runner_file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
 runner_dir <- if (length(runner_file_arg) > 0L) {
@@ -40,21 +41,44 @@ option_list <- list(
 )
 opt <- optparse::parse_args(optparse::OptionParser(option_list = option_list))
 
+if (is.null(opt$config) || !nzchar(trimws(opt$config))) {
+  stop("[ERROR] Pass 1 には --config <Pass 0で確定したanalysis_config.json> が必要です。", call. = FALSE)
+}
+if (!file.exists(opt$config)) {
+  stop("[ERROR] 設定ファイルが見つかりません: ", opt$config, call. = FALSE)
+}
+
 cfg_json <- NULL
 # JSON 設定の読み込み (Pass 0 連携用)
 if (!is.null(opt$config) && file.exists(opt$config)) {
   message("[INFO] 共通設定ファイルを読み込み中: ", opt$config)
   cfg_json <- jsonlite::fromJSON(opt$config, simplifyVector = FALSE)
-  if (!is.null(cfg_json$input)) opt$data <- cfg_json$input
-  if (!is.null(cfg_json$question_config)) opt$`question-config` <- cfg_json$question_config
+  provenance_res <- validate_pass0_provenance(
+    cfg_json,
+    opt$config,
+    "questionnaire-batch-analysis",
+    find_agent_repo()
+  )
+  if (!is.null(cfg_json$input)) opt$data <- provenance_res$input_path
+  if (!is.null(cfg_json$question_config)) {
+    resolved_question_config <- pass0_resolve_path(cfg_json$question_config, opt$config, find_agent_repo())
+    if (is.null(resolved_question_config)) {
+      stop("[ERROR] analysis_config.json の question_config が見つかりません: ", cfg_json$question_config, call. = FALSE)
+    }
+    opt$`question-config` <- resolved_question_config
+  }
   if (!is.null(cfg_json$output_dir)) opt$out <- cfg_json$output_dir
   if (!is.null(cfg_json$run_id) && is.null(opt$`run-id`)) opt$`run-id` <- cfg_json$run_id
   if (!is.null(cfg_json$supersedes_run) && is.null(opt$`supersedes-run`)) opt$`supersedes-run` <- cfg_json$supersedes_run
   if (!is.null(cfg_json$supersede_reason) && is.null(opt$`supersede-reason`)) opt$`supersede-reason` <- cfg_json$supersede_reason
 }
 
-stopifnot(!is.null(opt$data), file.exists(opt$data))
-stopifnot(!is.null(opt$`question-config`), file.exists(opt$`question-config`))
+if (is.null(opt$data) || !file.exists(opt$data)) {
+  stop("[ERROR] analysis_config.json の input が見つかりません。", call. = FALSE)
+}
+if (is.null(opt$`question-config`) || !file.exists(opt$`question-config`)) {
+  stop("[ERROR] analysis_config.json に有効な question_config が必要です。", call. = FALSE)
+}
 
 df <- utils::read.csv(opt$data, stringsAsFactors = FALSE, na.strings = c("", "NA"))
 cfg <- utils::read.csv(
@@ -179,15 +203,7 @@ if (!is.null(supersedes_run) && nzchar(trimws(supersedes_run))) {
 }
 
 # 設定スナップショットの保存
-if (is.null(cfg_json)) {
-  cfg_json <- list(
-    input = opt$data,
-    question_config = opt$`question-config`,
-    output_dir = base_out,
-    run_id = resolved_run_id
-  )
-}
-cfg_snap <- save_config_snapshot(out_dir, if (!is.null(opt$config)) opt$config else cfg_json, config_origin = if (!is.null(opt$config)) "pass0_file" else "resolved_cli", config_source_path = opt$config)
+cfg_snap <- save_config_snapshot(out_dir, opt$config, config_origin = "pass0_file", config_source_path = opt$config)
 
 save_config_snapshot(out_dir, opt$`question-config`, file_name = "question_config.csv")
 

@@ -4,7 +4,7 @@
   "title": "vcd-bayesian-evidence-analysis analysis_config.json",
   "description": "Pass 0 produces this flat JSON config for Pass 1 analysis.R.",
   "type": "object",
-  "required": ["input", "vars", "freq", "output_dir", "run_id"],
+  "required": ["input", "vars", "freq", "output_dir", "run_id", "pass0_provenance"],
   "properties": {
     "input": {
       "type": "string",
@@ -60,6 +60,21 @@
       "minimum": 1,
       "default": 2000,
       "description": "Sample size threshold to activate Dual-Filter mode."
+    },
+    "pass0_provenance": {
+      "type": "object",
+      "required": ["contract_version", "inspection_results", "inspection_results_sha256", "input_sha256", "finalized_at_jst", "target_skill"],
+      "properties": {
+        "contract_version": { "type": "string", "const": "1.0" },
+        "inspection_results": { "type": "string", "minLength": 1 },
+        "inspection_results_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "input_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "finalized_at_jst": { "type": "string", "minLength": 1 },
+        "target_skill": { "type": "string", "minLength": 1 },
+        "scope_document": { "type": "string", "minLength": 1 },
+        "scope_document_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": true

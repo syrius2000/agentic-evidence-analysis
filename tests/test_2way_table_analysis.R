@@ -19,6 +19,7 @@ find_repo_root <- function() {
   getwd()
 }
 repo_root <- find_repo_root()
+source(file.path(repo_root, "tests", "helpers", "pass0_test_helpers.R"))
 
 test_that("タスク 4.4: 2元表データで M1/M2 のみが評価され、第3因子記号 C や 3元表定義が一切混入しない", {
   test_dir <- file.path(repo_root, "output/test_2way")
@@ -31,12 +32,22 @@ test_that("タスク 4.4: 2元表データで M1/M2 のみが評価され、第3
   csv_path <- file.path(test_dir, "ucb_2way.csv")
   write.csv(df_2way, csv_path, row.names = FALSE)
   
+  config_path <- make_pass0_test_config(
+    "vcd-bayesian-evidence-analysis",
+    csv_path,
+    test_dir,
+    "run_2way",
+    vars = c("Gender", "Admit"),
+    freq = "Freq",
+    response_var = "Admit",
+    repo_root = repo_root
+  )
+
   # 2. analysis.R で 2元表分析を実行
   cmd_analysis <- sprintf(
-    "Rscript %s --input %s --vars Gender,Admit --freq Freq --response_var Admit --output_dir %s --run-id run_2way",
+    "Rscript %s --config %s",
     shQuote(file.path(repo_root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R")),
-    shQuote(csv_path),
-    shQuote(test_dir)
+    shQuote(config_path)
   )
   system(cmd_analysis, intern = TRUE)
   

@@ -18,6 +18,7 @@ root <- if (length(fa) > 0) {
 if (!file.exists(file.path(root, ".agents")) && identical(basename(root), "tests")) {
   root <- normalizePath(file.path(root, ".."), winslash = "/", mustWork = TRUE)
 }
+source(file.path(root, "tests", "helpers", "pass0_test_helpers.R"))
 
 runner_path <- file.path(
   root,
@@ -49,12 +50,16 @@ if (dir.exists(default_out_dir)) {
   unlink(default_out_dir, recursive = TRUE, force = TRUE)
 }
 
+analysis_config_path <- make_pass0_test_config(
+  "questionnaire-batch-analysis", data_path, default_out_dir, "ucb_questionnaire",
+  question_config = config_path, repo_root = root
+)
+
 cmd <- sprintf(
-  'cd "%s" && Rscript --vanilla "%s" --data "%s" --question-config "%s"',
+  'cd "%s" && Rscript --vanilla "%s" --config "%s"',
   root,
   runner_path,
-  data_path,
-  config_path
+  analysis_config_path
 )
 
 cat("=== questionnaire-batch-analysis UCBAdmissions regression test ===\n")

@@ -37,12 +37,33 @@ ref_fits <- fromJSON(ref_fits_path)
 # 3. 新規 run の実行（既存 run とは別の一時ディレクトリに出力）
 test_run_dir <- file.path(repo_root, "output/test_invariance_run")
 if (dir.exists(test_run_dir)) unlink(test_run_dir, recursive = TRUE)
+pass0_dir <- tempfile("ucb_invariance_pass0_")
+dir.create(pass0_dir, recursive = TRUE)
+on.exit(unlink(pass0_dir, recursive = TRUE), add = TRUE)
+
+inspect_script <- file.path(repo_root, ".agents/shared/inspect_data.R")
+finalize_pass0_script <- file.path(repo_root, ".agents/shared/finalize_pass0_config.R")
+pass0_config <- file.path(pass0_dir, "analysis_config.json")
+ucb_input <- file.path(repo_root, "examples/ucb_admissions.csv")
+stopifnot(system2("Rscript", c(inspect_script, ucb_input, "--out-dir", pass0_dir), stdout = FALSE, stderr = FALSE) == 0L)
+stopifnot(system2("Rscript", c(
+  finalize_pass0_script,
+  "--inspection-results", file.path(pass0_dir, "inspection_results.json"),
+  "--scope", file.path(repo_root, "docs/Artifacts/implementation_plan_008_0909.md"),
+  "--config-out", pass0_config,
+  "--skill", "vcd-bayesian-evidence-analysis",
+  "--input", ucb_input,
+  "--vars", "Dept,Gender,Admit",
+  "--freq", "Freq",
+  "--response-var", "Admit",
+  "--output-dir", test_run_dir,
+  "--run-id", "inv_test"
+), stdout = FALSE, stderr = FALSE) == 0L)
 
 cmd_analysis <- sprintf(
-  "Rscript %s --input %s --vars Dept,Gender,Admit --freq Freq --response_var Admit --output_dir %s --run-id inv_test",
+  "Rscript %s --config %s",
   shQuote(file.path(repo_root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R")),
-  shQuote(file.path(repo_root, "examples/ucb_admissions.csv")),
-  shQuote(test_run_dir)
+  shQuote(pass0_config)
 )
 system(cmd_analysis, intern = TRUE)
 

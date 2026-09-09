@@ -6,7 +6,7 @@
 sequenceDiagram
     participant AI as AI Agent (Reporting)
     participant R as analysis.R
-    participant Out as skill_out/
+    participant Out as output/<project>/10_categorical/
 
     Note over AI,R: Pass 1: プロファイリング（軽量）
     AI->>R: analysis.R --profile

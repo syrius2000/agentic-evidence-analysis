@@ -4,12 +4,26 @@ if (!file.exists(file.path(root, ".agents")) && basename(root) == "tests") {
   root <- normalizePath(file.path(root, ".."), mustWork = TRUE)
 }
 analysis <- file.path(root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R")
+source(file.path(root, "tests", "helpers", "pass0_test_helpers.R"))
 stopifnot(file.exists(analysis))
 
 # Top-K = 3 で実行
 td <- tempfile("vcd_bay_topk_")
 dir.create(td)
-status <- system2("Rscript", c(analysis, "--output_dir", td, "--top_k", "3"))
+config <- make_pass0_test_config(
+  "vcd-bayesian-evidence-analysis",
+  file.path(root, "examples", "titanic.csv"),
+  td,
+  "topk_test",
+  vars = c("Class", "Sex", "Survived"),
+  freq = "Freq",
+  response_var = "Survived",
+  repo_root = root
+)
+config_data <- jsonlite::read_json(config, simplifyVector = FALSE)
+config_data$top_k <- 3L
+jsonlite::write_json(config_data, config, auto_unbox = TRUE, pretty = TRUE)
+status <- system2("Rscript", c(analysis, "--config", config))
 stopifnot(identical(as.integer(status), 0L))
 
 jp <- list.files(td, pattern = "^evidence_results\\.json$", full.names = TRUE, recursive = TRUE)

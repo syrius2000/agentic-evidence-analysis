@@ -52,6 +52,38 @@ graph TD
 
 ---
 
+## 利用者向け標準出力構造
+
+新しい分析では、最初に `output/<project>/` を開いてください。ここを分析プロジェクトの案内所とし、Pass 0 の相談記録と各 Skill の正式 run を同じプロジェクト単位で追跡します。
+
+```text
+output/<project>/
+├── README.md
+├── 00_consultation/
+│   ├── inspection_results.json
+│   ├── data_analysis_scope.md
+│   └── analysis_config.json
+├── 10_bayesian/
+│   └── run_<id>/
+├── 10_categorical/
+│   └── run_<id>/
+└── 10_questionnaire/
+    └── runs/<id>/
+```
+
+| 場所 | 役割 | 最初に確認するファイル |
+|---|---|---|
+| `00_consultation/` | Pass 0 の検分・分析設計・設定 | `inspection_results.json`, `data_analysis_scope.md`, `analysis_config.json` |
+| `10_bayesian/run_<id>/` | Bayesian の正式 run | `run_handover.json`, `evidence_results.json`, `dashboard.html` |
+| `10_categorical/run_<id>/` | Categorical の正式 run | `run_handover.json`, `categorical_results.json`, `dashboard.html` |
+| `10_questionnaire/runs/<id>/` | Questionnaire の正式 run | `run_handover.json`, `summary.csv`, `dashboard.html` |
+
+初学者は `run_handover.json` に記載された `run_output_dir` を次の工程の入力として使い、`run_<id>` の名前を手作業で推測しません。大学院生・研究者は、`data_analysis_scope.md` と `analysis_config.json` を分析計画、`run_meta.json` と `results_manifest.json` を再現性・監査証跡として確認してください。
+
+各 Skill の既定値である `skill_out/` は、既存 run と後方互換のために残ります。`analysis_config.json` の `output_dir` を指定した場合は、その値が正式 run の親ディレクトリになります。`docs/Artifacts/` は計画・設計・検証文書の保存先であり、統計計算成果物の保存先ではありません。
+
+---
+
 ## スキル一覧 (AI Agent Skills)
 
 本リポジトリで提供されるスキル一覧です（`.agents/skills/` に配置）：
@@ -107,19 +139,24 @@ npx skills add syrius2000/agentic-evidence-analysis
 ```bash
 # Pass 0: データの検分
 Rscript .agents/shared/inspect_data.R examples/titanic.csv \
-  --out-dir output/<project>/run_<id>/
+  --out-dir output/titanic/00_consultation/
 
 # Pass 1: 統計計算（Pass 0で生成された analysis_config.json を指定）
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
-  --config output/titanic/run_v1/analysis_config.json
+  --config output/titanic/00_consultation/analysis_config.json
 ```
+
+`analysis_config.json` を Pass 0 の確定CLIで作成するときは、Bayesian なら `output/titanic/10_bayesian/`、Categorical なら `output/titanic/10_categorical/`、Questionnaire なら `output/titanic/10_questionnaire/` を `--output-dir` に指定します。
 
 `--out-dir=`、`--out-dir ""`、空の第2位置引数など、空のout-dirは拒否され、ファイルシステムのrootへは書き込みません。
 
 **出力ディレクトリ規則**:
-- `vcd-bayesian-evidence-analysis`: `--output_dir` 直下に `run_<run_idの先頭16文字>/` を作成。
-- `vcd-categorical-analysis`: 常に `<out>/run_<first16>[_N]/` へ出力（run ID未指定時はJST日時、衝突時はサフィックス付与）。
-- `questionnaire-batch-analysis`: `--run-id` 利用時に `runs/<id>/` 配下へ出力。
+- `vcd-bayesian-evidence-analysis`: `output/<project>/10_bayesian/run_<first16>[_N]/` を標準例とし、実装上は指定した out root 直下に作成。
+- `vcd-categorical-analysis`: `output/<project>/10_categorical/run_<first16>[_N]/` を標準例とし、run ID未指定時はJST日時、衝突時はsuffixを付与。
+- `questionnaire-batch-analysis`: `output/<project>/10_questionnaire/runs/<id>[_N]/` を標準例とし、run ID未指定時はJST日時を使う。
+- いずれも正式な次工程のパスは、Pass 1 が生成する `run_handover.json` から取得する。
+
+実装上の共通契約は、Bayesian/Categorical では `<out>/run_<first16>[_N]/`、Questionnaire では `<out>/runs/<id>[_N]/` です。
 
 ---
 

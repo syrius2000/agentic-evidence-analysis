@@ -21,6 +21,7 @@ find_agent_repo <- function() {
   base::getwd()
 }
 base::source(base::file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
+base::source(base::file.path(find_agent_repo(), ".agents", "shared", "pass0_contract.R"))
 
 args <- base::commandArgs(trailingOnly = TRUE)
 mode <- if ("--profile" %in% args) "profile" else "render"
@@ -39,6 +40,13 @@ get_arg_val <- function(arg_name, default = NULL) {
 
 config_path <- get_arg_val("--config")
 
+if (identical(mode, "render") && (base::is.null(config_path) || !base::nzchar(base::trimws(config_path)))) {
+  base::stop("[ERROR] Pass 1 には --config <Pass 0で確定したanalysis_config.json> が必要です。")
+}
+if (identical(mode, "render") && !base::file.exists(config_path)) {
+  base::stop("[ERROR] 設定ファイルが見つかりません: ", config_path)
+}
+
 # デフォルト値の設定
 data_path <- NULL
 vars_arg <- "Hair,Eye,Sex"
@@ -55,6 +63,16 @@ config_data <- NULL
 if (!base::is.null(config_path) && base::file.exists(config_path)) {
   base::message("[INFO] 設定ファイルを読み込み中: ", config_path)
   config_data <- jsonlite::fromJSON(config_path, simplifyVector = FALSE)
+
+  if (identical(mode, "render")) {
+    provenance_res <- validate_pass0_provenance(
+      config_data,
+      config_path,
+      "vcd-categorical-analysis",
+      find_agent_repo()
+    )
+    config_data$input <- provenance_res$input_path
+  }
 
   # マッピング: JSONキー -> スクリプト内部変数/引数名
   if (!base::is.null(config_data$input)) data_path <- config_data$input

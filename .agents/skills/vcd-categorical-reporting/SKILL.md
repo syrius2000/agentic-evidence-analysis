@@ -18,8 +18,14 @@ metadata:
 
 ## 前提スキル
 
-- **先行**: `vcd-categorical-analysis` を先に実行し、成果物が存在すること（一般形は `<out>/run_<first16>[_N]/`。既定では `./skill_out/vcd_categorical/run_<first16>[_N]/` を参照）。
+- **先行**: `vcd-categorical-analysis` を先に実行し、成果物が存在すること（一般形は `<out>/run_<first16>[_N]/`、新規プロジェクトの標準形は `output/<project>/10_categorical/run_<first16>[_N]/`）。既存 run の既定参照先は `./skill_out/vcd_categorical/run_<first16>[_N]/`。
 - **契約**: `references/interface.md` を参照。
+
+## 出力導線と位置付け
+
+本スキルは独自の正式 run 親ディレクトリを作成しません。先行する `vcd-categorical-analysis` の run を読み取り、必要なレポート本文をその run の成果物として扱います。新しい分析では、Pass 0 の相談成果物を `output/<project>/00_consultation/`、Categorical の正式 run を `output/<project>/10_categorical/run_<first16>[_N]/` に置き、run 内の `run_handover.json` から対象パスを取得してください。
+
+この Skill は legacy の参照・移行用です。新規の Pass 2・Pass 3 は `vcd-categorical-analysis` の staging、`finalize_run_stage.R`、`render_dashboard.R` を使用します。
 
 ## 手順
 
@@ -47,7 +53,11 @@ metadata:
 
 ### レポート構成
 
-`vcd_analysis_report.md` を以下の3章構成で Artifact として作成すること：
+`vcd_analysis_report.md` を作成する場合は、先行 run の結果を根拠にし、配置先を利用者に明示すること。新規分析では、原則として `vcd-categorical-analysis` の `executive_summary.md` と `dashboard.html` を使用する。
+
+レポートを Artifact として別保存する場合は、リポジトリの `docs/Artifacts/` 規約に従い、run 成果物と計画・文書 Artifact を混同しないこと。
+
+レポート本文は以下の3章構成を維持する：
 
 - **第1章：結論と所見** — サマリー文（1-2文）→ 箇条書き所見 → 推奨アクション（1-2文）
 - **第2章：判断根拠** — モデル比較表、AI が選択した gt マトリックス、有意セル数

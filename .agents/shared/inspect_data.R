@@ -51,6 +51,42 @@ file_sha256 <- if (requireNamespace("digest", quietly = TRUE)) digest::digest(fi
 
 df <- read_csv(input_file, show_col_types = FALSE)
 
+# readr は空の列名を ...N に補正する。空列名と「先頭だけ文字列・残りは数値」
+# の組合せは、2段ヘッダーを1段ヘッダーCSVとして読んだ典型的な形である。
+# この場合に数値列を推測して設定を自動確定すると、分析設計を誤るため停止可能な
+# 診断として成果物へ残す。
+is_numeric_like <- function(x) {
+  values <- trimws(as.character(x))
+  values <- values[!is.na(values) & nzchar(values)]
+  if (length(values) == 0L) return(FALSE)
+  all(grepl("^[+-]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$", values, perl = TRUE))
+}
+
+generated_names <- grepl("^\\.\\.\\.[0-9]+$", names(df)) | !nzchar(names(df))
+header_like_columns <- character(0)
+if (nrow(df) >= 2L) {
+  for (col_name in names(df)) {
+    values <- as.character(df[[col_name]])
+    first_value <- trimws(values[[1L]])
+    remaining <- values[-1L]
+    if (!is.na(first_value) && nzchar(first_value) && !is_numeric_like(first_value) && is_numeric_like(remaining)) {
+      header_like_columns <- c(header_like_columns, col_name)
+    }
+  }
+}
+
+diagnostics <- list()
+inspection_status <- "ready"
+if (any(generated_names) && length(header_like_columns) > 0L) {
+  inspection_status <- "needs_input_preparation"
+  diagnostics[[length(diagnostics) + 1L]] <- list(
+    code = "possible_multirow_header",
+    message = "空列名と先頭行の見出しらしい文字列を検出しました。2段ヘッダーまたは整形前の集計表の可能性があるため、分析設定を自動確定できません。",
+    generated_column_names = names(df)[generated_names],
+    header_like_columns = header_like_columns
+  )
+}
+
 # Categorical details
 cat_vars <- df %>% select(where(is.character), where(is.factor))
 cat_details <- list()
@@ -67,6 +103,9 @@ if (ncol(cat_vars) > 0) {
 }
 
 output <- list(
+  inspection_contract_version = "1.0",
+  inspection_status = inspection_status,
+  diagnostics = diagnostics,
   file = file_rel,
   file_path_kind = if (!is.null(file_rel)) "repo_relative" else "external",
   file_sha256 = file_sha256,
@@ -83,3 +122,6 @@ if (!dir.exists(out_dir)) {
 out_path <- file.path(out_dir, "inspection_results.json")
 writeLines(toJSON(output, auto_unbox = TRUE, pretty = TRUE), out_path)
 message("[INFO] Inspection results saved: inspection_results.json")
+if (!identical(inspection_status, "ready")) {
+  message("[WARN] 入力構造の確認または整形が必要です。analysis_config.json を確定せず、Pass 0 の相談へ戻ってください。")
+}

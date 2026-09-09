@@ -32,6 +32,7 @@ find_agent_repo <- function() {
   getwd()
 }
 source(file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
+source(file.path(find_agent_repo(), ".agents", "shared", "pass0_contract.R"))
 
 parse_args <- function(args) {
   result <- list(
@@ -141,7 +142,8 @@ cfg <- parse_args(commandArgs(trailingOnly = TRUE))
 if (cfg$show_help) {
   cat("\nUsage: Rscript analysis.R [OPTIONS]\n\n")
   cat("Options:\n")
-  cat("  --input <file>              入力CSVファイル（省略時: HairEyeColor）\n")
+  cat("  --config <path>             Pass 0で確定したanalysis_config.json（必須）\n")
+  cat("  --input <file>              設定作成時のみ使用。Pass 1では--configの値を使用\n")
   cat("  --output_dir <dir>          出力ディレクトリ（既定: ./skill_out/vcd_bayesian）\n")
   cat("  --run-id <slug>|auto        任意。指定時は <dir>/run_<slug先頭16文字>/ に隔離（auto=JST時刻）\n")
   cat("  --dataset_name <name>       データセット名（既定: dataset）\n")
@@ -175,9 +177,13 @@ if (cfg$show_help_stats) {
   quit(save = "no", status = 0)
 }
 
-if (!is.null(cfg$config_path)) {
-  cfg <- merge_config_file(cfg$config_path, cfg)
+if (is.null(cfg$config_path) || !nzchar(trimws(cfg$config_path))) {
+  stop("[ERROR] Pass 1 には --config <Pass 0で確定したanalysis_config.json> が必要です。", call. = FALSE)
 }
+if (!file.exists(cfg$config_path)) {
+  stop("[ERROR] 設定ファイルが見つかりません: ", cfg$config_path, call. = FALSE)
+}
+cfg <- merge_config_file(cfg$config_path, cfg, expected_skill = "vcd-bayesian-evidence-analysis")
 
 # 入力データロード
 if (is.null(cfg$input)) {
@@ -231,11 +237,7 @@ if (!is.null(cfg$supersedes_run) && nzchar(trimws(cfg$supersedes_run))) {
 }
 
 # 設定スナップショット保存
-cfg_snap <- if (!is.null(cfg$config_path) && file.exists(cfg$config_path)) {
-  save_config_snapshot(artifact_dir, cfg$config_path, config_origin = "pass0_file", config_source_path = cfg$config_path)
-} else {
-  save_config_snapshot(artifact_dir, cfg, config_origin = "resolved_cli")
-}
+cfg_snap <- save_config_snapshot(artifact_dir, cfg$config_path, config_origin = "pass0_file", config_source_path = cfg$config_path)
 
 message(paste("[INFO] run_id:", rid$run_id, "(", rid$method %||% "hash", ")"))
 message(paste("[INFO] 出力ディレクトリ:", artifact_dir))

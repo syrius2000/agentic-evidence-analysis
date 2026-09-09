@@ -2,6 +2,7 @@
 # Run from repo root: Rscript tests/test_vcd_bayesian_run_id.R
 
 root <- normalizePath(".", mustWork = TRUE)
+source(file.path(root, "tests", "helpers", "pass0_test_helpers.R"))
 analysis <- file.path(root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R")
 stopifnot(file.exists(analysis))
 
@@ -11,9 +12,19 @@ base_out <- file.path(td, "bay_out")
 dir.create(base_out)
 slug <- "unit_test_slug_xyz"
 
+config <- make_pass0_test_config(
+  "vcd-bayesian-evidence-analysis",
+  file.path(root, "examples", "titanic.csv"),
+  base_out,
+  slug,
+  vars = c("Class", "Sex", "Survived"),
+  freq = "Freq",
+  response_var = "Survived",
+  repo_root = root
+)
 out <- system2(
   "Rscript",
-  c(analysis, "--output_dir", base_out, "--run-id", slug),
+  c(analysis, "--config", config),
   stdout = TRUE,
   stderr = TRUE
 )

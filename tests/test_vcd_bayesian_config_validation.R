@@ -26,7 +26,15 @@ valid_cfg <- list(
   run_id = "test_run_01",
   base_model = "M1",
   top_k = 10L,
-  large_n_threshold = 2000L
+  large_n_threshold = 2000L,
+  pass0_provenance = list(
+    contract_version = "1.0",
+    inspection_results = "tests/fixtures/statistical_foundations/cases_inspection.json",
+    inspection_results_sha256 = paste(rep("0", 64L), collapse = ""),
+    input_sha256 = paste(rep("0", 64L), collapse = ""),
+    finalized_at_jst = "2026-09-09 00:00",
+    target_skill = "vcd-bayesian-evidence-analysis"
+  )
 )
 
 res1 <- tryCatch(

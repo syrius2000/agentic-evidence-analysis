@@ -2,7 +2,7 @@
 
 analysis_config_allowed_keys <- c(
   "input", "vars", "freq", "output_dir", "run_id", "dataset_name",
-  "response_var", "top_k", "large_n_threshold", "base_model"
+  "response_var", "top_k", "large_n_threshold", "base_model", "pass0_provenance"
 )
 
 analysis_config_deprecated_keys <- c(
@@ -11,7 +11,7 @@ analysis_config_deprecated_keys <- c(
   "arm_top_rules", "arm_min_support", "arm_min_confidence"
 )
 
-analysis_config_required_keys <- c("input", "vars", "freq", "output_dir", "run_id")
+analysis_config_required_keys <- c("input", "vars", "freq", "output_dir", "run_id", "pass0_provenance")
 
 resolve_analysis_config_path <- function(path, config_path = NULL, repo_root = NULL) {
   candidates <- path
@@ -135,19 +135,25 @@ validate_analysis_config <- function(config_data, config_path = NULL, repo_root 
   invisible(list(input = resolved_input))
 }
 
-merge_config_file <- function(config_path, current_cfg) {
+merge_config_file <- function(config_path, current_cfg, expected_skill = "vcd-bayesian-evidence-analysis") {
   if (!file.exists(config_path)) {
     stop(paste("[ERROR] 設定ファイルが見つかりません:", config_path), call. = FALSE)
   }
   raw_config <- jsonlite::fromJSON(config_path, simplifyVector = TRUE)
   repo_root <- if (exists("find_agent_repo", mode = "function")) find_agent_repo() else getwd()
   val_res <- validate_analysis_config(raw_config, config_path = config_path, repo_root = repo_root)
+  if (!exists("validate_pass0_provenance", mode = "function")) {
+    stop("[ERROR] Pass 0 由来検証モジュールを読み込めません。", call. = FALSE)
+  }
+  provenance_res <- validate_pass0_provenance(raw_config, config_path, expected_skill, repo_root)
   if (!is.null(val_res$input)) {
     raw_config$input <- val_res$input
+  }
+  if (!is.null(provenance_res$input_path)) {
+    raw_config$input <- provenance_res$input_path
   }
   for (key in names(raw_config)) {
     current_cfg[[key]] <- raw_config[[key]]
   }
   current_cfg
 }
-

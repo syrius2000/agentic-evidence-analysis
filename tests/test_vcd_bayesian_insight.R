@@ -9,19 +9,31 @@ repo_root <- function() {
 }
 
 test_that("analysis.R detects Simpson Paradox in UCBAdmissions", {
+  root <- repo_root()
+  source(file.path(root, "tests", "helpers", "pass0_test_helpers.R"))
   # Prepare UCBAdmissions data
   data(UCBAdmissions)
   df <- as.data.frame(UCBAdmissions)
   csv_path <- tempfile(fileext = ".csv")
   write.csv(df, csv_path, row.names = FALSE)
   
-  out_dir <- tempdir()
-  if (!dir.exists(out_dir)) dir.create(out_dir)
+  out_dir <- tempfile("vcd_bayesian_insight_")
+  dir.create(out_dir)
   
   # Run analysis with UCB setup: strata=Dept, pairs=Admit,Gender
-  script <- file.path(repo_root(), ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R")
+  script <- file.path(root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R")
   stopifnot(file.exists(script))
-  system2("Rscript", c(script, "--input", csv_path, "--output_dir", out_dir, "--strata_var", "Dept", "--pair_vars", "Admit,Gender"))
+  config_path <- make_pass0_test_config(
+    "vcd-bayesian-evidence-analysis",
+    csv_path,
+    out_dir,
+    "simpson_test",
+    vars = c("Dept", "Gender", "Admit"),
+    freq = "Freq",
+    response_var = "Admit",
+    repo_root = root
+  )
+  system2("Rscript", c(script, "--config", config_path))
   
   json_path <- list.files(out_dir, pattern = "^evidence_results\\.json$", full.names = TRUE, recursive = TRUE)
   if (length(json_path) != 1L) {

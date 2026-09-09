@@ -14,14 +14,27 @@ metadata:
 
 本スキルは `.agents/shared/analysis_quality_contract.md` を参照する。実行前には入力品質と設問設定、実行後には設問別成果物、横断総括、解釈保留、完了報告を契約に沿って確認する。
 
-## 実行前の推奨ステップ: Pass 0 (Interactive Consultation)
+## 実行前の必須ステップ: Pass 0 (Interactive Consultation)
 
-分析を始める前に **`vcd-pass0-consultation`** スキルを使用して、データの検分と `analysis_config.json` の生成を行うことを強く推奨します。これにより、入力パスや出力先が一貫して管理されます。
+新規分析では、**`vcd-pass0-consultation`** によりデータ検分、設問定義、分母、欠測、複数回答、層別を確認し、由来情報付き `analysis_config.json` を確定します。`batch_runner.R` は `--config` なしでは統計計算を開始しません。
+
+## 利用者向け出力導線
+
+新しいプロジェクトでは、Pass 0 の相談成果物を `output/<project>/00_consultation/` に保存し、`analysis_config.json` の `output_dir` に `output/<project>/10_questionnaire/` を指定します。正式成果物は必ず、その親ディレクトリ下の `runs/<id>[_N]/` に隔離されます。
+
+```text
+output/<project>/
+├── 00_consultation/analysis_config.json
+└── 10_questionnaire/
+    └── runs/<id>[_N]/
+```
+
+Pass 1 完了後は、run 内の `run_handover.json` に記載された `run_output_dir` を後続工程へ渡してください。`./skill_out/questionnaire/` は `--out` または設定ファイルで別の親ディレクトリを指定しない場合の後方互換用既定値です。
 
 ## 実行チェックリスト
 
-- [ ] **入力確認（必須）**: `--data`（非集計CSV）と `--question-config`（設問設定CSV）が存在する
-- [ ] **共通設定確認**: `vcd-pass0-consultation` で生成した `analysis_config.json` がある場合は `--config` で渡す
+- [ ] **Pass 0確認（必須）**: `vcd-pass0-consultation` で検分・対話・設問定義を完了している
+- [ ] **共通設定確認（必須）**: Pass 0で生成した `analysis_config.json` を `--config` で渡す
 - [ ] **設定確認（必須）**: `references/config-schema.md` の必須列を満たす
 - [ ] **品質契約確認**: `.agents/shared/analysis_quality_contract.md` に従い、欠損、過剰水準、セルスパース性、設問タイプ、集約・除外の必要性を確認する
 - [ ] **確認ゲート**: `--out` が既存ディレクトリの場合、上書きしてよいかユーザー確認
@@ -77,19 +90,16 @@ Questionnaire バッチ実行は、設問ごとの成否に応じて以下の 3 
 
 ```bash
 Rscript .agents/skills/questionnaire-batch-analysis/templates/batch_runner.R \
-  --config analysis_config.json \
-  --question-config question_config.csv \
-  --out ./skill_out/questionnaire/ \
-  --run-id run_001
+  --config output/<project>/00_consultation/analysis_config.json
 ```
 
 | オプション | 既定値 | 説明 |
 | :--- | :--- | :--- |
-| `--config` | （なし） | `analysis_config.json`（入力・設問設定パス指定可） |
-| `--data` | （なし） | 非集計アンケート CSV パス |
-| `--question-config` | （なし） | 設問設定 CSV パス |
-| `--out` | `./skill_out/questionnaire/` | 出力親ディレクトリ（out_root） |
-| `--run-id` | `run` | 実行識別子。`<out>/runs/<run_id>/` に原子的予約隔離 |
+| `--config` | 必須 | Pass 0で確定した入力・設問設定・由来情報を持つ設定ファイル |
+| `--data` | - | Pass 0設定作成時の項目。Pass 1は設定ファイルの値を使用 |
+| `--question-config` | - | Pass 0設定作成時の項目。Pass 1は設定ファイルの値を使用 |
+| `--out` | `./skill_out/questionnaire/` | 出力親ディレクトリ（out_root）。新規プロジェクトでは `output/<project>/10_questionnaire/` を指定 |
+| `--run-id` | （未指定時はJST時刻） | 指定時は `<out>/runs/<run_id>[_N]/`、未指定時はJST時刻で原子的予約隔離 |
 | `--supersedes-run` | （なし） | 改定・再分析元となる確定済み実 run ディレクトリパス |
 | `--allow-legacy-run-meta` | （なし） | レガシー run (v1.0) のメタデータ読み取りを許可するフラグ |
 

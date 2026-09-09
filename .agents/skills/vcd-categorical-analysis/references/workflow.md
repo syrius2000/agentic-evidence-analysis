@@ -25,7 +25,7 @@ flowchart TB
 sequenceDiagram
     participant AI as AI Agent
     participant R as analysis.R
-    participant Out as skill_out/
+    participant Out as output/<project>/10_categorical/
 
     Note over AI,R: Pass 1 プロファイリング
     AI->>R: --profile

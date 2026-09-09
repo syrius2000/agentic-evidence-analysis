@@ -27,11 +27,14 @@ data_path    <- file.path(root, "tests", "sample_survey.csv")
 config_path  <- file.path(root, "tests", "question_config_test.csv")
 runner_path  <- file.path(root, ".agents", "skills", "questionnaire-batch-analysis",
                           "templates", "batch_runner.R")
+inspect_path <- file.path(root, ".agents", "shared", "inspect_data.R")
+finalize_pass0_path <- file.path(root, ".agents", "shared", "finalize_pass0_config.R")
 out_dir      <- file.path(root, "tests", "skill_out_smoke")
 
 stopifnot(file.exists(data_path))
 stopifnot(file.exists(config_path))
 stopifnot(file.exists(runner_path))
+stopifnot(file.exists(inspect_path), file.exists(finalize_pass0_path))
 
 cat("=== questionnaire-batch-analysis smoke test ===\n")
 cat("data   :", data_path, "\n")
@@ -44,10 +47,27 @@ if (dir.exists(out_dir)) {
 }
 dir.create(out_dir, recursive = TRUE)
 
+inspection_dir <- file.path(out_dir, "pass0")
+analysis_config_path <- file.path(out_dir, "analysis_config.json")
+stopifnot(system2("Rscript", c(
+  "--vanilla", inspect_path, data_path, "--out-dir", inspection_dir
+)) == 0L)
+stopifnot(system2("Rscript", c(
+  "--vanilla", finalize_pass0_path,
+  "--inspection-results", file.path(inspection_dir, "inspection_results.json"),
+  "--scope", file.path(root, "docs", "Artifacts", "implementation_plan_008_0909.md"),
+  "--config-out", analysis_config_path,
+  "--skill", "questionnaire-batch-analysis",
+  "--input", data_path,
+  "--question-config", config_path,
+  "--output-dir", out_dir,
+  "--run-id", "questionnaire_smoke"
+)) == 0L)
+
 # ---- バッチ実行 ----
 cmd <- sprintf(
-  'Rscript --vanilla "%s" --data "%s" --question-config "%s" --out "%s"',
-  runner_path, data_path, config_path, out_dir
+  'Rscript --vanilla "%s" --config "%s"',
+  runner_path, analysis_config_path
 )
 cat("Running:", cmd, "\n\n")
 ret <- system(cmd)

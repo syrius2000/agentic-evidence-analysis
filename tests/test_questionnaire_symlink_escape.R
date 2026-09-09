@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
 root <- normalizePath(".", mustWork = TRUE)
+source(file.path(root, "tests", "helpers", "pass0_test_helpers.R"))
 runner <- file.path(
   root,
   ".agents",
@@ -59,14 +60,17 @@ if (!isTRUE(symlink_created)) {
   quit(status = 0L)
 }
 
+analysis_config_path <- make_pass0_test_config(
+  "questionnaire-batch-analysis", data_path, output_root, "symlink_escape",
+  question_config = config_path, repo_root = root
+)
+
 output <- suppressWarnings(system2(
   "Rscript",
   c(
     "--vanilla",
     runner,
-    "--data", data_path,
-    "--question-config", config_path,
-    "--out", output_root
+    "--config", analysis_config_path
   ),
   stdout = TRUE,
   stderr = TRUE

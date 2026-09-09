@@ -30,6 +30,18 @@ metadata:
 | **出力先** | `<out>/run_<first16>[_N]/`（Pass 1 で確定予約。親直下出力は禁止）。 |
 | **正本** | `.agents/skills/vcd-categorical-analysis/` です。 |
 
+## 利用者向け出力導線
+
+新しいプロジェクトでは、Pass 0 の成果物を `output/<project>/00_consultation/` に置き、Pass 1 の `analysis_config.json` で `output_dir` を `output/<project>/10_categorical/` に指定します。正式 run はその親ディレクトリ直下の `run_<first16>[_N]/` に作成されます。
+
+```text
+output/<project>/
+├── 00_consultation/analysis_config.json
+└── 10_categorical/run_<first16>[_N]/
+```
+
+Pass 1 完了後は、run 内の `run_handover.json` に記載された `run_output_dir` を後続工程へ渡してください。`./skill_out/vcd_categorical/` は `--out` または設定ファイルで別の親ディレクトリを指定しない場合の後方互換用既定値です。
+
 ## Categorical claim 機構の完全廃止と Pass 1 唯一 run 作成原則
 
 旧バージョンでは `requested_run_id` と `analysis_signature` の一致を検証し、`run_state`（`allocated` → `profile_complete` → `render_in_progress` → `render_complete`）を用いた claim 再開機構が存在していましたが、Pass 1 唯一 run 作成原則に伴い claim 機構は**完全廃止**されました。
@@ -38,7 +50,7 @@ metadata:
 
 ## 実行手順（4-Pass・順序厳守）
 
-### Pass 0: プロファイリング (任意)
+### Pass 0: プロファイリングと設定確定（必須）
 
 ```bash
 Rscript .agents/skills/vcd-categorical-analysis/templates/analysis.R \
@@ -46,29 +58,23 @@ Rscript .agents/skills/vcd-categorical-analysis/templates/analysis.R \
   --data your_data.csv \
   --vars "var1,var2" \
   --freq "Freq" \
-  --out ./skill_out/vcd_categorical/
+  --out output/<project>/00_consultation/
 ```
-※ `data_profile.json` が出力されます（正式 run ディレクトリは作成されません）。過大セル数や過剰水準を確認し、集約や除外方針を `render_config.json`（または `analysis_config.json`）にまとめます。
+※ `data_profile.json` が出力されます（正式 run ディレクトリは作成されません）。`vcd-pass0-consultation` の検分と対話を先に完了し、過大セル数や過剰水準を確認して、由来情報付き `analysis_config.json` を確定します。
 
 ### Pass 1: R Engine 本計算（成果物マニフェスト出力と run 予約）
 
 ```bash
 Rscript .agents/skills/vcd-categorical-analysis/templates/analysis.R \
   --render \
-  --config render_config.json \
-  --data your_data.csv \
-  --vars "var1,var2" \
-  --freq "Freq" \
-  --label "mydata" \
-  --out ./skill_out/vcd_categorical/ \
-  --run-id datasetA_20260417
+  --config output/<project>/00_consultation/analysis_config.json
 ```
 
 | オプション | 既定値 | 説明 |
 | :--- | :--- | :--- |
 | `--render` | - | 本計算モードを指定（必須） |
-| `--config` | （なし） | 集約・表示ルール等を定義した設定ファイル |
-| `--data` | （内蔵 `HairEyeColor`） | 入力 CSV ファイルパス |
+| `--config` | 必須 | Pass 0で確定し、由来情報を持つ設定ファイル |
+| `--data` | - | Pass 0設定作成時の項目。Pass 1は設定ファイルの値を使用 |
 | `--vars` | （全変数） | 分析対象カテゴリ変数（カンマ区切り） |
 | `--freq` | `Freq` | 度数列名 |
 | `--label` | `categorical` | 出力ファイル接尾辞ラベル |

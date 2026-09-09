@@ -7,6 +7,23 @@ description: Use when starting a new categorical data analysis to inspect data, 
 
 大標本カテゴリカルデータ分析（`vcd-bayesian-evidence-analysis`）の最初の一手として、データの統計的性質を検分し、分析の軸（次元）や層別の要否を決定するための対話型スキル。
 
+## 利用者向け標準入口
+
+新しい分析では、プロジェクト単位の `output/<project>/` を入口にします。Pass 0 の相談成果物は `00_consultation/` に保存し、Pass 1 の正式 run は選択した Skill 用の親ディレクトリへ分けます。
+
+```text
+output/<project>/
+├── 00_consultation/
+│   ├── inspection_results.json
+│   ├── data_analysis_scope.md
+│   └── analysis_config.json
+├── 10_bayesian/run_<id>/
+├── 10_categorical/run_<id>/
+└── 10_questionnaire/runs/<id>/
+```
+
+`run_handover.json` が生成された後は、その `run_output_dir` を正式な次工程の入力として使います。`skill_out/` は既存 run と後方互換のための既定値であり、新規の利用例ではプロジェクト配下の親ディレクトリを優先します。
+
 ## 共通品質契約
 
 本スキルは `.agents/shared/analysis_quality_contract.md` を参照する。Pass 0では、統計計算前の入力品質、分析スコープ、変数選択、集約・除外・層別の判断を契約に沿って確認し、`data_analysis_scope.md` と `analysis_config.json` に反映する。
@@ -30,11 +47,11 @@ description: Use when starting a new categorical data analysis to inspect data, 
 
 ```bash
 Rscript .agents/shared/inspect_data.R <path_to_your_data.csv> \
-  --out-dir output/<project>/run_<id>/
+  --out-dir output/<project>/00_consultation/
 ```
 
-`<project>` と `<id>` は実際の識別子へ置き換えます。空のout-dir（`--out-dir=""` 等）は拒否されます。
-※ Pass 0 の検分出力先はコンサルテーション作業領域であり、分析成果物の本番正式 run ディレクトリは後続の Pass 1 が唯一の主体として原子予約・作成します。
+`<project>` は実際のプロジェクト識別子へ置き換えます。空のout-dir（`--out-dir=""` 等）は拒否されます。
+※ Pass 0 の検分出力先はコンサルテーション作業領域であり、正式 run ディレクトリではありません。分析成果物の本番正式 run ディレクトリは後続の Pass 1 が唯一の主体として原子予約・作成します。
 
 実行後、生成された `inspection_results.json` を読み取り、以下の点を確認します：
 - 各変数の水準数（多すぎないか？）
@@ -56,7 +73,7 @@ Rscript .agents/shared/inspect_data.R <path_to_your_data.csv> \
 
 ### 3. 設計図と構成の出力 (Artifacts)
 
-ユーザーの合意が得られたら、以下の2つのファイルを生成します。保存先はプロジェクトの作業領域（例: `output/<project_name>/`）です。
+ユーザーの合意が得られたら、以下の2つのファイルを生成します。保存先はプロジェクトの相談作業領域（例: `output/<project_name>/00_consultation/`）です。
 
 1. **`data_analysis_scope.md`**:
    - 分析の背景、選択した変数の根拠、除外した変数の理由を記録した人間用ドキュメント。
@@ -71,6 +88,25 @@ Rscript .agents/shared/inspect_data.R <path_to_your_data.csv> \
      - `output_dir`: 出力の親ディレクトリ（out_root）
      - `run_id`: 実行識別子（任意）
 
+Pass 1へ進む設定は、`pass0_provenance` に検分JSONと入力CSVのSHA-256を記録して確定します。`data_analysis_scope.md` を作成した後、共通確定CLIを使用します。
+
+```bash
+Rscript .agents/shared/finalize_pass0_config.R \
+  --inspection-results output/<project>/00_consultation/inspection_results.json \
+  --scope output/<project>/00_consultation/data_analysis_scope.md \
+  --config-out output/<project>/00_consultation/analysis_config.json \
+  --skill vcd-bayesian-evidence-analysis \
+  --input <path_to_your_data.csv> \
+  --vars var1,var2 \
+  --freq Freq \
+  --output-dir output/<project>/10_bayesian/ \
+  --run-id <id>
+```
+
+Bayesian 以外を選ぶ場合は、`--skill` と `--output-dir` を対応する値へ変更します。Categorical は `output/<project>/10_categorical/`、Questionnaire は `output/<project>/10_questionnaire/` を指定してください。
+
+`inspection_status` が `needs_input_preparation` の場合は設定を確定せず、CSVの整形または利用者との意味確認へ戻ります。
+
 ### 4. 後続 Pass 1 実行へのハンドオーバー
 
 成果物生成後、ユーザーに対して次に実行すべき Pass 1 コマンドを案内します。
@@ -78,23 +114,20 @@ Rscript .agents/shared/inspect_data.R <path_to_your_data.csv> \
 #### A. Bayesian Evidence Analysis の場合
 ```bash
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
-  --config output/<project>/analysis_config.json
+  --config output/<project>/00_consultation/analysis_config.json
 ```
 
 #### B. Categorical Analysis の場合
 ```bash
 Rscript .agents/skills/vcd-categorical-analysis/templates/analysis.R \
   --render \
-  --config output/<project>/analysis_config.json \
-  --out ./skill_out/vcd_categorical/
+  --config output/<project>/00_consultation/analysis_config.json
 ```
 
 #### C. Questionnaire Batch Analysis の場合
 ```bash
 Rscript .agents/skills/questionnaire-batch-analysis/templates/batch_runner.R \
-  --config output/<project>/analysis_config.json \
-  --question-config question_config.csv \
-  --out ./skill_out/questionnaire/
+  --config output/<project>/00_consultation/analysis_config.json
 ```
 
 ### パス・リンク表現基準と AI 報告要件

@@ -102,16 +102,15 @@ def test_categorical_canonical_docs_forbid_legacy_runs_layout():
         assert "runs/<id>" not in path.read_text(encoding="utf-8"), path
 
 
-def test_pass0_examples_require_run_scoped_output_directory():
-    out_dir_contract = "--out-dir output/<project>/run_<id>/"
-
+def test_pass0_examples_require_consultation_output_directory():
     for path in (
         "README.md",
         ".agents/skills/vcd-pass0-consultation/SKILL.md",
     ):
         text = read(path)
         assert ".agents/shared/inspect_data.R" in text
-        assert out_dir_contract in text
+        assert "--out-dir output/" in text
+        assert "00_consultation/" in text
         assert "空のout-dir" in text
 
 

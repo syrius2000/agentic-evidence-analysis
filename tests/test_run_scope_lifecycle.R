@@ -50,6 +50,31 @@ dir.create(temp_base, recursive = TRUE)
 temp_base <- normalizePath(temp_base, winslash = "/", mustWork = TRUE)
 on.exit(unlink(temp_base, recursive = TRUE), add = TRUE)
 
+make_pass0_config <- function(skill, input_path, output_dir, run_id, vars = NULL, freq = NULL, question_config = NULL) {
+  inspect_script <- ".agents/shared/inspect_data.R"
+  finalize_script <- ".agents/shared/finalize_pass0_config.R"
+  work_dir <- file.path(temp_base, paste0("pass0_", gsub("[^A-Za-z0-9_]", "_", run_id)))
+  dir.create(work_dir, recursive = TRUE, showWarnings = FALSE)
+  inspection_dir <- file.path(work_dir, "inspection")
+  config_path <- file.path(work_dir, "analysis_config.json")
+  stopifnot(system2("Rscript", c(inspect_script, input_path, "--out-dir", inspection_dir), stdout = FALSE, stderr = FALSE) == 0L)
+  cli <- c(
+    finalize_script,
+    "--inspection-results", file.path(inspection_dir, "inspection_results.json"),
+    "--scope", "docs/Artifacts/implementation_plan_008_0909.md",
+    "--config-out", config_path,
+    "--skill", skill,
+    "--input", input_path,
+    "--output-dir", output_dir,
+    "--run-id", run_id
+  )
+  if (!is.null(vars)) cli <- c(cli, "--vars", paste(vars, collapse = ","))
+  if (!is.null(freq)) cli <- c(cli, "--freq", freq)
+  if (!is.null(question_config)) cli <- c(cli, "--question-config", question_config)
+  stopifnot(system2("Rscript", cli, stdout = FALSE, stderr = FALSE) == 0L)
+  config_path
+}
+
 # 1.1: assert_valid_out_root
 cat("\n--- Test 1.1: assert_valid_out_root ---\n")
 valid_root <- file.path(temp_base, "case_01", "vcd_bayesian")
@@ -415,10 +440,17 @@ dir.create(b_out_root, recursive = TRUE)
 
 # 2.1: analysis.R (Pass 1) の実行
 cat("\n--- Test 2.1: analysis.R (Pass 1) 実行と成果物検証 ---\n")
+b_config_1 <- make_pass0_config(
+  "vcd-bayesian-evidence-analysis",
+  "examples/titanic.csv",
+  b_out_root,
+  "b_test_01",
+  vars = c("Class", "Sex", "Survived"),
+  freq = "Freq"
+)
 res_pass1 <- system2("Rscript", c(
   ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R",
-  "--output-dir", b_out_root,
-  "--run-id", "b_test_01"
+  "--config", b_config_1
 ), stdout = FALSE, stderr = FALSE)
 test_assert(res_pass1 == 0L, "analysis.R (Pass 1) 正常終了")
 
@@ -434,10 +466,17 @@ v_b_man <- verify_results_manifest(b_run_dir)
 test_assert(isTRUE(v_b_man$valid), "Pass 1 生成 results_manifest.json の完全性検証合格")
 
 # supersedes-run オプションのテスト
+b_config_2 <- make_pass0_config(
+  "vcd-bayesian-evidence-analysis",
+  "examples/titanic.csv",
+  b_out_root,
+  "b_test_02",
+  vars = c("Class", "Sex", "Survived"),
+  freq = "Freq"
+)
 res_sup <- system2("Rscript", c(
   ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R",
-  "--output-dir", b_out_root,
-  "--run-id", "b_test_02",
+  "--config", b_config_2,
   "--supersedes-run", b_run_dir,
   "--supersede-reason", "Re-computation_test"
 ), stdout = FALSE, stderr = FALSE)
@@ -559,11 +598,18 @@ test_assert(length(grep("^run_", list.dirs(c_prof_dir, recursive = FALSE, full.n
 
 # 3.2: Pass 1 Render Mode (正式 run 予約・作成と成果物検証)
 cat("\n--- Test 3.2: Pass 1 Render Mode (成果物とマニフェスト検証) ---\n")
+c_config_1 <- make_pass0_config(
+  "vcd-categorical-analysis",
+  "examples/titanic.csv",
+  c_out_root,
+  "cat_test_01",
+  vars = c("Class", "Sex"),
+  freq = "Freq"
+)
 res_c_pass1 <- system2("Rscript", c(
   ".agents/skills/vcd-categorical-analysis/templates/analysis.R",
   "--render",
-  "--out", c_out_root,
-  "--run-id", "cat_test_01"
+  "--config", c_config_1
 ), stdout = FALSE, stderr = FALSE)
 test_assert(res_c_pass1 == 0L, "Categorical analysis.R (Pass 1) 正常終了")
 
@@ -665,12 +711,16 @@ q_cfg_test <- "tests/question_config_test.csv"
 
 # 4.1: 全成功時の completed 遷移と成果物検証
 cat("\n--- Test 4.1: Questionnaire batch 全成功 (completed) ---\n")
+q_config_1 <- make_pass0_config(
+  "questionnaire-batch-analysis",
+  survey_data,
+  q_out_root,
+  "q_test_01",
+  question_config = q_cfg_test
+)
 res_q_pass1 <- system2("Rscript", c(
   ".agents/skills/questionnaire-batch-analysis/templates/batch_runner.R",
-  "--data", survey_data,
-  "--question-config", q_cfg_test,
-  "--out", q_out_root,
-  "--run-id", "q_test_01"
+  "--config", q_config_1
 ), stdout = FALSE, stderr = FALSE)
 test_assert(res_q_pass1 == 0L, "batch_runner.R 全成功実行 正常終了")
 
@@ -696,12 +746,17 @@ cfg_part_df$var2[2] <- "non_existent_column_for_failure"
 q_cfg_part <- file.path(temp_base, "q_config_partial.csv")
 utils::write.csv(cfg_part_df, q_cfg_part, row.names = FALSE)
 
+q_config_partial <- make_pass0_config(
+  "questionnaire-batch-analysis",
+  survey_data,
+  q_out_root,
+  "q_test_partial",
+  question_config = q_cfg_part
+)
+
 res_q_part <- system2("Rscript", c(
   ".agents/skills/questionnaire-batch-analysis/templates/batch_runner.R",
-  "--data", survey_data,
-  "--question-config", q_cfg_part,
-  "--out", q_out_root,
-  "--run-id", "q_test_partial"
+  "--config", q_config_partial
 ), stdout = FALSE, stderr = FALSE)
 test_assert(res_q_part != 0L, "一部失敗は診断成果物を出力して非ゼロ終了")
 
@@ -737,12 +792,17 @@ cfg_fail_df$var1 <- "bad_col_all"
 q_cfg_fail <- file.path(temp_base, "q_config_fail.csv")
 utils::write.csv(cfg_fail_df, q_cfg_fail, row.names = FALSE)
 
+q_config_fail <- make_pass0_config(
+  "questionnaire-batch-analysis",
+  survey_data,
+  q_out_root,
+  "q_test_fail",
+  question_config = q_cfg_fail
+)
+
 res_q_fail <- system2("Rscript", c(
   ".agents/skills/questionnaire-batch-analysis/templates/batch_runner.R",
-  "--data", survey_data,
-  "--question-config", q_cfg_fail,
-  "--out", q_out_root,
-  "--run-id", "q_test_fail"
+  "--config", q_config_fail
 ), stdout = FALSE, stderr = FALSE)
 test_assert(res_q_fail != 0L, "全失敗時は batch_runner.R は非ゼロ終了")
 
