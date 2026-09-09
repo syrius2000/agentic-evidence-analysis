@@ -18,6 +18,9 @@ Other_Skill/
 .gemini/
 .cursor/
 
+# Playwright MCP transient browser logs
+/.playwright-mcp/
+
 # Pass 0 inspect_data.R (writes to cwd)
 inspection_results.json
 
