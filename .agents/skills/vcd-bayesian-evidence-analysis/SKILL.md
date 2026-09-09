@@ -197,8 +197,9 @@ promotion 完了後、run_meta 更新前にクラッシュした場合でも、�
 
 ### パス・リンク表現基準
 - **リポジトリ内ファイル**: 相対パス（例: `[dashboard.html](run_xxx/dashboard.html)`）で記述する。`file:///` 絶対 URL は禁止。
-- **リポジトリ外ファイル**: 正規化された絶対パスで記述する。
-- **`run_meta.json` 内**: 実 run ディレクトリ基準の相対パスで記録する。
+- **成果物メタデータ**: `path_schema_version: "1.0"` と `path_kind` を付与し、`repo_relative` または `run_relative` の POSIX 相対パスを保存する。
+- **外部入力**: 既定では物理パスを保存せず、SHA-256 と論理ラベルだけを `external` として記録する。明示的な `--supersedes-run` の元 run は外部参照として絶対パスを許可する。
+- **`run_handover.json`**: `cwd: "."` と `repo_root_marker` を使い、run 内ファイルは run 相対パスで記録する。legacy の絶対パスは読み取り互換に限定する。
 
 ### AI 完了報告の 4 大要素（必須）
 分析完了をユーザーへ報告する際は、以下の 4 要素を必ず明記してください：

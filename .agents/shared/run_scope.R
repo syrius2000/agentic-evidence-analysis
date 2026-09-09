@@ -27,6 +27,188 @@ run_scope_source_repo_root <- function() {
   getwd()
 }
 
+# 永続化するパスは、実行環境に依存しない相対表現を基本とする。
+RUN_SCOPE_PATH_SCHEMA_VERSION <- "1.0"
+`%||%` <- function(x, y) if (is.null(x)) y else x
+
+run_scope_is_absolute_path <- function(path) {
+  is.character(path) && length(path) == 1L && !is.na(path) &&
+    (startsWith(chartr("\\", "/", path), "/") || grepl("^[A-Za-z]:/", chartr("\\", "/", path)))
+}
+
+run_scope_repo_root <- function(explicit = NULL, start = getwd()) {
+  candidate <- explicit %||% NULL
+  if (!is.null(candidate) && nzchar(trimws(as.character(candidate)))) {
+    return(normalizePath(assert_no_symlink(as.character(candidate)), winslash = "/", mustWork = TRUE))
+  }
+  start <- normalizePath(start, winslash = "/", mustWork = FALSE)
+  git_root <- tryCatch(
+    suppressWarnings(system2("git", c("-C", start, "rev-parse", "--show-toplevel"), stdout = TRUE, stderr = FALSE)),
+    error = function(e) character()
+  )
+  if (length(git_root) == 1L && nzchar(trimws(git_root))) {
+    return(normalizePath(assert_no_symlink(trimws(git_root)), winslash = "/", mustWork = TRUE))
+  }
+  d <- start
+  for (i in seq_len(20L)) {
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) return(d)
+    parent <- dirname(d)
+    if (identical(parent, d)) break
+    d <- parent
+  }
+  stop("[ERROR] リポジトリルートを一意に解決できません。--repo-root を指定してください。")
+}
+
+run_scope_relative_path <- function(path, root) {
+  p <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  r <- normalizePath(root, winslash = "/", mustWork = FALSE)
+  if (!(identical(p, r) || startsWith(p, paste0(r, "/")))) return(NULL)
+  rel <- substring(p, nchar(r) + 2L)
+  if (!nzchar(rel)) "." else rel
+}
+
+run_scope_resolve_path <- function(path, path_kind, repo_root = NULL, run_dir = NULL,
+                                   external_path = NULL, allow_legacy_absolute = FALSE) {
+  if (is.null(path) || length(path) == 0L || is.na(path)) return(NULL)
+  p <- chartr("\\", "/", as.character(path))
+  kind <- if (is.null(path_kind) || !nzchar(as.character(path_kind))) NULL else as.character(path_kind)
+  if (identical(kind, "repo_relative")) {
+    if (is.null(repo_root)) stop("[ERROR] repo_relative パスの解決に repo_root が必要です")
+    if (run_scope_is_absolute_path(p) || (p != "." && any(strsplit(p, "/", fixed = TRUE)[[1L]] %in% c("", ".", "..")))) {
+      stop("[ERROR] repo_relative パスが不正です")
+    }
+    return(normalizePath(assert_no_symlink(file.path(repo_root, p)), winslash = "/", mustWork = FALSE))
+  }
+  if (identical(kind, "run_relative")) {
+    if (is.null(run_dir)) stop("[ERROR] run_relative パスの解決に run_dir が必要です")
+    return(assert_path_within_run_dir(p, run_dir))
+  }
+  if (identical(kind, "external")) {
+    if (!is.null(external_path) && nzchar(as.character(external_path))) {
+      return(normalizePath(assert_no_symlink(external_path), winslash = "/", mustWork = FALSE))
+    }
+    # 明示された supersede 元など、外部参照として保存された絶対パスは互換的に解決する。
+    return(if (run_scope_is_absolute_path(p)) normalizePath(assert_no_symlink(p), winslash = "/", mustWork = FALSE) else NULL)
+  }
+  if (run_scope_is_absolute_path(p) && isTRUE(allow_legacy_absolute)) {
+    return(normalizePath(assert_no_symlink(p), winslash = "/", mustWork = FALSE))
+  }
+  p
+}
+
+run_scope_portable_path <- function(path, repo_root, run_dir = NULL, prefer_run_relative = FALSE) {
+  if (is.null(path) || length(path) == 0L || is.na(path) || !nzchar(as.character(path))) return(NULL)
+  p <- normalizePath(as.character(path), winslash = "/", mustWork = FALSE)
+  if (!isTRUE(prefer_run_relative) && !is.null(repo_root)) {
+    rel <- run_scope_relative_path(p, repo_root)
+    if (!is.null(rel)) return(list(path = rel, path_kind = "repo_relative"))
+  }
+  if (!is.null(run_dir)) {
+    r <- normalizePath(run_dir, winslash = "/", mustWork = FALSE)
+    rel <- run_scope_relative_path(p, r)
+    if (!is.null(rel)) return(list(path = rel, path_kind = "run_relative"))
+  }
+  list(path = NULL, path_kind = "external")
+}
+
+# 計画書で公開した名称の互換エイリアス。
+to_portable_repo_path <- run_scope_portable_path
+from_portable_repo_path <- run_scope_resolve_path
+
+run_scope_detect_repo_root <- function(run_dir) {
+  d <- normalizePath(run_dir, winslash = "/", mustWork = FALSE)
+  for (i in seq_len(20L)) {
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) return(d)
+    parent <- dirname(d)
+    if (identical(parent, d)) break
+    d <- parent
+  }
+  NULL
+}
+
+resolve_run_meta_paths <- function(meta, run_dir, allow_legacy = FALSE) {
+  norm_run <- normalizePath(run_dir, winslash = "/", mustWork = TRUE)
+  repo_root <- run_scope_detect_repo_root(norm_run)
+  if (is.null(repo_root)) repo_root <- RUN_SCOPE_REPO_ROOT
+  resolved <- meta
+  if (!identical(meta$interface_version, RUN_META_INTERFACE_VERSION_V2)) return(meta)
+  if (!is.null(meta$out_root)) {
+    resolved$out_root <- run_scope_resolve_path(meta$out_root, meta$out_root_path_kind, repo_root, norm_run,
+      allow_legacy_absolute = allow_legacy)
+  }
+  if (is.null(resolved$out_root) || !nzchar(resolved$out_root)) {
+    parent <- dirname(norm_run)
+    resolved$out_root <- if (identical(meta$skill, "questionnaire-batch-analysis") && identical(basename(parent), "runs")) dirname(parent) else parent
+  }
+  resolved$run_output_dir <- norm_run
+  if (!is.null(meta$supersedes_run)) {
+    resolved$supersedes_run <- run_scope_resolve_path(meta$supersedes_run, meta$supersedes_run_path_kind,
+      repo_root, norm_run, allow_legacy_absolute = allow_legacy)
+  }
+  if (!is.null(meta$config_source_path)) {
+    resolved$config_source_path <- run_scope_resolve_path(meta$config_source_path, meta$config_source_path_kind,
+      repo_root, norm_run, allow_legacy_absolute = allow_legacy)
+  }
+  if (is.list(meta$inputs)) {
+    resolved$inputs <- lapply(meta$inputs, function(item) {
+      if (!is.null(item$source_path)) {
+        item$source_path <- run_scope_resolve_path(item$source_path,
+          item$source_path_kind %||% item$path_kind, repo_root, norm_run,
+          allow_legacy_absolute = allow_legacy)
+      }
+      item
+    })
+  }
+  resolved
+}
+
+portableize_run_meta <- function(meta, run_dir) {
+  if (!identical(meta$interface_version, RUN_META_INTERFACE_VERSION_V2)) return(meta)
+  norm_run <- normalizePath(run_dir, winslash = "/", mustWork = TRUE)
+  repo_root <- run_scope_detect_repo_root(norm_run)
+  if (is.null(repo_root)) repo_root <- tryCatch(run_scope_repo_root(start = norm_run), error = function(e) NULL)
+  m <- meta
+  out_rec <- if (!is.null(m$out_root) && run_scope_is_absolute_path(m$out_root)) run_scope_portable_path(m$out_root, repo_root, norm_run) else NULL
+  if (!is.null(out_rec) && !identical(out_rec$path_kind, "external")) {
+    m$out_root <- out_rec$path
+    m$out_root_path_kind <- out_rec$path_kind
+  } else if (is.null(m$out_root)) {
+    m$out_root_path_kind <- "external"
+  }
+  m$run_output_dir <- "."
+  m$run_output_dir_path_kind <- "run_relative"
+  if (!is.null(m$supersedes_run) && run_scope_is_absolute_path(m$supersedes_run)) {
+    rec <- run_scope_portable_path(m$supersedes_run, repo_root, norm_run)
+    m$supersedes_run <- if (!is.null(rec) && !identical(rec$path_kind, "external")) rec$path else normalizePath(m$supersedes_run, winslash = "/", mustWork = FALSE)
+    m$supersedes_run_path_kind <- if (!is.null(rec)) rec$path_kind else "external"
+  }
+  if (!is.null(m$config_source_path) && run_scope_is_absolute_path(m$config_source_path)) {
+    rec <- run_scope_portable_path(m$config_source_path, repo_root, norm_run)
+    m$config_source_path <- if (!is.null(rec) && !identical(rec$path_kind, "external")) rec$path else NULL
+    m$config_source_path_kind <- if (!is.null(rec)) rec$path_kind else "external"
+  }
+  if (is.list(m$inputs)) {
+    m$inputs <- lapply(m$inputs, function(item) {
+      if (!is.null(item$source_path) && run_scope_is_absolute_path(item$source_path)) {
+        rec <- run_scope_portable_path(item$source_path, repo_root, norm_run)
+        item$source_path <- if (!is.null(rec) && !identical(rec$path_kind, "external")) rec$path else NULL
+        item$source_path_kind <- if (!is.null(rec)) rec$path_kind else "external"
+      }
+      item
+    })
+  }
+  scrub <- function(x) {
+    if (is.list(x)) return(lapply(x, scrub))
+    if (is.character(x) && length(x) == 1L && run_scope_is_absolute_path(x)) return(NULL)
+    x
+  }
+  explicit_supersede <- if (!is.null(m$supersedes_run) && run_scope_is_absolute_path(m$supersedes_run) && identical(m$supersedes_run_path_kind, "external")) m$supersedes_run else NULL
+  m <- scrub(m)
+  if (!is.null(explicit_supersede)) m$supersedes_run <- explicit_supersede
+  m$path_schema_version <- RUN_SCOPE_PATH_SCHEMA_VERSION
+  m
+}
+
 if (!requireNamespace("digest", quietly = TRUE)) {
   utils::install.packages("digest", repos = "https://cloud.r-project.org")
 }
@@ -206,12 +388,15 @@ read_run_control <- function(run_dir, allow_legacy = FALSE) {
   meta <- jsonlite::read_json(path, simplifyVector = FALSE)
   if (identical(meta$interface_version, "1.0") && allow_legacy) return(meta)
   if (!identical(meta$interface_version, "2.0")) stop("[ERROR] legacy / 不正メタデータ: v2.0 が必要です")
+  if (!is.null(meta$path_schema_version) && !identical(as.character(meta$path_schema_version), RUN_SCOPE_PATH_SCHEMA_VERSION)) {
+    stop("[ERROR] 未対応の path_schema_version: ", meta$path_schema_version)
+  }
   if (!meta$skill %in% c("vcd-bayesian-evidence-analysis", "vcd-categorical-analysis", "questionnaire-batch-analysis")) stop("[ERROR] 不明なskill")
   if (!meta$run_state %in% c("active", "sealed")) stop("[ERROR] 不正なrun_state")
   if (is.null(meta$pass_status) || !meta$pass_status$pass1 %in% c("pending", "completed", "partial", "failed") ||
       !meta$pass_status$pass2 %in% c("pending", "stub_generated", "completed") ||
       !meta$pass_status$pass3 %in% c("pending", "completed")) stop("[ERROR] 不正なpass_status")
-  meta
+  resolve_run_meta_paths(meta, run_dir, allow_legacy = allow_legacy)
 }
 
 # --- Task 1.2: 秒単位 JST タイムスタンプ衝突の原子的解決 ---
@@ -265,19 +450,35 @@ save_config_snapshot <- function(run_output_dir, config_data, config_origin = "p
   dest_path <- file.path(run_output_dir, file_name)
   if (file.exists(dest_path)) stop("[ERROR] 設定snapshotの上書きを拒絶")
 
+  repo_root <- run_scope_detect_repo_root(run_output_dir)
+  sanitize_config <- function(x) {
+    if (is.list(x)) return(lapply(x, sanitize_config))
+    if (is.character(x) && length(x) == 1L && run_scope_is_absolute_path(x)) {
+      rec <- run_scope_portable_path(x, repo_root, run_output_dir)
+      return(if (!is.null(rec) && !identical(rec$path_kind, "external")) rec$path else NA_character_)
+    }
+    x
+  }
+
   if (is.character(config_data) && length(config_data) == 1L && file.exists(config_data)) {
-    # ファイルコピー
-    if (!file.copy(config_data, dest_path, overwrite = FALSE)) stop("[ERROR] 設定snapshot保存失敗")
+    # JSON にホスト固有パスが含まれる場合だけ可搬表現へ正規化し、それ以外は原文バイト列を保持する。
+    parsed <- if (grepl("\\.json$", config_data, ignore.case = TRUE)) tryCatch(jsonlite::read_json(config_data, simplifyVector = FALSE), error = function(e) NULL) else NULL
+    has_abs <- grepl("(/Users/|/home/|[A-Za-z]:[\\\\/])", paste(readLines(config_data, warn = FALSE), collapse = "\n"))
+    if (!is.null(parsed) && has_abs) jsonlite::write_json(sanitize_config(parsed), dest_path, pretty = TRUE, auto_unbox = TRUE, null = "null")
+    else if (!file.copy(config_data, dest_path, overwrite = FALSE)) stop("[ERROR] 設定snapshot保存失敗")
   } else if (is.list(config_data)) {
-    jsonlite::write_json(config_data, dest_path, pretty = TRUE, auto_unbox = TRUE, null = "null")
+    jsonlite::write_json(sanitize_config(config_data), dest_path, pretty = TRUE, auto_unbox = TRUE, null = "null")
   } else {
     stop("[ERROR] 有効な config_data (ファイルパスまたはリスト) を指定してください。")
   }
 
   sha256 <- sha256_file(dest_path)
+  repo_root <- run_scope_detect_repo_root(run_output_dir)
+  source_record <- if (!is.null(config_source_path)) run_scope_portable_path(config_source_path, repo_root, run_output_dir) else NULL
   list(
     config_origin = config_origin,
-    config_source_path = if (!is.null(config_source_path)) normalizePath(config_source_path, winslash = "/", mustWork = FALSE) else NULL,
+    config_source_path = if (!is.null(source_record)) source_record$path else NULL,
+    config_source_path_kind = if (!is.null(source_record)) source_record$path_kind else NULL,
     config_snapshot = file_name,
     config_sha256 = sha256
   )
@@ -473,8 +674,11 @@ acquire_stage_lock <- function(run_dir, stage, recover_stale = FALSE, stale_thre
     info_path <- file.path(lock_path, "lock_info.json")
     assert_no_symlink(info_path)
     info <- tryCatch(jsonlite::read_json(info_path), error = function(e) NULL)
+    expected_run_hash <- digest::digest(normalizePath(run_dir, winslash = "/"), algo = "sha256", serialize = FALSE)
+    run_match <- identical(info$run_dir_hash, expected_run_hash) ||
+      identical(info$run_dir, normalizePath(run_dir, winslash = "/"))
     if (is.null(info) || is.null(info$token) || length(info$pid) != 1L || !is.numeric(info$pid) || info$pid <= 0 ||
-        !identical(info$stage, stage) || !identical(info$run_dir, normalizePath(run_dir))) stop("[ERROR] lock_info が欠損・破損しています")
+        !identical(info$stage, stage) || !run_match) stop("[ERROR] lock_info が欠損・破損しています")
     if (!identical(info$hostname, unname(Sys.info()["nodename"]))) stop("[ERROR] 異なるホストのロックです")
     # psの成功と空結果だけをPID不在と扱い、照会失敗は回復しない。
     ps <- suppressWarnings(system2("ps", c("-p", as.character(info$pid), "-o", "pid="), stdout = TRUE, stderr = TRUE))
@@ -494,12 +698,14 @@ acquire_stage_lock <- function(run_dir, stage, recover_stale = FALSE, stale_thre
     if (!dir.create(lock_path, showWarnings = FALSE)) stop("[ERROR] 回復後の再取得失敗")
   }
   token <- digest::digest(list(Sys.time(), Sys.getpid(), runif(1)), algo = "sha256")
+  norm_run <- normalizePath(run_dir, winslash = "/")
   info <- list(pid = Sys.getpid(), hostname = unname(Sys.info()["nodename"]), stage = stage,
-      run_dir = normalizePath(run_dir), token = token,
+      run_dir = ".", run_dir_path_kind = "run_relative",
+      run_dir_hash = digest::digest(norm_run, algo = "sha256", serialize = FALSE), token = token,
       process_start = paste(system2("ps", c("-p", Sys.getpid(), "-o", "lstart="), stdout = TRUE), collapse = " "),
       acquired_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"))
   atomic_run_json(info, file.path(lock_path, "lock_info.json"))
-  list(lock_dir = lock_path, lock_id = basename(control), token = token, info = info, run_dir = normalizePath(run_dir))
+  list(lock_dir = lock_path, lock_id = basename(control), token = token, info = info, run_dir = norm_run)
 }
 
 release_stage_lock <- function(lock_obj) {
@@ -639,7 +845,7 @@ finalize_stage <- function(run_dir, stage, target_name, source_staging_path, exp
   meta$artifacts[[if (stage == "pass2") "narrative" else "dashboard"]] <- art
   meta$timestamps[[paste0(stage, "_completed")]] <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
   if (stage == "pass3") meta$timestamps$sealed <- meta$timestamps$pass3_completed
-  atomic_run_json(meta, file.path(run_dir, "run_meta.json"))
+  atomic_run_json(portableize_run_meta(meta, run_dir), file.path(run_dir, "run_meta.json"))
   list(run_dir = run_dir, target_name = target_name, sha256 = tx$sha256,
        results_manifest_sha256 = v$manifest_sha256, run_state = meta$run_state)
 }
@@ -712,19 +918,25 @@ verify_superseded_run <- function(source_run_dir, current_skill, current_run_dir
 # --- Task 1.14: cwd 付き kind タグ付き機械可読ハンドオーバー ---
 write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, config_path = "analysis_config.json") {
   norm_run <- normalizePath(run_output_dir, winslash = "/", mustWork = TRUE)
-  cwd <- RUN_SCOPE_REPO_ROOT
+  repo_root <- run_scope_detect_repo_root(norm_run)
+  run_rec <- run_scope_portable_path(norm_run, repo_root, norm_run)
+  run_arg <- if (!is.null(run_rec) && !identical(run_rec$path_kind, "external")) run_rec$path else "."
 
   narrative_file <- if (identical(skill, "questionnaire-batch-analysis")) "cross_question_summary.md" else "executive_summary.md"
   preview_narrative_file <- "executive_summary_preview.md"
 
   handover <- list(
     interface_version = "1.0",
-    run_output_dir = norm_run,
-    cwd = cwd,
-    run_meta = file.path(norm_run, "run_meta.json"),
-    results_manifest = file.path(norm_run, "results_manifest.json"),
+    path_schema_version = RUN_SCOPE_PATH_SCHEMA_VERSION,
+    run_output_dir = run_arg,
+    run_output_dir_path_kind = if (!is.null(run_rec)) run_rec$path_kind else "run_relative",
+    cwd = ".",
+    cwd_kind = "repo_root_marker",
+    repo_root_marker = ".",
+    run_meta = "run_meta.json",
+    results_manifest = "results_manifest.json",
     results_manifest_sha256 = results_manifest_sha256,
-    config = file.path(norm_run, config_path),
+    config = config_path,
     next_actions = list(
       pass2_ai = list(
         kind = "agent_action",
@@ -740,8 +952,8 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
             "Rscript",
             ".agents/shared/finalize_run_stage.R",
             "--stage", "pass2",
-            "--run-dir", norm_run,
-            "--source-artifact", file.path(norm_run, "staging", narrative_file),
+            "--run-dir", run_arg,
+            "--source-artifact", file.path("staging", narrative_file),
             "--target-name", narrative_file,
             "--expected-results-manifest-sha256", results_manifest_sha256
           )
@@ -757,7 +969,7 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
             "vcd-categorical-analysis" = ".agents/skills/vcd-categorical-analysis/templates/analysis.R",
             "questionnaire-batch-analysis" = ".agents/skills/questionnaire-batch-analysis/templates/batch_runner.R"
           ),
-          "--run-dir", norm_run
+          "--run-dir", run_arg
         ),
         output = preview_narrative_file,
         production_eligible = FALSE
@@ -772,7 +984,7 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
             "vcd-categorical-analysis" = ".agents/skills/vcd-categorical-analysis/templates/render_dashboard.R",
             "questionnaire-batch-analysis" = ".agents/skills/questionnaire-batch-analysis/templates/render_dashboard.R"
           ),
-          "--run-dir", norm_run,
+          "--run-dir", run_arg,
           "--preview"
         ),
         output = "dashboard_preview.html",
@@ -788,7 +1000,7 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
             "vcd-categorical-analysis" = ".agents/skills/vcd-categorical-analysis/templates/render_dashboard.R",
             "questionnaire-batch-analysis" = ".agents/skills/questionnaire-batch-analysis/templates/render_dashboard.R"
           ),
-          "--run-dir", norm_run
+          "--run-dir", run_arg
         ),
         output = "dashboard.html",
         requires = list("pass2_ai")
@@ -805,7 +1017,22 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
   handover_path <- assert_path_within_run_dir("run_handover.json", norm_run)
   if (meta$run_state == "sealed" || file.exists(handover_path)) stop("[ERROR] handover上書きを拒絶")
   jsonlite::write_json(handover, handover_path, pretty = TRUE, auto_unbox = TRUE)
-  invisible(handover)
+  # 戻り値は同一プロセス内の後続処理向けに解決済み cwd を返すが、JSON は portable 表現を保持する。
+  handover_runtime <- handover
+  handover_runtime$cwd <- RUN_SCOPE_REPO_ROOT
+  if (length(handover_runtime$next_actions)) {
+    for (nm in names(handover_runtime$next_actions)) {
+      action <- handover_runtime$next_actions[[nm]]
+      if (is.list(action) && !is.null(action$argv)) {
+        idx <- match("--run-dir", action$argv)
+        if (!is.na(idx) && idx < length(action$argv)) action$argv[[idx + 1L]] <- norm_run
+        idx2 <- match("--source-artifact", action$argv)
+        if (!is.na(idx2) && idx2 < length(action$argv)) action$argv[[idx2 + 1L]] <- file.path(norm_run, "staging", narrative_file)
+        handover_runtime$next_actions[[nm]] <- action
+      }
+    }
+  }
+  invisible(handover_runtime)
 }
 
 # --- Task 1.15: resolve_pass3_run_dir 改定 ---
@@ -884,35 +1111,52 @@ resolve_pass3_run_dir <- function(root, required_filename, skill_label = "output
 
 # --- メタデータ書き込み（v2.0 統合） ---
 write_run_meta <- function(out_root, run_output_dir, skill, run_id, input_data_path = NULL, extra = NULL) {
+  extra <- if (is.null(extra)) list() else extra
+  original_inputs <- extra$inputs
   norm_root <- normalizePath(out_root, winslash = "/", mustWork = FALSE)
   norm_run <- normalizePath(assert_no_symlink(run_output_dir), winslash = "/", mustWork = FALSE)
+  repo_root <- run_scope_detect_repo_root(norm_run)
+  if (is.null(repo_root)) repo_root <- tryCatch(run_scope_repo_root(start = norm_run), error = function(e) NULL)
   prior <- NULL
   if (file.exists(file.path(norm_run, "run_meta.json"))) {
     prior <- read_run_control(norm_run)
     if (prior$run_state == "sealed" || prior$pass_status$pass1 == "completed") stop("[ERROR] 確定済みPass 1メタデータの再作成を拒絶")
   }
 
-  # inputs 配列の構築
   inputs <- list()
   if (!is.null(input_data_path) && nzchar(trimws(input_data_path))) {
-    norm_input <- tryCatch(
-      normalizePath(input_data_path, winslash = "/", mustWork = TRUE),
-      error = function(e) input_data_path
-    )
-    h <- if (file.exists(norm_input)) sha256_file(norm_input) else NULL
-    inputs[[1L]] <- list(
-      role = "data",
-      source_kind = "file",
-      source_path = norm_input,
-      snapshot = NULL,
-      snapshot_policy = "hash_only",
-      sha256 = h
-    )
+    norm_input <- normalizePath(input_data_path, winslash = "/", mustWork = FALSE)
+    inputs[[1L]] <- list(role = "data", source_kind = "file", source_path = norm_input,
+      snapshot = NULL, snapshot_policy = "hash_only",
+      sha256 = if (file.exists(norm_input)) sha256_file(norm_input) else NULL)
   }
-
   if (!is.null(extra$inputs)) inputs <- extra$inputs
+  inputs <- lapply(inputs, function(item) {
+    item <- as.list(item)
+    item$role <- as.character(item$role %||% "data")
+    item$source_kind <- as.character(item$source_kind %||% "file")
+    item$snapshot_policy <- "hash_only"
+    if (identical(item$source_kind, "builtin")) {
+      item$source_path_kind <- "builtin"
+      item$source_path <- item$source_path %||% item$logical_label %||% "builtin"
+    } else {
+      raw_path <- item$source_path %||% item$input_data
+      resolved_path <- if (!is.null(raw_path) && nzchar(as.character(raw_path))) normalizePath(as.character(raw_path), winslash = "/", mustWork = FALSE) else NULL
+      if (!is.null(resolved_path) && file.exists(resolved_path) && is.null(item$sha256)) item$sha256 <- sha256_file(resolved_path)
+      rec <- if (!is.null(resolved_path)) run_scope_portable_path(resolved_path, repo_root, norm_run) else NULL
+      if (!is.null(rec) && !identical(rec$path_kind, "external")) {
+        item$source_path <- rec$path
+        item$source_path_kind <- rec$path_kind
+      } else {
+        item$source_path <- NA_character_
+        item$source_path_kind <- "external"
+        item$logical_label <- item$logical_label %||% if (!is.null(raw_path)) basename(as.character(raw_path)) else "external_input"
+      }
+    }
+    item
+  })
   for (item in inputs) {
-    if (is.null(item$role) || !item$source_kind %in% c("file", "builtin") || !grepl("^[0-9a-f]{64}$", item$sha256)) stop("[ERROR] inputsが不正")
+    if (is.null(item$role) || !item$source_kind %in% c("file", "builtin") || is.null(item$sha256) || !grepl("^[0-9a-f]{64}$", item$sha256)) stop("[ERROR] inputsが不正")
     if (!is.null(item[["snapshot"]]) || (!is.null(item$snapshot_policy) && item$snapshot_policy != "hash_only")) stop("[ERROR] データはhash_onlyです")
   }
   cfg_path <- file.path(norm_run, "analysis_config.json")
@@ -925,55 +1169,60 @@ write_run_meta <- function(out_root, run_output_dir, skill, run_id, input_data_p
     qhash <- if (file.exists(qcfg)) sha256_file(qcfg) else NULL
     extra$config_changed <- !identical(src$config_sha256, extra$config_sha256) || !identical(src$question_config_sha256, qhash)
   }
+  out_rec <- run_scope_portable_path(norm_root, repo_root, norm_run)
+  run_rec <- run_scope_portable_path(norm_run, repo_root, norm_run)
+  if (is.null(run_rec) || identical(run_rec$path_kind, "external")) run_rec <- list(path = ".", path_kind = "run_relative")
+  sup_rec <- if (!is.null(extra$supersedes_run)) run_scope_portable_path(extra$supersedes_run, repo_root, norm_run) else NULL
+  # supersede は明示的な CLI 指定なので、リポジトリ外の元 run だけ外部絶対パスを許可する。
+  if (!is.null(sup_rec) && identical(sup_rec$path_kind, "external")) sup_rec$path <- normalizePath(extra$supersedes_run, winslash = "/", mustWork = FALSE)
+  cfg_rec <- if (!is.null(extra$config_source_path)) {
+    if (!is.null(extra$config_source_path_kind)) list(path = extra$config_source_path, path_kind = extra$config_source_path_kind) else run_scope_portable_path(extra$config_source_path, repo_root, norm_run)
+  } else NULL
   meta <- list(
     interface_version = RUN_META_INTERFACE_VERSION_V2,
-    skill = skill,
-    run_id = as.character(run_id),
-    run_id_short = run_id_short16(run_id),
-    requested_run_id = if (!is.null(extra$requested_run_id)) extra$requested_run_id else NULL,
-    run_state = "active",
-    supersedes_run = if (!is.null(extra$supersedes_run)) extra$supersedes_run else NULL,
-    superseded_results_manifest_sha256 = if (!is.null(extra$superseded_results_manifest_sha256)) extra$superseded_results_manifest_sha256 else NULL,
-    supersede_reason = if (!is.null(extra$supersede_reason)) extra$supersede_reason else NULL,
-    inputs_changed = if (!is.null(extra$inputs_changed)) extra$inputs_changed else NULL,
-    config_changed = if (!is.null(extra$config_changed)) extra$config_changed else NULL,
-    out_root = norm_root,
-    run_output_dir = norm_run,
-    results_manifest = "results_manifest.json",
-    results_manifest_sha256 = if (!is.null(extra$results_manifest_sha256)) extra$results_manifest_sha256 else NULL,
-    inputs = inputs,
-    config_origin = if (!is.null(extra$config_origin)) extra$config_origin else "pass0_file",
-    config_source_path = if (!is.null(extra$config_source_path)) extra$config_source_path else NULL,
-    config_snapshot = if (!is.null(extra$config_snapshot)) extra$config_snapshot else "analysis_config.json",
-    config_sha256 = if (!is.null(extra$config_sha256)) extra$config_sha256 else NULL,
-    question_config_sha256 = if (file.exists(file.path(norm_run,"question_config.csv"))) sha256_file(file.path(norm_run,"question_config.csv")) else NULL,
-    artifacts = list(),
-    partial_failures = if (!is.null(extra$partial_failures)) extra$partial_failures else NULL,
-    pass_status = list(
-      pass0 = if (!is.null(extra$pass_status$pass0)) extra$pass_status$pass0 else "completed",
-      pass1 = if (!is.null(extra$pass_status$pass1)) extra$pass_status$pass1 else if (!is.null(extra$results_manifest_sha256)) "completed" else "pending",
-      pass2 = if (!is.null(extra$pass_status$pass2)) extra$pass_status$pass2 else "pending",
-      pass3 = if (!is.null(extra$pass_status$pass3)) extra$pass_status$pass3 else "pending"
-    ),
-    timestamps = list(
-      created = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
-      pass1_completed = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
-    )
+    path_schema_version = RUN_SCOPE_PATH_SCHEMA_VERSION,
+    skill = skill, run_id = as.character(run_id), run_id_short = run_id_short16(run_id),
+    requested_run_id = extra$requested_run_id %||% NULL, run_state = "active",
+    supersedes_run = if (!is.null(sup_rec)) sup_rec$path else NA_character_,
+    supersedes_run_path_kind = if (!is.null(sup_rec)) sup_rec$path_kind else NULL,
+    superseded_results_manifest_sha256 = extra$superseded_results_manifest_sha256 %||% NULL,
+    supersede_reason = extra$supersede_reason %||% NULL,
+    inputs_changed = extra$inputs_changed %||% NULL, config_changed = extra$config_changed %||% NULL,
+    out_root = if (!is.null(out_rec) && !identical(out_rec$path_kind, "external")) out_rec$path else NA_character_,
+    out_root_path_kind = if (!is.null(out_rec)) out_rec$path_kind else "external",
+    run_output_dir = run_rec$path, run_output_dir_path_kind = run_rec$path_kind,
+    results_manifest = "results_manifest.json", results_manifest_sha256 = extra$results_manifest_sha256 %||% NULL,
+    inputs = inputs, config_origin = extra$config_origin %||% "pass0_file",
+    config_source_path = if (!is.null(cfg_rec)) cfg_rec$path else NA_character_,
+    config_source_path_kind = if (!is.null(cfg_rec)) cfg_rec$path_kind else NULL,
+    config_snapshot = extra$config_snapshot %||% "analysis_config.json", config_sha256 = extra$config_sha256 %||% NULL,
+    question_config_sha256 = if (file.exists(file.path(norm_run, "question_config.csv"))) sha256_file(file.path(norm_run, "question_config.csv")) else NULL,
+    artifacts = list(), partial_failures = extra$partial_failures %||% NULL,
+    pass_status = list(pass0 = extra$pass_status$pass0 %||% "completed",
+      pass1 = extra$pass_status$pass1 %||% if (!is.null(extra$results_manifest_sha256)) "completed" else "pending",
+      pass2 = extra$pass_status$pass2 %||% "pending", pass3 = extra$pass_status$pass3 %||% "pending"),
+    timestamps = list(created = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"), pass1_completed = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"))
   )
-
-  if (is.list(extra) && length(extra) > 0L) {
-    # 既存 meta と extra をマージ（上書き）
-    for (nm in names(extra)) {
-      if (!nm %in% c("pass_status", "timestamps", "inputs")) {
-        meta[[nm]] <- extra[[nm]]
-      }
+  if (length(extra)) for (nm in names(extra)) if (!nm %in% c("pass_status", "timestamps", "inputs", "supersedes_run", "config_source_path", "config_source_path_kind", "out_root", "run_output_dir", "path_schema_version")) meta[[nm]] <- extra[[nm]]
+  sanitize_paths <- function(x) {
+    if (is.list(x)) return(lapply(x, sanitize_paths))
+    if (is.character(x) && length(x) == 1L && run_scope_is_absolute_path(x)) {
+      rec <- run_scope_portable_path(x, repo_root, norm_run)
+      return(if (!is.null(rec) && !identical(rec$path_kind, "external")) rec$path else NULL)
     }
+    x
   }
-
+  explicit_supersede <- if (!is.null(meta$supersedes_run) && run_scope_is_absolute_path(meta$supersedes_run) && identical(meta$supersedes_run_path_kind, "external")) meta$supersedes_run else NULL
+  meta <- sanitize_paths(meta)
+  if (!is.null(explicit_supersede)) meta$supersedes_run <- explicit_supersede
+  meta$path_schema_version <- RUN_SCOPE_PATH_SCHEMA_VERSION
   if (!is.null(prior)) meta$timestamps$created <- prior$timestamps$created
   if (meta$pass_status$pass1 != "completed") meta$timestamps$pass1_completed <- NULL
   atomic_run_json(meta, file.path(norm_run, "run_meta.json"))
-  invisible(meta)
+  runtime_meta <- resolve_run_meta_paths(meta, norm_run, allow_legacy = TRUE)
+  if (!is.null(input_data_path) && length(runtime_meta$inputs)) runtime_meta$inputs[[1L]]$source_path <- normalizePath(input_data_path, winslash = "/", mustWork = FALSE)
+  if (!is.null(original_inputs)) runtime_meta$inputs <- original_inputs
+  invisible(runtime_meta)
 }
 
 find_questionnaire_json_under_run <- function(run_dir) {
@@ -1043,7 +1292,7 @@ publish_run_preview <- function(run_dir, name, generate, allow_legacy = FALSE, p
     key <- if (name == "executive_summary_preview.md") "narrative_preview" else "dashboard_preview"
     meta$artifacts[[key]] <- list(path = name, sha256 = h)
     if (key == "narrative_preview") meta$pass_status$pass2 <- "stub_generated"
-    atomic_run_json(meta, file.path(run_dir, "run_meta.json"))
+    atomic_run_json(portableize_run_meta(meta, run_dir), file.path(run_dir, "run_meta.json"))
   }
   invisible(target)
 }

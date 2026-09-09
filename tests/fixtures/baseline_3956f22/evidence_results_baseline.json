@@ -3,7 +3,7 @@
     "script": "analysis.R (vcd-bayesian-evidence-analysis 4-axis)",
     "run_id": "admit_bias",
     "executed_at": "2026-09-08T07:48:14+0900",
-    "input_file": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/examples/ucb_admissions.csv",
+    "input_file": "examples/ucb_admissions.csv",
     "r_version": "R version 4.6.1 (2026-06-24)"
   },
   "input_summary": {

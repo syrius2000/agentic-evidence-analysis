@@ -255,9 +255,9 @@ if (preview_mode) {
 ```{r header-banner, results='asis'}
 run_line <- if (!is.null(run_meta) && !is.null(run_meta$run_id)) {
   paste0('<span><b>run_id:</b> ', run_meta$run_id, '</span>',
-    '<span><b>run_output_dir:</b> ', run_meta$run_output_dir %||% output_dir, '</span>')
+    '<span><b>run_output_dir:</b> .</span>')
 } else {
-  paste0('<span><b>run_output_dir:</b> ', output_dir, '</span>')
+  '<span><b>run_output_dir:</b> .</span>'
 }
 cat(paste0(
   '<div class="header-banner">',

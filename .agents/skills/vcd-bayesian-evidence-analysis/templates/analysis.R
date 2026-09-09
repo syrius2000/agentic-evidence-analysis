@@ -305,12 +305,20 @@ message("[INFO] ベイズDirichlet事後推論中 (20,000 ドロー)...")
 post_res <- compute_dirichlet_posterior(df, cat_vars, freq_col, response_var = response_var)
 
 # --- [Step 5: 結果の構造化と JSON 出力] ---
+input_ref <- if (is.null(cfg$input)) {
+  list(path = "builtin:HairEyeColor", path_kind = "builtin", sha256 = sha256_df(df))
+} else {
+  rec <- run_scope_portable_path(cfg$input, run_scope_detect_repo_root(artifact_dir) %||% RUN_SCOPE_REPO_ROOT, artifact_dir)
+  list(path = rec$path, path_kind = rec$path_kind, sha256 = sha256_file(cfg$input))
+}
 output_results <- list(
   provenance = list(
     script = "analysis.R (vcd-bayesian-evidence-analysis 4-axis)",
     run_id = rid$run_id,
     executed_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
-    input_file = cfg$input %||% "HairEyeColor",
+    input_file = input_ref$path,
+    input_file_path_kind = input_ref$path_kind,
+    input_file_sha256 = input_ref$sha256,
     r_version = R.version.string
   ),
   input_summary = list(

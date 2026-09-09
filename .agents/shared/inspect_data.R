@@ -39,6 +39,16 @@ if (!file.exists(input_file)) {
   stop(paste("File not found:", input_file))
 }
 
+input_abs <- normalizePath(input_file, winslash = "/", mustWork = TRUE)
+repo_root <- tryCatch({
+  x <- suppressWarnings(system2("git", c("-C", dirname(input_abs), "rev-parse", "--show-toplevel"), stdout = TRUE, stderr = FALSE))
+  if (length(x) == 1L && nzchar(trimws(x))) normalizePath(trimws(x), winslash = "/", mustWork = TRUE) else NULL
+}, error = function(e) NULL)
+file_rel <- if (!is.null(repo_root) && (input_abs == repo_root || startsWith(input_abs, paste0(repo_root, "/")))) {
+  substring(input_abs, nchar(repo_root) + 2L)
+} else NULL
+file_sha256 <- if (requireNamespace("digest", quietly = TRUE)) digest::digest(file = input_abs, algo = "sha256") else NULL
+
 df <- read_csv(input_file, show_col_types = FALSE)
 
 # Categorical details
@@ -57,7 +67,10 @@ if (ncol(cat_vars) > 0) {
 }
 
 output <- list(
-  file = input_file,
+  file = file_rel,
+  file_path_kind = if (!is.null(file_rel)) "repo_relative" else "external",
+  file_sha256 = file_sha256,
+  logical_label = if (is.null(file_rel)) basename(input_abs) else NULL,
   n_rows = nrow(df),
   n_cols = ncol(df),
   categorical_vars = cat_details,
@@ -69,4 +82,4 @@ if (!dir.exists(out_dir)) {
 }
 out_path <- file.path(out_dir, "inspection_results.json")
 writeLines(toJSON(output, auto_unbox = TRUE, pretty = TRUE), out_path)
-message("[INFO] Inspection results saved to ", normalizePath(out_path, mustWork = FALSE))
+message("[INFO] Inspection results saved: inspection_results.json")

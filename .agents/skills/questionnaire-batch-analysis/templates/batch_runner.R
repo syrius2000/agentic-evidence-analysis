@@ -531,7 +531,8 @@ for (i in seq_len(nrow(cfg))) {
     assoc_rendered = assoc_rendered,
     skip_reason = skip_reason,
     residual_plot_mode = residual_plot_mode,
-    report_path = report_path,
+    # summary.csv には移設後も有効な run 内相対パスだけを保存する。
+    report_path = file.path(output_slug, "report.html"),
     status = ifelse(status == "success", "success", "error"),
     error_message = ifelse(status == "success", "", error_message),
     stringsAsFactors = FALSE
@@ -539,6 +540,14 @@ for (i in seq_len(nrow(cfg))) {
 }
 
 summary_df <- do.call(rbind, rows)
+# エラー文字列も成果物へ保存されるため、ホスト固有の絶対パスを除去する。
+sanitize_summary_text <- function(x) {
+  x <- as.character(x)
+  x <- gsub("/Users/[^ ]+|/home/[^ ]+|[A-Za-z]:[/\\\\][^ ]+", "[external path]", x)
+  x
+}
+summary_df$error_message <- sanitize_summary_text(summary_df$error_message)
+summary_df$skip_reason <- sanitize_summary_text(summary_df$skip_reason)
 summary_path <- file.path(out_dir, "summary.csv")
 utils::write.csv(summary_df, summary_path, row.names = FALSE, na = "")
 

@@ -45,7 +45,7 @@
       }
     },
     "syn_independent": {
-      "path": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/tests/fixtures/statistical_foundations/syn_independent.csv",
+      "path": "tests/fixtures/statistical_foundations/syn_independent.csv",
       "sha256": "b9d5851118a7638f194cf546b18f790dfd167ab9a0d580185439e54db64e3099",
       "supplement": {
         "cat_vars": ["A", "B", "C"],
@@ -61,7 +61,7 @@
       }
     },
     "syn_ab_associated": {
-      "path": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/tests/fixtures/statistical_foundations/syn_ab_associated.csv",
+      "path": "tests/fixtures/statistical_foundations/syn_ab_associated.csv",
       "sha256": "82d5ee44d1305acc0f53618bc8ccbf7236fe6f0c0c6f230d4ce72cf6acf0d2ec",
       "supplement": {
         "cat_vars": ["A", "B", "C"],
@@ -77,7 +77,7 @@
       }
     },
     "syn_interaction_shifted": {
-      "path": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/tests/fixtures/statistical_foundations/syn_interaction_shifted.csv",
+      "path": "tests/fixtures/statistical_foundations/syn_interaction_shifted.csv",
       "sha256": "5e73793c12538b71a9560d16e80d1af1a752d21e0ef86a4362132f73e7aab2bd",
       "supplement": {
         "cat_vars": ["A", "B", "C"],

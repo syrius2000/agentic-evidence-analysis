@@ -141,7 +141,7 @@ main <- function() {
   write_csv(syn_ind_df, path_syn_ind)
   supp_syn_ind <- inspect_supplement(syn_ind_df, c("A", "B", "C"), "Freq")
   syn_results[["syn_independent"]] <- list(
-    path = path_syn_ind,
+    path = "tests/fixtures/statistical_foundations/syn_independent.csv",
     sha256 = compute_sha256(path_syn_ind),
     supplement = supp_syn_ind
   )
@@ -166,7 +166,7 @@ main <- function() {
   write_csv(syn_ab_df, path_syn_ab)
   supp_syn_ab <- inspect_supplement(syn_ab_df, c("A", "B", "C"), "Freq")
   syn_results[["syn_ab_associated"]] <- list(
-    path = path_syn_ab,
+    path = "tests/fixtures/statistical_foundations/syn_ab_associated.csv",
     sha256 = compute_sha256(path_syn_ab),
     supplement = supp_syn_ab
   )
@@ -192,7 +192,7 @@ main <- function() {
   write_csv(syn_int_df, path_syn_int)
   supp_syn_int <- inspect_supplement(syn_int_df, c("A", "B", "C"), "Freq")
   syn_results[["syn_interaction_shifted"]] <- list(
-    path = path_syn_int,
+    path = "tests/fixtures/statistical_foundations/syn_interaction_shifted.csv",
     sha256 = compute_sha256(path_syn_int),
     supplement = supp_syn_int
   )

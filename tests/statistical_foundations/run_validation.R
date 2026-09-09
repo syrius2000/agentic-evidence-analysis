@@ -7,6 +7,7 @@ suppressPackageStartupMessages({
   library(readr)
   library(dplyr)
 })
+`%||%` <- function(x, y) if (is.null(x)) y else x
 
 # スクリプトディレクトリの取得と各モジュールの読み込み
 get_script_dir <- function() {
@@ -36,6 +37,17 @@ compute_file_sha256 <- function(filepath) {
     out <- system2("shasum", args = c("-a", "256", filepath), stdout = TRUE)
     return(strsplit(out, " ")[[1]][1])
   }
+}
+
+portable_input_ref <- function(filepath) {
+  abs <- normalizePath(filepath, winslash = "/", mustWork = FALSE)
+  root <- tryCatch({
+    x <- suppressWarnings(system2("git", c("-C", dirname(abs), "rev-parse", "--show-toplevel"), stdout = TRUE, stderr = FALSE))
+    if (length(x) == 1L && nzchar(trimws(x))) normalizePath(trimws(x), winslash = "/", mustWork = TRUE) else NULL
+  }, error = function(e) NULL)
+  if (!is.null(root) && (abs == root || startsWith(abs, paste0(root, "/")))) {
+    list(path = substring(abs, nchar(root) + 2L), path_kind = "repo_relative")
+  } else list(path = NULL, path_kind = "external", logical_label = basename(abs))
 }
 
 parse_args <- function() {
@@ -163,13 +175,16 @@ run_validation_pipeline <- function(config_path) {
   }
   
   # 統合結果オブジェクトの作成
+  input_ref <- portable_input_ref(input_path)
   full_results <- list(
     provenance = list(
       script = "run_validation.R",
       run_id = cfg$run_id,
       run_slug = run_slug,
       executed_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
-      input_file = input_path,
+      input_file = input_ref$path,
+      input_file_path_kind = input_ref$path_kind,
+      input_file_logical_label = input_ref$logical_label %||% NULL,
       input_sha256 = compute_file_sha256(input_path),
       r_version = R.version.string,
       platform = R.version$platform

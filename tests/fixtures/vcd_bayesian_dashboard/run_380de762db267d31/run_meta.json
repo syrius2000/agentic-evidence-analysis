@@ -3,8 +3,8 @@
   "skill": "vcd-bayesian-evidence-analysis",
   "run_id": "380de762db267d31bcc8f790d482bb857235fa93777ab26741b91aa1628e1afc",
   "run_id_short": "380de762db267d31",
-  "out_root": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/tests/fixtures/vcd_bayesian_dashboard",
-  "run_output_dir": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/tests/fixtures/vcd_bayesian_dashboard/run_380de762db267d31",
+  "out_root": "tests/fixtures/vcd_bayesian_dashboard",
+  "run_output_dir": "tests/fixtures/vcd_bayesian_dashboard/run_380de762db267d31",
   "input_data": null,
   "created_at": "2026-09-06T22:51:29+0900"
 }

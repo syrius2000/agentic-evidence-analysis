@@ -131,6 +131,8 @@ Rscript .agents/skills/vcd-categorical-analysis/templates/render_dashboard.R \
 
 ### パス・リンク表現基準と AI 完了報告 4 大要素
 - リポジトリ内ファイルは相対リンク、リポジトリ外ファイルは正規化絶対パスで記述する。
+- `run_meta.json` と `run_handover.json` の保存パスには `path_schema_version: "1.0"` と `path_kind` を付与し、リポジトリ内・run内は POSIX 相対パスで記録する。外部入力は既定で物理パスを保存せず、SHA-256 と論理ラベルだけを保存する。
+- `cwd` は `"."` の repo root marker とし、legacy の絶対パスは明示的な読み取り互換時だけ解決する。
 - 完了報告では、(1) ダッシュボードリンク、(2) 確定実 run パス、(3) 設定・結果リンク、(4) 進行・封印状態（`run_state = "sealed"`）を必ず提示する。
 
 ## 生成ファイル一覧

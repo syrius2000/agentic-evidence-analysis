@@ -340,7 +340,7 @@ Pass 1 完了時、実 run ディレクトリ直下に機械可読な `run_hando
 {
   "interface_version": "1.0",
   "run_output_dir": "/absolute/path/to/output/case_01/vcd_bayesian/run_c85d85fe30da64f6",
-  "cwd": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity",
+  "cwd": ".",
   "run_meta": "/absolute/path/to/output/case_01/vcd_bayesian/run_c85d85fe30da64f6/run_meta.json",
   "results_manifest": "/absolute/path/to/output/case_01/vcd_bayesian/run_c85d85fe30da64f6/results_manifest.json",
   "results_manifest_sha256": "4a7f...64hex",
