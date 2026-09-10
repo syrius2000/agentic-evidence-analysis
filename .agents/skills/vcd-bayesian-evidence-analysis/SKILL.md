@@ -16,6 +16,19 @@ metadata:
 
 本スキルは `.agents/shared/analysis_quality_contract.md` を参照する。Pass 0では分析スコープ、Pass 1では統計計算と主要JSON、Pass 2ではAIレビュー標準構成、Pass 2.5では品質確認、Pass 3ではHTMLと図表の読み取り確認を契約に沿って満たす。
 
+## 3次元正本経路（three-way-results-v1）
+
+3変数の集計度数表を新規に分析する場合は、同梱の
+`templates/three_way/analysis.R` を3次元数理の正本経路として使用する。これは既存の2次元・レガシー経路を置き換えず、Phase 1で固定した数理契約をAngigravityへ統合するための明示的な入口である。
+
+- Pass 0で `schema_version: "3way-foundation-v1"` の設定を確定し、`consultation` に検分JSON・入力SHA-256・相談理由を記録する。
+- Pass 1は `--config` のみを受け付け、入力ハッシュ、検分結果、標本独立性、欠測、構造ゼロ、集計セルを計算前に検証する。
+- 結果は `schema_version: "three-way-results-v1"` とし、M1〜M9、固定総度数Nの明示BIC、4軸セル診断、Dirichlet事後推定、状態語彙を分離して保存する。
+- 旧 `r^2 - k log(N)` は監査列に限定し、セルの合否、局所BF、実質的重要性の判定には使わない。`QUARANTINED` はゼロ・疎セル・過大leverageなど数値安定性の保留を示し、再標本化安定性を意味しない。
+- Pass 2/2.5の `executive_summary.md`、`quality_check.md`、`narrative_claims.json` を確認した後に `templates/three_way/render_report.R` でHTMLを生成する。ダッシュボードUXの改修は別Phaseとする。
+
+数式・キー・状態の詳細は [3次元分析契約](references/three_way_contract.md) と、同経路の `config_example.json` を参照する。
+
 ## 統計的背景: 4軸セル診断フレームワーク
 
 本スキルの **推論本体**は、(1) 標本数 $N$ に不変な実質的効果量 **Effect**、(2) セル指示変数追加に対する Rao のスコア統計量（自由度1のカイ二乗値）である **Evidence**（Leverage補正局所Score統計量 $T_i^{\rm score}$）、(3) モデル適合に対するセルの制約度 **Influence**（Leverage $h_{ii}$）、(4) ゼロセル（$O=0$）、疎セル（$E < 5.0$）、または過大レバレッジ（$h \ge 0.80$）を隔離する **Stability**、および (5) 全体効果量 **Cramér's V** です。
