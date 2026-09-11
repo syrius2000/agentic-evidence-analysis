@@ -40,6 +40,7 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+.playwright-mcp/
 
 # OpenSpec (tool-managed / external)
 .agents/skills/openspec-*
