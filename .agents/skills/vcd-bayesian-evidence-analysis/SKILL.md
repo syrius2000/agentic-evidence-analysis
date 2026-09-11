@@ -71,3 +71,5 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/render
 ```
 
 必要なPass 2/2.5成果がない場合、数値・結果ハッシュが違う場合は生成を停止する。`dashboard.html`にはモデル比較、3番目の変数で層別したヒートマップ、全セル表、条件付き割合と区間、条件群間差、事前感度、考察と限界を表示する。列名・水準・日本語・色尺度・保留が読めることを確認する。レポート内に旧Scoreの自動判定を戻さない。
+
+レポート実装は `report_validation.R`（schema、Pass 2/2.5、SHA、数値主張）、`report_view_model.R`（表示専用の対応付け）、`render_report.R` と `dashboard.css`（オフラインHTML）に分離する。A/B/C と実変数の対応、推定・近似のHOLD badge、モデル詳細へのキーボード移動を保つ。JavaScript と MathJax は基本表・角括弧表記・警告を読むための必須条件にしない。
