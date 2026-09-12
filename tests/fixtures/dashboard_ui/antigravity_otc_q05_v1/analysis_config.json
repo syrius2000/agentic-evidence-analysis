@@ -1,0 +1,18 @@
+{
+  "input": "examples/OTC_Q05_tidy.csv",
+  "output_dir": "output/OTC_Q05/10_bayesian/",
+  "run_id": "otc_q05_brand_symptom",
+  "pass0_provenance": {
+    "contract_version": "1.0",
+    "inspection_results": "output/OTC_Q05/00_consultation/inspection_results.json",
+    "inspection_results_sha256": "8f6d1cd8280dd2ff77179fd242850f370bd8632f722f5e239feb12f58b61724d",
+    "input_sha256": "72e5a4d32fd8b326aae5d26ee7043e2df9ab81cb5345e22008c233fc5a9f5de7",
+    "finalized_at_jst": "2026-09-11 23:42",
+    "target_skill": "vcd-bayesian-evidence-analysis",
+    "scope_document": "output/OTC_Q05/00_consultation/data_analysis_scope.md",
+    "scope_document_sha256": "b42b89117d04dc48187dce8722dfe5af9aebf530b05db6c26d7e2802cb29a041"
+  },
+  "vars": ["Brand", "Symptom"],
+  "freq": "Freq",
+  "response_var": "Symptom"
+}

@@ -1235,42 +1235,71 @@ for (k in seq_along(base_model_keys)) {
 ```
 </div><!-- end tab-container -->
 
-<details>
-<summary class="section-title" style="cursor:pointer;">&#128218; 統計指標の解説：4軸セル診断フレームワーク（クリックで展開）</summary>
+```{r, results='asis'}
+k_in <- function(tex) render_katex(tex, display = FALSE)
+k_disp <- function(tex) render_katex(tex, display = TRUE)
 
-<div class="ai-summary-box glossary-md" style="margin-top:12px;">
+cat('<details>\n')
+cat('<summary class="section-title" style="cursor:pointer;">&#128218; 統計指標の解説：4軸セル診断フレームワーク（クリックで展開）</summary>\n')
+cat('<div class="ai-summary-box glossary-md" style="margin-top:12px;">\n\n')
 
-### 1. 4軸セル診断フレームワーク（4-Axis Framework）
+cat('<h3><span class="heading-num">1.</span> 4軸セル診断フレームワーク（4-Axis Framework）</h3>\n')
+cat(sprintf('<p>大標本データ（%s）において、従来の検定統計量やP値だけに頼ると、些細な度数差がすべて「極めて有意」と判定され、実務上の本質的シグナルが埋没する課題が生じます。<br>\n', k_in("N > 2{,}000")))
+cat('本ダッシュボードでは、セルごとの乖離を以下の <strong>4つの独立した軸</strong> で多面的に評価します。</p>\n\n')
 
-大標本データ（$N > 2,000$）において、従来の検定統計量やP値だけに頼ると、些細な度数差がすべて「極めて有意」と判定され、実務上の本質的シグナルが埋没する課題が生じます。
-本ダッシュボードでは、セルごとの乖離を以下の **4つの独立した軸** で多面的に評価します。
+cat('<ol style="padding-left:20px; line-height:1.7;">\n')
+cat(sprintf('<li><strong>Effect（効果量・乖離の大きさ: %s 不変）</strong>:\n', k_in("N")))
+cat('<ul>\n')
+cat(sprintf('<li><strong>対数効果比 %s</strong>: 観測度数 %s が期待度数 %s に対して何倍乖離しているかの対数尺度。標本規模 %s の増加によってインフレしないため、大標本下でのセル間比較・スクリーニングにおいて最も信頼できる尺度です。</li>\n',
+            k_in("\\log(O/E)"), k_in("O"), k_in("E"), k_in("N")))
+cat(sprintf('<li><strong>全体効果量（Cramér\'s %s）</strong>: 表全体の連関の強さを表す標準化指標（[0, 1]）。</li>\n', k_in("V")))
+cat('</ul>\n')
+cat('</li>\n')
 
-1. **Effect（効果量・乖離の大きさ: $N$ 不変）**:
-   - **対数効果比 $\log(O/E)$**: 観測度数 $O$ が期待度数 $E$ に対して何倍乖離しているかの対数尺度。標本規模 $N$ の増加によってインフレしないため、大標本下でのセル間比較・スクリーニングにおいて最も信頼できる尺度です。
-   - **全体効果量（Cramér's $V$）**: 表全体の連関の強さを表す標準化指標（$[0, 1]$）。
-2. **Evidence（統計的証拠・有意性: $N$ 比例）**:
-   - **Leverage補正Score統計量 $T_i^{\mathrm{score}}$**:
-     $$T_i^{\mathrm{score}} = \frac{r_{P,i}^2}{1 - h_{ii}}$$
-     ここで $r_{P,i} = (O_i - E_i) / \sqrt{E_i}$ はピアソン残差、$h_{ii}$ はポアソンGLMにおけるハット行列の対角成分（Leverage）です。
-     これは「特定セル $i$ にのみ局所特異パラメータ $\delta_i$ を追加した代替モデル」に対する **厳密なRaoのスコア検定統計量** です。
-   - **P値 / 対数P値**: $\chi^2(1)$ 分布に基づく検定P値、およびその自然対数 $\ln(P)$。
-3. **Influence（影響度・てこ比）**:
-   - **Leverage $h_{ii}$**: そのセルが分割表全体のモデル適合にどれだけ強い影響力を持っているかを表す尺度（$[0, 1]$）。
-4. **Stability（数値安定性・信頼性）**:
-   - **診断状態（Stability Status）**:
-     - `REGULAR`: 観測度数 $O > 0$、期待度数 $E \ge 5.0$、かつ Leverage $h < 0.80$。大標本漸近正規性が成立する信頼性の高いセル。
-     - `QUARANTINED`: 観測ゼロ（$O = 0$）、小期待度数（$E < 5.0$）、または過大レバレッジ（$h \ge 0.80$）のいずれかに該当するセル。
+cat(sprintf('<li><strong>Evidence（統計的証拠・有意性: %s 比例）</strong>:\n', k_in("N")))
+cat('<ul>\n')
+cat(sprintf('<li><strong>Leverage補正Score統計量 %s</strong>:\n', k_in("T_i^{\\mathrm{score}}")))
+cat(k_disp("T_i^{\\mathrm{score}} = \\frac{r_{P,i}^2}{1 - h_{ii}}"))
+cat(sprintf('ここで %s はピアソン残差、%s はポアソンGLMにおけるハット行列の対角成分（Leverage）です。これは「特定セル %s にのみ局所特異パラメータ %s を追加した代替モデル」に対する <strong>厳密なRaoのスコア検定統計量</strong> です。</li>\n',
+            k_in("r_{P,i} = (O_i - E_i) / \\sqrt{E_i}"), k_in("h_{ii}"), k_in("i"), k_in("\\delta_i")))
+cat(sprintf('<li><strong>P値 / 対数P値</strong>: %s 分布に基づく検定P値、およびその自然対数 %s。</li>\n',
+            k_in("\\chi^2(1)"), k_in("\\ln(P)")))
+cat('</ul>\n')
+cat('</li>\n')
 
----
+cat('<li><strong>Influence（影響度・てこ比）</strong>:\n')
+cat('<ul>\n')
+cat(sprintf('<li><strong>Leverage %s</strong>: そのセルが分割表全体のモデル適合にどれだけ強い影響力を持っているかを表す尺度（[0, 1]）。</li>\n', k_in("h_{ii}")))
+cat('</ul>\n')
+cat('</li>\n')
 
-### 2. 大標本 Dual-Filter 原則
+cat('<li><strong>Stability（数値安定性・信頼性）</strong>:\n')
+cat('<ul>\n')
+cat('<li><strong>診断状態（Stability Status）</strong>:\n')
+cat('<ul>\n')
+cat(sprintf('<li><code>REGULAR</code>: 観測度数 %s、期待度数 %s、かつ Leverage %s。大標本漸近正規性が成立する信頼性の高いセル。</li>\n',
+            k_in("O > 0"), k_in("E \\ge 5.0"), k_in("h < 0.80")))
+cat(sprintf('<li><code>QUARANTINED</code>: 観測ゼロ（%s）、小期待度数（%s）、または過大レバレッジ（%s）のいずれかに該当するセル。</li>\n',
+            k_in("O = 0"), k_in("E < 5.0"), k_in("h \\ge 0.80")))
+cat('</ul>\n')
+cat('</li>\n')
+cat('</ul>\n')
+cat('</li>\n')
+cat('</ol>\n\n')
 
-総度数 $N > 2,000$ の大標本下では、以下の二段階判定（Dual-Filter）を厳格に適用します：
-- **第1フィルタ（Effect軸）**: まず対数効果比 $|\log(O/E)| \ge 0.50$ に基づき、実務的・臨床的に意味のある乖離が存在するかをスクリーニングする。
-- **第2フィルタ（Evidence軸）**: 十分な効果量を持つセルに対してのみ、Score統計量 $T_i^{\mathrm{score}} \ge 3.84$（$P < 0.05$ 相当）を確認し、標本抽出ノイズでないことを検証する。
+cat('<hr style="border:none; border-top:1px solid #e2e8f0; margin:16px 0;">\n\n')
+cat('<h3><span class="heading-num">2.</span> 大標本 Dual-Filter 原則</h3>\n')
+cat(sprintf('<p>総度数 %s の大標本下では、以下の二段階判定（Dual-Filter）を厳格に適用します：</p>\n', k_in("N > 2{,}000")))
+cat('<ul style="padding-left:20px; line-height:1.7;">\n')
+cat(sprintf('<li><strong>第1フィルタ（Effect軸）</strong>: まず対数効果比 %s に基づき、実務的・臨床的に意味のある乖離が存在するかをスクリーニングする。</li>\n',
+            k_in("|\\log(O/E)| \\ge 0.50")))
+cat(sprintf('<li><strong>第2フィルタ（Evidence軸）</strong>: 十分な効果量を持つセルに対してのみ、Score統計量 %s（%s 相当）を確認し、標本抽出ノイズでないことを検証する。</li>\n',
+            k_in("T_i^{\\mathrm{score}} \\ge 3.84"), k_in("P < 0.05")))
+cat('</ul>\n\n')
 
-</div>
-</details>
+cat('</div>\n')
+cat('</details>\n')
+```
 
 <script>
 // タブ切り替え関数

@@ -139,6 +139,19 @@ test_that("旧 Evidence Score が監査専用として隔離表示されてい�
   expect_true(grepl("Evidence Score = r", content))
 })
 
+test_that("統計指標解説セクションの数式（Score統計量など）がKaTeX静的HTMLとしてレンダリングされていること", {
+  lines <- readLines(html_path, warn = FALSE, encoding = "UTF-8")
+  content <- paste(lines, collapse = "\n")
+  
+  # 生の未レンダリング TeX 表記（$$ や raw math display）が残っていないこと
+  expect_false(grepl("\\$\\$T_i", content))
+  expect_false(grepl("<span class=\"math display\">", content))
+  
+  # KaTeX レンダリング結果が含まれていること
+  expect_true(grepl("Leverage補正Score統計量", content))
+  expect_true(grepl("katex-display", content))
+})
+
 cat("\n==================================================\n")
 cat("すべての HTML 契約テストが定義されました。実行を開始します。\n")
 cat("==================================================\n\n")
