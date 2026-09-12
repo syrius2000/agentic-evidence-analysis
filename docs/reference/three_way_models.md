@@ -1,7 +1,7 @@
 # 3次元カテゴリカル探索の数理リファレンス
 
 created: 2026-09-06 23:48 (JST)
-update: 2026-09-07 00:35 (JST)
+update: 2026-09-12 21:48 (JST)
 author: Codex (GPT-5) / Antigravity
 
 この文書は、集計済みの 3 変数カテゴリカル表を探索する現行経路の数理的正本リファレンスです。実装の入口は [vcd-bayesian-evidence-analysis](../../.agents/skills/vcd-bayesian-evidence-analysis/SKILL.md)、統計契約および再現手順は [three_way_contract.md](../../.agents/skills/vcd-bayesian-evidence-analysis/references/three_way_contract.md) に定義されています。
@@ -320,7 +320,57 @@ $$
 
 ---
 
-## 7. 参考文献（Primary Literature）
+## 7. 条件付きセル順位再現性（Conditional Rank Reproducibility: CRR）の数理
+
+### 7.1 標本変動下における局所セル順位の脆弱性と反復再適合 Estimand
+
+4 軸セル診断における局所効果比 $S_i = |\log(O_i / E_i)|$ の降順順位付けは、有限標本下において多項サンプリングの標本変動（sampling variability）に敏感です。特に、近接した効果比を持つセル同士や度数が小さいセルでは、サンプリング標本がわずかに変動するだけで順位が大きく逆転する現象が生じます。
+
+本ツールキットでは、観測総度数 $N$ および経験割合ベクトル $\hat{\boldsymbol{p}} = \boldsymbol{n}/N$ を所与とする多項再標本化（Multinomial Resampling）に基づき、各セルの Top-$K$ 順位選択頻度を評価する **条件付きセル順位再現性（Conditional Rank Reproducibility: CRR）** を提供します。
+
+#### 【重要】反復ごとの期待度数再推定（Model Refitting）の数理的必然性
+素朴なブートストラップ法では、元データの固定期待度数 $\boldsymbol{E}^{(0)}$ を全反復で使い回す誤りが散見されます。しかし、$S_i^{(b)} = |\log(O_i^{(b)} / E_i^{(0)})|$ と評価すると、周辺度数の偶然の偏り（主効果や低次交互作用の標本変動）による歪みを「対象セルの固有の局所乖離」と誤認します。
+
+したがって、各反復 $b$（$b = 1, \dots, B$）において生成された度数ベクトル $\boldsymbol{n}^{(b)} \sim \mathrm{Multinomial}(N, \hat{\boldsymbol{p}})$ に対し、指定された基準モデル（M1 または M5）の最尤期待度数 $\widehat{\boldsymbol{E}}^{(b)}$ を反復ごとに再適合（閉形式 MLE）して局所効果比を算出しなければなりません（SHALL）：
+
+- **M1 相互独立モデル再適合 ($[A][B][C]$)**:
+  $$\widehat{\mu}_{ijk}^{(b)} = \frac{n_{i++}^{(b)} n_{+j+}^{(b)} n_{++k}^{(b)}}{N^2}$$
+- **M5 条件付き独立モデル再適合 ($[AB][AC]$: $B \perp C \mid A$)**:
+  $$\widehat{\mu}_{ijk}^{(b)} = \frac{n_{ij+}^{(b)} n_{i+k}^{(b)}}{n_{i++}^{(b)}}$$
+
+### 7.2 Estimand の条件付けと連続性補正
+
+1. **元データ適格セル集合（$\mathcal{C}_{\mathrm{reg}}$）への条件付け**:
+   順位付けの母集合は、元データ診断で `REGULAR` と判定された適格セル集合 $\mathcal{C}_{\mathrm{reg}}$（要素数 $C_{\mathrm{reg}}$）に固定します。元データで観測ゼロ（$O_i=0$）、疎セル（$E_i < 5.0$）、または過大レバレッジ（$h_{ii} \ge 0.80$）により `QUARANTINED` とされたセルは、順位付け競争から除外されます。
+2. **反復中観測ゼロに対する 0.5 連続性補正**:
+   反復 $b$ において適格セル $i \in \mathcal{C}_{\mathrm{reg}}$ の度数が偶然 $O_i^{(b)} = 0$ となった場合、局所効果比 $\log(0 / \widehat{E}_i^{(b)})$ が $-\infty$ に発散することを回避するため、標準的な 0.5 連続性補正（continuity correction）を適用して有限な順位付けを維持します：
+   $$S_i^{(b)} = \begin{cases} \left|\log\left(\frac{O_i^{(b)}}{\widehat{E}_i^{(b)}}\right)\right| & (O_i^{(b)} > 0) \\ \left|\log\left(\frac{0.5}{\widehat{E}_i^{(b)}}\right)\right| & (O_i^{(b)} = 0) \end{cases}$$
+3. **正準セルインデックスによる決定論的タイブレーク**:
+   同一反復内で $S_i^{(b)} = S_j^{(b)}$ となるタイが発生した場合、因子水準の直積順序に基づいて付番された正準セルインデックス（`canonical_cell_index`）の昇順で厳格に順位を決定します。これにより、入力 CSV の行順や内部表示ソートに対する完全な順位不変性を保証します。
+
+### 7.3 Top-K 選択頻度、MCSE、および運用品質ゲート
+
+有効反復数 $B_{\mathrm{valid}}$ における適格セル $i$ の Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$ およびそのモンテカルロ標準誤差（MCSE）は次式で計算され、対として出力されます：
+$$\hat{\pi}_i^{(K)} = \frac{1}{B_{\mathrm{valid}}} \sum_{b=1}^{B_{\mathrm{valid}}} \mathbb{I}\left(\operatorname{rank}_i^{(b)} \le K\right), \quad \mathrm{MCSE}_i = \sqrt{\frac{\hat{\pi}_i^{(K)}(1 - \hat{\pi}_i^{(K)})}{B_{\mathrm{valid}}}}$$
+
+#### 運用品質ゲート（Operational Quality Gate）
+反復生成された分割表において層周辺度数が 0 となるなど、閉形式 MLE の分母ゼロ・階数落ちが生じた特異反復は無効反復として厳密にカウントされます。
+有効反復率が運用基準値（既定 0.95、設定可能範囲 $0 < x \le 1.0$）を下回る場合（$\text{valid\_rate} < qg\_min\_rate$）：
+- `status: "INSUFFICIENT_VALID_REPLICATES"`
+- `quality_gate.passed: false`
+- `cells: null`
+として個別セルの選択頻度出力を安全に保留（HOLD）し、数値的に不安定な順位頻度の誤用を防止します。
+
+### 7.4 統計的解釈境界と限界（製薬・臨床 RWD 分析における適用上の注意）
+
+1. **標本抽出の独立性前提**:
+   本手法は「各観測が同一の多項確率ベクトルから独立に抽出された」という仮定に依拠します。実臨床データ（RWD）において、同一患者の複数エピソード、施設間クラスタリング、時系列相関が存在する場合、本手法による選択頻度は過小評価された分散（過信）を反映するリスクがあります。
+2. **因果性および真の重要性の非保証**:
+   Top-$K$ 選択頻度が高いことは、「指定された対数線形モデルの残差構造において、標本変動に対して順位が保たれやすい」という統計的記述事実を示すに過ぎず、医学的・因果的な重要性や母集団における真の効果を直接証明するものではありません。
+
+---
+
+## 8. 参考文献（Primary Literature）
 
 1. **Rao, C. R. (1948)**. "Large sample tests of statistical hypotheses concerning several parameters with applications to problems of estimation." *Proceedings of the Cambridge Philosophical Society*, 44(1), 50–57. [DOI:10.1017/S0305004100024038](https://doi.org/10.1017/S0305004100024038)
 2. **Pregibon, D. (1981)**. "Logistic regression diagnostics." *The Annals of Statistics*, 9(4), 705–724. [DOI:10.1214/aos/1176345513](https://doi.org/10.1214/aos/1176345513)
@@ -334,3 +384,5 @@ $$
 10. **Fienberg, S. E. (1970)**. "The analysis of multidimensional contingency tables when some cells had missing data." *Journal of the American Statistical Association*, 65(330), 980–986. [DOI:10.1080/01621459.1970.10481138](https://doi.org/10.1080/01621459.1970.10481138)
 11. **Csiszár, I. (1975)**. "$I$-divergence geometry of probability distributions and minimization problems." *The Annals of Probability*, 3(1), 146–158. [DOI:10.1214/aop/1176996454](https://doi.org/10.1214/aop/1176996454)
 12. **Kass, R. E., & Raftery, A. E. (1995)**. "Bayes factors." *Journal of the American Statistical Association*, 90(430), 773–795. [DOI:10.1080/01621459.1995.10476572](https://doi.org/10.1080/01621459.1995.10476572)
+13. **Efron, B., & Tibshirani, R. J. (1993)**. *An Introduction to the Bootstrap*. Chapman & Hall/CRC, New York. [ISBN:978-0-412-04231-7](https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317)
+    - *多項再標本化およびノンパラメトリック・ブートストラップ推論の基礎。*

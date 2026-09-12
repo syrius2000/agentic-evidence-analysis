@@ -3,7 +3,8 @@
 analysis_config_allowed_keys <- c(
   "input", "vars", "freq", "output_dir", "run_id", "dataset_name",
   "response_var", "top_k", "large_n_threshold", "base_models", "base_model",
-  "conditional_rate_view", "pass0_provenance"
+  "conditional_rate_view", "pass0_provenance",
+  "factor_levels_order", "conditional_rank_reproducibility"
 )
 
 analysis_config_deprecated_keys <- c(
@@ -46,6 +47,81 @@ is_finite_number <- function(value) {
 
 is_positive_integerish <- function(value) {
   isTRUE(is_finite_number(value) && value >= 1 && floor(value) == value && value <= .Machine$integer.max)
+}
+
+validate_conditional_rank_reproducibility_data <- function(crr, df, vars, freq_col, factor_levels_order) {
+  errors <- character()
+  if (is.null(crr) || !isTRUE(crr$enabled)) {
+    return(errors)
+  }
+  if (length(vars) != 3L) {
+    errors <- c(errors, paste0("conditional_rank_reproducibility は3変数（3-way）分析のみ対応しています（指定変数数: ", length(vars), "）。"))
+  }
+  if (is.null(factor_levels_order) || !is.list(factor_levels_order)) {
+    errors <- c(errors, "factor_levels_order が設定されていないか、オブジェクトではありません。")
+  } else {
+    missing_flo_vars <- setdiff(vars, names(factor_levels_order))
+    if (length(missing_flo_vars) > 0L) {
+      errors <- c(errors, paste0("factor_levels_order に変数が不足しています: ", paste(missing_flo_vars, collapse = ", ")))
+    }
+  }
+
+  if (length(errors) > 0L) {
+    return(errors)
+  }
+
+  # 列の存在チェック
+  if (!(freq_col %in% colnames(df))) {
+    errors <- c(errors, paste0("freq 列 '", freq_col, "' がデータに存在しません。"))
+  }
+  missing_cols <- setdiff(vars, colnames(df))
+  if (length(missing_cols) > 0L) {
+    errors <- c(errors, paste0("vars の列がデータに存在しません: ", paste(missing_cols, collapse = ", ")))
+  }
+
+  if (length(errors) > 0L) {
+    return(errors)
+  }
+
+  # 度数列の検証: 有限非負整数
+  freq_vals <- df[[freq_col]]
+  if (!is.numeric(freq_vals) || any(is.na(freq_vals)) || any(!is.finite(freq_vals)) || any(freq_vals < 0) || any(floor(freq_vals) != freq_vals)) {
+    errors <- c(errors, "すべてのセルの観測度数は有限非負整数である必要があります。")
+  } else {
+    n_total <- sum(freq_vals)
+    if (n_total <= 0) {
+      errors <- c(errors, paste0("総観測度数 N は正である必要があります（N = ", n_total, "）。"))
+    }
+  }
+
+  # 水準完全一致の検証
+  for (v in vars) {
+    data_levels <- unique(as.character(df[[v]]))
+    cfg_levels <- as.character(factor_levels_order[[v]])
+    if (any(is.na(cfg_levels)) || any(!nzchar(cfg_levels))) {
+      errors <- c(errors, paste0("factor_levels_order$", v, " に欠損値または空文字が含まれています。"))
+    }
+    if (any(duplicated(cfg_levels))) {
+      errors <- c(errors, paste0("factor_levels_order$", v, " に重複水準が含まれています: ", paste(cfg_levels[duplicated(cfg_levels)], collapse = ", ")))
+    }
+    unmatched_in_data <- setdiff(data_levels, cfg_levels)
+    unmatched_in_cfg <- setdiff(cfg_levels, data_levels)
+    if (length(unmatched_in_data) > 0L || length(unmatched_in_cfg) > 0L) {
+      errors <- c(errors, paste0("変数 '", v, "' の水準がデータと factor_levels_order で完全一致しません (データ側未定義: ", paste(unmatched_in_data, collapse = ", "), "; 設定側余剰: ", paste(unmatched_in_cfg, collapse = ", "), ")。"))
+    }
+  }
+
+  # 完全セル格子の検証
+  expected_cells <- prod(vapply(vars, function(v) length(factor_levels_order[[v]]), integer(1L)))
+  if (nrow(df) != expected_cells) {
+    errors <- c(errors, paste0("データが完全セル格子ではありません。期待セル数: ", expected_cells, " (", paste(vapply(vars, function(v) length(factor_levels_order[[v]]), integer(1L)), collapse = " x "), "), 実測行数: ", nrow(df)))
+  }
+  dup_rows <- any(duplicated(df[, vars, drop = FALSE]))
+  if (dup_rows) {
+    errors <- c(errors, "データに重複したセルが存在します（完全格子では各セルが1行のみ存在する必要があります）。")
+  }
+
+  errors
 }
 
 validate_analysis_config <- function(config_data, config_path = NULL, repo_root = NULL) {
@@ -174,6 +250,74 @@ validate_analysis_config <- function(config_data, config_path = NULL, repo_root 
     }
   }
 
+  # --- factor_levels_order のスキーマ検証 ---
+  if ("factor_levels_order" %in% names(config_data)) {
+    flo <- config_data$factor_levels_order
+    if (!is.list(flo) || is.data.frame(flo)) {
+      errors <- c(errors, "factor_levels_order は JSON object である必要があります。")
+    } else {
+      for (vn in names(flo)) {
+        if (!is_nonempty_string_vector(flo[[vn]])) {
+          errors <- c(errors, paste0("factor_levels_order$", vn, " は1つ以上の空でない文字列配列である必要があります。"))
+        } else if (any(duplicated(flo[[vn]]))) {
+          errors <- c(errors, paste0("factor_levels_order$", vn, " に重複した水準が含まれています: ", paste(flo[[vn]][duplicated(flo[[vn]])], collapse = ", ")))
+        }
+      }
+    }
+  }
+
+  # --- conditional_rank_reproducibility のスキーマ検証 ---
+  if ("conditional_rank_reproducibility" %in% names(config_data)) {
+    crr <- config_data$conditional_rank_reproducibility
+    if (!is.list(crr) || is.data.frame(crr)) {
+      errors <- c(errors, "conditional_rank_reproducibility は JSON object である必要があります。")
+    } else {
+      crr_req <- c("enabled", "target_baseline_model", "target_metric", "top_k", "iterations", "seed")
+      missing_crr_req <- setdiff(crr_req, names(crr))
+      if (length(missing_crr_req) > 0L) {
+        errors <- c(errors, paste0("conditional_rank_reproducibility に必須キーがありません: ", paste(missing_crr_req, collapse = ", ")))
+      } else {
+        if (!is.logical(crr$enabled) || length(crr$enabled) != 1L || is.na(crr$enabled)) {
+          errors <- c(errors, "conditional_rank_reproducibility$enabled は論理値（true/false）である必要があります。")
+        }
+        if (isTRUE(crr$enabled)) {
+          if (!("vars" %in% names(config_data)) || length(config_data$vars) != 3L) {
+            errors <- c(errors, paste0("conditional_rank_reproducibility は3変数（3-way）分析のみ対応しています（指定変数数: ", if ("vars" %in% names(config_data)) length(config_data$vars) else 0L, "）。"))
+          }
+          if (!("factor_levels_order" %in% names(config_data)) || !is.list(config_data$factor_levels_order)) {
+            errors <- c(errors, "conditional_rank_reproducibility が有効な場合、factor_levels_order は必須です。")
+          } else if ("vars" %in% names(config_data)) {
+            missing_flo <- setdiff(config_data$vars, names(config_data$factor_levels_order))
+            if (length(missing_flo) > 0L) {
+              errors <- c(errors, paste0("factor_levels_order にすべての分析変数（vars）が含まれている必要があります（不足: ", paste(missing_flo, collapse = ", "), "）。"))
+            }
+          }
+          if (!is_nonempty_scalar_string(crr$target_baseline_model) || !(crr$target_baseline_model %in% c("M1", "M5"))) {
+            errors <- c(errors, paste0("conditional_rank_reproducibility$target_baseline_model は 'M1' または 'M5' のみ指定可能です（指定値: ", crr$target_baseline_model, "）。"))
+          }
+          if (!is_nonempty_scalar_string(crr$target_metric) || crr$target_metric != "abs_log_oe") {
+            errors <- c(errors, paste0("conditional_rank_reproducibility$target_metric は 'abs_log_oe' のみ指定可能です（指定値: ", crr$target_metric, "）。"))
+          }
+          if (!is_positive_integerish(crr$top_k)) {
+            errors <- c(errors, paste0("conditional_rank_reproducibility$top_k は 1 以上の正の整数である必要があります（指定値: ", crr$top_k, "）。"))
+          }
+          if (!is_positive_integerish(crr$iterations) || crr$iterations < 2L) {
+            errors <- c(errors, paste0("conditional_rank_reproducibility$iterations は 2 以上の正の整数である必要があります（指定値: ", crr$iterations, "）。"))
+          }
+          if (!is.numeric(crr$seed) || length(crr$seed) != 1L || !is.finite(crr$seed) || floor(crr$seed) != crr$seed) {
+            errors <- c(errors, paste0("conditional_rank_reproducibility$seed は有限な整数値である必要があります（指定値: ", crr$seed, "）。"))
+          }
+          if (!is.null(crr$quality_gate_minimum_valid_rate)) {
+            q_val <- crr$quality_gate_minimum_valid_rate
+            if (!is.numeric(q_val) || length(q_val) != 1L || !is.finite(q_val) || q_val <= 0.0 || q_val > 1.0) {
+              errors <- c(errors, paste0("conditional_rank_reproducibility$quality_gate_minimum_valid_rate は 0 < x <= 1.0 の実数である必要があります（指定値: ", q_val, "）。"))
+            }
+          }
+        }
+      }
+    }
+  }
+
   resolved_input <- NULL
   if ("input" %in% names(config_data) && is_nonempty_scalar_string(config_data$input)) {
     resolved_input <- resolve_analysis_config_path(config_data$input, config_path, repo_root)
@@ -219,6 +363,27 @@ validate_analysis_config <- function(config_data, config_path = NULL, repo_root 
             if ("vars" %in% names(config_data) && is_nonempty_string_vector(config_data$vars) && !(crv[[rk]] %in% config_data$vars)) {
               errors <- c(errors, paste0("conditional_rate_view$", rk, " ('", crv[[rk]], "') は vars に含める必要があります。"))
             }
+          }
+        }
+      }
+      if (isTRUE(config_data$conditional_rank_reproducibility$enabled)) {
+        df_check <- tryCatch(
+          utils::read.csv(resolved_input, stringsAsFactors = FALSE, check.names = FALSE),
+          error = function(e) {
+            errors <<- c(errors, paste0("input CSV 全体を読めません: ", e$message))
+            NULL
+          }
+        )
+        if (!is.null(df_check)) {
+          crr_data_errors <- validate_conditional_rank_reproducibility_data(
+            crr = config_data$conditional_rank_reproducibility,
+            df = df_check,
+            vars = config_data$vars,
+            freq_col = if (!is.null(config_data$freq)) config_data$freq else "Freq",
+            factor_levels_order = config_data$factor_levels_order
+          )
+          if (length(crr_data_errors) > 0L) {
+            errors <- c(errors, crr_data_errors)
           }
         }
       }

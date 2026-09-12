@@ -1,0 +1,107 @@
+=== 1. test_conditional_rank_reproducibility.R ===
+Warning message:
+In system2("/usr/libexec/java_home", stdout = TRUE, stderr = FALSE) :
+  running command ''/usr/libexec/java_home' 2>/dev/null' had status 1
+[1] "ja_JP.UTF-8"
+Test passed with 36 successes 🌈.
+Test passed with 6 successes 🎊.
+Test passed with 11 successes 🥇.
+── Warning: TC-04: 固定疎 fixture による運用品質ゲート発動と閾値制御 ───────────────────────────────────────
+glm.fit: fitted rates numerically 0 occurred
+Backtrace:
+    ▆
+ 1. └─global fit_all_poisson_models(sparse_df, sparse_vars, "Freq")
+ 2.   ├─base::tryCatch(...)
+ 3.   │ └─base (local) tryCatchList(expr, classes, parentenv, handlers)
+ 4.   │   └─base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 5.   │     └─base (local) doTryCatch(return(expr), name, parentenv, handler)
+ 6.   └─stats::glm(fmla, data = df, family = poisson(), x = TRUE)
+ 7.     ├─base::eval(...)
+ 8.     │ └─base::eval(...)
+ 9.     └─stats::glm.fit(...)
+── Warning: TC-04: 固定疎 fixture による運用品質ゲート発動と閾値制御 ───────────────────────────────────────
+glm.fit: fitted rates numerically 0 occurred
+Backtrace:
+    ▆
+ 1. └─global fit_all_poisson_models(sparse_df, sparse_vars, "Freq")
+ 2.   ├─base::tryCatch(...)
+ 3.   │ └─base (local) tryCatchList(expr, classes, parentenv, handlers)
+ 4.   │   └─base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 5.   │     └─base (local) doTryCatch(return(expr), name, parentenv, handler)
+ 6.   └─stats::glm(fmla, data = df, family = poisson(), x = TRUE)
+ 7.     ├─base::eval(...)
+ 8.     │ └─base::eval(...)
+ 9.     └─stats::glm.fit(...)
+Test passed with 15 successes 🌈.
+Test passed with 98 successes 🥇.
+Warning message:
+In system2("/usr/libexec/java_home", stdout = TRUE, stderr = FALSE) :
+  running command ''/usr/libexec/java_home' 2>/dev/null' had status 1
+[1] "ja_JP.UTF-8"
+[WARN] analysis_config.json の未知キーを無視せず読み込みます: seed
+[INFO] データ読み込み完了: 24 行, 4 列
+[INFO] run_id: test_backward_compat_run1 ( manual )
+[INFO] 出力ディレクトリ: /private/var/folders/w4/kqtskdyx29vdbjvlv7gx0t9h0000gn/T/RtmpjqyfFT/crr_test_13d00783d9be4/output1/run_test_backward_co
+[INFO] 分析変数: Dept, Gender, Admit
+[INFO] 総度数 N = 4526 / log(N) = 8.4176
+[INFO] 大規模データモード: N = 4526 > 2000
+[INFO] → 効果量を優先して解釈します (Dual-Filter)。
+[INFO] 対数線形モデル適合中...
+[INFO] 最良モデル (明示式BIC基準): M5 ( cond_indep_BC_given_A )
+[INFO] 多重基準セル診断実行中 (基準モデル: M1, M5 )...
+[INFO] 条件付き割合ビュー (conditional_rate_view) を算出中...
+[INFO] JSON出力: /private/var/folders/w4/kqtskdyx29vdbjvlv7gx0t9h0000gn/T/RtmpjqyfFT/crr_test_13d00783d9be4/output1/run_test_backward_co/evidence_results.json
+[INFO] マニフェスト出力: /private/var/folders/w4/kqtskdyx29vdbjvlv7gx0t9h0000gn/T/RtmpjqyfFT/crr_test_13d00783d9be4/output1/run_test_backward_co/results_manifest.json
+[INFO] ハンドオーバー出力: /private/var/folders/w4/kqtskdyx29vdbjvlv7gx0t9h0000gn/T/RtmpjqyfFT/crr_test_13d00783d9be4/output1/run_test_backward_co/run_handover.json
+[SUCCESS] Pass 1 分析計算が完了しました。
+Warning message:
+In system2("/usr/libexec/java_home", stdout = TRUE, stderr = FALSE) :
+  running command ''/usr/libexec/java_home' 2>/dev/null' had status 1
+[1] "ja_JP.UTF-8"
+[WARN] analysis_config.json の未知キーを無視せず読み込みます: seed
+[INFO] データ読み込み完了: 24 行, 4 列
+[INFO] run_id: test_backward_compat_run1 ( manual )
+[INFO] 出力ディレクトリ: /private/var/folders/w4/kqtskdyx29vdbjvlv7gx0t9h0000gn/T/RtmpjqyfFT/crr_test_13d00783d9be4/output2/run_test_backward_co
+[INFO] 分析変数: Dept, Gender, Admit
+[INFO] 総度数 N = 4526 / log(N) = 8.4176
+[INFO] 大規模データモード: N = 4526 > 2000
+[INFO] → 効果量を優先して解釈します (Dual-Filter)。
+[INFO] 対数線形モデル適合中...
+[INFO] 最良モデル (明示式BIC基準): M5 ( cond_indep_BC_given_A )
+[INFO] 多重基準セル診断実行中 (基準モデル: M1, M5 )...
+[INFO] 条件付き割合ビュー (conditional_rate_view) を算出中...
+[INFO] JSON出力: /private/var/folders/w4/kqtskdyx29vdbjvlv7gx0t9h0000gn/T/RtmpjqyfFT/crr_test_13d00783d9be4/output2/run_test_backward_co/evidence_results.json
+[INFO] マニフェスト出力: /private/var/folders/w4/kqtskdyx29vdbjvlv7gx0t9h0000gn/T/RtmpjqyfFT/crr_test_13d00783d9be4/output2/run_test_backward_co/results_manifest.json
+[INFO] ハンドオーバー出力: /private/var/folders/w4/kqtskdyx29vdbjvlv7gx0t9h0000gn/T/RtmpjqyfFT/crr_test_13d00783d9be4/output2/run_test_backward_co/run_handover.json
+[SUCCESS] Pass 1 分析計算が完了しました。
+Test passed with 10 successes 🎉.
+EXIT_CODE: 0
+=== 2. test_three_way_computation_engine.R ===
+Warning message:
+In system2("/usr/libexec/java_home", stdout = TRUE, stderr = FALSE) :
+  running command ''/usr/libexec/java_home' 2>/dev/null' had status 1
+[1] "ja_JP.UTF-8"
+Test passed with 11 successes 🥳.
+Test passed with 6 successes 🎉.
+Test passed with 18 successes 😀.
+Test passed with 2 successes 🎉.
+Test passed with 3 successes 🥳.
+Test passed with 9 successes 🎊.
+[SUCCESS] test_three_way_computation_engine.R passed all tests.
+EXIT_CODE: 0
+=== 3. test_analysis_quality_contract_docs.py ===
+[PASS] test_analysis_quality_contract_exists_and_sets_boundaries
+[PASS] test_questionnaire_skill_defines_cross_question_summary
+[PASS] test_target_skills_reference_analysis_quality_contract
+[PASS] test_vcd_skills_define_quality_check_outputs
+All 4 tests passed!
+EXIT_CODE: 0
+=== 4. git status --short ===
+ M .agents/skills/vcd-bayesian-evidence-analysis/references/analysis_config.schema.json
+ M .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R
+ M .agents/skills/vcd-bayesian-evidence-analysis/templates/config_validation.R
+ M .agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R
+ M openspec/changes/add-conditional-rank-reproducibility/tasks.md
+?? quality-loop/
+?? tests/fixtures/sparse_rank_gate_test.csv
+?? tests/test_conditional_rank_reproducibility.R

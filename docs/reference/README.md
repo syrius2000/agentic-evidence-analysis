@@ -1,7 +1,7 @@
 # 統計数理リファレンス・ポータル
 
 created: 2026-09-06 23:52 (JST)
-update: 2026-09-07 00:35 (JST)
+update: 2026-09-12 21:54 (JST)
 author: Codex (GPT-5) / Antigravity
 
 このディレクトリは、本リポジトリの分析スキルが計算・出力する統計指標の数学的定義、背後にある理論、適用条件、および一次文献（学術論文・標準教科書）を網羅した**統計数理的正本リファレンス**です。
@@ -10,10 +10,10 @@ author: Codex (GPT-5) / Antigravity
 
 ## 1. 統計哲学の刷新：新 4 軸セル診断と大標本 Dual-Filter 原則
 
-本ツールキットは、従来の「P 値の単一閾値（$p < 0.05$）依存」や「旧エビデンススコア（$r^2 - k\ln N$）による過度の縮約」を根底から脱却し、現代的な大標本統計学（ASA 2016 声明等）に準拠した以下の 4 つの柱を実装しています：
+本ツールキットは、従来の「P 値の単一閾値（$p < 0.05$）依存」や「旧エビデンススコア（$r^2 - k\ln N$）による過度の縮約」を根底から脱却し、現代的な大標本統計学（ASA 2016 声明等）に準拠した以下の 5 つの柱を実装しています：
 
 ```
-                    【分析パイプラインの 4 つの柱】
+                    【分析パイプラインの 5 つの柱】
 ┌────────────────────────────────────────────────────────────────────────┐
 │  1. 全体構造の階層比較（Global Model Hierarchy）                       │
 │     → 9 階層対数線形モデル（M1〜M9）と総度数 N 基準の明示式 BIC        │
@@ -32,6 +32,11 @@ author: Codex (GPT-5) / Antigravity
 │  4. 多項 Dirichlet 事後推論と不確実性評価                               │
 │     → 共役事前分布による事後平均、点ごとの 95% 等裾信用区間（ETI）      │
 │     → Freeman-Tukey 統計量による事後予測チェック（PPP-value）           │
+├────────────────────────────────────────────────────────────────────────┤
+│  5. 標本変動下における条件付き順位再現性（Conditional Rank Reproducibility: CRR）│
+│     → 多項再標本化と各反復での閉形式モデル再適合（M1/M5）               │
+│     → 元データ REGULAR 適格セル限定の条件付き Top-K 選択頻度と MCSE      │
+│     → 運用品質ゲート（有効反復率 >= 0.95）による解釈保留（HOLD）契約     │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -40,13 +45,13 @@ author: Codex (GPT-5) / Antigravity
 ## 2. ドキュメント構成と読解順序
 
 | 順序 | リファレンス文書 | 主な解説内容・カバーする数理 |
-| :---: | :--- | :--- |
+| :--- | :--- | :--- |
 | **1** | [カテゴリカル分析の基礎](stats_categorical.md) | 分割表の基礎（行数・セル数・総度数 $N$ の区別）、ピアソン残差と標準化残差、全体効果量 Cramér's V（Cohen 1988 基準と Bergsma 2013 バイアス補正）、旧スコア破綻の数理、ASA 2016 P値声明 |
-| **2** | [3次元カテゴリカル探索の数理](three_way_models.md) | 9 階層対数線形モデル（M1〜M9）、閉形式最尤推定量と反復比例適合（IPF）、ゼロセル分類と最尤推定量存在条件（Fienberg 1970）、ポアソン完全対数尤度と明示式 BIC、新 4 軸セル診断（Effect/Evidence/Influence/Stability）、マルチベースライン診断構造、大標本 Dual-Filter 原則、標本サイズ $c$ 倍拡張（100倍実験）の漸近挙動体系、局所逸脱度改善量 $\Delta G_i^2/N$ |
+| **2** | [3次元カテゴリカル探索の数理](three_way_models.md) | 9 階層対数線形モデル（M1〜M9）、閉形式最尤推定量と反復比例適合（IPF）、ゼロセル分類と最尤推定量存在条件（Fienberg 1970）、ポアソン完全対数尤度と明示式 BIC、新 4 軸セル診断（Effect/Evidence/Influence/Stability）、マルチベースライン診断構造、大標本 Dual-Filter 原則、標本サイズ $c$ 倍拡張（100倍実験）の漸近挙動体系、局所逸脱度改善量 $\Delta G_i^2/N$、条件付きセル順位再現性（CRR）の多項再標本化と反復再推定 |
 | **3** | [ベイズ推定とモデル比較の基礎](stats_bayesian.md) | ベイズ因子（周辺尤度比）の定義、Schwarz BIC 近似の成立条件、多項 Dirichlet 事後推論、部分集合指定による一般化条件付き割合と層間差の同時事後推論、均一連関オッズ比不変性、シンプソンのパラドックス解消機構、独立対飽和の解析的厳密ベイズ因子、Freeman-Tukey 事後予測チェック |
 | **4** | [探索的分析設計と実務ワークフロー](advanced_analysis.md) | 4-Pass 推奨思考プロセス、大標本 Dual-Filter スクリーニング手順、アソシエーションルール（ARM）や疎な表との境界 |
-| **5** | [分析スキルの責務境界](skill_responsibilities.md) | 各スキル（Pass 0, vcd-bayesian 3次元正本, vcd-categorical 2次元, バッチ）の役割分担とインターフェース契約 |
-| **補助** | [DB設計とデータ整合性](DB_Best_Practices.md) | データ型選定、文字コード（UTF-8/utf8mb4）、総度数 $N$ 完全一致検証、サンプリングゼロの保持 |
+| **5** | [分析スキルの責務境界](skill_responsibilities.md) | 各スキル（Pass 0, vcd-bayesian 3次元正本, vcd-categorical 2次元, バッチ）の役割分担とインターフェース契約、CRRの解釈境界 |
+| **補助** | [DB由来集計表の分析入力契約](DB_Best_Practices.md) | DB由来集計表のデータ型・文字コード・時刻意味論、総度数 $N$ 完全一致検証、サンプリングゼロの保持。DB/SQL 実装の正本は対象外。 |
 
 ---
 
@@ -59,11 +64,12 @@ author: Codex (GPT-5) / Antigravity
 
 ## 4. OpenSpec 仕様群（`openspec/specs/`）と数理リファレンスの対応マッピング
 
-本リポジトリの分析スキルが準拠する正本仕様（`openspec/specs/` 配下の 6 仕様）と、本数理リファレンスの各セクションとの対応関係は以下の通りです：
+本リポジトリの分析スキルが準拠する正本仕様（`openspec/specs/` 配下の 7 仕様）と、本数理リファレンスの各セクションとの対応関係は以下の通りです：
 
 | OpenSpec 仕様 (`openspec/specs/`) | 依拠する主な数理リファレンス | カバーされる数理的基礎・定理 |
 | :--- | :--- | :--- |
 | **[`cell-evidence-interpretation`](../../openspec/specs/cell-evidence-interpretation/spec.md)** | [3次元探索の数理](three_way_models.md) §4, §5<br>[ベイズ推定の基礎](stats_bayesian.md) §3 | ・Effect / Evidence / Influence / Stability の新 4 軸分離<br>・旧スコア監査列化と真の信号判定の分離<br>・多項 Dirichlet 事後信用区間と事前感度分析<br>・探索的セル候補と確証検定（多重比較）の非同値性 |
+| **[`conditional-rank-reproducibility`](../../openspec/specs/conditional-rank-reproducibility/spec.md)** | [3次元探索の数理](three_way_models.md) §7 | ・反復モデル再適合（M1/M5 閉形式 MLE）による固定期待度数の誤謬解消<br>・元データ `REGULAR` 適格セル母集合への条件付けと 0.5 連続性補正<br>・因子水準直積順 `canonical_cell_index` による決定論的タイブレーク<br>・Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$ とモンテカルロ標準誤差（MCSE）の定式化<br>・運用品質ゲート（有効反復率 $\ge 0.95$）による解釈保留（HOLD）契約<br>・未指定時における既存出力の完全な 1 ビット・SHA-256 不変性 |
 | **[`conditional-rate-view`](../../openspec/specs/conditional-rate-view/spec.md)** | [ベイズ推定の基礎](stats_bayesian.md) §3.3, §3.4, §3.5 | ・部分集合分子・分母による一般化条件付き割合 $\theta_{A \mid B, g}$<br>・全セル同時 Dirichlet 事後標本による層間差 $\Delta \theta$ の推論<br>・分母ゼロ時の不確実性発散と部分 HOLD の数理条件<br>・均一連関オッズ比不変性とシンプソンのパラドックス解消 |
 | **[`multi-baseline-cell-diagnostics`](../../openspec/specs/multi-baseline-cell-diagnostics/spec.md)** | [3次元探索の数理](three_way_models.md) §4.4, §4.5 | ・M1 相互独立基準（大局的連関）と M_best 選択モデル基準（残余乖離）の分離<br>・基準モデル依存の期待値・残差・Leverage の数学的直交性<br>・基準モデル間のセル件数合算・率平均化の数理的禁止<br>・Stability 3 条件（観測ゼロ、疎セル、過大レバレッジ）の論理和判定 |
 | **[`three-way-model-assessment`](../../openspec/specs/three-way-model-assessment/spec.md)** | [3次元探索の数理](three_way_models.md) §2, §2.1, §2.2, §3 | ・9 階層対数線形モデル（M1〜M9）の配位と自由度<br>・M1〜M7 の閉形式最尤推定量公式と M8 の反復比例適合（IPF）<br>・サンプリングゼロと構造ゼロの区分、最尤推定量存在条件（Fienberg 1970）<br>・総度数 $N$ 基準のポアソン明示式 BIC（$-2\ln L + p\ln N$） |
@@ -110,3 +116,5 @@ author: Codex (GPT-5) / Antigravity
     - *層別による関連の逆転（シンプソンのパラドックス）の定式化。*
 17. **Simpson, E. H. (1951)**. "The interpretation of interaction in contingency tables." *Journal of the Royal Statistical Society: Series B (Methodological)*, 13(2), 238–241. [DOI:10.1111/j.2517-6161.1951.tb00088.x](https://doi.org/10.1111/j.2517-6161.1951.tb00088.x)
     - *分割表における高次交互作用と交絡の解釈。*
+18. **Efron, B., & Tibshirani, R. J. (1993)**. *An Introduction to the Bootstrap*. Chapman and Hall/CRC, New York. [ISBN:978-0-412-04231-7](https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317)
+    - *多項再標本化（リサンプリング）、モンテカルロ標準誤差（MCSE）、および順位変動評価の統計理論。*

@@ -178,6 +178,13 @@
         },
         "seed": {
           "type": "integer"
+        },
+        "quality_gate_minimum_valid_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.95,
+          "description": "Minimum proportion of valid iterations required to accept CRR results without HOLD."
         }
       },
       "additionalProperties": false

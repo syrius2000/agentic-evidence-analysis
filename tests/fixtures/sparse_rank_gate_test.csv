@@ -1,0 +1,9 @@
+Layer,Group,Outcome,Freq
+L1,G1,O1,1
+L1,G1,O2,0
+L1,G2,O1,0
+L1,G2,O2,0
+L2,G1,O1,25
+L2,G1,O2,25
+L2,G2,O1,25
+L2,G2,O2,25

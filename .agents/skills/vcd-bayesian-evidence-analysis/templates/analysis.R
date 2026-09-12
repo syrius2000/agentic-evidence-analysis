@@ -303,6 +303,9 @@ target_base_ids <- if (!is.null(cfg$base_models) && length(cfg$base_models) > 0L
 } else {
   c("M1", best_m_id)
 }
+if (isTRUE(cfg$conditional_rank_reproducibility$enabled) && !is.null(cfg$conditional_rank_reproducibility$target_baseline_model)) {
+  target_base_ids <- c(target_base_ids, cfg$conditional_rank_reproducibility$target_baseline_model)
+}
 target_base_ids <- unique(target_base_ids)
 message(paste("[INFO] 多重基準セル診断実行中 (基準モデル:", paste(target_base_ids, collapse = ", "), ")..."))
 
@@ -331,13 +334,44 @@ crv_res <- compute_conditional_rate_view(
   seed = 20260906
 )
 
+# --- [Step 4b: 条件付きセル順位再現性評価 (conditional_rank_reproducibility)] ---
+crr_res <- NULL
+if (isTRUE(cfg$conditional_rank_reproducibility$enabled)) {
+  message("[INFO] 条件付きセル順位再現性 (conditional_rank_reproducibility) を算出中...")
+  target_model <- cfg$conditional_rank_reproducibility$target_baseline_model
+  target_diag <- multi_diag_res[[target_model]]
+  if (is.null(target_diag)) {
+    stop(sprintf("[ERROR] 対象基準モデル '%s' の診断結果が見つかりません。", target_model), call. = FALSE)
+  }
+  crr_res <- compute_conditional_rank_reproducibility(
+    df = df,
+    vars = cat_vars,
+    freq_col = freq_col,
+    factor_levels_order = cfg$factor_levels_order,
+    crr_config = cfg$conditional_rank_reproducibility,
+    baseline_diagnostics = target_diag$cell_table
+  )
+}
+
 # --- [Step 5: 結果の構造化と JSON 出力] ---
 input_ref <- run_scope_portable_path(cfg$input, run_scope_detect_repo_root(artifact_dir) %||% RUN_SCOPE_REPO_ROOT, artifact_dir)
+executed_at_env <- Sys.getenv("ANALYSIS_EXEC_TIMESTAMP", "")
+if (!nzchar(executed_at_env)) {
+  sde <- Sys.getenv("SOURCE_DATE_EPOCH", "")
+  if (nzchar(sde)) {
+    epoch_num <- suppressWarnings(as.numeric(sde))
+    if (!is.na(epoch_num)) {
+      executed_at_env <- format(as.POSIXct(epoch_num, origin = "1970-01-01", tz = "UTC"), "%Y-%m-%dT%H:%M:%S%z")
+    }
+  }
+}
+executed_at_final <- if (nzchar(executed_at_env)) executed_at_env else format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
+
 output_results <- list(
   provenance = list(
     script = "analysis.R (canonical 4-axis multi-baseline)",
     run_id = rid$run_id,
-    executed_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
+    executed_at = executed_at_final,
     input_file = input_ref$path,
     input_file_path_kind = input_ref$path_kind,
     input_file_sha256 = sha256_file(cfg$input),
@@ -392,6 +426,10 @@ output_results <- list(
   conditional_rate_view = crv_res,
   run_id = rid$run_id
 )
+
+if (!is.null(crr_res)) {
+  output_results$conditional_rank_reproducibility <- crr_res
+}
 
 json_path <- file.path(artifact_dir, "evidence_results.json")
 write_json(output_results, json_path, pretty = TRUE, auto_unbox = TRUE)

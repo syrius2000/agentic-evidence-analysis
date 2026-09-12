@@ -731,3 +731,462 @@ compute_conditional_rate_view <- function(df, vars, freq_col, crv_spec, draws = 
     differences = differences_list
   )
 }
+
+# =============================================================================
+# [10. 条件付きセル順位再現性評価 (Conditional Rank Reproducibility)]
+# =============================================================================
+
+refit_m1_closed_form <- function(counts_array, I, J, K_dim, total_n) {
+  # M1: [A][B][C]
+  # mu_ijk = (n_i++ * n_+j+ * n_++k) / N^2
+  margin_A <- apply(counts_array, 1L, sum)
+  margin_B <- apply(counts_array, 2L, sum)
+  margin_C <- apply(counts_array, 3L, sum)
+
+  if (any(margin_A == 0) || any(margin_B == 0) || any(margin_C == 0)) {
+    return(NULL) # rank deficient / boundary
+  }
+
+  outer_AB <- outer(margin_A, margin_B, "*")
+  mu_arr <- outer(outer_AB, margin_C, "*") / (total_n^2)
+  as.vector(mu_arr)
+}
+
+refit_m5_closed_form <- function(counts_array, I, J, K_dim) {
+  # M5: [AB][AC] (B perp C | A)
+  # mu_ijk = (n_ij+ * n_i+k) / n_i++
+  margin_A <- apply(counts_array, 1L, sum)
+  if (any(margin_A == 0)) {
+    return(NULL) # rank deficient (zero stratum count)
+  }
+
+  margin_AB <- apply(counts_array, c(1L, 2L), sum)
+  margin_AC <- apply(counts_array, c(1L, 3L), sum)
+
+  mu_arr <- array(0, dim = c(I, J, K_dim))
+  for (i in seq_len(I)) {
+    denom <- margin_A[i]
+    num_bc <- outer(margin_AB[i, ], margin_AC[i, ], "*")
+    mu_arr[i, , ] <- num_bc / denom
+  }
+  as.vector(mu_arr)
+}
+
+compute_conditional_rank_reproducibility <- function(
+  df,
+  vars,
+  freq_col,
+  factor_levels_order,
+  crr_config,
+  baseline_diagnostics
+) {
+  if (is.null(crr_config) || !isTRUE(crr_config$enabled)) {
+    return(NULL)
+  }
+
+  target_model <- crr_config$target_baseline_model
+  target_metric <- crr_config$target_metric
+  top_k <- as.integer(crr_config$top_k)
+  iterations <- as.integer(crr_config$iterations)
+  seed <- as.integer(crr_config$seed)
+
+  v1 <- vars[1L]
+  v2 <- vars[2L]
+  v3 <- vars[3L]
+  lev1 <- as.character(factor_levels_order[[v1]])
+  lev2 <- as.character(factor_levels_order[[v2]])
+  lev3 <- as.character(factor_levels_order[[v3]])
+  I <- length(lev1)
+  J <- length(lev2)
+  K_dim <- length(lev3)
+  total_cells <- I * J * K_dim
+
+  # 正準格子の構築 (expand.grid順: v1最速, 次にv2, 次にv3)
+  canonical_grid <- expand.grid(
+    lev1 = lev1,
+    lev2 = lev2,
+    lev3 = lev3,
+    stringsAsFactors = FALSE
+  )
+  colnames(canonical_grid) <- c(v1, v2, v3)
+  canonical_grid$canonical_cell_index <- seq_len(total_cells)
+  # RFC 3986 準拠の構造化 URI キーバリュー方式 (vars-ordered-uri-kv)
+  # key, val ともに utils::URLencode(reserved = TRUE) で符号化し、'/' で連結
+  enc_v1 <- utils::URLencode(v1, reserved = TRUE)
+  enc_v2 <- utils::URLencode(v2, reserved = TRUE)
+  enc_v3 <- utils::URLencode(v3, reserved = TRUE)
+  c_ids <- character(total_cells)
+  for (c_i in seq_len(total_cells)) {
+    val1 <- utils::URLencode(as.character(canonical_grid[[v1]][c_i]), reserved = TRUE)
+    val2 <- utils::URLencode(as.character(canonical_grid[[v2]][c_i]), reserved = TRUE)
+    val3 <- utils::URLencode(as.character(canonical_grid[[v3]][c_i]), reserved = TRUE)
+    c_ids[c_i] <- sprintf("%s=%s/%s=%s/%s=%s", enc_v1, val1, enc_v2, val2, enc_v3, val3)
+  }
+  canonical_grid$cell_id <- c_ids
+
+  # quality_gate_minimum_valid_rate の取得（未指定時は既定 0.95）
+  qg_min_rate <- if (!is.null(crr_config$quality_gate_minimum_valid_rate) &&
+                     is.numeric(crr_config$quality_gate_minimum_valid_rate) &&
+                     length(crr_config$quality_gate_minimum_valid_rate) == 1L &&
+                     is.finite(crr_config$quality_gate_minimum_valid_rate) &&
+                     crr_config$quality_gate_minimum_valid_rate > 0.0 &&
+                     crr_config$quality_gate_minimum_valid_rate <= 1.0) {
+    as.numeric(crr_config$quality_gate_minimum_valid_rate)
+  } else {
+    0.95
+  }
+
+  # baseline_diagnostics から必要な列を取り出して正準格子と結合
+  diag_df <- if (is.data.frame(baseline_diagnostics)) {
+    baseline_diagnostics
+  } else if (is.list(baseline_diagnostics) && !is.null(baseline_diagnostics$cell_table)) {
+    baseline_diagnostics$cell_table
+  } else if (is.list(baseline_diagnostics)) {
+    do.call(rbind, lapply(baseline_diagnostics, function(item) {
+      if (is.list(item$factors)) {
+        row_d <- as.data.frame(item$factors, stringsAsFactors = FALSE)
+        row_d$Observed <- item$Observed
+        row_d$Expected <- item$Expected
+        row_d$stability_status <- item$stability_status
+        row_d
+      } else {
+        as.data.frame(item, stringsAsFactors = FALSE)
+      }
+    }))
+  } else {
+    stop("[ERROR] baseline_diagnostics の形式が無効です。")
+  }
+
+  cols_to_pull <- intersect(c(vars, freq_col, "Observed", "Expected", "stability_status"), colnames(diag_df))
+  merged_df <- merge(canonical_grid, diag_df[, cols_to_pull, drop = FALSE], by = vars, all.x = TRUE, sort = FALSE)
+  merged_df <- merged_df[order(merged_df$canonical_cell_index), ]
+
+  obs_canon <- if (freq_col %in% colnames(merged_df)) {
+    as.numeric(merged_df[[freq_col]])
+  } else {
+    as.numeric(merged_df$Observed)
+  }
+  total_n <- sum(obs_canon)
+
+  stability_statuses <- as.character(merged_df$stability_status)
+  stability_statuses[is.na(stability_statuses)] <- "QUARANTINED"
+  baseline_obs <- as.numeric(merged_df$Observed)
+
+  # 元データにおける丸め前倍精度の期待度数を算出 (F-CRR-002)
+  counts_orig_arr <- array(obs_canon, dim = c(I, J, K_dim))
+  baseline_exp_raw <- if (target_model == "M1") {
+    refit_m1_closed_form(counts_orig_arr, I, J, K_dim, total_n)
+  } else if (target_model == "M5") {
+    refit_m5_closed_form(counts_orig_arr, I, J, K_dim)
+  } else {
+    NULL
+  }
+  if (is.null(baseline_exp_raw) || any(is.na(baseline_exp_raw))) {
+    return(list(
+      status = "MODEL_REFIT_FAILED",
+      hold_reason = sprintf("元データに対する基準モデル（%s）の閉形式再推定が失敗（NULLまたはNA）したため、表示用丸め値へのフォールバックを行わず順位再現性評価を安全に保留します。", target_model),
+      audit_metadata = list(
+        feature_version = "1.0.0",
+        target_baseline_model = target_model,
+        target_metric = target_metric,
+        top_k = top_k,
+        iterations_requested = iterations,
+        iterations_valid = 0L,
+        valid_rate = 0.0,
+        seed = seed,
+        resampling_model = "Multinomial(N, p_hat)",
+        resampling_unit = "individual observations classified into contingency-table cells",
+        required_assumption = "観測単位は独立で、同一のカテゴリ確率ベクトルから抽出されたとみなせる",
+        zero_cell_handling = "continuity_correction_0.5_on_replicate_zero_observed",
+        model_refitting = "closed_form_mle_per_replicate",
+        tie_breaking_rule = "canonical_cell_index_ascending",
+        factor_levels_order = factor_levels_order
+      ),
+      estimand_conditioning = list(
+        target_universe = "regular_cells_under_baseline_model",
+        conditioning_statement = "元データで対象基準モデルにおいて REGULAR 判定された適格セル集合、かつモデル再推定が数値的・理論的に有効な反復のみに条件付けられた選択頻度",
+        eligible_cell_count = 0L,
+        quarantined_cell_count = total_cells,
+        total_grid_cells = total_cells
+      ),
+      quality_gate = list(
+        passed = FALSE,
+        threshold = qg_min_rate,
+        valid_rate = 0.0,
+        invalid_breakdown = list(
+          zero_denominator = 0L,
+          rank_deficient = 0L,
+          non_convergence = 0L,
+          numerical_instability = 0L
+        )
+      ),
+      cells = NULL
+    ))
+  }
+  baseline_exp <- baseline_exp_raw
+
+  is_regular <- stability_statuses == "REGULAR"
+  eligible_cell_count <- sum(is_regular)
+  quarantined_cell_count <- total_cells - eligible_cell_count
+
+  # 第2段階バリデーション: 適格セル数チェック
+  if (eligible_cell_count == 0L) {
+    return(list(
+      status = "NO_ELIGIBLE_CELLS",
+      hold_reason = "元データ診断において REGULAR な適格セルが 0 件のため、順位再現性評価を保留します。",
+      audit_metadata = list(
+        feature_version = "1.0.0",
+        target_baseline_model = target_model,
+        target_metric = target_metric,
+        top_k = top_k,
+        iterations_requested = iterations,
+        iterations_valid = 0L,
+        valid_rate = 0.0,
+        seed = seed,
+        resampling_model = "Multinomial(N, p_hat)",
+        resampling_unit = "individual observations classified into contingency-table cells",
+        required_assumption = "観測単位は独立で、同一のカテゴリ確率ベクトルから抽出されたとみなせる",
+        zero_cell_handling = "continuity_correction_0.5_on_replicate_zero_observed",
+        model_refitting = "closed_form_mle_per_replicate",
+        tie_breaking_rule = "canonical_cell_index_ascending",
+        factor_levels_order = factor_levels_order
+      ),
+      estimand_conditioning = list(
+        target_universe = "regular_cells_under_baseline_model",
+        conditioning_statement = "元データで対象基準モデルにおいて REGULAR 判定された適格セル集合、かつモデル再推定が数値的・理論的に有効な反復のみに条件付けられた選択頻度",
+        eligible_cell_count = 0L,
+        quarantined_cell_count = quarantined_cell_count,
+        total_grid_cells = total_cells
+      ),
+      quality_gate = list(
+        passed = FALSE,
+        threshold = qg_min_rate,
+        valid_rate = 0.0,
+        invalid_breakdown = list(
+          zero_denominator = 0L,
+          rank_deficient = 0L,
+          non_convergence = 0L,
+          numerical_instability = 0L
+        )
+      ),
+      cells = NULL
+    ))
+  }
+
+  if (top_k > eligible_cell_count) {
+    stop(sprintf("[ERROR] top_k (%d) が適格セル数 (%d) を超過しています。top_k <= eligible_cell_count を満たす必要があります。",
+                 top_k, eligible_cell_count), call. = FALSE)
+  }
+
+  # 元データにおける abs_log_oe と元順位の計算
+  baseline_abs_log_oe <- numeric(total_cells)
+  for (idx in seq_len(total_cells)) {
+    o_val <- baseline_obs[idx]
+    e_val <- baseline_exp[idx]
+    if (!is.na(e_val) && e_val > 0) {
+      if (o_val > 0) {
+        baseline_abs_log_oe[idx] <- abs(log(o_val / e_val))
+      } else {
+        baseline_abs_log_oe[idx] <- abs(log(0.5 / e_val))
+      }
+    } else {
+      baseline_abs_log_oe[idx] <- NA_real_
+    }
+  }
+
+  reg_indices <- which(is_regular)
+  base_reg_metrics <- baseline_abs_log_oe[reg_indices]
+  base_reg_can_idx <- canonical_grid$canonical_cell_index[reg_indices]
+
+  # 決定論的タイブレーク: -metric 昇順, canonical_cell_index 昇順
+  base_ord <- order(-base_reg_metrics, base_reg_can_idx)
+  base_ranks_among_reg <- integer(eligible_cell_count)
+  base_ranks_among_reg[base_ord] <- seq_len(eligible_cell_count)
+
+  baseline_ranks_full <- rep(NA_integer_, total_cells)
+  baseline_ranks_full[reg_indices] <- base_ranks_among_reg
+  baseline_selected_top_k_full <- rep(FALSE, total_cells)
+  baseline_selected_top_k_full[reg_indices] <- base_ranks_among_reg <= top_k
+
+  # 多項乱数生成
+  hat_p <- obs_canon / total_n
+  set.seed(seed)
+  resamples <- rmultinom(n = iterations, size = total_n, prob = hat_p)
+
+  invalid_breakdown <- list(
+    zero_denominator = 0L,
+    rank_deficient = 0L,
+    non_convergence = 0L,
+    numerical_instability = 0L
+  )
+
+  valid_ranks_matrix <- matrix(NA_integer_, nrow = iterations, ncol = eligible_cell_count)
+  n_valid <- 0L
+
+  for (b in seq_len(iterations)) {
+    y_b <- resamples[, b]
+    counts_arr <- array(y_b, dim = c(I, J, K_dim))
+
+    mu_b <- if (target_model == "M1") {
+      refit_m1_closed_form(counts_arr, I, J, K_dim, total_n)
+    } else if (target_model == "M5") {
+      refit_m5_closed_form(counts_arr, I, J, K_dim)
+    } else {
+      NULL
+    }
+
+    if (is.null(mu_b) || any(is.na(mu_b)) || any(mu_b <= 0)) {
+      invalid_breakdown$rank_deficient <- invalid_breakdown$rank_deficient + 1L
+      next
+    }
+
+    # 各セルの abs_log_oe 計算（y_b == 0 のときは 0.5 補正）
+    # y_b > 0: abs(log(y_b / mu_b))
+    # y_b == 0: abs(log(0.5 / mu_b))
+    metric_b <- ifelse(y_b > 0, abs(log(y_b / mu_b)), abs(log(0.5 / mu_b)))
+
+    # 適格セルのみ抽出
+    reg_metric_b <- metric_b[reg_indices]
+
+    # タイブレーク順位付け
+    ord_b <- order(-reg_metric_b, base_reg_can_idx)
+    ranks_b <- integer(eligible_cell_count)
+    ranks_b[ord_b] <- seq_len(eligible_cell_count)
+
+    n_valid <- n_valid + 1L
+    valid_ranks_matrix[n_valid, ] <- ranks_b
+  }
+
+  valid_rate <- if (iterations > 0L) n_valid / iterations else 0.0
+  gate_passed <- valid_rate >= qg_min_rate
+
+  if (!gate_passed) {
+    return(list(
+      status = "INSUFFICIENT_VALID_REPLICATES",
+      hold_reason = sprintf("有効反復率 (%.2f%%) が運用品質基準 (%.2f%%) 未満のため、評価を保留します。", valid_rate * 100, qg_min_rate * 100),
+      audit_metadata = list(
+        feature_version = "1.0.0",
+        target_baseline_model = target_model,
+        target_metric = target_metric,
+        top_k = top_k,
+        iterations_requested = iterations,
+        iterations_valid = n_valid,
+        valid_rate = safe_round(valid_rate, 4),
+        seed = seed,
+        resampling_model = "Multinomial(N, p_hat)",
+        resampling_unit = "individual observations classified into contingency-table cells",
+        required_assumption = "観測単位は独立で、同一のカテゴリ確率ベクトルから抽出されたとみなせる",
+        zero_cell_handling = "continuity_correction_0.5_on_replicate_zero_observed",
+        model_refitting = "closed_form_mle_per_replicate",
+        tie_breaking_rule = "canonical_cell_index_ascending",
+        factor_levels_order = factor_levels_order
+      ),
+      estimand_conditioning = list(
+        target_universe = "regular_cells_under_baseline_model",
+        conditioning_statement = "元データで対象基準モデルにおいて REGULAR 判定された適格セル集合、かつモデル再推定が数値的・理論的に有効な反復のみに条件付けられた選択頻度",
+        eligible_cell_count = eligible_cell_count,
+        quarantined_cell_count = quarantined_cell_count,
+        total_grid_cells = total_cells
+      ),
+      quality_gate = list(
+        passed = FALSE,
+        threshold = qg_min_rate,
+        valid_rate = safe_round(valid_rate, 4),
+        invalid_breakdown = invalid_breakdown
+      ),
+      cells = NULL
+    ))
+  }
+
+  valid_ranks <- valid_ranks_matrix[seq_len(n_valid), , drop = FALSE]
+
+  # 各適格セルの要約統計量
+  cells_output <- vector("list", eligible_cell_count)
+  for (k_idx in seq_len(eligible_cell_count)) {
+    orig_cell_idx <- reg_indices[k_idx]
+    c_ranks <- valid_ranks[, k_idx]
+
+    sel_top_k <- c_ranks <= top_k
+    p_hat <- mean(sel_top_k)
+    mcse_val <- sqrt(p_hat * (1.0 - p_hat) / n_valid)
+
+    mean_r <- mean(c_ranks)
+    sd_r <- if (n_valid > 1L) sd(c_ranks) else 0.0
+    med_r <- as.numeric(median(c_ranks))
+    q_r <- quantile(c_ranks, probs = c(0.25, 0.75))
+    iqr_r <- as.numeric(q_r[2L] - q_r[1L])
+    min_r <- as.integer(min(c_ranks))
+    max_r <- as.integer(max(c_ranks))
+
+    base_r <- base_ranks_among_reg[k_idx]
+    mean_shift <- mean_r - base_r
+    median_shift <- med_r - base_r
+
+    factors_list <- list()
+    factors_list[[v1]] <- canonical_grid[[v1]][orig_cell_idx]
+    factors_list[[v2]] <- canonical_grid[[v2]][orig_cell_idx]
+    factors_list[[v3]] <- canonical_grid[[v3]][orig_cell_idx]
+
+    cells_output[[k_idx]] <- list(
+      canonical_cell_index = canonical_grid$canonical_cell_index[orig_cell_idx],
+      cell_id = canonical_grid$cell_id[orig_cell_idx],
+      factors = factors_list,
+      baseline_stability = "REGULAR",
+      baseline_abs_log_oe = safe_round(baseline_abs_log_oe[orig_cell_idx], 4),
+      baseline_rank_among_regular = as.integer(base_r),
+      baseline_selected_top_k = as.logical(base_r <= top_k),
+      top_k_selection_frequency_among_regular_cells = list(
+        estimate = safe_round(p_hat, 4),
+        mcse = safe_round(mcse_val, 4)
+      ),
+      rank_summary_among_regular_cells = list(
+        mean_rank = safe_round(mean_r, 2),
+        sd_rank = safe_round(sd_r, 2),
+        median_rank = safe_round(med_r, 1),
+        iqr_rank = safe_round(iqr_r, 1),
+        min_rank = min_r,
+        max_rank = max_r
+      ),
+      rank_shifts = list(
+        mean_shift = safe_round(mean_shift, 2),
+        median_shift = safe_round(median_shift, 1)
+      )
+    )
+  }
+
+  list(
+    status = "COMPUTED",
+    audit_metadata = list(
+      feature_version = "1.0.0",
+      target_baseline_model = target_model,
+      target_metric = target_metric,
+      top_k = top_k,
+      iterations_requested = iterations,
+      iterations_valid = n_valid,
+      valid_rate = safe_round(valid_rate, 4),
+      seed = seed,
+      resampling_model = "Multinomial(N, p_hat)",
+      resampling_unit = "individual observations classified into contingency-table cells",
+      required_assumption = "観測単位は独立で、同一のカテゴリ確率ベクトルから抽出されたとみなせる",
+      zero_cell_handling = "continuity_correction_0.5_on_replicate_zero_observed",
+      model_refitting = "closed_form_mle_per_replicate",
+      tie_breaking_rule = "canonical_cell_index_ascending",
+      factor_levels_order = factor_levels_order
+    ),
+    estimand_conditioning = list(
+      target_universe = "regular_cells_under_baseline_model",
+      conditioning_statement = "元データで対象基準モデルにおいて REGULAR 判定された適格セル集合、かつモデル再推定が数値的・理論的に有効な反復のみに条件付けられた選択頻度",
+      eligible_cell_count = eligible_cell_count,
+      quarantined_cell_count = quarantined_cell_count,
+      total_grid_cells = total_cells
+    ),
+    quality_gate = list(
+      passed = TRUE,
+      threshold = qg_min_rate,
+      valid_rate = safe_round(valid_rate, 4),
+      invalid_breakdown = invalid_breakdown
+    ),
+    cells = cells_output
+  )
+}
+
