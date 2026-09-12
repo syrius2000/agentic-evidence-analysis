@@ -58,6 +58,12 @@
       "description": "学部 A における男性の合格率事後平均 = 0.6204"
     },
     {
+      "claim_id": "dept_a_male_raw_rate",
+      "pointer": "/conditional_rate_view/rates/A__Male/raw_rate",
+      "value": 0.6206,
+      "description": "学部 A における男性の合格率観測生割合 = 0.6206"
+    },
+    {
       "claim_id": "dept_a_male_obs_numerator",
       "pointer": "/conditional_rate_view/rates/A__Male/obs_numerator",
       "value": 512,
@@ -68,6 +74,24 @@
       "pointer": "/conditional_rate_view/rates/A__Male/obs_denominator",
       "value": 825,
       "description": "学部 A における男性の志願者数 = 825"
+    },
+    {
+      "claim_id": "dept_a_female_raw_rate",
+      "pointer": "/conditional_rate_view/rates/A__Female/raw_rate",
+      "value": 0.8241,
+      "description": "学部 A における女性の合格率観測生割合 = 0.8241"
+    },
+    {
+      "claim_id": "dept_a_female_obs_numerator",
+      "pointer": "/conditional_rate_view/rates/A__Female/obs_numerator",
+      "value": 89,
+      "description": "学部 A における女性の合格者数 = 89"
+    },
+    {
+      "claim_id": "dept_a_female_obs_denominator",
+      "pointer": "/conditional_rate_view/rates/A__Female/obs_denominator",
+      "value": 108,
+      "description": "学部 A における女性の志願者数 = 108"
     },
     {
       "claim_id": "dept_a_diff_mean",

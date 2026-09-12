@@ -15,10 +15,13 @@
     "rmarkdown_version": "2.31",
     "dt_version": "0.34.0"
   },
-  "generation_commands": ["Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R --config output/ucb_admissions/00_consultation/analysis_config.json --out output/ucb_admissions --run-id ucb_admit_standard", "Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R --run-dir output/ucb_admissions/run_ucb_admit_standa --layout-variant band"],
+  "generation_commands": [
+    "Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R --config output/ucb_admissions/00_consultation/analysis_config.json --out output/ucb_admissions --run-id ucb_admit_standard",
+    "Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R --run-dir output/ucb_admissions/run_ucb_admit_standa --layout-variant band"
+  ],
   "artifacts": {
     "dashboard.html": {
-      "sha256": "3f23cde79c2e00c869c801a7d65a103435e37cdc8a9b7982c5d515bbfb9e8202"
+      "sha256": "0938b925656a2f6a1827f6535f2e92f7293d689be3956fce3fc63af83775b53a"
     },
     "analysis_config.json": {
       "sha256": "cc2c5d52ed4e1a26ca0d8d73c0e2bead07f73b623295cfda431db58aecf78325"
@@ -27,13 +30,13 @@
       "sha256": "245bc18dfa90655aad215ec267a87ee4d1cbac5dde3271555dd7edaad508c55d"
     },
     "executive_summary.md": {
-      "sha256": "873d2343fee6cbf06c6fe5892bde4d7e1fdc61d7dd636d0750bd7808d672a972"
+      "sha256": "f1abe897c5de2663d03c469d2f4a35a6a4da9f8a3466f4c5d7307832fac4898c"
     },
     "quality_check.md": {
       "sha256": "2ef1eb3bebb0f6669ef6b768e8306a1671b9148efdbf4759d8fc3cc8bddd025f"
     },
     "narrative_claims.json": {
-      "sha256": "a13defec996bc45e1dcbeac39cbc34065f7aa2fcd7467da5c6f2bc943984037c"
+      "sha256": "a9242870b27d1b7ffa607eaacc62a9df034471600e1bce29183995b37579445a"
     }
   }
 }
