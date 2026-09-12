@@ -29,8 +29,8 @@ All agents MUST follow this sequence for any analysis request:
        3. **Influence（影響度）**: ハット行列対角成分 Leverage $h_{ii}$（Pregibon, 1981）。
        4. **Stability（数値安定性）**: 観測ゼロ $O_i=0$、疎セル $E_i < 5.0$、過大 Leverage $h_{ii} \ge 0.80$ の 3 条件論理和判定（`QUARANTINED` / `REGULAR`）。
      - **大標本 Dual-Filter 原則 ($N > 2,000$)**:
-       $|\log(O/E)| \ge 0.50$（Effect スクリーニング）かつ $T_i^{\rm score} \ge 3.84$（Evidence ノイズ排除）の 2 段階判定を適用。
-     - **多項 Dirichlet 事後推論**: 共役事前分布による事後平均、条件付き割合の 95% 信用区間（HDI/ETI）、Freeman-Tukey 事後予測チェック（PPP-value）。
+       $|\log(O/E)| \ge 0.50$（Effect スクリーニング）かつ $T_i^{\rm score} \ge 3.84$（Evidence 不確実セル除外）の 2 段階判定を適用。
+     - **多項 Dirichlet 事後推論**: 共役事前分布による事後平均、条件付き割合の 95% 等裾信用区間（ETI）、Freeman-Tukey 事後予測チェック（PPP-value）。
      - **旧指標の監査列化**: 旧エビデンススコア（$r^2 - k\ln N$）は大標本エビデンス飽和のため監査専用列とし、真の信号判定・セル合否判定・セルBFとして扱わない。
    - **Contract**: Generate structured results JSON (e.g., `evidence_results.json`).
 3. **Pass 2: AI Review & Narrative**
