@@ -1,48 +1,17 @@
 #!/usr/bin/env Rscript
-# Pass 3: dashboard.html を evidence_results.json と同じ run_<prefix>/ に出力する（run_output_dir_from_root と同規則）。
-# params$output_dir は Pass 1 と同じ out_root（run の親）を渡すこと。
+# =============================================================================
+# Pass 3: render_dashboard.R
+# 【正本レポートレンダラー】
+# Pass 2.5 主張ゲート (Claims Gate) の検証を経て、完全オフラインの
+# 単一HTMLダッシュボード（dashboard.html / dashboard_preview.html）を生成
+# =============================================================================
 
 suppressPackageStartupMessages({
   if (!requireNamespace("pacman", quietly = TRUE)) {
     utils::install.packages("pacman", repos = "https://cloud.r-project.org")
   }
-  pacman::p_load(rmarkdown)
+  pacman::p_load(rmarkdown, jsonlite)
 })
-
-args <- commandArgs(trailingOnly = TRUE)
-
-if (any(args %in% c("-h", "--help"))) {
-  cat("Usage: Rscript render_dashboard.R --output_dir <Pass1 の out_root> [OPTIONS]
-
-Options:
-  --output_dir <path>   Pass 1 で --output_dir に指定したディレクトリ（必須）
-  --rmd <path>          dashboard.Rmd（省略時は本スクリプトと同じ templates/ 内）
-  --no-require-pass2    executive_summary.md なしでもレンダー（プレビュー専用）
-")
-  quit(status = 0L)
-}
-
-require_pass2 <- !("--no-require-pass2" %in% args)
-args <- args[!args %in% "--no-require-pass2"]
-
-out_root_arg <- NULL
-rmd_arg <- NULL
-i <- 1L
-while (i <= length(args)) {
-  if (identical(args[i], "--output_dir") && i < length(args)) {
-    out_root_arg <- args[i + 1L]
-    i <- i + 2L
-  } else if (identical(args[i], "--rmd") && i < length(args)) {
-    rmd_arg <- args[i + 1L]
-    i <- i + 2L
-  } else {
-    i <- i + 1L
-  }
-}
-
-if (is.null(out_root_arg) || !nzchar(out_root_arg)) {
-  stop("必須: --output_dir <Pass1 の out_root>", call. = FALSE)
-}
 
 caf <- grep("^--file=", commandArgs(), value = TRUE)
 if (length(caf)) {
@@ -58,53 +27,145 @@ find_repo_root <- function() {
     if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
       return(normalizePath(d, winslash = "/", mustWork = TRUE))
     }
-    if (identical(basename(d), ".agents") && file.exists(file.path(d, "shared", "run_scope.R"))) {
-      return(normalizePath(dirname(d), winslash = "/", mustWork = TRUE))
-    }
     parent <- dirname(d)
-    if (identical(parent, d)) {
-      break
-    }
+    if (identical(parent, d)) break
     d <- parent
   }
-  stop("リポジトリルートを特定できません（.agents/shared/run_scope.R が見つかりません）", call. = FALSE)
+  stop("[ERROR] リポジトリルートを特定できません", call. = FALSE)
 }
 
 repo_root <- find_repo_root()
 source(file.path(repo_root, ".agents", "shared", "run_scope.R"))
+source(file.path(script_dir, "claims_gate.R"))
 
-out_root <- normalizePath(out_root_arg, winslash = "/", mustWork = FALSE)
-if (!dir.exists(out_root)) {
-  stop("output_dir が存在しません: ", out_root, call. = FALSE)
+args <- commandArgs(trailingOnly = TRUE)
+
+if (any(args %in% c("-h", "--help"))) {
+  cat("Usage: Rscript render_dashboard.R --run-dir <run_dir> [OPTIONS]
+
+Options:
+  --run-dir <path>             対象の実 run ディレクトリ（必須）
+  --output_dir <path>          旧互換
+  --rmd <path>                 dashboard.Rmd（省略時は本スクリプトと同ディレクトリ）
+  --preview                    プレビューモードで dashboard_preview.html を出力（未封印）
+  --layout-variant <band|card> 最良モデル表示のレイアウト案選択（既定: band）
+")
+  quit(status = 0L)
 }
 
-rs <- resolve_pass3_run_dir(out_root, "evidence_results.json")
-run_dir <- rs$run_dir
+is_preview <- ("--preview" %in% args)
+run_dir_arg <- NULL
+out_root_arg <- NULL
+rmd_arg <- NULL
+layout_variant <- "band"
+output_file_arg <- NULL
 
-rmd_path <- if (!is.null(rmd_arg) && nzchar(rmd_arg)) {
+i <- 1L
+while (i <= length(args)) {
+  if (identical(args[i], "--run-dir") && i < length(args)) {
+    run_dir_arg <- args[i + 1L]
+    i <- i + 2L
+  } else if ((identical(args[i], "--output_dir") || identical(args[i], "--output-dir")) && i < length(args)) {
+    out_root_arg <- args[i + 1L]
+    i <- i + 2L
+  } else if (identical(args[i], "--rmd") && i < length(args)) {
+    rmd_arg <- args[i + 1L]
+    i <- i + 2L
+  } else if (identical(args[i], "--layout-variant") && i < length(args)) {
+    layout_variant <- args[i + 1L]
+    i <- i + 2L
+  } else if (identical(args[i], "--output-file") && i < length(args)) {
+    output_file_arg <- args[i + 1L]
+    i <- i + 2L
+  } else {
+    i <- i + 1L
+  }
+}
+
+run_dir <- if (!is.null(run_dir_arg) && nzchar(trimws(run_dir_arg))) {
+  normalizePath(trimws(run_dir_arg), winslash = "/", mustWork = TRUE)
+} else if (!is.null(out_root_arg) && nzchar(trimws(out_root_arg))) {
+  rs <- resolve_pass3_run_dir(out_root_arg, "evidence_results.json")
+  rs$run_dir
+} else {
+  stop("[ERROR] --run-dir <path> が指定されていません。", call. = FALSE)
+}
+
+results_json_path <- file.path(run_dir, "evidence_results.json")
+if (!file.exists(results_json_path)) {
+  stop(sprintf("[ERROR] evidence_results.json が見つかりません: %s", results_json_path), call. = FALSE)
+}
+
+# --- Pass 2.5 主張ゲート (Claims Gate) の実行 ---
+if (!is_preview) {
+  message("[INFO] Pass 2.5 主張ゲート (Claims Gate) を実行中...")
+  summ_file <- file.path(run_dir, "executive_summary.md")
+  qc_file <- file.path(run_dir, "quality_check.md")
+  claims_file <- file.path(run_dir, "narrative_claims.json")
+  
+  missing_pass2 <- character(0)
+  if (!file.exists(summ_file)) missing_pass2 <- c(missing_pass2, "executive_summary.md")
+  if (!file.exists(qc_file)) missing_pass2 <- c(missing_pass2, "quality_check.md")
+  if (!file.exists(claims_file)) missing_pass2 <- c(missing_pass2, "narrative_claims.json")
+  
+  if (length(missing_pass2) > 0L) {
+    stop(sprintf(
+      "[ERROR] 本番ダッシュボード生成に必要な Pass 2/2.5 成果物が不足しています: %s\nPass 2 を完了して narrative_claims.json を作成してください。",
+      paste(missing_pass2, collapse = ", ")
+    ), call. = FALSE)
+  }
+  
+  # 数値照合ゲートの実行
+  verify_narrative_claims(results_json_path, claims_file)
+} else {
+  message("[INFO] プレビューモード: 主張ゲートをスキップします。")
+}
+
+# --- Rmd レンダリング ---
+rmd_path <- if (!is.null(rmd_arg)) {
   normalizePath(rmd_arg, winslash = "/", mustWork = TRUE)
 } else {
-  normalizePath(file.path(script_dir, "dashboard.Rmd"), winslash = "/", mustWork = TRUE)
-}
-if (!file.exists(rmd_path)) {
-  stop("dashboard.Rmd が見つかりません: ", rmd_path, call. = FALSE)
+  file.path(script_dir, "dashboard.Rmd")
 }
 
-message("[INFO] Pass 3 レンダリング: ", rmd_path)
-message("[INFO] params$output_dir (out_root): ", out_root)
-message("[INFO] HTML 出力先 (run_dir): ", run_dir)
+output_file_name <- if (!is.null(output_file_arg) && nzchar(trimws(output_file_arg))) {
+  basename(trimws(output_file_arg))
+} else if (is_preview) {
+  "dashboard_preview.html"
+} else {
+  "dashboard.html"
+}
+target_html_path <- file.path(run_dir, output_file_name)
+
+message(sprintf("[INFO] レンダリング開始: %s -> %s", basename(rmd_path), target_html_path))
 
 rmarkdown::render(
   input = rmd_path,
-  output_file = "dashboard.html",
+  output_file = output_file_name,
   output_dir = run_dir,
-  params = list(output_dir = out_root, require_pass2 = require_pass2),
-  knit_root_dir = repo_root,
-  quiet = FALSE
+  params = list(
+    run_dir = run_dir,
+    preview_mode = is_preview,
+    layout_variant = layout_variant
+  ),
+  quiet = TRUE
 )
 
-out_html <- file.path(run_dir, "dashboard.html")
-if (!file.exists(out_html)) {
-  stop("[ERROR] 期待パスに dashboard.html がありません: ", out_html, call. = FALSE)
+if (!file.exists(target_html_path)) {
+  stop("[ERROR] HTMLの生成に失敗しました。", call. = FALSE)
 }
-message("[INFO] 生成: ", out_html)
+
+# --- 完全オフライン性の検査 ---
+html_content <- readLines(target_html_path, warn = FALSE, encoding = "UTF-8")
+external_reqs <- grep("https?://(?!localhost|127\\.0\\.0\\.1)", html_content, perl = TRUE, value = TRUE)
+# MathJax や外部フォント、外部スクリプトの混入を厳格にチェック
+bad_external <- grep("<(script|link)[^>]+src=[\"']https?://|<(script|link)[^>]+href=[\"']https?://", html_content, perl = TRUE, value = TRUE)
+
+if (length(bad_external) > 0L) {
+  warning(sprintf("[WARN] 生成された HTML に外部リソース参照が含まれています:\n%s", paste(bad_external, collapse = "\n")))
+} else {
+  message("[INFO] 完全オフライン検証合格: 外部 script / css 要求は 0 件です。")
+}
+
+h_html <- digest::digest(file = target_html_path, algo = "sha256")
+message(sprintf("[SUCCESS] ダッシュボード生成完了: %s (SHA-256: %s)", target_html_path, h_html))

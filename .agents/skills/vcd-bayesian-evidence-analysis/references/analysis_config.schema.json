@@ -74,6 +74,74 @@
     "arm_min_support": {
       "type": "number"
     },
+    "base_models": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9"]
+      },
+      "description": "Base Poisson log-linear models for multi-baseline 4-axis cell diagnostics (e.g. ['M1', 'M5'])."
+    },
+    "base_model": {
+      "type": "string",
+      "enum": ["M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9"],
+      "description": "Legacy single base model specifier (normalized into base_models)."
+    },
+    "conditional_rate_view": {
+      "type": "object",
+      "required": ["response_var", "numerator_levels", "denominator_levels", "compare_by", "stratify_by"],
+      "properties": {
+        "response_var": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Response/outcome variable column name."
+        },
+        "numerator_levels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "One or more target response levels to include in the numerator."
+        },
+        "denominator_levels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "One or more response levels defining the denominator (superset of numerator_levels)."
+        },
+        "compare_by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Variable column name defining comparison groups (e.g. Gender)."
+        },
+        "stratify_by": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Variable column name defining stratification slices (e.g. Dept)."
+        },
+        "interval_level": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1,
+          "default": 0.95,
+          "description": "Credible interval coverage level (e.g. 0.95 for 95% ETI)."
+        },
+        "reference_level": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional reference level of compare_by variable for rate difference calculations."
+        }
+      },
+      "additionalProperties": false,
+      "description": "Specification for generic conditional Bayesian rate and difference inference."
+    },
     "arm_min_confidence": {
       "type": "number"
     }
