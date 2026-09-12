@@ -32,8 +32,12 @@ mock_results <- list(
     )
   ),
   conditional_rate_view = list(
-    status = "HOLD",
+    status = "VALID",
     rates = list(
+      A__Male = list(
+        raw_rate = 0.6206,
+        post_mean = 0.6204
+      ),
       slice_hold = list(
         raw_rate = "HOLD"
       )
@@ -120,6 +124,45 @@ test_that("4.3 失敗系: status が REVIEWED でない場合は拒否される"
   write_json(unreviewed_claims, claims_file, pretty = TRUE, auto_unbox = TRUE)
   
   expect_error(verify_narrative_claims(results_file, claims_file), "レビュー状態が 'REVIEWED' ではありません")
+})
+
+test_that("4.4 F-001回帰検証: 生割合(raw_rate)と事後平均(post_mean)のポインタと数値の混同を厳密に検知・拒否する", {
+  # 正常系: raw_rate と post_mean の両方が正しく照合される
+  valid_rate_claims <- list(
+    status = "REVIEWED",
+    result_sha256 = actual_hash,
+    claims = list(
+      list(pointer = "/conditional_rate_view/rates/A__Male/raw_rate", value = 0.6206),
+      list(pointer = "/conditional_rate_view/rates/A__Male/post_mean", value = 0.6204)
+    )
+  )
+  claims_file_valid <- file.path(temp_dir, "claims_rate_valid.json")
+  write_json(valid_rate_claims, claims_file_valid, pretty = TRUE, auto_unbox = TRUE)
+  expect_true(verify_narrative_claims(results_file, claims_file_valid))
+
+  # 異常系: raw_rate のポインタに post_mean の値(0.6204)を指定した場合は拒否される
+  confused_claims_1 <- list(
+    status = "REVIEWED",
+    result_sha256 = actual_hash,
+    claims = list(
+      list(pointer = "/conditional_rate_view/rates/A__Male/raw_rate", value = 0.6204)
+    )
+  )
+  claims_file_confused_1 <- file.path(temp_dir, "claims_rate_confused_1.json")
+  write_json(confused_claims_1, claims_file_confused_1, pretty = TRUE, auto_unbox = TRUE)
+  expect_error(verify_narrative_claims(results_file, claims_file_confused_1), "数値が一致しません")
+
+  # 異常系: post_mean のポインタに raw_rate の値(0.6206)を指定した場合は拒否される
+  confused_claims_2 <- list(
+    status = "REVIEWED",
+    result_sha256 = actual_hash,
+    claims = list(
+      list(pointer = "/conditional_rate_view/rates/A__Male/post_mean", value = 0.6206)
+    )
+  )
+  claims_file_confused_2 <- file.path(temp_dir, "claims_rate_confused_2.json")
+  write_json(confused_claims_2, claims_file_confused_2, pretty = TRUE, auto_unbox = TRUE)
+  expect_error(verify_narrative_claims(results_file, claims_file_confused_2), "数値が一致しません")
 })
 
 cat("[SUCCESS] test_narrative_claims_gate.R passed all tests.\n")
