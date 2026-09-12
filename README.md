@@ -56,14 +56,15 @@ graph TD
 
 ---
 
-## 現代的カテゴリカル分析の 4 つの柱
+## 現代的カテゴリカル分析の 5 つの柱
 
 | 柱 | 領域 | 中核手法・指標 | 役割と数理的根拠 |
 | :---: | :--- | :--- | :--- |
 | **1** | **全体構造の階層比較**<br>(Global Model Hierarchy) | 9 階層対数線形モデル（M1〜M9）<br>総度数 $N$ 基準の明示式 BIC | $\mathrm{BIC}_{\mathrm{explicit}} = -2 \ln L + p \ln N$<br>ポアソン完全対数尤度に基づき、過大・過小ペナルティを排した決定論的モデル選択 |
-| **2** | **新 4 軸セル診断フレームワーク**<br>(Four-Axis Cell Diagnostics) | ・Effect（効果量）<br>・Evidence（証拠強度）<br>・Influence（影響度）<br>・Stability（数値安定性） | ・Effect: 標本数不変 $\log(O/E)$、標準化差 $e_i$、率差 $d_i$<br>・Evidence: 標本数比例 Rao Score $T_i^{\mathrm{score}}$、対数 P 値 $\ln(P)$<br>・Influence: ハット行列 Leverage $h_{ii}$（Pregibon 1981）<br>・Stability: $O_i=0$、$E_i<5.0$、$h_{ii} \ge 0.80$ の論理和判定（`QUARANTINED` 隔離） |
-| **3** | **大標本 Dual-Filter 原則**<br>($N > 2,000$) | 2 段階スクリーニング | ・Step 1 (Effect): $|\log(O/E)| \ge 0.50$ で実質的乖離をスクリーニング<br>・Step 2 (Evidence): $T_i^{\mathrm{score}} \ge 3.84$ で標本誤差・不確実セルを除外 |
+| **2** | **新 4 軸セル診断フレームワーク**<br>(Four-Axis Cell Diagnostics) | ・Effect（効果量）<br>・Evidence（証拠強度）<br>・Influence（影響度）<br>・Stability（数値安定性） | ・Effect: 標本倍率不変 $\log(O/E)$、標準化差 $e_i^{(\mathrm{global})}$、率差 $d_i$<br>・Evidence: 標本数比例 Rao Score $T_i^{\mathrm{score}}$、対数 P 値 $\ln(P)$<br>・Influence: ハット行列 Leverage $h_{ii}$（Pregibon 1981）<br>・Stability: $O_i=0$、$E_i<5.0$、$h_{ii} \ge 0.80$ の論理和判定（`QUARANTINED` 隔離） |
+| **3** | **大標本 Dual-Filter 原則**<br>($N > 2,000$) | 2 段階スクリーニング | ・Step 1 (Effect): $|\log(O/E)| \ge 0.50$ で実質的乖離をスクリーニング<br>・Step 2 (Evidence): $T_i^{\mathrm{score}} \ge 3.84$（未調整の探索的足切り［FWER/FDR未保証］）で標本誤差・不確実セルを除外 |
 | **4** | **多項 Dirichlet 事後推論と不確実性評価** | 共役事前分布による事後標本化<br>事後予測チェック（PPC） | ・部分集合分子・分母による条件付き割合と 95% 等裾信用区間（ETI）<br>・全セル同時事後標本による層間差 $\Delta \theta$ の事後推論<br>・Freeman-Tukey 統計量による事後予測 P 値（PPP-value） |
+| **5** | **標本変動下における条件付き順位再現性**<br>(Conditional Rank Reproducibility: CRR) | 多項再標本化と各反復でのモデル再適合（M1/M5）<br>運用品質ゲート（有効反復率 $\ge 0.95$） | ・元データ `REGULAR` 適格セル集合 $\mathcal{C}_{\mathrm{reg}}$ に限定した条件付き Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$ と MCSE<br>・固定期待度数の誤謬を排除した反復閉形式 MLE 推定<br>・階数落ち・特異分割表に対する安全な解釈保留（HOLD）契約 |
 
 ### 指標の読み分けガイド
 
@@ -75,6 +76,7 @@ graph TD
 | **モデル改善量** | 局所逸脱度改善 $\Delta G_i^2 / N$ | 1 観測あたりの逸脱度改善（KL 乖離縮小）。標準化効果量とは区別 |
 | **数値安定性と影響度** | ハット行列 Leverage $h_{ii}$、Stability フラグ（`QUARANTINED` / `REGULAR`） | 観測ゼロ $O_i=0$、疎セル $E_i < 5.0$、過大レバレッジ $h_{ii} \ge 0.80$ を自動隔離 |
 | **統計的不確実性** | 多項 Dirichlet 事後分布、条件付き割合の 95% 等裾信用区間（ETI） | 点ごとの事後信用区間、Freeman-Tukey 事後予測チェック（PPP-value） |
+| **順位の再現性（安定度）** | 条件付きセル順位再現性（CRR）、Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$、MCSE | 標本変動（多項再標本化）および反復モデル再適合下での優先セル順位の頑健性 |
 
 > [!NOTE]
 > 旧プロトタイプの「旧エビデンススコア（$r^2 - k\ln N$）」は大標本下で全セルが正値化（エビデンス飽和）してフィルタ機能を喪失するため、現行システムでは**監査専用列（audit-only）**としてのみ保持し、真の信号判定や合否判定には一切使用しません。
