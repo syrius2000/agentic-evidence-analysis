@@ -20,17 +20,17 @@ author: Codex (GPT-5) / Antigravity
 │       BIC_explicit = -2 ln L + p ln N                                  │
 ├────────────────────────────────────────────────────────────────────────┤
 │  2. 新 4 軸セル診断フレームワーク（Four-Axis Cell Diagnostics）          │
-│     → Effect（効果量: 標本数不変 log(O/E), e_i, d_i）                   │
+│     → Effect（効果量: 標本倍率不変 log(O/E), e_i^(global), d_i）         │
 │     → Evidence（証拠強度: 標本数比例 Rao Score T_i^score, ln P）        │
 │     → Influence（影響度: ハット行列 Leverage h_ii）                    │
 │     → Stability（数値安定性: O_i=0, E_i<5.0, h_ii>=0.80 の隔離判定）   │
 ├────────────────────────────────────────────────────────────────────────┤
 │  3. 大標本 Dual-Filter 原則（N > 2,000）                               │
 │     → Step 1: Effect スクリーニング（|log(O/E)| >= 0.50）              │
-│     → Step 2: Evidence フィルタリング（T_i^score >= 3.84, ノイズ排除） │
+│     → Step 2: Evidence フィルタリング（T_i^score >= 3.84, 未調整の探索的足切り［FWER/FDR未保証］） │
 ├────────────────────────────────────────────────────────────────────────┤
 │  4. 多項 Dirichlet 事後推論と不確実性評価                               │
-│     → 共役事前分布による事後平均、点ごとの 95% 信用区間（HDI/ETI）     │
+│     → 共役事前分布による事後平均、点ごとの 95% 等裾信用区間（ETI）      │
 │     → Freeman-Tukey 統計量による事後予測チェック（PPP-value）           │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -42,8 +42,8 @@ author: Codex (GPT-5) / Antigravity
 | 順序 | リファレンス文書 | 主な解説内容・カバーする数理 |
 | :---: | :--- | :--- |
 | **1** | [カテゴリカル分析の基礎](stats_categorical.md) | 分割表の基礎（行数・セル数・総度数 $N$ の区別）、ピアソン残差と標準化残差、全体効果量 Cramér's V（Cohen 1988 基準と Bergsma 2013 バイアス補正）、旧スコア破綻の数理、ASA 2016 P値声明 |
-| **2** | [3次元カテゴリカル探索の数理](three_way_models.md) | 9 階層対数線形モデル（M1〜M9）、ポアソン完全対数尤度と明示式 BIC、新 4 軸セル診断（Effect/Evidence/Influence/Stability）、大標本 Dual-Filter 原則、局所逸脱度改善量 $\Delta G_i^2/N$ |
-| **3** | [ベイズ推定とモデル比較の基礎](stats_bayesian.md) | ベイズ因子（周辺尤度比）の定義、Schwarz BIC 近似の成立条件、多項 Dirichlet 事後推論、条件付き割合の同時事後サンプリング、独立対飽和の解析的厳密ベイズ因子、Freeman-Tukey 事後予測チェック |
+| **2** | [3次元カテゴリカル探索の数理](three_way_models.md) | 9 階層対数線形モデル（M1〜M9）、閉形式最尤推定量と反復比例適合（IPF）、ゼロセル分類と最尤推定量存在条件（Fienberg 1970）、ポアソン完全対数尤度と明示式 BIC、新 4 軸セル診断（Effect/Evidence/Influence/Stability）、マルチベースライン診断構造、大標本 Dual-Filter 原則、標本サイズ $c$ 倍拡張（100倍実験）の漸近挙動体系、局所逸脱度改善量 $\Delta G_i^2/N$ |
+| **3** | [ベイズ推定とモデル比較の基礎](stats_bayesian.md) | ベイズ因子（周辺尤度比）の定義、Schwarz BIC 近似の成立条件、多項 Dirichlet 事後推論、部分集合指定による一般化条件付き割合と層間差の同時事後推論、均一連関オッズ比不変性、シンプソンのパラドックス解消機構、独立対飽和の解析的厳密ベイズ因子、Freeman-Tukey 事後予測チェック |
 | **4** | [探索的分析設計と実務ワークフロー](advanced_analysis.md) | 4-Pass 推奨思考プロセス、大標本 Dual-Filter スクリーニング手順、アソシエーションルール（ARM）や疎な表との境界 |
 | **5** | [分析スキルの責務境界](skill_responsibilities.md) | 各スキル（Pass 0, vcd-bayesian 3次元正本, vcd-categorical 2次元, バッチ）の役割分担とインターフェース契約 |
 | **補助** | [DB設計とデータ整合性](DB_Best_Practices.md) | データ型選定、文字コード（UTF-8/utf8mb4）、総度数 $N$ 完全一致検証、サンプリングゼロの保持 |
@@ -57,7 +57,22 @@ author: Codex (GPT-5) / Antigravity
 
 ---
 
-## 4. 一次文献マスターインデックス（Primary Literature）
+## 4. OpenSpec 仕様群（`openspec/specs/`）と数理リファレンスの対応マッピング
+
+本リポジトリの分析スキルが準拠する正本仕様（`openspec/specs/` 配下の 6 仕様）と、本数理リファレンスの各セクションとの対応関係は以下の通りです：
+
+| OpenSpec 仕様 (`openspec/specs/`) | 依拠する主な数理リファレンス | カバーされる数理的基礎・定理 |
+| :--- | :--- | :--- |
+| **[`cell-evidence-interpretation`](../../openspec/specs/cell-evidence-interpretation/spec.md)** | [3次元探索の数理](three_way_models.md) §4, §5<br>[ベイズ推定の基礎](stats_bayesian.md) §3 | ・Effect / Evidence / Influence / Stability の新 4 軸分離<br>・旧スコア監査列化と真の信号判定の分離<br>・多項 Dirichlet 事後信用区間と事前感度分析<br>・探索的セル候補と確証検定（多重比較）の非同値性 |
+| **[`conditional-rate-view`](../../openspec/specs/conditional-rate-view/spec.md)** | [ベイズ推定の基礎](stats_bayesian.md) §3.3, §3.4, §3.5 | ・部分集合分子・分母による一般化条件付き割合 $\theta_{A \mid B, g}$<br>・全セル同時 Dirichlet 事後標本による層間差 $\Delta \theta$ の推論<br>・分母ゼロ時の不確実性発散と部分 HOLD の数理条件<br>・均一連関オッズ比不変性とシンプソンのパラドックス解消 |
+| **[`multi-baseline-cell-diagnostics`](../../openspec/specs/multi-baseline-cell-diagnostics/spec.md)** | [3次元探索の数理](three_way_models.md) §4.4, §4.5 | ・M1 相互独立基準（大局的連関）と M_best 選択モデル基準（残余乖離）の分離<br>・基準モデル依存の期待値・残差・Leverage の数学的直交性<br>・基準モデル間のセル件数合算・率平均化の数理的禁止<br>・Stability 3 条件（観測ゼロ、疎セル、過大レバレッジ）の論理和判定 |
+| **[`three-way-model-assessment`](../../openspec/specs/three-way-model-assessment/spec.md)** | [3次元探索の数理](three_way_models.md) §2, §2.1, §2.2, §3 | ・9 階層対数線形モデル（M1〜M9）の配位と自由度<br>・M1〜M7 の閉形式最尤推定量公式と M8 の反復比例適合（IPF）<br>・サンプリングゼロと構造ゼロの区分、最尤推定量存在条件（Fienberg 1970）<br>・総度数 $N$ 基準のポアソン明示式 BIC（$-2\ln L + p\ln N$） |
+| **[`three-way-validation-cases`](../../openspec/specs/three-way-validation-cases/spec.md)** | [3次元探索の数理](three_way_models.md) §2.1, §5.2<br>[カテゴリカル基礎](stats_categorical.md) §4 | ・標本サイズ $c$ 倍拡張（100倍実験）における統計量の漸近次数体系（$O(1)$ vs $O(N)$ vs $O(1/\sqrt{N})$）<br>・GLM と閉形式解・IPF の独立参照値二重照合<br>・人工既知構造表・異常系シナリオの挙動固定 |
+| **[`three-way-dashboard-reporting`](../../openspec/specs/three-way-dashboard-reporting/spec.md)** | [3次元探索の数理](three_way_models.md) §2, §3<br>[実務ワークフロー](advanced_analysis.md) §1<br>[責務境界](skill_responsibilities.md) §3 | ・BIC 最小モデルの「相対的評価」原則（真のモデルの証明ではない限界明示）<br>・完全オフライン契約（外部 CDN / Ajax / フォント取得ゼロ）<br>・Pass 2.5 主張ゲート（JSON Pointer / 数値 / SHA-256）の照合保証 |
+
+---
+
+## 5. 一次文献マスターインデックス（Primary Literature）
 
 本リポジトリで採用されている統計数理手法の原著論文および標準教科書の一覧です：
 
@@ -78,10 +93,20 @@ author: Codex (GPT-5) / Antigravity
 8. **Cohen, J. (1988)**. *Statistical Power Analysis for the Behavioral Sciences* (2nd ed.). Lawrence Erlbaum Associates, Hillsdale, New Jersey.
    - *Cramér's V を含む効果量の標準的解釈基準（Small / Medium / Large）。*
 9. **Bergsma, W. (2013)**. "A bias-correction for Cramér’s $V$ and Tschuprow’s $T$." *Journal of the Korean Statistical Society*, 42(3), 323–328. [DOI:10.1016/j.jkss.2012.10.002](https://doi.org/10.1016/j.jkss.2012.10.002)
-   - *有限標本における Cramér's V の不偏推定量導出。*
+   - *有限標本における Cramér's V のバイアス低減補正の導出。*
 10. **Wasserstein, R. L., & Lazar, N. A. (2016)**. "The ASA statement on p-values: context, process, and purpose." *The American Statistician*, 70(2), 129–133. [DOI:10.1080/00031305.2016.1154108](https://doi.org/10.1080/00031305.2016.1154108)
     - *アメリカ統計学会（ASA）による P 値の誤用警告と有意性・効果量の峻別原則。*
 11. **Bishop, Y. M. M., Fienberg, S. E., & Holland, P. W. (1975)**. *Discrete Multivariate Analysis: Theory and Practice*. MIT Press, Cambridge, Massachusetts.
     - *離散多変量データ分析と対数線形モデルの古典的名著。*
 12. **Kass, R. E., & Raftery, A. E. (1995)**. "Bayes factors." *Journal of the American Statistical Association*, 90(430), 773–795. [DOI:10.1080/01621459.1995.10476572](https://doi.org/10.1080/01621459.1995.10476572)
     - *ベイズ因子の包括的レビュー、BIC 近似の評価、Jeffreys スケールの整理。*
+13. **Deming, W. E., & Stephan, F. F. (1940)**. "On a least squares adjustment of a sampled frequency table when the expected marginal totals are known." *The Annals of Mathematical Statistics*, 11(4), 427–444. [DOI:10.1214/aoms/1177731829](https://doi.org/10.1214/aoms/1177731829)
+    - *反復比例適合法（IPF）の原著論文。*
+14. **Fienberg, S. E. (1970)**. "The analysis of multidimensional contingency tables when some cells had missing data." *Journal of the American Statistical Association*, 65(330), 980–986. [DOI:10.1080/01621459.1970.10481138](https://doi.org/10.1080/01621459.1970.10481138)
+    - *分割表における最尤推定量の存在条件とゼロセル解析の基礎。*
+15. **Csiszár, I. (1975)**. "$I$-divergence geometry of probability distributions and minimization problems." *The Annals of Probability*, 3(1), 146–158. [DOI:10.1214/aop/1176996454](https://doi.org/10.1214/aop/1176996454)
+    - *情報量幾何学における $I$-射影と IPF の幾何学的正当化。*
+16. **Yule, G. U. (1903)**. "Notes on the theory of association of attributes in statistics." *Biometrika*, 2(2), 121–134. [DOI:10.1093/biomet/2.2.121](https://doi.org/10.1093/biomet/2.2.121)
+    - *層別による関連の逆転（シンプソンのパラドックス）の定式化。*
+17. **Simpson, E. H. (1951)**. "The interpretation of interaction in contingency tables." *Journal of the Royal Statistical Society: Series B (Methodological)*, 13(2), 238–241. [DOI:10.1111/j.2517-6161.1951.tb00088.x](https://doi.org/10.1111/j.2517-6161.1951.tb00088.x)
+    - *分割表における高次交互作用と交絡の解釈。*

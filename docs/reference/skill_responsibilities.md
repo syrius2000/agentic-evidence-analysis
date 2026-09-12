@@ -29,11 +29,11 @@ author: Codex (GPT-5) / Antigravity
 2. **モデル比較の厳格性**:
    全主効果を含む 9 階層モデル（M1〜M9）を適合し、総度数 $N$ 基準のポアソン明示式 $\mathrm{BIC}_{\mathrm{explicit}} = -2\ln L + p\ln N$ により全体構造を評価する。
 3. **新 4 軸セル診断の徹底**:
-   セル単位の偏りは、単一のスコアに押し込めず、**Effect（効果量: $\log(O/E)$, $e_i$, $d_i$）**、**Evidence（証拠強度: $T_i^{\rm score}$, $\ln P$）**、**Influence（影響度: Leverage $h_{ii}$）**、**Stability（数値安定性: QUARANTINED 判定）** の 4 軸を明確に分離して報告する。
+   セル単位の偏りは、単一のスコアに押し込めず、**Effect（効果量: $\log(O/E)$, $e_i^{(\mathrm{global})}$, $d_i$）**、**Evidence（証拠強度: $T_i^{\rm score}$, $\ln P$）**、**Influence（影響度: Leverage $h_{ii}$）**、**Stability（数値安定性: QUARANTINED 判定）** の 4 軸を明確に分離して報告する。
 4. **大標本 Dual-Filter 原則（$N > 2,000$）**:
-   大標本下では、Effect（$|\log(O/E)| \ge 0.50$ 等）による第一スクリーニングを通過したセルに対してのみ、Evidence（$T_i^{\rm score} \ge 3.84$）によるノイズ排除フィルタを適用する。
+   大標本下では、Effect（$|\log(O/E)| \ge 0.50$ 等）による第一スクリーニングを通過したセルに対してのみ、自由度 1 のカイ二乗上側 5% 点に相当する Evidence（$T_i^{\rm score} \ge 3.84$）による探索的フィルタを適用する。これは表全体の FWER/FDR を調整・保証しない未調整のスクリーニングであり、通過は実務的重要性、因果性、外部妥当性、再現性を保証するものではない。
 5. **不確実性の誠実な報告**:
-   多項 Dirichlet 共役事後推論により、条件付き割合や層間リスク差の点ごとの 95% 信用区間（HDI/ETI）および Freeman-Tukey 事後予測チェック（PPP-value）を算出し、過分散や推定保留を明記する。
+   多項 Dirichlet 共役事後推論により、条件付き割合や層間リスク差の点ごとの 95% 等裾信用区間（ETI）および Freeman-Tukey 事後予測チェック（PPP-value）を算出し、過分散や推定保留を明記する。
 
 ---
 
