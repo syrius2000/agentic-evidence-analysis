@@ -16,13 +16,17 @@ metadata:
 
 `ΔG²/N` は標準化された効果量ではなく、基準モデルから拡張モデルへの **1観測あたりの逸脱度改善（per-observation deviance improvement）** である。固定総度数の多項表では、観測分布とのKL乖離の差として読む。`log(O/E)`、`d/√N`、局所 `ΔG²`、leverage、BF、信用区間はそれぞれ別の問いに答えるため、合成した単一スコアや一律閾値を導入しない。セル順位の安定性は再標本化で別途評価する計画であり、現行初版のleverageや境界フラグだけから安定性を主張しない。
 
+## 共通品質契約
+
+本スキルは [.agents/shared/analysis_quality_contract.md](../../shared/analysis_quality_contract.md) を参照する。Step 1では入力品質と出力生成、Step 2ではAIレビュー標準構成、Step 2.5では品質確認（P値単独判断の禁止・解釈保留の判定）、Step 3ではHTMLと図表の読み取り確認を契約に沿って満たす。
+
 ## 経路を選ぶ
 
 - **3次元・整数の集計度数**: 以下の新経路を使用する。目的変数未指定でも解析でき、指定時は条件付き割合と条件群間の差を追加する。
 - **2次元または旧結果の保守**: [旧経路](references/legacy_usage.md)を参照する。旧ScoreはBFでも実質的重要性の判定でもない。新経路の結果JSONを旧rendererへ渡さない。
 - **割合だけ・重み・複数回答・依存観測・構造ゼロ**: 新経路の適用を保留し、分母・標本単位・モデルを再相談する。度数へ丸めて通さない。
 
-共通の [品質契約](../../shared/analysis_quality_contract.md) と [新経路の契約](references/three_way_contract.md) に従う。コマンドはリポジトリルートから実行する。
+共通の [品質契約](../../shared/analysis_quality_contract.md)（[.agents/shared/analysis_quality_contract.md](../../shared/analysis_quality_contract.md)）と [新経路の契約](references/three_way_contract.md) に従う。コマンドはリポジトリルートから実行する。
 
 ## Pass 0：相談と設定
 
@@ -60,7 +64,7 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analys
 
 ## Pass 2.5：数値と解釈の確認
 
-`quality_check.md` に計算状態、独立参照の実施有無、校正、数値主張、保留・限界の説明を記録する。`narrative_claims.json` に結果ファイルのSHA-256、`status: "REVIEWED"`、数値主張の `pointer` と `value` を配列 `claims` として保存する。pointerはJSON Pointer（配列は0始まり）。例: `/models/M8/deviance`。参照数値を説明文から切り離さず、本文にも対象と参照箇所を記載する。
+`quality_check.md` に計算状態、独立参照の実施有無、校正、数値主張、P値単独判定の排除、解釈保留・限界の説明を記録する。`narrative_claims.json` に結果ファイルのSHA-256、`status: "REVIEWED"`、数値主張の `pointer` と `value` を配列 `claims` として保存する。pointerはJSON Pointer（配列は0始まり）。例: `/models/M8/deviance`。参照数値を説明文から切り離さず、本文にも対象と参照箇所を記載する。
 
 この自動照合は登録した数値の一致だけを確認する。考察全文の統計的な正しさ・未登録の数値・妥当な因果解釈まで機械的に保証しない。実際に全文を確認してからREVIEWEDとする。
 

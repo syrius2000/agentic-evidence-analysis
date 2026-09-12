@@ -18,7 +18,7 @@ def test_analysis_quality_contract_exists_and_sets_boundaries():
         "quality_check.md",
         "cross_question_summary.md",
         "P値のみで結論しない",
-        "Evidence Scoreが負のセル",
+        "旧Evidence Scoreの正負",
         "MCP artifact",
         "Reactウィジェット",
         "外部Data Analyticsランタイムを要求しません",
