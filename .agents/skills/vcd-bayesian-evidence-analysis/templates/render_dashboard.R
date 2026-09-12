@@ -102,19 +102,19 @@ if (!is_preview) {
   summ_file <- file.path(run_dir, "executive_summary.md")
   qc_file <- file.path(run_dir, "quality_check.md")
   claims_file <- file.path(run_dir, "narrative_claims.json")
-  
+
   missing_pass2 <- character(0)
   if (!file.exists(summ_file)) missing_pass2 <- c(missing_pass2, "executive_summary.md")
   if (!file.exists(qc_file)) missing_pass2 <- c(missing_pass2, "quality_check.md")
   if (!file.exists(claims_file)) missing_pass2 <- c(missing_pass2, "narrative_claims.json")
-  
+
   if (length(missing_pass2) > 0L) {
     stop(sprintf(
       "[ERROR] 本番ダッシュボード生成に必要な Pass 2/2.5 成果物が不足しています: %s\nPass 2 を完了して narrative_claims.json を作成してください。",
       paste(missing_pass2, collapse = ", ")
     ), call. = FALSE)
   }
-  
+
   # 数値照合ゲートの実行
   verify_narrative_claims(results_json_path, claims_file)
 } else {

@@ -16,7 +16,7 @@ fixtures_dir <- file.path(repo_root, "tests", "fixtures", "dashboard_ui")
 test_that("Antigravity OTC_Q05 Fixture のハッシュ不変性が保たれていること", {
   otc_dir <- file.path(fixtures_dir, "antigravity_otc_q05_v1")
   expect_true(file.exists(file.path(otc_dir, "manifest.json")))
-  
+
   man <- jsonlite::fromJSON(file.path(otc_dir, "manifest.json"))
   for (art in names(man$artifacts)) {
     fpath <- file.path(otc_dir, art)
@@ -29,7 +29,7 @@ test_that("Antigravity OTC_Q05 Fixture のハッシュ不変性が保たれて�
 test_that("新 UCB Admissions 3-Way Fixture のハッシュ不変性が保たれていること", {
   ucb_dir <- file.path(fixtures_dir, "ucb_admissions_three_way_v1")
   expect_true(file.exists(file.path(ucb_dir, "manifest.json")))
-  
+
   man <- jsonlite::fromJSON(file.path(ucb_dir, "manifest.json"))
   for (art in names(man$artifacts)) {
     fpath <- file.path(ucb_dir, art)
@@ -42,11 +42,11 @@ test_that("新 UCB Admissions 3-Way Fixture のハッシュ不変性が保たれ
 test_that("UCB Fixture の数値契約が正確に維持されていること", {
   ucb_dir <- file.path(fixtures_dir, "ucb_admissions_three_way_v1")
   res <- jsonlite::fromJSON(file.path(ucb_dir, "evidence_results.json"))
-  
+
   # 総度数とセル数
   expect_equal(res$input_summary$total_n, 4526)
   expect_equal(res$input_summary$n_cells, 24)
-  
+
   # 最良モデル M5 と次点 M8 の明示式 BIC
   summary_df <- as.data.frame(res$models$summary)
   m5_row <- summary_df[summary_df$model_id == "M5", ]
@@ -56,18 +56,18 @@ test_that("UCB Fixture の数値契約が正確に維持されていること", 
   expect_equal(round(as.numeric(m5_row$bic), 4), 332.3119)
   expect_equal(round(as.numeric(m8_row$bic), 4), 339.1982)
   expect_equal(res$models$best_model_id, "M5")
-  
+
   # M1 / M5 基準別セル診断件数
   m1_counts <- res$cells$by_base_model$M1$counts
   m5_counts <- res$cells$by_base_model$M5$counts
   expect_equal(m1_counts$candidate_cells, 12L)
   expect_equal(m1_counts$regular_cells, 24L)
   expect_equal(m1_counts$quarantined_cells, 0L)
-  
+
   expect_equal(m5_counts$candidate_cells, 1L)
   expect_equal(m5_counts$regular_cells, 13L)
   expect_equal(m5_counts$quarantined_cells, 11L)
-  
+
   # 条件付き割合の整合性
   crv <- res$conditional_rate_view
   expect_equal(crv$status, "VALID")

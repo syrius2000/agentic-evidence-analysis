@@ -62,7 +62,7 @@ test_that("4.2 正常系: 正しいハッシュ・pointer・数値の claims は
   )
   claims_file <- file.path(temp_dir, "claims_valid.json")
   write_json(valid_claims, claims_file, pretty = TRUE, auto_unbox = TRUE)
-  
+
   expect_true(verify_narrative_claims(results_file, claims_file))
 })
 
@@ -74,7 +74,7 @@ test_that("4.3 失敗系: 改変ハッシュは拒否される", {
   )
   claims_file <- file.path(temp_dir, "claims_bad_hash.json")
   write_json(bad_hash_claims, claims_file, pretty = TRUE, auto_unbox = TRUE)
-  
+
   expect_error(verify_narrative_claims(results_file, claims_file), "記録ハッシュと結果JSON実ハッシュが一致しません")
 })
 
@@ -86,7 +86,7 @@ test_that("4.3 失敗系: 存在しない pointer は拒否される", {
   )
   claims_file <- file.path(temp_dir, "claims_bad_pointer.json")
   write_json(bad_pointer_claims, claims_file, pretty = TRUE, auto_unbox = TRUE)
-  
+
   expect_error(verify_narrative_claims(results_file, claims_file), "JSON Pointer キーが存在しません")
 })
 
@@ -98,7 +98,7 @@ test_that("4.3 失敗系: 数値の不一致（丸め誤差含む乖離）は拒
   )
   claims_file <- file.path(temp_dir, "claims_bad_val.json")
   write_json(bad_val_claims, claims_file, pretty = TRUE, auto_unbox = TRUE)
-  
+
   expect_error(verify_narrative_claims(results_file, claims_file), "数値が一致しません")
 })
 
@@ -110,7 +110,7 @@ test_that("4.3 失敗系: HOLD 対象を参照する主張は拒否される", {
   )
   claims_file <- file.path(temp_dir, "claims_hold.json")
   write_json(hold_claims, claims_file, pretty = TRUE, auto_unbox = TRUE)
-  
+
   expect_error(verify_narrative_claims(results_file, claims_file), "HOLD 状態の値を参照しています")
 })
 
@@ -122,7 +122,7 @@ test_that("4.3 失敗系: status が REVIEWED でない場合は拒否される"
   )
   claims_file <- file.path(temp_dir, "claims_unreviewed.json")
   write_json(unreviewed_claims, claims_file, pretty = TRUE, auto_unbox = TRUE)
-  
+
   expect_error(verify_narrative_claims(results_file, claims_file), "レビュー状態が 'REVIEWED' ではありません")
 })
 

@@ -12,7 +12,7 @@ script_dir <- file.path(getwd(), ".agents/skills/vcd-bayesian-evidence-analysis/
 source(file.path(script_dir, "config_validation.R"))
 
 test_that("2.3 正常系: UCB 標準 analysis_config.json が検証を通過する", {
-  cfg_path <- file.path(getwd(), "output/ucb_admissions/00_consultation/analysis_config.json")
+  cfg_path <- file.path(getwd(), "tests/fixtures/dashboard_ui/ucb_admissions_three_way_v1/analysis_config.json")
   expect_true(file.exists(cfg_path))
   cfg <- fromJSON(cfg_path, simplifyVector = TRUE)
   res <- validate_analysis_config(cfg, config_path = cfg_path, repo_root = getwd())

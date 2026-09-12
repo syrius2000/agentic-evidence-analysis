@@ -11,18 +11,18 @@ resolve_json_pointer <- function(root_obj, pointer) {
   if (!startsWith(pointer, "/")) {
     stop(sprintf("[ERROR] JSON Pointer は '/' で始まる必要があります: %s", pointer), call. = FALSE)
   }
-  
+
   tokens <- strsplit(pointer, "/", fixed = TRUE)[[1L]][-1L]
   curr <- root_obj
-  
+
   for (t in tokens) {
     # RFC 6901 エスケープ解除: ~1 -> /, ~0 -> ~
     unescaped <- gsub("~1", "/", gsub("~0", "~", t, fixed = TRUE), fixed = TRUE)
-    
+
     if (is.null(curr)) {
       stop(sprintf("[ERROR] JSON Pointer '%s' の途中でノードが NULL になりました (token: '%s')", pointer, unescaped), call. = FALSE)
     }
-    
+
     if (is.list(curr) && !is.data.frame(curr)) {
       if (is.null(names(curr))) {
         # 配列インデックス（0始まり）
@@ -61,7 +61,7 @@ resolve_json_pointer <- function(root_obj, pointer) {
       stop(sprintf("[ERROR] JSON Pointer '%s' で末端プリミティブからのトラバースを試みました (token: '%s')", pointer, unescaped), call. = FALSE)
     }
   }
-  
+
   curr
 }
 
@@ -72,18 +72,18 @@ verify_narrative_claims <- function(results_json_path, claims_json_path, toleran
   if (!file.exists(claims_json_path)) {
     stop(sprintf("[ERROR] narrative_claims.json が存在しません: %s", claims_json_path), call. = FALSE)
   }
-  
+
   # 結果JSONハッシュ計算
   actual_hash <- digest::digest(file = results_json_path, algo = "sha256")
-  
+
   results_data <- jsonlite::fromJSON(results_json_path, simplifyVector = FALSE)
   claims_data <- jsonlite::fromJSON(claims_json_path, simplifyVector = FALSE)
-  
+
   # 1. レビュー状態検査
   if (!identical(claims_data$status, "REVIEWED")) {
     stop(sprintf("[ERROR] narrative_claims のレビュー状態が 'REVIEWED' ではありません (status: '%s')", as.character(claims_data$status)), call. = FALSE)
   }
-  
+
   # 2. ハッシュ一致検査
   if (!identical(claims_data$result_sha256, actual_hash)) {
     stop(sprintf(
@@ -91,41 +91,41 @@ verify_narrative_claims <- function(results_json_path, claims_json_path, toleran
       as.character(claims_data$result_sha256), actual_hash
     ), call. = FALSE)
   }
-  
+
   # 3. 主張配列の存在検査
   claims_list <- claims_data$claims
   if (is.null(claims_list) || length(claims_list) == 0L) {
     stop("[ERROR] narrative_claims に数値主張 claims 配列がありません。", call. = FALSE)
   }
-  
+
   # 4. 各主張の照合
   for (i in seq_along(claims_list)) {
     cl <- claims_list[[i]]
     pointer <- cl$pointer
     claimed_val <- cl$value
-    
+
     if (is.null(pointer) || !is.character(pointer)) {
       stop(sprintf("[ERROR] claim #%d に pointer がありません。", i), call. = FALSE)
     }
     if (is.null(claimed_val) || !is.numeric(claimed_val)) {
       stop(sprintf("[ERROR] claim #%d (pointer: %s) の claimed_value が数値ではありません。", i, pointer), call. = FALSE)
     }
-    
+
     actual_val <- resolve_json_pointer(results_data, pointer)
-    
+
     # HOLD または未定義ノードの検査
     if (is.character(actual_val) && (actual_val == "HOLD" || startsWith(actual_val, "HOLD_"))) {
       stop(sprintf("[ERROR] claim #%d (pointer: %s) は HOLD 状態の値を参照しています: '%s'", i, pointer, actual_val), call. = FALSE)
     }
-    
+
     if (!is.numeric(actual_val) || length(actual_val) != 1L) {
       stop(sprintf("[ERROR] claim #%d (pointer: %s) の実測値が単一数値ではありません: %s", i, pointer, class(actual_val)), call. = FALSE)
     }
-    
+
     diff_abs <- abs(actual_val - claimed_val)
     denom <- max(1.0, abs(actual_val))
     rel_diff <- diff_abs / denom
-    
+
     if (diff_abs > tolerance && rel_diff > tolerance) {
       stop(sprintf(
         "[ERROR] claim #%d (pointer: %s) の数値が一致しません。\n主張値: %f\n実測値: %f\n誤差: %e (許容値: %e)",
@@ -133,7 +133,7 @@ verify_narrative_claims <- function(results_json_path, claims_json_path, toleran
       ), call. = FALSE)
     }
   }
-  
+
   message(sprintf("[SUCCESS] narrative_claims 検証合格: %d 件の数値主張が完全に照合されました。", length(claims_list)))
   invisible(TRUE)
 }
