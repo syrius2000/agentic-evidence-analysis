@@ -1,8 +1,10 @@
+# sas-proc-freq Specification
+
 ## Purpose
 
 SAS PROC FREQ の明示された集計規則、欠損処理、カイ二乗検定、Fisher正確検定、2×2効果量・信頼区間、Monte Carlo推定、および3点セット成果物（JSON/CSV/Markdownレポート）について、対象限定・参照環境明示・許容誤差付きの数値互換を提供する。
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: 入力契約、水準順序、およびゼロ度数・構造的ゼロの制御
 システムは、非負整数の度数列（SASの `WEIGHT count;` 相当）を持つ集計表を正規入力として受理しなければならない（MUST）。度数列に負値、小数、欠損値、非有限値が含まれる場合は処理を直ちに拒否しなければならない（MUST）。
@@ -81,11 +83,11 @@ SAS PROC FREQ の明示された集計規則、欠損処理、カイ二乗検定
 - **THEN** 同一周辺度数を持つ全可能表の中で、観測表の多変量超幾何確率 $P_{obs}$ 以下の確率を持つ表の確率総和（Mehta & Patel ネットワーク法）として両側P値を算出する
 
 ### Requirement: 子プロセス監視による資源保護と状態コード
-システムは、正確検定の実行において子プロセス監視を行い、設定された時間上限（`timeout_sec`）、メモリ上限（`max_memory_mb`）、およびワークスペース制限（`workspace_bytes`）を超過した場合は安全に子プロセスを強制停止（SIGTERM/SIGKILL）し、プロセスハングやメインセッションのクラッシュを防止しなければならない（MUST）。
-また、`workspace` 引数は 2×2 表（超幾何直接計算）では不使用であり、一般 $R \times C$ 表（$R > 2$ または $C > 2$）の Exact 計算時にのみ、R の公式仕様である 4 バイト単位（$\min(\lfloor \mathrm{workspace\_bytes}/4 \rfloor, 2147483647)$）に正確に換算して適用しなければならない（MUST）。R/FEXACT 固有の作業領域不足（`WORKSPACE_EXCEEDED`、例: `"FEXACT error 40. Out of workspace."`）とプロセス全体のメモリ割当失敗（`OUT_OF_MEMORY`）は厳密に区別して記録しなければならない（MUST）。
+システムは、Unix プラットフォーム（macOS / Linux）環境において、正確検定の実行時に子プロセス監視を行い、設定された時間上限（`timeout_sec`）、メモリ上限（`max_memory_mb`）、およびワークスペース制限（`workspace_bytes`）を超過した場合は安全に子プロセスを強制停止（SIGTERM/SIGKILL）し、プロセスハングやメインセッションのクラッシュを防止しなければならない（MUST）。Windows 環境における資源監視は対象外（Non-Goal）とする。
+また、`workspace` 引数は 2×2 表（超幾何直接計算）では不使用であり、一般 $R \times C$ 表（$R > 2$ または $C > 2$）の Exact 計算時にのみ、R の公式仕様である 4 バイト単位（$\min(\lfloor \mathrm{workspace\_bytes}/4 \rfloor, 2147483647)$）に正確に換算して適用しなければならない（MUST）。R/FEXACT 固有の作業領域不足（`WORKSPACE_EXCEEDED`、例: `"FEXACT error 40. Out of workspace."`）とプロセス全体のメモリ割当失敗（`OUT_OF_MEMORY`）は厳密に区別して記録しなければならない（MUST）。プロセス監視ポーリング外での OS OOM Killer による瞬時終了は、終了ステータス（137 / 9）等により `OUT_OF_MEMORY` と推定するが、ミリ秒未満の物理メモリ追従は保証外とする。
 
 #### Scenario: 資源制限超過時の安全停止と状態コードの厳密区別
-- **WHEN** 正確検定が設定された実行時間上限（`timeout_sec`）を超過するか、プロセス物理メモリが `max_memory_mb` を超過するか、あるいは R/FEXACT からワークスペース不足エラーが返される
+- **WHEN** 正確検定が設定された実行時間上限（`timeout_sec`）を超過するか、プロセス物理メモリが `max_memory_mb` を超過するか、OS OOM Killer によりプロセスが強制終了されるか、あるいは R/FEXACT からワークスペース不足エラーが返される
 - **THEN** 子プロセスを安全に強制終了（またはエラー捕捉）し、Fisher検定結果を `null` とし、正確な状態コード（`TIMEOUT`, `OUT_OF_MEMORY`, `WORKSPACE_EXCEEDED`）を記録する。すでに完了している基本集計やカイ二乗検定の結果は保持して3点セット成果物を正常出力する
 
 #### Scenario: 資源制限時のMonte Carloフォールバック

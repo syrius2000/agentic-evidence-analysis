@@ -29,6 +29,8 @@
 - SAS `WEIGHT` 文における `ZEROS` オプション（度数0の未観測セルを自動生成する機能。初回は度数0行は集計セルから除外するSAS既定挙動に準拠）。
 - 一般 $R \times C$ の CMH統計量や順序スコアMH（拡張段階で個別起案）。
 - 既存の 3-way 分析パイプライン（M1〜M9, BIC, セル診断等）の改変や統合。
+- Windows 環境での子プロセス資源監視（v1 は Unix / macOS / Linux 専用を正式前提とし、Windows は Non-Goal）。
+- OS レベルの OOM Killer による瞬時 SIGKILL に対するミリ秒未満の物理メモリ追従（プロセス監視ポーリング外での即死は exit status 137 / 9 による推定対応とし、厳密な確定保証外）。
 
 ## Decisions
 
@@ -93,7 +95,7 @@
 ### 5. 資源保護と子プロセス監視アーキテクチャ
 - 大標本・大分割表での `fisher.test(..., simulate.p.value=FALSE)` は計算時間膨大化やCルーチン内の作業領域超過のリスクがある。
 - **制限単位と R API 換算規則**:
-  - `max_memory_mb`: OSプロセス全体の最大物理/仮想メモリ上限（MB単位）。親プロセスまたは監視スレッドが子プロセスのRSS/メモリフットプリントを監視し、超過を検知した場合は子プロセスを停止する。
+  - `max_memory_mb`: OSプロセス全体の最大RSS（常駐物理メモリ）上限（MB単位）。Unix `ps` コマンド（`ps -o rss= -p <pid>`）による子プロセスの定期ポーリング監視を行い、超過を検知した場合は子プロセスを停止する。
   - `workspace_bytes`: 正確検定計算用の内部作業バッファ上限（バイト単位、既定: 33,554,432 = 32MB、最大推奨: 1GB等）。
   - **適用範囲（2×2 vs 一般 $R \times C$ 表）**:
     - **2×2表**: R の `fisher.test()` では超幾何分布からの直接確率計算（`dhyper`/`phyper`）を行うため、`workspace` 引数は一切参照・使用されない。
@@ -106,11 +108,16 @@
       - 例: 既定値 32MB（`33,554,432` バイト）$\rightarrow \mathrm{workspace} = 8,388,608$（約8.38M units）
       - 例: 1GB（`1,073,741,824` バイト）$\rightarrow \mathrm{workspace} = 268,435,456$（約2.68億 units）
       - （参考: base R 既定の `workspace = 200,000` は $200,000 \times 4 = 800,000$ バイト $\approx 800$ KB 相当）。
+- **プラットフォーム前提とサンドボックス要件**:
+  - 子プロセス常時監視（PID および RSS）は Unix（macOS / Linux）の `/bin/ps` コマンドに依存するため、実行環境は Unix 前提（`.Platform$OS.type == "unix"`）とする。Windows 環境は正式 Non-Goal。
+  - IDE サンドボックスやコンテナ環境においてプロセス間情報参照が制限される場合、監視が正常に機能しないため、適切な実行権限（`BypassSandbox: true` 等）での運用を前提とする。
 - **停止ハンドリングと状態コードの厳密判別**:
-  - `TIMEOUT`: 実行時間が `timeout_sec`（既定300秒）を超過し、親プロセスから SIGTERM（応答なき場合 SIGKILL）を発行して強制停止した場合。
+  - `TIMEOUT`: 実行時間が `timeout_sec`（既定300秒）を超過し、親プロセスの監視ループから SIGTERM（応答なき場合 SIGKILL）を発行して強制停止した場合。
   - `WORKSPACE_EXCEEDED`: R の FEXACT ルーチンからワークスペース枯渇に関する固有エラー（`"FEXACT error 40. Out of workspace."`, `"ldWorkspace is not large enough"`, `"workspace is not large enough to calculate exact p-value"`, `"FEXACT error 7"` 等）が捕捉された場合。
-  - `OUT_OF_MEMORY`: プロセス監視による `max_memory_mb` 超過検知、OSのOOM Killer/SIGKILL終了、または R の一般的なメモリ割当失敗（`"cannot allocate vector of size"`, `"std::bad_alloc"` 等）が捕捉された場合。
+  - `OUT_OF_MEMORY`: プロセス監視による `max_memory_mb` 超過検知、OSのOOM Killer/SIGKILL終了（exit status 137 / 9）、または R の一般的なメモリ割当失敗（`"cannot allocate vector of size"`, `"std::bad_alloc"` 等）が捕捉された場合。
+  - `SUBPROCESS_FAILURE`: 上記以外のプロセス異常終了。
   - `NUMERICAL_FAILURE`: その他の数値計算不能・特異行列・アンダーフロー等。
+  - *【OOM Killer 即死時の保証限界】*: 子プロセスが急激なメモリ確保により OS OOM Killer に瞬時に落とされた場合、ポーリング周期の合間にプロセスが消滅することがある。この場合、ログ上の割当エラー文字列または exit status 137（128 + 9 = SIGKILL）により `OUT_OF_MEMORY` と推定するが、ミリ秒未満の物理メモリ追従は保証外とする。
 - **部分成果物の保護**:
   - 資源停止が発生した場合でも、すでに完了している度数集計、欠損要約、カイ二乗検定結果は一切破棄せず保持する。
   - Fisher検定値のみを `null` とし、該当表の `fisher.status` に上記状態コードを記録した上で3点セット成果物を正常出力する。
@@ -119,8 +126,9 @@
 
 ### 6. SAS仕様Monte Carlo要約とアルゴリズム固定
 - **標本化アルゴリズムの固定（`mc_sampling_algorithm`）**:
-  - 設定項目 `mc_sampling_algorithm` を必須項目とし、`"patefield"` または `"awb"` を指定する。
-  - **初回既定値**: `"patefield"`（base R の `r2dtable` / Patefield (1981) アルゴリズムに準拠し、決定論的再現性と実行速度を確保）。
+  - 設定項目 `mc_sampling_algorithm` を必須項目とし、`"patefield"` または `"awb"` を定義する。
+  - **v1 実装範囲**: `"patefield"` のみ実装（base R の `r2dtable` / Patefield (1981) アルゴリズムに準拠し、決定論的再現性と実行速度を確保）。
+  - **AWB拒否**: `"awb"` はスキーマ予約項目とし、v1 ではサイレントな patefield フォールバックを禁止して設定時に明示的バリデーションエラー（設定拒否）とする。
   - 実行時に適用されたアルゴリズム名（`"patefield"`）、固定Seed（`mc_seed`）、反復回数（`mc_replications`）を結果JSONおよび `manifest.json` に明示記録する。同一アルゴリズム・同一Seedのもとでのみ表列生成と極端表数 $M$ の完全再現性を保証する。
 - **極端表判定**: $P(t) \le P(t_{obs})$。
 - **専用要約関数 `sas_mc_summary(M, B, alpha)`**:
