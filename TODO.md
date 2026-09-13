@@ -18,7 +18,10 @@
 - [x] **セル順位の再標本化安定性評価（集計度数CRR）**: 3次元集計表に対し、基準モデル（M1/M5）・指標（`abs_log_oe`）・上位 K を固定し、多項再標本化と各反復での閉形式モデル再推定を実施。元データの `REGULAR` 適格セル集合に条件付けた上位 K 包含率、順位分布、MCSE、適合成功率（`valid_rate`）を `evidence_results.json` に保存（[条件付きセル順位再現性の実装](.agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R)、[意味論とセル順位安定性の整備計画](docs/Archives/20260912_183500_002/sources/semantic_governance_and_ranking_stability_plan_001_0907.md) 準拠）。個票ブートストラップ、順位相関、Poisson再標本化、複数設定の一括評価は未実装。
 
 ## 次期開発予定（合意事項）
-- [ ] **SAS PROC FREQ 互換スキルの開発計画**: 集計済み度数データを必須入力とし、度数・割合・クロス集計・欠損処理の数値互換を担保。
-- [ ] **SAS PROC MEANS 互換スキルの開発計画**: FREQ 互換とは別スキルとして計画。要約統計量、欠損・重みの扱いを確定。
+- [x] **SAS PROC FREQ 互換スキルの開発計画**: 集計済み度数データを必須入力とし、度数・割合・クロス集計・欠損処理の数値互換を担保（[計画書](docs/Artifacts/implementation_plan_017_0913.md) 確定済）。
+- [x] **SAS PROC MEANS 互換スキルの開発計画**: FREQ 互換とは別スキルとして計画。要約統計量、欠損・重みの扱いを確定（[計画書](docs/Artifacts/implementation_plan_017_0913.md) 確定済）。
+- [ ] **OpenSpec への展開と実装**: 
+  - [x] `add-sas-proc-means-skill`: 要件定義、実装、数値パリティテスト検証、OpenSpec delta spec 同期、アーカイブ完了。
+  - [ ] `add-sas-proc-freq-skill`: Change 起案・要件定義・実装・ベンチマーク検証（次期対応）。
 - [x] **統計仕様の検証**: 9 モデル、新 4 軸セル診断、Dirichlet 事後、Titanic・HairEyeColor・人工表の検証完了。旧 Evidence Score（$r^2 - k\ln N$）は監査専用列に隔離。
 - [x] **統計文書の正本化と数理厳密化**: `docs/reference/` 配下を新 4 軸セル診断、明示式 BIC、大標本 Dual-Filter、多項 Dirichlet 推論（ETI）、バイアス低減 Bergsma 補正、一次情報（DOI付き）で全面刷新。

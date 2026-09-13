@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/sas-proc-means/analysis_config.schema.json",
+  "title": "sas-proc-means analysis_config.json",
+  "description": "Configuration schema for SAS PROC MEANS compatible analysis in R.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "analysis_kind",
+    "input",
+    "output_dir",
+    "run_id",
+    "analysis_variables"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "sas-summary-config-v1",
+      "description": "Schema version identifier."
+    },
+    "analysis_kind": {
+      "type": "string",
+      "const": "sas_proc_means",
+      "description": "Analysis kind identifier."
+    },
+    "input": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to the input CSV file."
+    },
+    "output_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Output root directory. Runner isolates output into run_<first 16 chars of run_id>/."
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique run identifier."
+    },
+    "analysis_variables": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "description": "List of numeric analysis variables."
+    },
+    "class_variables": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": [],
+      "description": "List of categorical/class grouping variables."
+    },
+    "freq_variable": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Variable representing observation frequency (integer count, truncated)."
+    },
+    "weight_variable": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Variable representing observation relative weight."
+    },
+    "vardef": {
+      "type": "string",
+      "enum": ["DF", "N", "WDF", "WEIGHT"],
+      "default": "DF",
+      "description": "Variance divisor definition (DF=n-1, N=n, WDF=W-1, WEIGHT=W)."
+    },
+    "qntldef": {
+      "type": "integer",
+      "enum": [1, 2, 3, 4, 5],
+      "default": 5,
+      "description": "Quantile definition 1-5 (SAS default 5 = R type 2)."
+    },
+    "exclnpwgt": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, exclude non-positive weights (<=0) from observation count N as well."
+    },
+    "class_missing": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, treat missing values in CLASS variables as valid grouping categories (MISSING option)."
+    },
+    "alpha": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "exclusiveMaximum": 1,
+      "default": 0.05,
+      "description": "Significance level for mean confidence intervals (1 - alpha)."
+    },
+    "statistics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "N", "NMISS", "SUM", "SUMWGT", "MEAN", "MIN", "MAX",
+        "RANGE", "CSS", "USS", "VAR", "STD", "CV", "STDERR",
+        "LCLM", "UCLM", "SKEWNESS", "KURTOSIS", "MEDIAN",
+        "Q1", "Q3", "QRANGE", "P1", "P5", "P10", "P90", "P95", "P99"
+      ],
+      "description": "List of statistics to compute and report."
+    }
+  },
+  "additionalProperties": false
+}

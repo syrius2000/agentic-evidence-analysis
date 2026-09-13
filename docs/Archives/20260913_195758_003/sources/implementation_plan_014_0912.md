@@ -87,7 +87,7 @@ change_name: add-conditional-rank-reproducibility
 ## 3. 入出力仕様とスキーマ契約
 
 ### 3.1 入力設定 (`analysis_config.json`) の拡張仕様
-正本スキーマ [`.agents/skills/vcd-bayesian-evidence-analysis/references/analysis_config.schema.json`](.agents/skills/vcd-bayesian-evidence-analysis/references/analysis_config.schema.json) および R 側検証 [`.agents/skills/vcd-bayesian-evidence-analysis/templates/config_validation.R`](.agents/skills/vcd-bayesian-evidence-analysis/templates/config_validation.R) に以下を追加：
+正本スキーマ [`.agents/skills/vcd-bayesian-evidence-analysis/references/analysis_config.schema.json`](../../../../.agents/skills/vcd-bayesian-evidence-analysis/references/analysis_config.schema.json) および R 側検証 [`.agents/skills/vcd-bayesian-evidence-analysis/templates/config_validation.R`](../../../../.agents/skills/vcd-bayesian-evidence-analysis/templates/config_validation.R) に以下を追加：
 
 ```json
 {
