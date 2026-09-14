@@ -62,7 +62,7 @@ graph TD
 | :---: | :--- | :--- | :--- |
 | **1** | **全体構造の階層比較**<br>(Global Model Hierarchy) | 9 階層対数線形モデル（M1〜M9）<br>総度数 $N$ 基準の明示式 BIC | $\mathrm{BIC}_{\mathrm{explicit}} = -2 \ln L + p \ln N$<br>ポアソン完全対数尤度に基づき、過大・過小ペナルティを排した決定論的モデル選択 |
 | **2** | **新 4 軸セル診断フレームワーク**<br>(Four-Axis Cell Diagnostics) | ・Effect（効果量）<br>・Evidence（証拠強度）<br>・Influence（影響度）<br>・Stability（数値安定性） | ・Effect: 標本倍率不変 $\log(O/E)$、標準化差 $e_i^{(\mathrm{global})}$、率差 $d_i$<br>・Evidence: 標本数比例 Rao Score $T_i^{\mathrm{score}}$、対数 P 値 $\ln(P)$<br>・Influence: ハット行列 Leverage $h_{ii}$（Pregibon 1981）<br>・Stability: $O_i=0$、$E_i<5.0$、$h_{ii} \ge 0.80$ の論理和判定（`QUARANTINED` 隔離） |
-| **3** | **大標本 Dual-Filter 原則**<br>($N > 2,000$) | 2 段階スクリーニング | ・Step 1 (Effect): $|\log(O/E)| \ge 0.50$ で実質的乖離をスクリーニング<br>・Step 2 (Evidence): $T_i^{\mathrm{score}} \ge 3.84$（未調整の探索的足切り［FWER/FDR未保証］）で標本誤差・不確実セルを除外 |
+| **3** | **大標本 Dual-Filter 原則**<br>($N > 2,000$) | 2 段階スクリーニング | ・Step 1 (Effect): $\lvert\log(O/E)\rvert \ge 0.50$ で実質的乖離をスクリーニング<br>・Step 2 (Evidence): $T_i^{\mathrm{score}} \ge 3.84$（未調整の探索的足切り［FWER/FDR未保証］）で標本誤差・不確実セルを除外 |
 | **4** | **多項 Dirichlet 事後推論と不確実性評価** | 共役事前分布による事後標本化<br>事後予測チェック（PPC） | ・部分集合分子・分母による条件付き割合と 95% 等裾信用区間（ETI）<br>・全セル同時事後標本による層間差 $\Delta \theta$ の事後推論<br>・Freeman-Tukey 統計量による事後予測 P 値（PPP-value） |
 | **5** | **標本変動下における条件付き順位再現性**<br>(Conditional Rank Reproducibility: CRR) | 多項再標本化と各反復でのモデル再適合（M1/M5）<br>運用品質ゲート（有効反復率 $\ge 0.95$） | ・元データ `REGULAR` 適格セル集合 $\mathcal{C}_{\mathrm{reg}}$ に限定した条件付き Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$ と MCSE<br>・固定期待度数の誤謬を排除した反復閉形式 MLE 推定<br>・階数落ち・特異分割表に対する安全な解釈保留（HOLD）契約 |
 
@@ -140,11 +140,11 @@ Rscript .agents/shared/inspect_data.R examples/titanic.csv \
   --out-dir output/titanic/run_01/
 
 # Pass 1: 3次元統計計算（Pass 0 で作成した設定を指定）
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analysis.R \
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
   --config output/titanic/run_01/analysis_config.json
 
 # Pass 3: ダッシュボード生成
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/render_report.R \
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R \
   output/titanic/run_01/run_<run_idの先頭16文字>/
 ```
 

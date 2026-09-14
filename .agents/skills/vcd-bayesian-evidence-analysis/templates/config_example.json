@@ -1,0 +1,16 @@
+{
+  "input": "examples/titanic.csv",
+  "vars": ["Class", "Sex", "Survived"],
+  "freq": "Freq",
+  "response_var": "Survived",
+  "output_dir": "output/titanic",
+  "run_id": "titanic_sample_run",
+  "dataset_name": "Titanic",
+  "top_k": 10,
+  "large_n_threshold": 2000,
+  "base_model": "M1",
+  "pass0_provenance": {
+    "inspection_file": "output/titanic_inspection/inspection_results.json",
+    "input_sha256": "3a01e4a6eefd30ff0498b3c8f85f8faeeabecb2a4bf74dd77f23c965b32378f4"
+  }
+}

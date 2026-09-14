@@ -37,7 +37,7 @@ author: Codex (GPT-6 Astra)
 
 > $vcd-bayesian-evidence-analysis を使い、examples/titanic.csvをClass × Sex × Survivedで分析してください。Ageは合算し、目的変数はSurvivedとします。Pass 0で前提を確認し、新しいrun IDで計算、日本語考察、品質確認、数値根拠一覧、HTMLまで作成してください。旧経路ではなく新しい3次元経路を使ってください。
 
-[スキル本体](.agents/skills/vcd-bayesian-evidence-analysis/SKILL.md)が入口。[設定例](.agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/config_example.json)を実際の検分ハッシュ・出力先に合わせて使用する。RのコマンドだけではAI考察は自動生成されないため、スキルを読むAIがPass 2/2.5を担当する。
+[スキル本体](.agents/skills/vcd-bayesian-evidence-analysis/SKILL.md)が入口。[設定例](.agents/skills/vcd-bayesian-evidence-analysis/templates/config_example.json)を実際の検分ハッシュ・出力先に合わせて使用する。RのコマンドだけではAI考察は自動生成されないため、スキルを読むAIがPass 2/2.5を担当する。
 
 新しい環境ではRと必要パッケージを用意する。生成済みoutputがGitに含まれなくても、Titanic元CSV、エンジン、設定例、検証用生成スクリプトはリポジトリにある。HairEyeColorはR標準データから生成できる。実行時刻やrun IDまで同一になることは求めない。
 

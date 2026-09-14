@@ -20,17 +20,23 @@ repo_root <- find_agent_repo()
 base::source(base::file.path(repo_root, ".agents", "shared", "dependency_check.R"))
 base::source(base::file.path(repo_root, ".agents", "shared", "run_scope.R"))
 
-args <- base::commandArgs(trailingOnly = TRUE)
-mode <- if ("--profile" %in% args) "profile" else "render"
+source_only <- isTRUE(base::getOption("vcd_categorical.source_only", FALSE))
 
-# 実行経路に応じた依存パッケージ検査
-if (mode == "profile") {
-  check_r_dependencies(c("jsonlite", "digest"), context = "vcd-categorical-analysis プロファイル生成 (--profile)")
+if (!source_only) {
+  args <- base::commandArgs(trailingOnly = TRUE)
+  mode <- if ("--profile" %in% args) "profile" else "render"
+
+  # 実行経路に応じた依存パッケージ検査
+  if (mode == "profile") {
+    check_r_dependencies(c("jsonlite", "digest"), context = "vcd-categorical-analysis プロファイル生成 (--profile)")
+  } else {
+    check_r_dependencies(
+      c("vcd", "gt", "DT", "htmlwidgets", "ggplot2", "jsonlite", "digest"),
+      context = "vcd-categorical-analysis レポート描画 (--render)"
+    )
+  }
 } else {
-  check_r_dependencies(
-    c("vcd", "gt", "DT", "htmlwidgets", "ggplot2", "jsonlite", "digest"),
-    context = "vcd-categorical-analysis レポート描画 (--render)"
-  )
+  check_r_dependencies(c("jsonlite", "digest"), context = "vcd-categorical-analysis source_only ロジック読込")
 }
 
 # Extract argument value helper
@@ -44,15 +50,16 @@ get_arg_val <- function(arg_name, default = NULL) {
   return(default)
 }
 
-config_path <- get_arg_val("--config")
+if (!source_only) {
+  config_path <- get_arg_val("--config")
 
-# デフォルト値の設定
-data_path <- NULL
-vars_arg <- "Hair,Eye,Sex"
-freq_col <- "Freq"
-data_label <- "data"
-output_dir <- "./skill_out/vcd_categorical/"
-run_id_raw <- get_arg_val("--run-id")
+  # デフォルト値の設定
+  data_path <- NULL
+  vars_arg <- "Hair,Eye,Sex"
+  freq_col <- "Freq"
+  data_label <- "data"
+  output_dir <- "./skill_out/vcd_categorical/"
+  run_id_raw <- get_arg_val("--run-id")
 
 # JSON 設定の読み込み (Pass 0 連携用)
 if (!base::is.null(config_path) && base::file.exists(config_path)) {
@@ -364,6 +371,7 @@ if (base::is.null(resumed_profile_run)) {
       run_state = "allocated"
     )
   )
+}
 }
 
 # ============================================================
@@ -869,37 +877,39 @@ generate_categorical_results_json <- function(df, vars, freq_col, output_dir, re
 # ============================================================
 # Main dispatcher
 # ============================================================
-if (mode == "render" && base::is.null(resumed_profile_run)) {
-  update_run_state(output_dir, "render_in_progress")
-}
-
-# 1. Load data and auto-aggregate if needed
-df <- load_input_data()
-
-if (mode == "profile") {
-  generate_profile(df, vars, freq_col, output_dir, config = NULL, out_filename = "data_profile.json")
-  update_run_state(output_dir, "profile_complete")
-} else {
-  raw_config <- if (!base::is.null(config_path) && base::file.exists(config_path)) {
-    jsonlite::read_json(config_path)
-  } else {
-    base::list()
+if (!source_only) {
+  if (mode == "render" && base::is.null(resumed_profile_run)) {
+    update_run_state(output_dir, "render_in_progress")
   }
-  config <- validate_config(raw_config)
 
-  # Pass 2: Apply aggregation first, then generate post-profile from aggregated data
-  df_agg <- apply_aggregation(df, vars, freq_col, config)
-  generate_profile(df_agg, vars, freq_col, output_dir, config = NULL, out_filename = "data_profile_post.json")
+  # 1. Load data and auto-aggregate if needed
+  df <- load_input_data()
 
-  # Generate data, tables, plots (generate_data applies aggregation internally)
-  res <- generate_data(df, vars, freq_col, output_dir, config, data_label)
-  generate_gt_matrix(res$res_combined, vars, freq_col, output_dir, config, data_label)
-  generate_dt_table(res$res_combined, vars, output_dir, config, data_label)
-  generate_plots(res$tab, vars, output_dir, config, data_label)
+  if (mode == "profile") {
+    generate_profile(df, vars, freq_col, output_dir, config = NULL, out_filename = "data_profile.json")
+    update_run_state(output_dir, "profile_complete")
+  } else {
+    raw_config <- if (!base::is.null(config_path) && base::file.exists(config_path)) {
+      jsonlite::read_json(config_path)
+    } else {
+      base::list()
+    }
+    config <- validate_config(raw_config)
 
-  # 追加: ダッシュボード連携用 JSON
-  generate_categorical_results_json(df_agg, vars, freq_col, output_dir, res$res_combined, data_label)
+    # Pass 2: Apply aggregation first, then generate post-profile from aggregated data
+    df_agg <- apply_aggregation(df, vars, freq_col, config)
+    generate_profile(df_agg, vars, freq_col, output_dir, config = NULL, out_filename = "data_profile_post.json")
 
-  update_run_state(output_dir, "render_complete")
-  base::message("[DONE] All outputs generated for: ", data_label)
+    # Generate data, tables, plots (generate_data applies aggregation internally)
+    res <- generate_data(df, vars, freq_col, output_dir, config, data_label)
+    generate_gt_matrix(res$res_combined, vars, freq_col, output_dir, config, data_label)
+    generate_dt_table(res$res_combined, vars, output_dir, config, data_label)
+    generate_plots(res$tab, vars, output_dir, config, data_label)
+
+    # 追加: ダッシュボード連携用 JSON
+    generate_categorical_results_json(df_agg, vars, freq_col, output_dir, res$res_combined, data_label)
+
+    update_run_state(output_dir, "render_complete")
+    base::message("[DONE] All outputs generated for: ", data_label)
+  }
 }

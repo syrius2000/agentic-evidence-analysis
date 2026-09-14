@@ -4,7 +4,7 @@
 # 実行: Rscript tests/test_questionnaire_batch_smoke.R
 #
 # 前提: tests/sample_survey.csv, tests/question_config_test.csv が存在すること
-# 出力先: tests/skill_out_smoke/ (テスト後も残すので手動削除可)
+# 出力先: 一時ディレクトリ (終了後自動削除)
 
 # ---- パス解決 ----
 ca   <- commandArgs(trailingOnly = FALSE)
@@ -26,11 +26,13 @@ suppressPackageStartupMessages({
   library(rmarkdown)
 })
 
-data_path    <- file.path(root, "tests", "sample_survey.csv")
-config_path  <- file.path(root, "tests", "question_config_test.csv")
-runner_path  <- file.path(root, ".agents", "skills", "questionnaire-batch-analysis",
-                          "templates", "batch_runner.R")
-out_dir      <- file.path(root, "tests", "skill_out_smoke")
+run_test <- function() {
+  data_path    <- file.path(root, "tests", "sample_survey.csv")
+  config_path  <- file.path(root, "tests", "question_config_test.csv")
+  runner_path  <- file.path(root, ".agents", "skills", "questionnaire-batch-analysis",
+                            "templates", "batch_runner.R")
+  out_dir      <- file.path(tempdir(), paste0("skill_out_smoke_", format(Sys.time(), "%Y%m%d_%H%M%S")))
+  on.exit(unlink(out_dir, recursive = TRUE, force = TRUE), add = TRUE)
 
 stopifnot(file.exists(data_path))
 stopifnot(file.exists(config_path))
@@ -138,6 +140,10 @@ if (file.exists(summary_csv)) {
   print(s[, c("question_id","n_total","n_used","p_value","max_abs_pearson_res","residual_plot_mode","status")])
 }
 
-cat("\n===============================\n")
-cat(sprintf("Results: %d passed, %d failed\n", pass, fail))
-if (fail > 0L) quit(status = 1L) else quit(status = 0L)
+  cat("\n===============================\n")
+  cat(sprintf("Results: %d passed, %d failed\n", pass, fail))
+  return(fail)
+}
+
+fail_count <- run_test()
+if (fail_count > 0L) quit(status = 1L) else quit(status = 0L)

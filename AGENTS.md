@@ -17,7 +17,7 @@ The reader has ADHD. Shape every response so it can be acted on:
 
 Exceptions: explain fully when asked to explain. Confirm before destructive actions. After three failed fixes, stop and name the doubtful assumption. If the request is ambiguous, ask one short question.
 
-# AGENTS.md — Evidence-Driven Statistical Analysis Guidelines
+## AGENTS.md — Evidence-Driven Statistical Analysis Guidelines
 
 This file provides AI agents with the foundational rules and "Iron Laws" for executing statistical analysis workflows in this repository.
 

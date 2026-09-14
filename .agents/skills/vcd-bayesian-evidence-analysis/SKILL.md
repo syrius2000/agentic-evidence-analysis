@@ -36,21 +36,21 @@ metadata:
 Rscript .agents/shared/inspect_data.R examples/titanic.csv --out-dir output/my_inspection
 ```
 
-検分JSONは列・水準・行数・欠測数・入力SHA-256を持つ。`input_sha256`が正式キーであり、`file_sha256`は旧成果物との移行互換用aliasである。両方がある場合は同値でなければならず、欠損・形式不正・不一致は検証エラーになる。行数は総度数と異なる。度数集約の補足検分は次のvalidate-onlyで確認する。設定は [例](templates/three_way/config_example.json) と [schema](templates/three_way/analysis_config.schema.json) に基づいて実データに合わせて作る。入力・検分・出力の相対パスはリポジトリルート基準。`consultation.rationale`に合意した理由と限界を記載し、`input_sha256`は検分からコピーする。
+検分JSONは列・水準・行数・欠測数・入力SHA-256を持つ。`input_sha256`が正式キーであり、`file_sha256`は旧成果物との移行互換用aliasである。両方がある場合は同値でなければならず、欠損・形式不正・不一致は検証エラーになる。行数は総度数と異なる。度数集約の補足検分は次のvalidate-onlyで確認する。設定は [設定例](templates/config_example.json) に基づいて実データに合わせて作成する。入力・検分・出力の相対パスはリポジトリルート基準。`pass0_provenance`に検分ファイルパスと入力SHA-256を記録する。
 
 ```bash
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analysis.R --config analysis_config.json --validate-only
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R --config analysis_config.json --validate-only
 ```
 
-この操作はモデル適合をしない。検証成功・総度数・集約・ゼロ扱いを確認してからPass 1へ進む。未知抽出条件はエラーとなり、全件へのフォールバックはしない。
+この操作はモデル適合をしない。検証成功・総度数・集約・ゼロ扱いを確認してからPass 1へ進む。
 
 ## Pass 1：計算
 
 ```bash
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analysis.R --config analysis_config.json
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R --config analysis_config.json
 ```
 
-出力は設定の `output_dir/run_<run_id先頭16文字>/`。同じ出力先の再使用を拒否する。`evidence_results.json`のschemaは `three-way-results-v1`。計算済みは `COMPUTED`、推定保留を含む場合 `PARTIAL_HOLD`（終了2）、校正・照合失敗は `CHECK_FAILED`（終了1）。部分保留を全体成功へ言い換えない。独立参照照合を実施する検証入口は `tests/statistical_foundations/run_validation.R --config ...`。
+出力は設定の `output_dir/run_<run_id先頭16文字>/`。同じ出力先の再使用を拒否する。`evidence_results.json`のschemaは `three-way-results-v1`。計算済みは `COMPUTED`、推定保留を含む場合 `PARTIAL_HOLD`（終了2）、校正・照合失敗は `CHECK_FAILED`（終了1）。部分保留を全体成功へ言い換えない。
 
 ## Pass 2：結果を読んで日本語で考察する
 
@@ -64,14 +64,18 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analys
 
 ## Pass 2.5：数値と解釈の確認
 
-`quality_check.md` に計算状態、独立参照の実施有無、校正、数値主張、P値単独判定の排除、解釈保留・限界の説明を記録する。`narrative_claims.json` に結果ファイルのSHA-256、`status: "REVIEWED"`、数値主張の `pointer` と `value` を配列 `claims` として保存する。pointerはJSON Pointer（配列は0始まり）。例: `/models/M8/deviance`。参照数値を説明文から切り離さず、本文にも対象と参照箇所を記載する。
+`quality_check.md` に計算状態、校正、数値主張、P値単独判定の排除、解釈保留・限界の説明を記録する。`narrative_claims.json` に結果ファイルのSHA-256、`status: "REVIEWED"`、数値主張の `pointer` と `value` を配列 `claims` として保存する。pointerはJSON Pointer（配列は0始まり）。例: `/models/M8/deviance`。参照数値を説明文から切り離さず、本文にも対象と参照箇所を記載する。
+
+```bash
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/claims_gate.R --run-dir output/my_analysis/run_my_run
+```
 
 この自動照合は登録した数値の一致だけを確認する。考察全文の統計的な正しさ・未登録の数値・妥当な因果解釈まで機械的に保証しない。実際に全文を確認してからREVIEWEDとする。
 
 ## Pass 3：HTMLと図表を確認する
 
 ```bash
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/render_report.R output/my_analysis/run_my_run
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R output/my_analysis/run_my_run
 ```
 
 必要なPass 2/2.5成果がない場合、数値・結果ハッシュが違う場合は生成を停止する。`dashboard.html`にはモデル比較、3番目の変数で層別したヒートマップ、全セル表、条件付き割合と区間、条件群間差、事前感度、考察と限界を表示する。列名・水準・日本語・色尺度・保留が読めることを確認する。レポート内に旧Scoreの自動判定を戻さない。

@@ -44,9 +44,13 @@ if (!file.exists(analysis_path)) {
 }
 
 # Source into a local environment to avoid polluting global
+old_source_only <- getOption("vcd_categorical.source_only")
+options(vcd_categorical.source_only = TRUE)
+on.exit(options(vcd_categorical.source_only = old_source_only), add = TRUE)
+
 local_env <- new.env(parent = globalenv())
-local_env$args <- character(0)  # suppress main dispatcher execution
 suppressMessages(source(analysis_path, local = local_env))
+options(vcd_categorical.source_only = old_source_only)
 
 validate_config <- local_env$validate_config
 apply_aggregation <- local_env$apply_aggregation

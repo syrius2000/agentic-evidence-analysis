@@ -64,7 +64,8 @@ parse_args <- function(args) {
     supersedes_run = NULL,
     supersede_reason = NULL,
     show_help = FALSE,
-    show_help_stats = FALSE
+    show_help_stats = FALSE,
+    validate_only = FALSE
   )
 
   i <- 1L
@@ -141,6 +142,9 @@ parse_args <- function(args) {
       "--help_stats" = {
         result$show_help_stats <- TRUE
       },
+      "--validate-only" = {
+        result$validate_only <- TRUE
+      },
       {
         if (is.null(result$input) && !grepl("^--", args[i])) {
           result$input <- args[i]
@@ -158,6 +162,7 @@ if (cfg$show_help) {
   cat("\nUsage: Rscript analysis.R [OPTIONS]\n\n")
   cat("Options:\n")
   cat("  --config <path>             Pass 0で確定したanalysis_config.json（必須）\n")
+  cat("  --validate-only             設定ファイルの妥当性検証のみ実行して終了\n")
   cat("  --input <file>              設定作成時のみ使用。Pass 1では--configの値を使用\n")
   cat("  --output_dir <dir>          出力ディレクトリ（既定: ./skill_out/vcd_bayesian）\n")
   cat("  --run-id <slug>|auto        任意。指定時は <dir>/run_<slug先頭16文字>/ に隔離（auto=JST時刻）\n")
@@ -204,6 +209,10 @@ if (!is.null(cfg$config_path) && nzchar(trimws(cfg$config_path))) {
   }
   for (key in names(raw_config)) {
     cfg[[key]] <- raw_config[[key]]
+  }
+  if (isTRUE(cfg$validate_only)) {
+    message("VALID: analysis_config.json の検証に成功しました。")
+    quit(save = "no", status = 0)
   }
 } else if (is.null(cfg$input)) {
   stop("[ERROR] Pass 1 には --config <Pass 0で確定したanalysis_config.json> が必要です。", call. = FALSE)

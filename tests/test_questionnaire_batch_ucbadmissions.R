@@ -26,9 +26,12 @@ runner_path <- file.path(
   "templates",
   "batch_runner.R"
 )
-default_out_dir <- file.path(root, "skill_out", "questionnaire")
-tmp_dir <- file.path(tempdir(), "questionnaire_ucbadmissions")
-dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+
+run_test <- function() {
+  default_out_dir <- file.path(root, "skill_out", "questionnaire")
+  tmp_dir <- file.path(tempdir(), "questionnaire_ucbadmissions")
+  dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
+
 
 data_path <- file.path(tmp_dir, "ucbadmissions_expanded.csv")
 config_path <- file.path(tmp_dir, "question_config_ucb.csv")
@@ -44,9 +47,68 @@ config_lines <- c(
 )
 writeLines(config_lines, config_path, useBytes = TRUE)
 
-if (dir.exists(default_out_dir)) {
-  unlink(default_out_dir, recursive = TRUE, force = TRUE)
-}
+  # 既存成果物の安全な保護（退避・復元メカニズム）
+  safe_backup_dir <- function(src_dir) {
+    if (!dir.exists(src_dir)) return(NULL)
+    parent_backup <- file.path(dirname(src_dir), paste0(".backup_q_holder_", format(Sys.time(), "%Y%m%d_%H%M%S_%OS3")))
+    dir.create(parent_backup, recursive = TRUE, showWarnings = FALSE)
+    if (!dir.exists(parent_backup)) {
+      stop(sprintf("[CRITICAL] バックアップ親ディレクトリの作成に失敗: %s", parent_backup))
+    }
+    target_backup <- file.path(parent_backup, basename(src_dir))
+    renamed <- tryCatch(file.rename(src_dir, target_backup), error = function(e) FALSE)
+    if (renamed && dir.exists(target_backup) && !dir.exists(src_dir)) {
+      return(list(parent = parent_backup, target = target_backup))
+    }
+    copied <- tryCatch(file.copy(src_dir, parent_backup, recursive = TRUE), error = function(e) FALSE)
+    if (isTRUE(copied) && dir.exists(target_backup)) {
+      src_files <- list.files(src_dir, recursive = TRUE, all.files = TRUE)
+      bak_files <- list.files(target_backup, recursive = TRUE, all.files = TRUE)
+      if (length(src_files) == length(bak_files)) {
+        unlink(src_dir, recursive = TRUE, force = TRUE)
+        return(list(parent = parent_backup, target = target_backup))
+      }
+    }
+    unlink(parent_backup, recursive = TRUE, force = TRUE)
+    stop(sprintf("[CRITICAL] 既存成果物の安全な退避に失敗しました: %s。元データを保護するためテストを中止します。", src_dir))
+  }
+
+  safe_restore_dir <- function(backup_info, dest_dir) {
+    if (is.null(backup_info)) {
+      if (dir.exists(dest_dir)) unlink(dest_dir, recursive = TRUE, force = TRUE)
+      return(TRUE)
+    }
+    target_backup <- backup_info$target
+    parent_backup <- backup_info$parent
+    if (!dir.exists(target_backup)) {
+      warning(sprintf("[CRITICAL] バックアップディレクトリが見つかりません: %s", target_backup))
+      return(FALSE)
+    }
+    if (dir.exists(dest_dir)) {
+      unlink(dest_dir, recursive = TRUE, force = TRUE)
+    }
+    restored <- tryCatch(file.rename(target_backup, dest_dir), error = function(e) FALSE)
+    if (restored && dir.exists(dest_dir)) {
+      unlink(parent_backup, recursive = TRUE, force = TRUE)
+      return(TRUE)
+    }
+    copied <- tryCatch(file.copy(target_backup, dirname(dest_dir), recursive = TRUE), error = function(e) FALSE)
+    if (isTRUE(copied) && dir.exists(dest_dir)) {
+      unlink(parent_backup, recursive = TRUE, force = TRUE)
+      return(TRUE)
+    }
+    warning(sprintf(
+      "[CRITICAL] 成果物の復元に失敗しました。\n元データはバックアップとして保持されています: %s\n手動で %s へ移動してください。",
+      target_backup, dest_dir
+    ))
+    return(FALSE)
+  }
+
+  backup_info <- safe_backup_dir(default_out_dir)
+
+  on.exit({
+    safe_restore_dir(backup_info, default_out_dir)
+  }, add = TRUE)
 
 cmd <- sprintf(
   'cd "%s" && Rscript --vanilla "%s" --data "%s" --question-config "%s"',
@@ -127,6 +189,10 @@ if (file.exists(summary_csv)) {
   print(s[, c("question_id", "status", "error_message", "report_path")])
 }
 
-cat("\n===============================\n")
-cat(sprintf("Results: %d passed, %d failed\n", pass, fail))
-if (fail > 0L) quit(status = 1L) else quit(status = 0L)
+  cat("\n===============================\n")
+  cat(sprintf("Results: %d passed, %d failed\n", pass, fail))
+  return(fail)
+}
+
+fail_count <- run_test()
+if (fail_count > 0L) quit(status = 1L) else quit(status = 0L)
