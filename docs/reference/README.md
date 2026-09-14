@@ -32,6 +32,7 @@ author: Codex (GPT-5) / Antigravity
 | **4** | [探索的分析設計と実務ワークフロー](advanced_analysis.md) | 4-Pass 推奨思考プロセス、大標本 Dual-Filter スクリーニング手順、アソシエーションルール（ARM）や疎な表との境界 |
 | **5** | [分析スキルの責務境界](skill_responsibilities.md) | 各スキル（Pass 0, vcd-bayesian 3次元正本, vcd-categorical 2次元, バッチ）の役割分担とインターフェース契約、CRRの解釈境界 |
 | **補助** | [DB由来集計表の分析入力契約](DB_Best_Practices.md) | DB由来集計表のデータ型・文字コード・時刻意味論、総度数 $N$ 完全一致検証、サンプリングゼロの保持。DB/SQL 実装の正本は対象外。 |
+| **運用** | [エージェント出力スタイル（ADHD配慮）](output_style_adhd.md) | 認知負荷を抑え、アクションに直結させるための出力・コミュニケーションスタイル規約 |
 
 ---
 
