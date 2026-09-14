@@ -15,8 +15,10 @@ if (!file.exists(file.path(root, ".agents")) && identical(basename(root), "tests
 }
 
 source(file.path(root, ".agents", "shared", "dependency_check.R"))
-check_r_dependencies(c("datasets"), context = "テスト: test_questionnaire_batch_ucbadmissions.R")
+check_r_dependencies(c("datasets", "digest"), context = "テスト: test_questionnaire_batch_ucbadmissions.R")
 suppressPackageStartupMessages(library(datasets))
+
+source(file.path(root, ".agents", "skills", "questionnaire-batch-analysis", "tests", "helpers_backup_recovery.R"))
 
 runner_path <- file.path(
   root,
@@ -32,77 +34,19 @@ run_test <- function() {
   tmp_dir <- file.path(tempdir(), "questionnaire_ucbadmissions")
   dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
 
+  data_path <- file.path(tmp_dir, "ucbadmissions_expanded.csv")
+  config_path <- file.path(tmp_dir, "question_config_ucb.csv")
 
-data_path <- file.path(tmp_dir, "ucbadmissions_expanded.csv")
-config_path <- file.path(tmp_dir, "question_config_ucb.csv")
+  ucb <- as.data.frame(UCBAdmissions)
+  expanded <- ucb[rep(seq_len(nrow(ucb)), ucb$Freq), c("Admit", "Gender", "Dept")]
+  utils::write.csv(expanded, data_path, row.names = FALSE, quote = TRUE)
 
-ucb <- as.data.frame(UCBAdmissions)
-expanded <- ucb[rep(seq_len(nrow(ucb)), ucb$Freq), c("Admit", "Gender", "Dept")]
-utils::write.csv(expanded, data_path, row.names = FALSE, quote = TRUE)
-
-config_lines <- c(
-  "survey_id,question_id,analysis_type,var1,var2,var3,output_slug,question_label,subset_expr,na_policy,ordered_levels,reference_note",
-  "ucbadmissions,q01_admit_gender,nominal_2way,Admit,Gender,,q01_admit_gender,UCBAdmissions Admit x Gender,,drop,,2-way check",
-  "ucbadmissions,q02_admit_gender_dept,nominal_3way,Admit,Gender,Dept,q02_admit_gender_dept,UCBAdmissions Admit x Gender x Dept,,drop,,3-way check"
-)
-writeLines(config_lines, config_path, useBytes = TRUE)
-
-  # 既存成果物の安全な保護（退避・復元メカニズム）
-  safe_backup_dir <- function(src_dir) {
-    if (!dir.exists(src_dir)) return(NULL)
-    parent_backup <- file.path(dirname(src_dir), paste0(".backup_q_holder_", format(Sys.time(), "%Y%m%d_%H%M%S_%OS3")))
-    dir.create(parent_backup, recursive = TRUE, showWarnings = FALSE)
-    if (!dir.exists(parent_backup)) {
-      stop(sprintf("[CRITICAL] バックアップ親ディレクトリの作成に失敗: %s", parent_backup))
-    }
-    target_backup <- file.path(parent_backup, basename(src_dir))
-    renamed <- tryCatch(file.rename(src_dir, target_backup), error = function(e) FALSE)
-    if (renamed && dir.exists(target_backup) && !dir.exists(src_dir)) {
-      return(list(parent = parent_backup, target = target_backup))
-    }
-    copied <- tryCatch(file.copy(src_dir, parent_backup, recursive = TRUE), error = function(e) FALSE)
-    if (isTRUE(copied) && dir.exists(target_backup)) {
-      src_files <- list.files(src_dir, recursive = TRUE, all.files = TRUE)
-      bak_files <- list.files(target_backup, recursive = TRUE, all.files = TRUE)
-      if (length(src_files) == length(bak_files)) {
-        unlink(src_dir, recursive = TRUE, force = TRUE)
-        return(list(parent = parent_backup, target = target_backup))
-      }
-    }
-    unlink(parent_backup, recursive = TRUE, force = TRUE)
-    stop(sprintf("[CRITICAL] 既存成果物の安全な退避に失敗しました: %s。元データを保護するためテストを中止します。", src_dir))
-  }
-
-  safe_restore_dir <- function(backup_info, dest_dir) {
-    if (is.null(backup_info)) {
-      if (dir.exists(dest_dir)) unlink(dest_dir, recursive = TRUE, force = TRUE)
-      return(TRUE)
-    }
-    target_backup <- backup_info$target
-    parent_backup <- backup_info$parent
-    if (!dir.exists(target_backup)) {
-      warning(sprintf("[CRITICAL] バックアップディレクトリが見つかりません: %s", target_backup))
-      return(FALSE)
-    }
-    if (dir.exists(dest_dir)) {
-      unlink(dest_dir, recursive = TRUE, force = TRUE)
-    }
-    restored <- tryCatch(file.rename(target_backup, dest_dir), error = function(e) FALSE)
-    if (restored && dir.exists(dest_dir)) {
-      unlink(parent_backup, recursive = TRUE, force = TRUE)
-      return(TRUE)
-    }
-    copied <- tryCatch(file.copy(target_backup, dirname(dest_dir), recursive = TRUE), error = function(e) FALSE)
-    if (isTRUE(copied) && dir.exists(dest_dir)) {
-      unlink(parent_backup, recursive = TRUE, force = TRUE)
-      return(TRUE)
-    }
-    warning(sprintf(
-      "[CRITICAL] 成果物の復元に失敗しました。\n元データはバックアップとして保持されています: %s\n手動で %s へ移動してください。",
-      target_backup, dest_dir
-    ))
-    return(FALSE)
-  }
+  config_lines <- c(
+    "survey_id,question_id,analysis_type,var1,var2,var3,output_slug,question_label,subset_expr,na_policy,ordered_levels,reference_note",
+    "ucbadmissions,q01_admit_gender,nominal_2way,Admit,Gender,,q01_admit_gender,UCBAdmissions Admit x Gender,,drop,,2-way check",
+    "ucbadmissions,q02_admit_gender_dept,nominal_3way,Admit,Gender,Dept,q02_admit_gender_dept,UCBAdmissions Admit x Gender x Dept,,drop,,3-way check"
+  )
+  writeLines(config_lines, config_path, useBytes = TRUE)
 
   backup_info <- safe_backup_dir(default_out_dir)
 

@@ -59,17 +59,20 @@ author: Antigravity
   「`--out` 省略時の既定パス（`skill_out/questionnaire/`）動作検証」というテスト仕様は100%維持しつつ、**既存成果物の保護**と**テスト後残留ゼロ**を両立させます。
   1. **実行前無条件削除の撤廃**:
      Line 47〜49 の `if (dir.exists(default_out_dir)) { unlink(...) }` を削除。
-  2. **安全な退避関数 (`safe_backup_dir`) の導入**:
-     - テスト開始時に `default_out_dir`（`skill_out/questionnaire/`）が存在する場合、同一親ディレクトリ内に独立した一時ホルダーを作成し、その配下へ退避。
+  2. **安全な退避・復元共有ヘルパー (`helpers_backup_recovery.R`) の導入**:
+     - `.agents/skills/questionnaire-batch-analysis/tests/helpers_backup_recovery.R` に正本ヘルパーを抽出・共有化。
+     - `test_questionnaire_batch_ucbadmissions.R` に `check_r_dependencies(c("datasets", "digest"))` を追加し、Fail-Fast 契約を遵守。
+     - `tempfile()` により同一親ディレクトリ内に一意な一時ホルダー（`.backup_q_holder_*`）を作成し、その配下へ退避。
      - 第1選択として `file.rename` を試行し、失敗時は親ホルダーへの `file.copy(recursive = TRUE)` を実行。
-     - **元データ保護契約**: コピー成功およびファイル数一致を完全に確認するまで元ディレクトリを**絶対に削除しない**。
+     - **SHA-256マニフェスト完全性判定**: ファイル数だけでなく、全通常ファイルの相対パス・サイズ・SHA-256ハッシュマニフェストを算出し、退避先との完全一致（`identical = TRUE`）を確認するまで元ディレクトリを**絶対に削除しない**。
      - 退避に失敗した場合は、元データを保護するため `stop()` により**テストを開始せず即時中止**する。
-  3. **安全な復元関数 (`safe_restore_dir`) の導入**:
+  3. **安全な復元フローと正本ロジック共有**:
      - テスト終了時（`on.exit()`）：
        - テストが生成した `default_out_dir` を `unlink(recursive = TRUE, force = TRUE)` で削除。
-       - 退避先から `file.rename`（失敗時は `file.copy`）で元の `default_out_dir` へ復元。
-       - 復元成功を確認できた場合のみ、一時ホルダーを削除。
-       - **データ喪失防止契約**: 復元に失敗した場合は、バックアップを**絶対に削除せず安全に保持**し、手動復元用のパス警告を出力する。
+       - 復元方式は「常にコピー方式（`file.copy(recursive = TRUE)`）」を採用（バックアップ元を変更・移動せず安全保持）。
+       - 復元先の SHA-256 マニフェストを照合し、事前データとの完全一致を確認できた場合のみ、一時ホルダーを削除。
+       - **データ喪失防止契約**: 復元コピーやハッシュ照合に失敗した場合は、バックアップを**絶対に削除せず安全に保護保持**し、手動復元用のパス警告を出力する。
+     - 本番テストと失敗注入テスト（`test_questionnaire_backup_recovery.R`）が同一の共有ヘルパーを直接呼び出し、ロジックの二重管理を解消。
 
 ### 4. 既存成果物の保護と削除承認方針
 既存の `skill_out/vcd_categorical/`、`skill_out/questionnaire/`、`tests/skill_out_smoke/` は、ユーザー成果物の可能性があるため自動削除しない。テスト前後の状態を比較し、削除が必要な残留物は対象と根拠を確認したうえで、別途明示承認を得る。
@@ -81,7 +84,7 @@ author: Antigravity
 ### 受入基準 (Acceptance Criteria)
 1. **既存差分との整合**: テストスイート実行前後で、Git の tracked / untracked ファイル差分が一切増加していないこと（開始時点のスナップショットと終了時点の `git status -s` が完全一致）。`git diff --check`（末尾空白・空行）が完全 PASS すること。
 2. **新規テスト成果物の残留ゼロ**: テスト実行によって新規成果物が残留しないこと（既存成果物は保護・維持され、テストによって生成された成果物は `on.exit()` 等により完全にクリーンアップされる）。
-3. **回帰テスト品質**: `tests/run_regression_suite.R` の全23テストが引き続き **100% PASS (23/23)** すること。
+3. **回帰テスト品質**: `tests/run_regression_suite.R` の全24テストが引き続き **100% PASS (24/24)** すること。
 
 ### 追加検証ケース (Verification Steps)
 - [x] **Case 1 (単体実行残留検証)**:
@@ -89,11 +92,20 @@ author: Antigravity
   - `Rscript tests/test_questionnaire_batch_smoke.R` 単体実行後に `tests/skill_out_smoke/` が残らないこと。(確認済み: 22/22 PASS, 一時ディレクトリ自動削除確認)
   - `Rscript tests/test_questionnaire_batch_ucbadmissions.R` 単体実行後に `skill_out/questionnaire/` が新規残留しないこと。(確認済み: 19/19 PASS, 既存成果物完全復元・新規残留ゼロ)
 - [x] **Case 2 (異常終了時クリーンアップ・失敗注入検証)**:
-  - `run_test()` 内でテスト実行中に意図的に `stop("Failure Injection")` を発生させた場合でも、`on.exit()` により元ファイルが完全復元されることを実証済み。
-  - 実証結果: 事前7ファイルと事後7ファイルの SHA-256 ハッシュが完全一致（`identical = TRUE`）、テストが生成した中間不正ファイルは消去（`FALSE`）、一時バックアップホルダーの残留ゼロ（`count = 0`）を確認。
+  - リポジトリ内に永続的な失敗注入回帰テスト [`tests/test_questionnaire_backup_recovery.R`](tests/test_questionnaire_backup_recovery.R) を新規追加し、正規回帰スイートに統合。
+  - 実証結果 (32/32 PASS):
+    1. 通常退避・復元の SHA-256 マニフェスト完全一致
+    2. 退避 `file.rename` 失敗注入時の `file.copy` フォールバックとマニフェスト完全一致
+    3. 退避 `file.copy` 失敗注入時の即時 `stop()` と元データ100%保持
+    4. 復元コピー方式 (コピー検証・SHA-256一致時のみバックアップ削除)
+    5. 復元コピー失敗注入時のバックアップ非削除・安全保持
+    6. `run_test()` 内での `stop("Failure Injection")` 発生時の `on.exit()` 自動復元（事前事後マニフェスト完全一致、中間ファイル消去、バックアップホルダー消去）
+    7. 退避後マニフェスト不一致注入時のバックアップ非削除・元データ保護保持（`rename` 成功後不一致時にバックアップを削除せず `stop()`）
+    8. 復元後マニフェスト不一致注入時のバックアップ非削除・安全保護保持
   - ※注意: OS による `SIGKILL` やプロセス強制終了の場合は言語ランタイムの制約上 `on.exit()` は評価されません。
 - [x] **Case 3 (連続実行再現性)**:
-  - `tests/run_regression_suite.R` を2回連続実行し、いずれの実行後も残留ゼロ・差分増分ゼロであることを確認。(確認済み: 1回目 23/23 PASS 41.97s, 2回目 23/23 PASS 42.58s, git status 増分ゼロ)
+  - `tests/run_regression_suite.R` を連続実行し、いずれの実行後も残留ゼロ・差分増分ゼロであることを確認。
+
 - [x] **Case 4 (既存成果物および非対象成果物の保護検証)**:
   - `output/` や他の作業成果物が誤って削除されていないこと。(確認済み)
   - **対象3ディレクトリの個別ハッシュ検証**: テストスイート実行前後の全ファイル SHA-256 ハッシュを比較し、完全一致を確認済み。

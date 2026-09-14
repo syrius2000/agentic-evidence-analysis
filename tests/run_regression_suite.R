@@ -23,6 +23,7 @@ official_tests <- c(
   "tests/test_vcd_categorical_smoke.R",
   "tests/test_questionnaire_batch_smoke.R",
   "tests/test_questionnaire_batch_ucbadmissions.R",
+  "tests/test_questionnaire_backup_recovery.R",
   "tests/test_summary_csv_new_columns.R",
   "tests/test_questionnaire_duplicate_output_slug.R",
   "tests/test_questionnaire_marginal_strata_contract.R",
