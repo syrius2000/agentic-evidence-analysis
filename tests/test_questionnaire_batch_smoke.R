@@ -6,11 +6,6 @@
 # 前提: tests/sample_survey.csv, tests/question_config_test.csv が存在すること
 # 出力先: tests/skill_out_smoke/ (テスト後も残すので手動削除可)
 
-suppressPackageStartupMessages({
-  if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
-  pacman::p_load(optparse, rmarkdown)
-})
-
 # ---- パス解決 ----
 ca   <- commandArgs(trailingOnly = FALSE)
 fa   <- ca[grep("^--file=", ca)]
@@ -22,6 +17,14 @@ root <- if (length(fa) > 0) {
 if (!file.exists(file.path(root, ".agents")) && identical(basename(root), "tests")) {
   root <- normalizePath(file.path(root, ".."), winslash = "/", mustWork = TRUE)
 }
+
+source(file.path(root, ".agents", "shared", "dependency_check.R"))
+check_r_dependencies(c("optparse", "rmarkdown"), context = "テスト: test_questionnaire_batch_smoke.R")
+
+suppressPackageStartupMessages({
+  library(optparse)
+  library(rmarkdown)
+})
 
 data_path    <- file.path(root, "tests", "sample_survey.csv")
 config_path  <- file.path(root, "tests", "question_config_test.csv")

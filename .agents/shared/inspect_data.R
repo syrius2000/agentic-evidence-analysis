@@ -1,8 +1,29 @@
-# if (!require("pacman")) install.packages("pacman")
-# pacman::p_load(dplyr, jsonlite, readr)
-library(dplyr)
-library(jsonlite)
-library(readr)
+# Pass 0 事前検分
+local({
+  frames <- sys.frames()
+  files <- Filter(Negate(is.null), lapply(frames, function(f) f$ofile))
+  own <- Filter(function(f) basename(f) == "inspect_data.R", files)
+  dir <- if (length(own)) dirname(tail(own, 1)[[1]]) else file.path(getwd(), ".agents", "shared")
+  dep_check <- file.path(dir, "dependency_check.R")
+  if (file.exists(dep_check)) source(dep_check, local = FALSE)
+})
+if (exists("check_r_dependencies", mode = "function")) {
+  check_r_dependencies(c("dplyr", "jsonlite", "readr", "digest"), "Pass 0 事前検分")
+} else {
+  missing_pkgs <- c("dplyr", "jsonlite", "readr", "digest")[!vapply(c("dplyr", "jsonlite", "readr", "digest"), requireNamespace, logical(1L), quietly = TRUE)]
+  if (length(missing_pkgs) > 0L) {
+    stop(sprintf(
+      "[ERROR] Pass 0 事前検分に必要なRパッケージが不足しています: %s\n事前に次を実行してください:\n  install.packages(c(%s))\n",
+      paste(missing_pkgs, collapse = ", "),
+      paste(sprintf('"%s"', missing_pkgs), collapse = ", ")
+    ), call. = FALSE)
+  }
+}
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(jsonlite)
+  library(readr)
+})
 
 args <- commandArgs(trailingOnly = TRUE)
 

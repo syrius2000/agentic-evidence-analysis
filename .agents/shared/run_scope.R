@@ -209,11 +209,23 @@ portableize_run_meta <- function(meta, run_dir) {
   m
 }
 
-if (!requireNamespace("digest", quietly = TRUE)) {
-  utils::install.packages("digest", repos = "https://cloud.r-project.org")
-}
-if (!requireNamespace("jsonlite", quietly = TRUE)) {
-  utils::install.packages("jsonlite", repos = "https://cloud.r-project.org")
+local({
+  dep_path <- file.path(RUN_SCOPE_REPO_ROOT, ".agents", "shared", "dependency_check.R")
+  if (file.exists(dep_path)) {
+    source(dep_path, local = FALSE)
+  }
+})
+if (exists("check_r_dependencies", mode = "function")) {
+  check_r_dependencies(c("digest", "jsonlite"), "Run隔離管理")
+} else {
+  missing_core <- c("digest", "jsonlite")[!vapply(c("digest", "jsonlite"), requireNamespace, logical(1L), quietly = TRUE)]
+  if (length(missing_core) > 0L) {
+    stop(sprintf(
+      "[ERROR] Run隔離管理に必要なRパッケージが不足しています: %s\n事前に次を実行してください:\n  install.packages(c(%s))\n",
+      paste(missing_core, collapse = ", "),
+      paste(sprintf('"%s"', missing_core), collapse = ", ")
+    ), call. = FALSE)
+  }
 }
 
 sha256_file <- function(path) {

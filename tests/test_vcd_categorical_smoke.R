@@ -4,10 +4,7 @@
 stopifnot(getRversion() >= "4.0.0")
 
 suppressPackageStartupMessages({
-  if (!base::requireNamespace("pacman", quietly = TRUE)) {
-    utils::install.packages("pacman", repos = "https://cloud.r-project.org")
-  }
-  pacman::p_load(datasets)
+  library(datasets)
 })
 
 tab2 <- margin.table(Titanic, c(1L, 4L))

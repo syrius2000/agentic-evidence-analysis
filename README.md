@@ -93,6 +93,9 @@ graph TD
 | **vcd-bayesian-evidence-analysis** | 3次元正本 | 3次元集計表の 9 階層対数線形モデル、新 4 軸セル診断、明示式 BIC、Dirichlet 事後推論、HTML レポート生成 |
 | **vcd-categorical-analysis** | 2次元解析 | 名義 2 変数の全体効果量（Cramér's V、Bergsma 補正）、残差分析、executive_summary・ダッシュボード生成 |
 | **questionnaire-batch-analysis** | バッチ処理 | アンケート複数設問の設定ファイルに基づく自動一括集計とサマリー量産 |
+| **sas-proc-freq** | SAS 互換集計 | PROC FREQ 互換の度数・分割表、独立性検定、2×2効果量、Fisher 正確検定、Monte Carlo 推定 |
+| **sas-proc-means** | SAS 互換記述統計 | PROC MEANS 互換の記述統計、CLASS 群化、FREQ/WEIGHT、VARDEF、QNTLDEF 1〜5 |
+| **i-have-adhd** | 出力スタイル | ADHD のある利用者向けに、次の行動を先頭に置く簡潔で実行しやすい応答形式をセッション中に適用 |
 | **vcd-categorical-reporting** | 参照用 | （レガシーテンプレートの再現・互換保守用。新規分析は上記 3 スキルを推奨） |
 
 ---
@@ -100,8 +103,29 @@ graph TD
 ## クイックスタート
 
 ### 動作環境要件
-- **R**: >= 4.0（標準 `stats` に加え、`jsonlite`, `dplyr`, `readr`, `htmltools`, `rmarkdown`）
-- **Pandoc**: HTML ダッシュボードのレンダリングに必要
+- **R**: >= 4.0
+- **Pandoc**: HTML ダッシュボードおよび R Markdown レポートのレンダリングに必要
+
+> [!IMPORTANT]
+> **実行時パッケージ自動インストールの廃止**:
+> 本リポジトリのスクリプトおよびエージェントスキルは、実行時に `install.packages()` や `pacman::p_load()` によるパッケージ自動インストールを行いません（オフライン環境および決定論的実行の保証）。
+> 初回利用時または不足時は、以下の表に従って必要な R パッケージを事前に導入してください。
+
+| カテゴリ | 対象パッケージ | 主な用途・実行経路 |
+| :--- | :--- | :--- |
+| **コア計算・データ検分**<br>(Pass 0 / Pass 1) | `jsonlite`, `digest`, `dplyr`, `readr`, `tidyr`, `effectsize`, `vcd`, `optparse` | `inspect_data.R`、`run_scope.R`、`vcd-bayesian-evidence-analysis` 計算、`vcd-categorical-analysis --profile`、`questionnaire-batch-analysis` バッチ実行 |
+| **レポート・描画**<br>(Pass 2 / Pass 3) | `rmarkdown`, `knitr`, `DT`, `htmltools`, `htmlwidgets`, `ggplot2`, `gt`, `katex` | `render_report.R`、`render_dashboard.R`、各スキルの HTML ダッシュボードおよび個別レポート生成 |
+
+#### 事前一括インストール用 R コマンド
+R コンソールまたは `Rscript -e` で以下を実行してください：
+
+```r
+# 全機能向けパッケージの一括導入（全エントリポイントの完全な和集合）
+install.packages(c(
+  "jsonlite", "digest", "dplyr", "readr", "tidyr", "effectsize", "vcd", "optparse",
+  "rmarkdown", "knitr", "DT", "htmltools", "htmlwidgets", "ggplot2", "gt", "katex"
+), repos = "https://cloud.r-project.org")
+```
 
 ### 1. AI エージェントで使う（推奨）
 Agent Skills 対応ツール（Antigravity, Cursor, Gemini CLI 等）から本スキルを呼び出します：

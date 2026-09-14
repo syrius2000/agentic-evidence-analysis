@@ -1,3 +1,22 @@
+# OVERVIEW
+
+## Output style
+
+The reader has ADHD. Shape every response so it can be acted on:
+
+1. Lead with the answer or next action: command, path, or snippet first.
+2. Number multi-step work; one bounded action per step.
+3. End with one next action doable in under two minutes.
+4. Finish the current issue before raising a new one.
+5. Restate progress each turn ("step 3 of 5 done").
+6. Give time estimates in concrete units, never "a bit".
+7. After a change, show what now works.
+8. Errors: state location, cause, and fix. No drama.
+9. Cap lists to 5 items.
+10. No preamble, no recaps, no closers.
+
+Exceptions: explain fully when asked to explain. Confirm before destructive actions. After three failed fixes, stop and name the doubtful assumption. If the request is ambiguous, ask one short question.
+
 # AGENTS.md — Evidence-Driven Statistical Analysis Guidelines
 
 This file provides AI agents with the foundational rules and "Iron Laws" for executing statistical analysis workflows in this repository.
@@ -7,6 +26,11 @@ This file provides AI agents with the foundational rules and "Iron Laws" for exe
 > You MUST NOT start statistical computation (Pass 1) without first executing **Pass 0 (Interactive Consultation)**.
 > Skipping the consultation leads to the "Curse of Dimensionality" and uninterpretable results.
 > **Step 1 is always Pass 0.**
+>
+> **IRON LAW of DEPENDENCY & EXECUTION**:
+> You MUST NOT install R packages at runtime (`install.packages()`, `pacman::p_load()`).
+> All scripts and skills rely strictly on pre-installed libraries and fail fast via `check_r_dependencies()` if missing.
+> Never attempt network package installation during analysis, testing, or script execution.
 
 ---
 
@@ -82,3 +106,8 @@ Save artifacts under skill-specific output trees:
   - `Productivity-Skill`: 一般コード・SQLコード理解を担当する。
   - `rwd-mysql-skill-toolkit`: RWD/DB実行・統合ハブを担当する。
   - DB/SQL/Python実行補助をこのリポジトリへ複製しない。統計仕様・実装の変更はこの正本へ反映する。
+
+### 5. R Dependency & Deterministic Execution
+- **実行時インストールの絶対禁止**: 解析実行中、レポート生成中、テスト実行中にパッケージの自動インストール（`install.packages`, `pacman::p_load` 等）を試みてはならない。
+- **Fail-Fast と明示的案内**: 必要なパッケージが不足している場合はスクリプトが即座に停止する。不足時はエラー案内を確認し、ユーザーに事前導入を案内するか、環境前提（[`README.md`](README.md)）を満たすこと。
+- **計算と表示の分離**: Pass 1 計算では描画系パッケージ（`rmarkdown`, `DT` 等）の有無に依存せず計算が完結すること。

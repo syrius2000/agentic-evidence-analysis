@@ -1,10 +1,23 @@
 # test_logic.R - VCD categorical analysis logic tests (§2.13)
 # Run from project root: Rscript .agents/skills/vcd-categorical-analysis/tests/test_logic.R
 
-suppressMessages({
-  if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman", repos = "https://cloud.r-project.org")
-  pacman::p_load(jsonlite)
-})
+find_agent_repo <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in seq_len(25L)) {
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
+      return(d)
+    }
+    parent <- dirname(d)
+    if (parent == d) break
+    d <- parent
+  }
+  getwd()
+}
+repo_root <- find_agent_repo()
+source(file.path(repo_root, ".agents", "shared", "dependency_check.R"))
+
+check_r_dependencies(c("jsonlite"), context = "vcd-categorical ロジックテスト (test_logic.R)")
+suppressPackageStartupMessages(library(jsonlite))
 
 PASS <- 0L
 FAIL <- 0L
@@ -22,8 +35,7 @@ assert <- function(cond, msg) {
 # ============================================================
 # Source analysis.R in a local env so global state is isolated
 # ============================================================
-script_dir <- normalizePath(file.path(dirname(sys.frame(1)$ofile), ".."), mustWork = FALSE)
-if (!nchar(script_dir)) script_dir <- normalizePath(file.path(getwd(), ".agents/skills/vcd-categorical-analysis"))
+script_dir <- file.path(repo_root, ".agents", "skills", "vcd-categorical-analysis")
 analysis_path <- file.path(script_dir, "templates", "analysis.R")
 
 if (!file.exists(analysis_path)) {

@@ -21,13 +21,6 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
-suppressPackageStartupMessages({
-  if (!base::requireNamespace("pacman", quietly = TRUE)) {
-    utils::install.packages("pacman", repos = "https://cloud.r-project.org")
-  }
-  pacman::p_load(jsonlite, DT, dplyr, htmltools, htmlwidgets, knitr, rmarkdown, katex, ggplot2)
-})
-
 find_agent_repo <- function() {
   d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
   for (i in seq_len(25L)) {
@@ -42,7 +35,27 @@ find_agent_repo <- function() {
   }
   getwd()
 }
-source(file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
+
+repo_root <- find_agent_repo()
+source(file.path(repo_root, ".agents", "shared", "dependency_check.R"))
+source(file.path(repo_root, ".agents", "shared", "run_scope.R"))
+
+check_r_dependencies(
+  c("jsonlite", "DT", "dplyr", "htmltools", "htmlwidgets", "knitr", "rmarkdown", "katex", "ggplot2"),
+  context = "vcd-bayesian-evidence-analysis ダッシュボード生成"
+)
+
+suppressPackageStartupMessages({
+  library(jsonlite)
+  library(DT)
+  library(dplyr)
+  library(htmltools)
+  library(htmlwidgets)
+  library(knitr)
+  library(rmarkdown)
+  library(katex)
+  library(ggplot2)
+})
 
 # run_dir の直接受け入れと二重探索バイパス
 output_dir <- if (!is.null(params$run_dir) && nzchar(trimws(params$run_dir))) {

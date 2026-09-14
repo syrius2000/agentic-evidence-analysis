@@ -1,0 +1,1380 @@
+{
+  "schema_version": "1.0",
+  "case_metadata": {
+    "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+    "revision": 15,
+    "status": "accepted-with-risk",
+    "owner": "myamaguchi",
+    "cycle_count": 1,
+    "cycle_limit": 3,
+    "created_at": "2026-09-14T12:57:42.985875Z",
+    "updated_at": "2026-09-14T13:54:13.488044Z"
+  },
+  "baseline": {
+    "purpose": "指定対象の実装結果を単発で独立QAする",
+    "intended_use": {
+      "users": "依頼者が指定する利用者（大学講座内の学生）",
+      "environment": "依頼者が指定する環境（大学のMac/Windows）",
+      "operational_context": "単発の実装結果QA"
+    },
+    "risk_context": {
+      "criticality": "high",
+      "safety_impact": "未指定",
+      "data_integrity_impact": "未指定",
+      "security_context": "未指定"
+    },
+    "requirements": [
+      {
+        "requirement_id": "STANDALONE-SCOPE-001",
+        "text": "指定対象の範囲と確認可能なEvidenceを明示する"
+      }
+    ],
+    "acceptance_criteria": [
+      "レビュー範囲、確認結果、未確認事項が記録されること"
+    ],
+    "exclusions": [
+      "原要求・原受入基準が未提示の場合、ドメイン適合や受入を判定しない"
+    ],
+    "targets": [
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/.agents/shared/dependency_check.R",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/implementation_plan_018_0914.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/design.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/proposal.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/tasks.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/run_regression_suite.R",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_dependency_isolation_pass1.R"
+    ],
+    "target_revision": "standalone-sha256:3377994a149f60310aec195419c29d8bc10e9c3c0582d6cae76fa9df46457fca"
+  },
+  "implementation_authorization": {
+    "allowed": true,
+    "finding_ids": [
+      "F-001-spec-task-contract-mismatch",
+      "F-002-test-inventory-accounting",
+      "F-003-ui-absence-evidence-gap"
+    ],
+    "allowed_targets": [
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/.agents/shared/dependency_check.R",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/implementation_plan_018_0914.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/design.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/proposal.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/tasks.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/run_regression_suite.R",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_dependency_isolation_pass1.R",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_inventory_manifest.csv"
+    ]
+  },
+  "change_observation": {
+    "method": "finite-manifest",
+    "scope": [
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/.agents/shared/dependency_check.R",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/implementation_plan_018_0914.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/design.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/proposal.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/tasks.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/run_regression_suite.R",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_dependency_isolation_pass1.R"
+    ],
+    "baseline_evidence_id": null,
+    "exclusions": [],
+    "limitations": [
+      "bootstrap時の存在・読取り確認は品質適合Evidenceではない",
+      "Reviewerは通常のreview操作でEvidenceを独立確認する"
+    ]
+  },
+  "findings": [
+    {
+      "finding_id": "F-001-spec-task-contract-mismatch",
+      "classification": "requirement-violation",
+      "severity": "high",
+      "requirement_ref": "openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md:35-37",
+      "observed_fact": "仕様はオフライン時にすべてのテストおよび解析処理が決定論的に完了すると要求する。一方、tasks.md:19は23本の定義済みスイートだけを対象にしており、仕様・設計は同じ限定へ改定されていない。",
+      "impact": "23本のPASSだけでは、仕様上のオフライン実行シナリオを満たしたと判断できず、アーカイブ時の要求追跡が破綻する。",
+      "expected_state": "対象回帰スイートの限定を仕様・設計・タスク・計画書で一貫させるか、現行仕様どおり全該当テストと解析経路の成功証跡を提示する。",
+      "verification_method": "改定後のspec/design/tasks/planの対象集合を照合し、定義された対象を実行して結果と一致することを独立確認する。",
+      "evidence_refs": [
+        "EV-001-spec-task-diff"
+      ],
+      "status": "verified",
+      "plan_required": true
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "classification": "unverified-claim",
+      "severity": "high",
+      "requirement_ref": "docs/Artifacts/implementation_plan_018_0914.md:102-111 および tasks.md:19",
+      "observed_fact": "計画書は53本中のその他テストを30本と記すが、正規23本のうち1本は.agents配下である。tests/test_*.R 53本から公式リストに含まれるtests配下22本を除くと31本であり、カテゴリCには別母集団のPythonスクリプトも混在する。",
+      "impact": "除外理由と追跡先の完全分類という完了主張は再現不能で、依存管理変更による未対象テストへの回帰を監査できない。",
+      "expected_state": "母集団を明示し、各対象・除外テストを一意に列挙したmanifestを作成する。対象数、除外数、カテゴリ合計、追跡先を機械的に一致させる。",
+      "verification_method": "manifestとfind結果およびrun_regression_suite.Rの公式リストを集合比較し、重複・漏れ・計数差が0であることを確認する。",
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "status": "verified",
+      "plan_required": true
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "classification": "evidence-gap",
+      "severity": "medium",
+      "requirement_ref": "openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md:28-30",
+      "observed_fact": "test_dependency_isolation_pass1.Rはrun_env内でrequireNamespace/libraryをシャドーイングしてUI参照を検出するが、.libPaths()は隔離せず親環境は.GlobalEnvである。",
+      "impact": "Pass 1がUIパッケージを直接参照しないことは支持されるが、UIパッケージが未導入の実環境で完結するというシナリオの直接証跡にはならない。",
+      "expected_state": "計算依存のみを解決可能にした別Rscriptプロセス、または同等に実効的な隔離環境でPass 1を実行し、UIパッケージが解決不能であることと成果物生成を確認する。",
+      "verification_method": "隔離ライブラリのパッケージ可用性とPass 1のexit code・evidence_results.jsonを独立確認する。",
+      "evidence_refs": [
+        "EV-003-ui-isolation-scope"
+      ],
+      "status": "verified",
+      "plan_required": false
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "EV-001-spec-task-diff",
+      "level": "observed",
+      "target_revision": "standalone-sha256:3377994a149f60310aec195419c29d8bc10e9c3c0582d6cae76fa9df46457fca",
+      "method": "現行spec.md、tasks.md、implementation_plan_018_0914.mdを行単位で照合",
+      "result": "spec.mdは全テストおよび解析処理の決定論的完了を要求する一方、tasks.mdは23本の定義済みスイートへ限定している。",
+      "summary": "仕様とタスクの回帰対象範囲が一致しない。"
+    },
+    {
+      "evidence_id": "EV-002-test-inventory",
+      "level": "reproduced",
+      "target_revision": "standalone-sha256:3377994a149f60310aec195419c29d8bc10e9c3c0582d6cae76fa9df46457fca",
+      "method": "tests/test_*.Rの列挙とrun_regression_suite.Rの公式リストを集合比較",
+      "result": "tests/test_*.Rは53本、公式リスト中tests配下は22本、除外は31本。計画書とtasks.mdの53本中非対象30本という記載と一致しない。",
+      "summary": "テスト母集団と除外数の計数が一致しない。"
+    },
+    {
+      "evidence_id": "EV-003-ui-isolation-scope",
+      "level": "reproduced",
+      "target_revision": "standalone-sha256:3377994a149f60310aec195419c29d8bc10e9c3c0582d6cae76fa9df46457fca",
+      "method": "test_dependency_isolation_pass1.RをRscript --vanillaで再実行し、テスト実装の評価環境を確認",
+      "result": "テストは6/6 PASSしたが、run_envの関数シャドーイングであり、.libPaths()を隔離せず親環境は.GlobalEnvである。UIパッケージが未導入の実環境を直接構築した検証ではない。",
+      "summary": "UI参照ガードは通るが、未導入環境の直接証跡ではない。"
+    },
+    {
+      "evidence_id": "EV-010-spec-task-plan-sync",
+      "level": "observed",
+      "target_revision": "standalone-sha256:3377994a149f60310aec195419c29d8bc10e9c3c0582d6cae76fa9df46457fca",
+      "method": "spec.md, design.md, tasks.md, implementation_plan_018_0914.md の記述を照合",
+      "result": "決定論的オフライン実行の保証対象を公式回帰テストスイート23本およびPass 1主要解析スクリプトに限定し、残余テストの追跡方針（Tech Debt/現代化）を一貫して整合",
+      "summary": "仕様・設計・タスク・計画書の回帰対象範囲を公式スイート23本で完全同期"
+    },
+    {
+      "evidence_id": "EV-011-manifest-verification",
+      "level": "reproduced",
+      "target_revision": "standalone-sha256:3377994a149f60310aec195419c29d8bc10e9c3c0582d6cae76fa9df46457fca",
+      "method": "tests/test_inventory_manifest.csv の59件と実ファイルおよび公式スイートを自動検証スクリプトで照合",
+      "result": "全59行（tests直下R 52本、.agents R 1本、tests直下Python 2本、生成R 1本、数理基盤3本）が実ファイルと1対1一致し、重複0・漏れ0・差分0、公式23本とのsetdiff 0を確認",
+      "summary": "テスト全59件の台帳を作成し、公式23本・除外36本の機械的一致を完全検証"
+    },
+    {
+      "evidence_id": "EV-012-ui-isolation-pass1-evidence",
+      "level": "reproduced",
+      "target_revision": "standalone-sha256:3377994a149f60310aec195419c29d8bc10e9c3c0582d6cae76fa9df46457fca",
+      "method": "tests/test_dependency_isolation_pass1.R（Part A: 環境シャドーイング遮断、Part B: .Library/.libPaths 再束縛別プロセス物理隔離）を実行",
+      "result": "14/14 PASS。子プロセス隔離環境で rmarkdown 未解決（FALSE）、DT 未検出（0）、jsonlite 解決（TRUE）の事前条件を満たし、Pass 1 analysis.R が exit 0 で完了、完全な evidence_results.json を生成",
+      "summary": "UIパッケージが物理的に未解決の隔離環境下で Pass 1 統計計算が自律完結することを直接実証"
+    },
+    {
+      "evidence_id": "EV-013-regression-suite-23-pass",
+      "level": "reproduced",
+      "target_revision": "standalone-sha256:3377994a149f60310aec195419c29d8bc10e9c3c0582d6cae76fa9df46457fca",
+      "method": "Rscript tests/run_regression_suite.R を実行",
+      "result": "公式回帰テストスイート 23/23 PASS、失敗 0、総所要時間 42.32 秒",
+      "summary": "正規回帰テストスイート全23本が外部ネットワークアクセスなしで決定論的に全数通過"
+    },
+    {
+      "evidence_id": "EV-014-independent-verification",
+      "level": "reproduced",
+      "target_revision": "working-tree-independent-check-20260914",
+      "method": "実ファイル台帳のRscript検算、tests/test_dependency_isolation_pass1.R、tests/run_regression_suite.RをImplementer提出とは別Invocationで再実行し、現行spec/design/tasks/implementation_planの対象範囲を照合",
+      "result": "manifest assertions PASS（59行、公式23件、各母集団52/1/2/1/3）、隔離テスト14/14 PASS、正規回帰スイート23/23 PASS（FAIL 0、NOT_FOUND 0）。",
+      "summary": "台帳、隔離テスト、正規回帰スイートを独立再実行した結果。"
+    },
+    {
+      "evidence_id": "EV-015-independent-change-observation",
+      "level": "observed",
+      "target_revision": "working-tree-scope-check-20260914",
+      "method": "git status、許可対象リスト、Implementer提出changed_targetsの集合を突合",
+      "result": "提出された6対象はQuality Loopのallowed_targets内であり、申告外の変更対象は観測されなかった。",
+      "summary": "申告変更対象と許可対象の集合照合結果。"
+    }
+  ],
+  "plans": [
+    {
+      "finding_id": "F-001-spec-task-contract-mismatch",
+      "understanding": "仕様書（spec.md）、設計（design.md）、タスク（tasks.md）、計画書（implementation_plan_018_0914.md）におけるオフライン決定論的実行の対象範囲（公式回帰スイート23本）の定義に不整合があることを確認した。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "spec.md、design.md、tasks.md、implementation_plan_018_0914.md のスコープ記述を整合させ、決定論的オフライン保証の対象を公式回帰スイート23本として明確に限定・定義する。",
+        "除外されるテスト（対話型・レガシー等）の分類と追跡方針を文書内で明記する。"
+      ],
+      "evidence_refs": [
+        "EV-001-spec-task-diff"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 3
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "understanding": "tests/test_*.R 53本および .agents 配下テスト1本の母集団分類において、除外内訳（31本 vs 記載30本）およびカテゴリ分類に計数の不整合があることを確認した。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "全テストファイル（tests配下53本＋.agents配下1本）を完全網羅したマニフェストを作成する。",
+        "公式回帰スイート（23本：tests配下22本＋.agents配下1本）と非対象（31本）の除外理由を1対1で分類し、計数（22 + 31 = 53）を機械的に一致させる。",
+        "implementation_plan_018_0914.md および tasks.md の計数と分類記述を修正する。"
+      ],
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 3
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "understanding": "現在のテスト（test_dependency_isolation_pass1.R）は関数シャドーイングによるUI依存検知であり、UIパッケージが物理的に未導入（.libPaths() 隔離環境）の状態でPass 1が完結することの直接Evidenceが不足していることを確認した。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "別プロセスの Rscript 実行時に .libPaths() を計算用パッケージのみに隔離（UIパッケージを物理的に未検出化）した実効的隔離テスト／実行スクリプトを追加する。",
+        "UIパッケージが未解決の環境で Pass 1（vcd_3way_analysis.R 等）が正常完結し、成果物（evidence_results.json 等）が生成される実行Evidenceを記録する。"
+      ],
+      "evidence_refs": [
+        "EV-003-ui-isolation-scope"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 3
+    },
+    {
+      "finding_id": "F-001-spec-task-contract-mismatch",
+      "understanding": "spec.md（Scenario: Offline execution verification）が「すべてのテストおよび解析処理」の完了を要求している一方、tasks.md・planは23本のみを対象としており、除外条件・追跡先・整合方針が未定義であった。公式回帰スイート23本への限定と残余テストの扱いを全成果物で一貫させる必要がある。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "spec.md（Scenario: Offline execution verification）のTHEN節を変更し、決定論的オフライン完了の保証対象を『本変更で定義された正規回帰テストスイート（tests/run_regression_suite.R の23本）およびPass 1主要解析スクリプト』へ具体的に限定する。",
+        "design.md に検証対象境界セクションを追加し、リポジトリ全体の未整理テストではなく公式スイート23本を対象とする根拠と、残余テストの追跡方針（Tech Debt/現代化Issue）を明記する。",
+        "tasks.md:19 のタスク記述を spec.md の改定文言と厳密に同期させる。",
+        "implementation_plan_018_0914.md の承認ゲート（項目3）およびセクション3.1の対象母集団記述を公式23本に整合させる。",
+        "変更後、サンドボックス内で Rscript tests/run_regression_suite.R を実行し、23/23 PASS（終了コード0）の実行ログをEvidenceとして提示する。"
+      ],
+      "evidence_refs": [
+        "EV-001-spec-task-diff"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 5
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "understanding": "tests/ 配下のテストファイル母集団計数（52本のtest_*.R、2本のPython契約テスト、1本のデータ生成スクリプト）において、公式23本（tests配下22本＋.agents配下1本）と除外30本の分類・内訳・母集団定義が不正確であり、再現可能な機械的照合手順が不足していた。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "テスト一覧マニフェスト tests/test_inventory_manifest.csv を新設する。列構成は [file_path, population, is_official_suite, exclusion_category, exclusion_reason, tracking_reference] とし、全55件（tests配下R 52本、tests配下Python 2本、tests配下生成R 1本、.agents配下R 1本）を1行1テストで完全網羅する。",
+        "公式23本（tests内22本 + .agents内1本）と除外30本（tests内test_*.R）の除外理由（数理エンジン刷新レガシー18本、Pandoc/描画4本、ストレステスト8本等）を正確に分類し、Python契約テスト（2本）やデータ生成（1本）は別母集団として分離する。",
+        "機械的照合コマンドを作成し、(1) ファイルシステム実数との重複・漏れ・計数差が0であること、(2) tests/run_regression_suite.R の official_tests 23本と is_official_suite==TRUE が setdiff 0 であること、(3) 各カテゴリの合計が一致することを検証するワンライナー（Rscript）を準備・実行する。",
+        "implementation_plan_018_0914.md セクション3.1の分類表および tasks.md を上記マニフェストの集計値（公式23本、tests内除外30本、他3本）と完全一致するように改訂する。"
+      ],
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 5
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "understanding": "前回のPlanで存在しない vcd_3way_analysis.R を参照していた誤りを是正し、実在する正本スクリプト（.agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R）および tests/test_dependency_isolation_pass1.R を対象に、UIパッケージが物理的に未導入の隔離ライブラリ環境における直接証跡を固定する。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "対象ファイルを実在する .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R および tests/test_dependency_isolation_pass1.R に固定する。",
+        "テスト内で一時ディレクトリに計算必須パッケージ（jsonlite, digest 等）のみを配置した隔離ライブラリディレクトリ（isolated_lib）を動的に構成し、UIパッケージ（rmarkdown, DT, htmlwidgets, gt 等）を物理的に排除する。",
+        "Rscript --vanilla の別プロセスを起動し、R_LIBS_USER=isolated_lib を指定した隔離環境下で (1) find.package('rmarkdown', quiet=TRUE) が未解決（キャラクター長0）であること、(2) analysis.R --config analysis_config.json が終了コード0で完了し evidence_results.json が正常生成されることを確認する実証コードを tests/test_dependency_isolation_pass1.R に追加する。",
+        "上記隔離プロセステストの実行ログおよび生成された evidence_results.json の検証結果をEvidenceとして記録する。"
+      ],
+      "evidence_refs": [
+        "EV-003-ui-isolation-scope"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 5
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "understanding": "tests/ 配下のファイル母集団において、globと明示リストの計数整合（全56行：tests/test_*.R 52本、tests/*.py 2本、tests/gen_sample_survey.R 1本、.agents/**/test_*.R 1本）を明確にし、公式23本、tests内除外30本、他3本の分類と、重複・漏れ・計数差ゼロを機械的に検証する照合手順を固定する。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "テスト一覧マニフェスト tests/test_inventory_manifest.csv を新設する。列構成は [file_path, population, is_official_suite, exclusion_category, exclusion_reason, tracking_reference] とする。",
+        "マニフェスト行数は全56件とし、内訳を (1) tests_r_test: 52件（公式22件、除外30件）、(2) agents_r_test: 1件（公式1件）、(3) tests_py_contract: 2件（非公式2件）、(4) tests_r_helper: 1件（非公式1件）として完全固定する。公式スイート合計は 22 + 1 = 23件、tests/ 配下の除外 test_*.R は 30件、非 test_*.R は 3件と厳密に一致させる。",
+        "30本の除外理由（数理エンジン刷新レガシー18本、Pandoc/描画依存4本、境界ストレステスト8本）およびPython（2本）・データ生成（1本）の除外理由と因果帰属を1行ごとに明記する。",
+        "機械的検証スクリプトを作成し、(1) 全56行が実ファイル（Sys.glob('tests/test_*.R') 等）と1対1対応し重複0・漏れ0・差分0であること、(2) is_official_suite==TRUE の23本が tests/run_regression_suite.R の official_tests と setdiff 0 であること、(3) 各母集団・除外カテゴリ計数が一致することを自動検証する。",
+        "implementation_plan_018_0914.md セクション3.1および tasks.md を上記 56件（公式23本、tests除外30本、他3本）の定義に更新する。"
+      ],
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 7
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "understanding": "R_LIBS_USER の指定だけでは R の標準ライブラリ（.Library）がフォールバック探索されるため UI パッケージの解決不能性が保証されない。R のライブラリ解決規則に基づき、子プロセス内で .Library を隔離ディレクトリに明示的に再束縛して UI パッケージの完全遮断を保証した上で Pass 1 の自律完結性を実証する。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "対象ファイルを実在する .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R および tests/test_dependency_isolation_pass1.R に固定する。",
+        "テスト内で一時ディレクトリ isolated_lib を作成し、ベースパッケージ群（base, methods, utils, stats 等）および計算必須パッケージ（jsonlite, digest 等）のシンボリックリンクのみを配置する。UIパッケージ（rmarkdown, DT, htmlwidgets, gt 等）は一切含めない。",
+        "別プロセス Rscript --vanilla を起動し、子プロセスの起動スクリプト冒頭で unlockBinding('.Library', asNamespace('base')); assign('.Library', isolated_lib, envir = asNamespace('base')); .libPaths(isolated_lib) を実行して .Library を isolated_lib のみに強制置換する。",
+        "子プロセス内の事前受入条件として、(1) requireNamespace('jsonlite', quietly=TRUE) が TRUE、(2) requireNamespace('rmarkdown', quietly=TRUE) が FALSE、(3) find.package('DT', quiet=TRUE) が character(0) であることをアサートし、UIパッケージが物理的に未解決であることを確定する。",
+        "上記隔離条件下で analysis.R --config <config> を実行し、終了コード0かつ evidence_results.json が正常生成されることを事後受入条件として検証する。この手順を tests/test_dependency_isolation_pass1.R に実装し実行Evidenceを記録する。"
+      ],
+      "evidence_refs": [
+        "EV-003-ui-isolation-scope"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 7
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "understanding": "tests/ 配下のファイル母集団において、直下探索（56件：test_*.R 52本、Python 2本、生成スクリプト 1本、.agents/配下 1本）と再帰探索（57件：ネストした tests/statistical_foundations/test_contract.R 1本を含む）の境界を明文化し、公式23本、tests直下除外30本、ネスト除外1本、非Rテスト3本の分類・除外理由・追跡先を固定し、重複・漏れ・計数差ゼロを機械的に検証する手順を確立する。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "テスト一覧マニフェスト tests/test_inventory_manifest.csv を全57行で新設する。列構成は [file_path, population, is_official_suite, exclusion_category, exclusion_reason, tracking_reference] とする。",
+        "全57件の内訳を厳密に固定する: (1) tests_r_test (tests/直下): 52件（公式スイート22件、除外30件）、(2) agents_r_test: 1件（公式スイート1件）、(3) tests_nested_r_test (tests/statistical_foundations/test_contract.R): 1件（非公式）、(4) tests_py_contract (tests/直下Python): 2件（非公式）、(5) tests_r_helper (tests/gen_sample_survey.R): 1件（非公式）。公式スイート合計は 22 + 1 = 23件、tests/ 直下の除外 test_*.R は 30件、ネスト除外は 1件、非 test_*.R は 3件で完全整合させる。",
+        "tests/statistical_foundations/test_contract.R の除外理由と追跡先を明記する: 固定参照値（output/statistical_foundations/verified_0906）に依存する数理基盤専用の受入検証テストであり、通常回帰スイート実行の前提条件と異なるため公式スイートから除外する。追跡先は tests/statistical_foundations/run_validation.R および数理基盤検証文書（docs/reference/）とする。",
+        "tests/直下の除外30本（数理エンジン刷新レガシー18本、Pandoc/描画依存4本、境界ストレステスト8本）およびPython（2本）・生成スクリプト（1本）の除外理由・因果帰属・追跡先をマニフェスト各行に明記する。",
+        "機械的検証スクリプトを作成し、(1) 直下探索56件および再帰探索57件の各母集団が実ファイルと1対1対応し重複0・漏れ0・差分0であること、(2) is_official_suite==TRUE の23本が tests/run_regression_suite.R の official_tests と setdiff 0 であること、(3) 各カテゴリ集計値が一致することを自動検証する。また implementation_plan_018_0914.md セクション3.1および tasks.md を上記 57件（公式23本、tests直下除外30本、ネスト除外1本、他3本）の定義に更新する。"
+      ],
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 9
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "understanding": "R の標準ライブラリ（.Library）へのフォールバックを排除するため、子プロセス内で .Library を動的に作成した isolated_lib へ明示的に再束縛し、UI パッケージの解決不能性を確定した上で Pass 1 の自律完結性を実証する。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "対象ファイルを実在する .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R および tests/test_dependency_isolation_pass1.R に固定する。",
+        "テスト内で一時ディレクトリ isolated_lib を作成し、ベースパッケージ群（base, methods, utils, stats 等）および計算必須パッケージ（jsonlite, digest 等）のシンボリックリンクのみを配置する。UIパッケージ（rmarkdown, DT, htmlwidgets, gt 等）は一切含めない。",
+        "別プロセス Rscript --vanilla を起動し、子プロセスの起動コード冒頭で unlockBinding('.Library', asNamespace('base')); assign('.Library', isolated_lib, envir = asNamespace('base')); .libPaths(isolated_lib) を実行して .Library を isolated_lib のみに強制置換する。",
+        "子プロセス内の事前受入条件として、(1) requireNamespace('jsonlite', quietly=TRUE) が TRUE、(2) requireNamespace('rmarkdown', quietly=TRUE) が FALSE、(3) find.package('DT', quiet=TRUE) が character(0) であることをアサートし、UIパッケージが物理的に未解決であることを確定する。",
+        "上記隔離条件下で analysis.R --config <config> を実行し、終了コード0かつ evidence_results.json が正常生成されることを事後受入条件として検証する。この手順を tests/test_dependency_isolation_pass1.R に実装し実行Evidenceを記録する。"
+      ],
+      "evidence_refs": [
+        "EV-003-ui-isolation-scope"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 9
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "understanding": "tests/ および .agents/ 配下のテスト関連ファイル母集団全件（59件）の境界と内訳（tests直下Rテスト52本、tests直下Python 2本、tests直下生成R 1本、.agents配下R 1本、tests/statistical_foundations/配下3本）を固定し、公式スイート23本、tests直下除外30本、ネスト除外3本、非Rテスト3本の分類・除外理由・追跡先を明文化して、重複・漏れ・計数差ゼロを機械的に検証する照合手順を確立する。",
+      "disposition_intent": "fix",
+      "proposed_actions": [
+        "テスト一覧マニフェスト tests/test_inventory_manifest.csv を全59行で新設する。列構成は [file_path, population, is_official_suite, exclusion_category, exclusion_reason, tracking_reference] とする。",
+        "全59件の内訳を厳密に固定する: (1) tests_r_test (tests/直下Rテスト): 52件（公式22件、除外30件）、(2) agents_r_test (.agents/配下Rテスト): 1件（公式1件）、(3) tests_py_contract (tests/直下Python): 2件（除外2件）、(4) tests_r_helper (tests/直下データ生成): 1件（除外1件）、(5) tests_stat_foundations (tests/statistical_foundations/配下): 3件（除外3件: test_contract.R, test_acceptance.py, test_report.py）。公式スイート合計は 22 + 1 = 23件、除外合計は 30 + 2 + 1 + 3 = 36件、総計59件で完全整合させる。",
+        "tests/statistical_foundations/ 配下3件の除外理由と追跡先を明記する: 固定参照データ（output/statistical_foundations/verified_0906）に依存する数理基盤専用の受入検証スイートであり、日常の単体・回帰テストと実行前提が異なるため公式回帰スイートから除外する。追跡先は tests/statistical_foundations/run_validation.R および数理基盤ドキュメント（docs/reference/）とする。",
+        "tests/直下の除外30本（数理刷新レガシー18本、Pandoc/描画依存4本、境界ストレステスト8本）およびPython2本・生成スクリプト1本の除外理由・因果帰属・追跡先をマニフェスト各行に記録する。",
+        "機械的検証スクリプトを作成し、(1) 実ファイルとの突き合わせで重複0・漏れ0・差分0であること、(2) is_official_suite==TRUE の23本が tests/run_regression_suite.R の official_tests と setdiff 0 であること、(3) 各カテゴリ集計値が一致することを自動検証する。また implementation_plan_018_0914.md セクション3.1および tasks.md を全59件（公式23本、除外36本）の定義に更新する。"
+      ],
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "implementation_status": "not-started",
+      "submission_revision": 11
+    }
+  ],
+  "plan_reviews": [
+    {
+      "finding_id": "F-001-spec-task-contract-mismatch",
+      "outcome": "plan-revision-required",
+      "rationale": "23本へ限定する方針自体は可能だが、現計画はspec/design/tasks/planのどの文言をどの正本実行経路・テスト母集団へ変更するか、残るテストと解析処理を仕様対象外とする根拠および追跡先を特定していない。仕様緩和と読める変更は、対象集合、除外条件、実行証跡、全Artifactの整合方法を明記した計画へ改訂すること。",
+      "evidence_refs": [
+        "EV-001-spec-task-diff"
+      ],
+      "review_revision": 4
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "outcome": "plan-revision-required",
+      "rationale": "全テストを網羅するmanifest作成は適切だが、保存先、1行ごとの必須項目、公式23本との集合比較手順、31本の除外分類、Python等を含む別母集団の扱い、合計一致の判定コマンドが未特定である。新設ファイルを含む変更対象と、重複・漏れ・計数差0を再現可能に確認する手順を明記すること。",
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "review_revision": 4
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "outcome": "plan-revision-required",
+      "rationale": "実在しないvcd_3way_analysis.Rを例示しており、現行正本analysis.Rとtest_dependency_isolation_pass1.Rへの変更が明確でない。また、.libPaths隔離の具体的方法、計算依存の再帰依存をどう供給するか、別RscriptプロセスでUIパッケージが解決不能であることをどのように確認するかが未定義である。実在する対象ファイル、隔離方式、成功・失敗の受入条件を固定すること。",
+      "evidence_refs": [
+        "EV-003-ui-isolation-scope"
+      ],
+      "review_revision": 4
+    },
+    {
+      "finding_id": "F-001-spec-task-contract-mismatch",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "spec.mdのTHEN節、design.md、tasks.md、実施計画書の変更箇所、対象スイート、残余テストの追跡方針、23/23の再実行Evidenceが明確になった。実装時は『Pass 1主要解析スクリプト』を正規スイート内のtest_dependency_isolation_pass1.Rが担保することを明記し、対象集合を単一のmanifestへ参照させること。",
+      "evidence_refs": [
+        "EV-001-spec-task-diff"
+      ],
+      "review_revision": 6
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "outcome": "plan-revision-required",
+      "rationale": "manifestの保存先・列・機械照合の方向性は具体化されたが、提出Plan自身が『全55件』としつつ内訳をtests R52本、Python2本、生成R1本、.agents R1本と列挙しており合計56件である。また、公式23本とtests内除外30本の母集団定義が、実際のtests/test_*.R集合との関係を一意にしない。実装前に、母集団を機械的なglobと明示リストで固定し、各集合の式・合計・対象外の根拠を算術的に矛盾なく再提出すること。",
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "review_revision": 6
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "outcome": "plan-revision-required",
+      "rationale": "正本analysis.Rとテスト対象を特定した点は改善されたが、R_LIBS_USER=isolated_libだけではRの標準ライブラリやsite libraryを除外せず、UIパッケージが物理的に未解決となる保証がない。隔離用R起動で有効な.libPaths()をどのように限定するか、計算依存の再帰依存をどう配置するか、rmarkdown等が実際に未解決であることを子プロセス内で確認する受入条件を、Rのライブラリ解決規則に沿って固定して再提出すること。",
+      "evidence_refs": [
+        "EV-003-ui-isolation-scope"
+      ],
+      "review_revision": 6
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "outcome": "plan-revision-required",
+      "rationale": "保存先、列、集合比較、カテゴリ、検証項目は具体化された。しかし実ファイルを独立に数えるとtests/test_*.Rは53本であり、Planのtests_r_test=52件（公式22件、除外30件）は1件不足する。さらに全56行という総数は列挙内訳52+2+1+1=56と表面的には合うが、53本目のtest_*.Rをどの母集団にも配置していない。実装前にglob定義と明示リストを一致させ、各実在ファイルを一意に一行へ割当てた厳密な母集団式と集計値を再提出すること。",
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "review_revision": 8
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "正本analysis.Rとテスト対象、別Rscript子プロセス、isolated_libの内容、.Library再束縛、UI未解決の事前条件、成果物の事後条件が具体化された。実装ではbase名前空間の束縛変更を子プロセス内に限定し、起動後の.libPaths()とrequireNamespace結果をテスト出力へ残すこと。計算依存の再帰依存を不足なくリンクできない環境では、テストを誤って成功扱いにせず明示的に失敗させること。",
+      "evidence_refs": [
+        "EV-003-ui-isolation-scope"
+      ],
+      "review_revision": 8
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "outcome": "plan-revision-required",
+      "rationale": "トップレベルの tests/test_*.R = 52（公式22・除外30）および agents 側 R テスト1件の整理は改善されています。一方、再帰的な全テスト目録を57件とする計画には tests/statistical_foundations/test_acceptance.py と tests/statistical_foundations/test_report.py の2件が含まれていません。test_contract.R だけを追加しても、再帰的な test_*.py を除いた理由が示されていないため、全件台帳・検算式・除外理由の完全性を証明できません。次版では、これら2件を manifest に含めて総数を更新するか、明示的な母集団定義、除外理由、追跡先、再現可能な検査を追加してください。",
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "review_revision": 10
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "子プロセス内で base::.Library と .libPaths を isolated_lib に固定し、UIパッケージ未解決を確認してから Pass 1 を実行する方式は、Rのライブラリ解決規則に沿った検証計画として受理します。実装時は子プロセスで .libPaths()、requireNamespace(\"rmarkdown\")、find.package(\"DT\", quiet = TRUE) の観測値を出力し、計算系依存の再帰リンク不足があれば成功扱いにせず失敗させてください。",
+      "evidence_refs": [
+        "EV-003-ui-isolation-scope"
+      ],
+      "review_revision": 10
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "outcome": "plan-accepted",
+      "rationale": "独立したファイル列挙により、tests直下Rテスト52件、.agents配下Rテスト1件、tests直下Python2件、生成スクリプト1件、tests/statistical_foundations配下3件の合計59件を確認しました。公式スイートは run_regression_suite.R の列挙どおり tests内22件と .agents内1件の23件であり、除外36件との 23 + 36 = 59 の検算も一致します。ネストした数理基盤テスト3件について、通常の依存関係回帰スイートと異なる固定参照データ前提、行単位の除外理由・追跡先、実ファイルとの重複・漏れ・差分ゼロ検査を実装する計画は、Findingの要求に比例した解消方法です。",
+      "evidence_refs": [
+        "EV-002-test-inventory"
+      ],
+      "review_revision": 12
+    }
+  ],
+  "responses": [
+    {
+      "finding_id": "F-001-spec-task-contract-mismatch",
+      "disposition": "fix-submitted",
+      "rationale": "spec.md（Scenario: Offline execution verification）、design.md、tasks.md:19、implementation_plan_018_0914.md のスコープ記述を整合させ、オフライン決定論的保証の対象を公式回帰スイート23本およびPass 1主要解析スクリプトに限定。残余テストの追跡方針（Tech Debt/現代化）を明記。tests/run_regression_suite.R で 23/23 PASS（EV-013）を確認。",
+      "evidence_refs": [
+        "EV-001-spec-task-diff",
+        "EV-010-spec-task-plan-sync",
+        "EV-013-regression-suite-23-pass"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/implementation_plan_018_0914.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/tasks.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_dependency_isolation_pass1.R",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_inventory_manifest.csv"
+      ],
+      "submission_revision": 13
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "disposition": "fix-submitted",
+      "rationale": "tests/test_inventory_manifest.csv を全59行で新設し、tests直下R 52本、.agents R 1本、tests直下Python 2本、生成R 1本、数理基盤3本を一意に定義。公式23本と除外36本の検算式（23+36=59）を固定し、数理基盤3本および残余テストの除外理由・追跡先を明文化。自動検証スクリプト（R/Python）で実ファイルとの重複0・漏れ0・差分0および公式23本との setdiff 0 を確認（EV-011）。implementation_plan_018_0914.md の分類表も全59件に同期。",
+      "evidence_refs": [
+        "EV-002-test-inventory",
+        "EV-011-manifest-verification"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/implementation_plan_018_0914.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/tasks.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_dependency_isolation_pass1.R",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_inventory_manifest.csv"
+      ],
+      "submission_revision": 13
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "disposition": "fix-submitted",
+      "rationale": "tests/test_dependency_isolation_pass1.R に Part B（別プロセス物理隔離テスト）を追加。一時 isolated_lib に base パッケージおよび計算必須依存のみを配置し、子プロセス内で .Library および .libPaths を isolated_lib に再束縛。rmarkdown 未解決（FALSE）、DT 未検出（0）、jsonlite 解決（TRUE）の事前条件を満たした上で analysis.R を実行し、終了コード0で evidence_results.json が生成されることを実証（EV-012）。全14/14 PASS。",
+      "evidence_refs": [
+        "EV-003-ui-isolation-scope",
+        "EV-012-ui-isolation-pass1-evidence"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/implementation_plan_018_0914.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/tasks.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_dependency_isolation_pass1.R",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_inventory_manifest.csv"
+      ],
+      "submission_revision": 13
+    }
+  ],
+  "verifications": [
+    {
+      "finding_id": "F-001-spec-task-contract-mismatch",
+      "result": "verified",
+      "rationale": "現行のspec.md、design.md、tasks.md、implementation_plan_018_0914.mdを照合し、決定論的オフライン実行の合否対象をrun_regression_suite.Rの23本とPass 1隔離テストへ統一していることを確認しました。正規回帰スイートも独立再実行で23/23 PASSでした。",
+      "evidence_refs": [
+        "EV-014-independent-verification"
+      ],
+      "verification_revision": 14,
+      "change_observation": {
+        "method": "許可対象と申告対象を集合比較し、独立検証で対象ファイルと関連成果物の現行状態を確認",
+        "scope": "Implementerの最新submit-responseに含まれるF-001〜F-003のchanged_targets 6件",
+        "before_evidence_id": "EV-001-spec-task-diff",
+        "after_evidence_id": "EV-015-independent-change-observation",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/implementation_plan_018_0914.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/tasks.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_dependency_isolation_pass1.R",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_inventory_manifest.csv"
+        ],
+        "limitations": [
+          "独立検証は現ワークツリー上で実施し、過去時点の完全なファイル内容を復元して比較するものではありません。",
+          "23本の正規回帰スイートと59件台帳の範囲を検証しましたが、除外36件を通常回帰として実行したものではありません。"
+        ]
+      }
+    },
+    {
+      "finding_id": "F-002-test-inventory-accounting",
+      "result": "verified",
+      "rationale": "実ファイルを独立列挙し、tests直下R52件、.agents配下R1件、tests直下Python2件、生成R1件、statistical_foundations配下3件の59件と一致することを確認しました。台帳は60行（ヘッダー1行）で、公式23件、除外36件の検算および母集団別集計がPASSしました。",
+      "evidence_refs": [
+        "EV-014-independent-verification"
+      ],
+      "verification_revision": 14,
+      "change_observation": {
+        "method": "許可対象と申告対象を集合比較し、独立検証で対象ファイルと関連成果物の現行状態を確認",
+        "scope": "Implementerの最新submit-responseに含まれるF-001〜F-003のchanged_targets 6件",
+        "before_evidence_id": "EV-001-spec-task-diff",
+        "after_evidence_id": "EV-015-independent-change-observation",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/implementation_plan_018_0914.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/tasks.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_dependency_isolation_pass1.R",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_inventory_manifest.csv"
+        ],
+        "limitations": [
+          "独立検証は現ワークツリー上で実施し、過去時点の完全なファイル内容を復元して比較するものではありません。",
+          "23本の正規回帰スイートと59件台帳の範囲を検証しましたが、除外36件を通常回帰として実行したものではありません。"
+        ]
+      }
+    },
+    {
+      "finding_id": "F-003-ui-absence-evidence-gap",
+      "result": "verified",
+      "rationale": "test_dependency_isolation_pass1.Rを独立再実行し、別プロセスのisolated_libでrmarkdown FALSE、DT FALSE、jsonlite TRUEを観測し、Pass 1が終了コード0でevidence_results.jsonを生成することを確認しました。テスト全体は14/14 PASSでした。",
+      "evidence_refs": [
+        "EV-014-independent-verification"
+      ],
+      "verification_revision": 14,
+      "change_observation": {
+        "method": "許可対象と申告対象を集合比較し、独立検証で対象ファイルと関連成果物の現行状態を確認",
+        "scope": "Implementerの最新submit-responseに含まれるF-001〜F-003のchanged_targets 6件",
+        "before_evidence_id": "EV-001-spec-task-diff",
+        "after_evidence_id": "EV-015-independent-change-observation",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/implementation_plan_018_0914.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/specs/deterministic-r-dependencies/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/enforce-deterministic-r-dependencies/tasks.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_dependency_isolation_pass1.R",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/tests/test_inventory_manifest.csv"
+        ],
+        "limitations": [
+          "独立検証は現ワークツリー上で実施し、過去時点の完全なファイル内容を復元して比較するものではありません。",
+          "23本の正規回帰スイートと59件台帳の範囲を検証しましたが、除外36件を通常回帰として実行したものではありません。"
+        ]
+      }
+    }
+  ],
+  "final_risk_assessments": [],
+  "adjudications": [
+    {
+      "decision": "accepted-with-risk",
+      "rationale": "F-001〜F-003の独立検証結果を受け入れ、変更を完了とします。除外36件は計画書記載のTech Debtおよび将来のテスト現代化課題として残し、残余リスクを受容します。コミット、push、OpenSpec archiveは別途承認まで実施しません。",
+      "conditions": [
+        "除外36件は通常回帰スイートの合否対象外として、計画書記載のTech Debt・将来のテスト現代化課題として追跡する。",
+        "本裁定はQuality Loop案件の完了を記録するものであり、Git commit、remote push、OpenSpec archiveの承認を含まない。"
+      ],
+      "residual_risks": [
+        "除外36件を通常回帰スイートとして実行していないため、それらの現行動作は本変更の独立検証範囲外である。",
+        "新規環境では依存パッケージの事前プロビジョニングが必要である。"
+      ],
+      "adjudication_revision": 15
+    }
+  ],
+  "events": [
+    {
+      "operation_id": "standalone-create-3377994a149f60310aec195419c29d8b",
+      "actor_id": "myamaguchi",
+      "role": "owner",
+      "invocation_id": "standalone-invocation-3377994a149f60310aec195419c29d8b",
+      "operation": "create-case",
+      "revision": 1,
+      "timestamp": "2026-09-14T12:57:42.985875Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 1,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review",
+        "handoff": {
+          "handoff_id": "hnd-3bd3567e-efff-450e-b08c-e945c65121b8",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 1,
+          "next_role": "reviewer",
+          "next_action": "review",
+          "purpose": "baselineと対象成果物を独立レビューする",
+          "inputs": [
+            "baseline",
+            "対象成果物",
+            "利用可能なEvidence"
+          ],
+          "open_issues": [],
+          "open_items": [],
+          "expected_deliverables": [
+            "FindingまたはFindingなしの根拠",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "FindingまたはFindingなしの根拠",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-20260914-deterministic-deps-001",
+      "actor_id": "codex-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-review-20260914-deterministic-deps-001",
+      "operation": "review",
+      "revision": 2,
+      "previous_handoff_id": "hnd-3bd3567e-efff-450e-b08c-e945c65121b8",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:01:32.689433Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 2,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-plan",
+        "handoff": {
+          "handoff_id": "hnd-1d71b860-6933-4f41-96b7-b2779b1cfaab",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 2,
+          "next_role": "implementer",
+          "next_action": "submit-plan",
+          "purpose": "重要Findingへの修正方針・反証計画(Response Plan)を提出する",
+          "inputs": [
+            "baseline",
+            "review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "open_items": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "expected_deliverables": [
+            "Response Plan",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Response Plan",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "plan-20260914-deterministic-deps-001",
+      "actor_id": "antigravity-implementer",
+      "role": "implementer",
+      "invocation_id": "inv-plan-20260914-deterministic-deps-001",
+      "operation": "submit-plan",
+      "revision": 3,
+      "previous_handoff_id": "hnd-1d71b860-6933-4f41-96b7-b2779b1cfaab",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:10:13.693575Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 3,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review-plan",
+        "handoff": {
+          "handoff_id": "hnd-5b2ab583-f811-4170-8905-565336ac7709",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 3,
+          "next_role": "reviewer",
+          "next_action": "review-plan",
+          "purpose": "Implementerが提出したResponse Planを評価・合意する",
+          "inputs": [
+            "Finding",
+            "Response Plan",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "open_items": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "expected_deliverables": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-plan-20260914-deterministic-deps-001",
+      "actor_id": "codex-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-review-plan-20260914-deterministic-deps-001",
+      "operation": "review-plan",
+      "revision": 4,
+      "previous_handoff_id": "hnd-5b2ab583-f811-4170-8905-565336ac7709",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:11:51.569579Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 4,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-plan",
+        "handoff": {
+          "handoff_id": "hnd-d0ec54e3-4527-4b52-a0be-ee229a252974",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 4,
+          "next_role": "implementer",
+          "next_action": "submit-plan",
+          "purpose": "未承認のrequired FindingについてResponse Planを提出または再提出する",
+          "inputs": [
+            "Response Plan",
+            "Plan Review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting"
+          ],
+          "open_items": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting"
+          ],
+          "expected_deliverables": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "plan-20260914-deterministic-deps-002",
+      "actor_id": "antigravity-implementer",
+      "role": "implementer",
+      "invocation_id": "inv-plan-20260914-deterministic-deps-002",
+      "operation": "submit-plan",
+      "revision": 5,
+      "previous_handoff_id": "hnd-d0ec54e3-4527-4b52-a0be-ee229a252974",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:13:07.695165Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 5,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review-plan",
+        "handoff": {
+          "handoff_id": "hnd-47d2f36e-6642-4e9a-aa17-e6830fac8f8c",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 5,
+          "next_role": "reviewer",
+          "next_action": "review-plan",
+          "purpose": "Implementerが提出したResponse Planを評価・合意する",
+          "inputs": [
+            "Finding",
+            "Response Plan",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "open_items": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "expected_deliverables": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-plan-20260914-deterministic-deps-002",
+      "actor_id": "codex-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-review-plan-20260914-deterministic-deps-002",
+      "operation": "review-plan",
+      "revision": 6,
+      "previous_handoff_id": "hnd-47d2f36e-6642-4e9a-aa17-e6830fac8f8c",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:14:17.410880Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 6,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-plan",
+        "handoff": {
+          "handoff_id": "hnd-80c3b27d-0845-4136-a6fd-05f900fdd177",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 6,
+          "next_role": "implementer",
+          "next_action": "submit-plan",
+          "purpose": "未承認のrequired FindingについてResponse Planを提出または再提出する",
+          "inputs": [
+            "Response Plan",
+            "Plan Review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-002-test-inventory-accounting"
+          ],
+          "open_items": [
+            "F-002-test-inventory-accounting"
+          ],
+          "expected_deliverables": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "plan-20260914-deterministic-deps-003",
+      "actor_id": "antigravity-implementer",
+      "role": "implementer",
+      "invocation_id": "inv-plan-20260914-deterministic-deps-003",
+      "operation": "submit-plan",
+      "revision": 7,
+      "previous_handoff_id": "hnd-80c3b27d-0845-4136-a6fd-05f900fdd177",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:15:54.097114Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 7,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review-plan",
+        "handoff": {
+          "handoff_id": "hnd-af117cd6-2f9e-4567-94bf-c22f6e82b375",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 7,
+          "next_role": "reviewer",
+          "next_action": "review-plan",
+          "purpose": "Implementerが提出したResponse Planを評価・合意する",
+          "inputs": [
+            "Finding",
+            "Response Plan",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "open_items": [
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "expected_deliverables": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-plan-20260914-deterministic-deps-003",
+      "actor_id": "codex-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-review-plan-20260914-deterministic-deps-003",
+      "operation": "review-plan",
+      "revision": 8,
+      "previous_handoff_id": "hnd-af117cd6-2f9e-4567-94bf-c22f6e82b375",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:25:03.175833Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 8,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-plan",
+        "handoff": {
+          "handoff_id": "hnd-d2bd6bfe-0416-4fc5-a8a8-af453db0870c",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 8,
+          "next_role": "implementer",
+          "next_action": "submit-plan",
+          "purpose": "未承認のrequired FindingについてResponse Planを提出または再提出する",
+          "inputs": [
+            "Response Plan",
+            "Plan Review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-002-test-inventory-accounting"
+          ],
+          "open_items": [
+            "F-002-test-inventory-accounting"
+          ],
+          "expected_deliverables": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "plan-20260914-deterministic-deps-004",
+      "actor_id": "antigravity-implementer",
+      "role": "implementer",
+      "invocation_id": "inv-plan-20260914-deterministic-deps-004",
+      "operation": "submit-plan",
+      "revision": 9,
+      "previous_handoff_id": "hnd-d2bd6bfe-0416-4fc5-a8a8-af453db0870c",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:27:09.963202Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 9,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review-plan",
+        "handoff": {
+          "handoff_id": "hnd-d75ac020-510d-4e57-bd66-4b72dfa9e58f",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 9,
+          "next_role": "reviewer",
+          "next_action": "review-plan",
+          "purpose": "Implementerが提出したResponse Planを評価・合意する",
+          "inputs": [
+            "Finding",
+            "Response Plan",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "open_items": [
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "expected_deliverables": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-plan-20260914-deterministic-deps-004",
+      "actor_id": "codex-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-review-plan-20260914-deterministic-deps-004",
+      "operation": "review-plan",
+      "revision": 10,
+      "previous_handoff_id": "hnd-d75ac020-510d-4e57-bd66-4b72dfa9e58f",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:29:50.616003Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 10,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-plan",
+        "handoff": {
+          "handoff_id": "hnd-fe5f201f-acc4-4194-8c1c-f6bba72114fc",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 10,
+          "next_role": "implementer",
+          "next_action": "submit-plan",
+          "purpose": "未承認のrequired FindingについてResponse Planを提出または再提出する",
+          "inputs": [
+            "Response Plan",
+            "Plan Review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-002-test-inventory-accounting"
+          ],
+          "open_items": [
+            "F-002-test-inventory-accounting"
+          ],
+          "expected_deliverables": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "plan-20260914-deterministic-deps-005",
+      "actor_id": "antigravity-implementer",
+      "role": "implementer",
+      "invocation_id": "inv-plan-20260914-deterministic-deps-005",
+      "operation": "submit-plan",
+      "revision": 11,
+      "previous_handoff_id": "hnd-fe5f201f-acc4-4194-8c1c-f6bba72114fc",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:31:02.014537Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 11,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review-plan",
+        "handoff": {
+          "handoff_id": "hnd-de46c38f-a773-4b91-9b01-259332683e61",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 11,
+          "next_role": "reviewer",
+          "next_action": "review-plan",
+          "purpose": "Implementerが提出したResponse Planを評価・合意する",
+          "inputs": [
+            "Finding",
+            "Response Plan",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-002-test-inventory-accounting"
+          ],
+          "open_items": [
+            "F-002-test-inventory-accounting"
+          ],
+          "expected_deliverables": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-plan-20260914-deterministic-deps-005",
+      "actor_id": "codex-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-review-plan-20260914-deterministic-deps-005",
+      "operation": "review-plan",
+      "revision": 12,
+      "previous_handoff_id": "hnd-de46c38f-a773-4b91-9b01-259332683e61",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:32:19.580392Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 12,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-response",
+        "handoff": {
+          "handoff_id": "hnd-6aa4f735-47a6-4a96-8e3b-7b382e8d637a",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 12,
+          "next_role": "implementer",
+          "next_action": "submit-response",
+          "purpose": "承認されたPlanおよびOwner許可範囲に基づき修正とEvidenceを提出する",
+          "inputs": [
+            "Response Plan",
+            "Plan Review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "open_items": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "expected_deliverables": [
+            "Finding別修正提出",
+            "変更Evidence",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Finding別修正提出",
+            "変更Evidence",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "response-20260914-deterministic-deps-001",
+      "actor_id": "antigravity-implementer",
+      "role": "implementer",
+      "invocation_id": "inv-response-20260914-deterministic-deps-001",
+      "operation": "submit-response",
+      "revision": 13,
+      "previous_handoff_id": "hnd-6aa4f735-47a6-4a96-8e3b-7b382e8d637a",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:44:10.744093Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 13,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "verify",
+        "handoff": {
+          "handoff_id": "hnd-d6ccf06d-fab2-4321-9b8d-7519a6bc8b5f",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 13,
+          "next_role": "reviewer",
+          "next_action": "verify",
+          "purpose": "Implementer提出と修正結果を独立検証する",
+          "inputs": [
+            "Finding",
+            "Implementer回答",
+            "変更Evidence",
+            "変更観測"
+          ],
+          "open_issues": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "open_items": [
+            "F-001-spec-task-contract-mismatch",
+            "F-002-test-inventory-accounting",
+            "F-003-ui-absence-evidence-gap"
+          ],
+          "expected_deliverables": [
+            "Finding別検証",
+            "変更範囲照合",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Finding別検証",
+            "変更範囲照合",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "verify-20260914-deterministic-deps-001-retry",
+      "actor_id": "codex-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-verify-20260914-deterministic-deps-001-retry",
+      "operation": "verify",
+      "revision": 14,
+      "previous_handoff_id": "hnd-d6ccf06d-fab2-4321-9b8d-7519a6bc8b5f",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:49:55.545242Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 14,
+        "state_changed": true,
+        "next_role": "owner",
+        "next_action": "adjudicate",
+        "handoff": {
+          "handoff_id": "hnd-9bebe66f-4d39-4239-b81b-b1efd67d8bc9",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 14,
+          "next_role": "owner",
+          "next_action": "adjudicate",
+          "purpose": "独立検証結果と残余リスクを裁定する",
+          "inputs": [
+            "Finding",
+            "Implementer回答",
+            "Reviewer検証",
+            "Evidence"
+          ],
+          "open_issues": [],
+          "open_items": [],
+          "expected_deliverables": [
+            "Owner裁定"
+          ],
+          "expected_outputs": [
+            "Owner裁定"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "adjudicate-20260914-deterministic-deps-001",
+      "actor_id": "myamaguchi",
+      "role": "owner",
+      "invocation_id": "inv-owner-adjudicate-20260914-deterministic-deps-001",
+      "operation": "adjudicate",
+      "revision": 15,
+      "previous_handoff_id": "hnd-9bebe66f-4d39-4239-b81b-b1efd67d8bc9",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-14T13:54:13.488044Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+        "case_revision": 15,
+        "state_changed": true,
+        "next_role": null,
+        "next_action": null,
+        "handoff": {
+          "handoff_id": "hnd-term-471e24b6-d234-487a-b168-97d82d65d7d2",
+          "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+          "issued_revision": 15,
+          "next_role": null,
+          "next_action": null,
+          "purpose": "Owner裁定により案件を終了する",
+          "inputs": [
+            "Reviewer検証",
+            "Owner裁定"
+          ],
+          "open_issues": [],
+          "open_items": [],
+          "expected_deliverables": [],
+          "expected_outputs": [],
+          "status": "terminal",
+          "terminal_result": "accepted-with-risk"
+        }
+      }
+    }
+  ],
+  "handoff": {
+    "handoff_id": "hnd-term-471e24b6-d234-487a-b168-97d82d65d7d2",
+    "case_id": "QMS-DETERMINISTIC-R-DEPS-001",
+    "issued_revision": 15,
+    "next_role": null,
+    "next_action": null,
+    "purpose": "Owner裁定により案件を終了する",
+    "inputs": [
+      "Reviewer検証",
+      "Owner裁定"
+    ],
+    "open_issues": [],
+    "open_items": [],
+    "expected_deliverables": [],
+    "expected_outputs": [],
+    "status": "terminal",
+    "terminal_result": "accepted-with-risk"
+  }
+}

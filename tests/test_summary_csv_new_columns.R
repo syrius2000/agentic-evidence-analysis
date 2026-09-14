@@ -5,11 +5,6 @@
 # 前提: test_questionnaire_batch_ucbadmissions.R が先に実行されていること
 # Run: Rscript tests/test_summary_csv_new_columns.R
 
-suppressPackageStartupMessages({
-  if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
-  pacman::p_load(datasets)
-})
-
 ca <- commandArgs(trailingOnly = FALSE)
 fa <- ca[grep("^--file=", ca)]
 root <- if (length(fa) > 0) {
@@ -17,6 +12,13 @@ root <- if (length(fa) > 0) {
 } else {
   getwd()
 }
+if (!file.exists(file.path(root, ".agents")) && identical(basename(root), "tests")) {
+  root <- normalizePath(file.path(root, ".."), winslash = "/", mustWork = TRUE)
+}
+
+source(file.path(root, ".agents", "shared", "dependency_check.R"))
+check_r_dependencies(c("datasets"), context = "テスト: test_summary_csv_new_columns.R")
+suppressPackageStartupMessages(library(datasets))
 
 runner_path <- file.path(
   root, ".agents", "skills",
@@ -118,9 +120,7 @@ if (file.exists(summary_csv)) {
     }
 
     if (nrow(row2) == 1L && nzchar(row2$cramer_v_strata_json[1])) {
-      suppressPackageStartupMessages({
-        if (!requireNamespace("jsonlite", quietly = TRUE)) install.packages("jsonlite")
-      })
+      check_r_dependencies(c("jsonlite"), context = "テスト: test_summary_csv_new_columns.R (cramer_v_strata_json パース)")
       parsed <- tryCatch(jsonlite::parse_json(row2$cramer_v_strata_json[1]), error = function(e) NULL)
       check("cramer_v_strata_json is valid JSON", is.list(parsed) && length(parsed) >= 1L)
     } else {

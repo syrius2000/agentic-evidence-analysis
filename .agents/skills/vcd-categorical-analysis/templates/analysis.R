@@ -2,11 +2,7 @@
 # 2-pass mode: --profile (Pass 1) or --render --config <path> (Pass 2)
 # Outputs under ./skill_out/vcd_categorical/
 
-# --- Packages ---
-if (!base::requireNamespace("pacman", quietly = TRUE)) utils::install.packages("pacman", repos = "https://cloud.r-project.org")
-pacman::p_load(vcd, gt, DT, htmlwidgets, ggplot2, jsonlite)
-
-# run_scope.R の読み込み
+# run_scope.R および dependency_check.R の読み込み
 find_agent_repo <- function() {
   d <- base::normalizePath(base::getwd(), winslash = "/", mustWork = FALSE)
   for (i in base::seq_len(20L)) {
@@ -20,10 +16,22 @@ find_agent_repo <- function() {
   }
   base::getwd()
 }
-base::source(base::file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
+repo_root <- find_agent_repo()
+base::source(base::file.path(repo_root, ".agents", "shared", "dependency_check.R"))
+base::source(base::file.path(repo_root, ".agents", "shared", "run_scope.R"))
 
 args <- base::commandArgs(trailingOnly = TRUE)
 mode <- if ("--profile" %in% args) "profile" else "render"
+
+# 実行経路に応じた依存パッケージ検査
+if (mode == "profile") {
+  check_r_dependencies(c("jsonlite", "digest"), context = "vcd-categorical-analysis プロファイル生成 (--profile)")
+} else {
+  check_r_dependencies(
+    c("vcd", "gt", "DT", "htmlwidgets", "ggplot2", "jsonlite", "digest"),
+    context = "vcd-categorical-analysis レポート描画 (--render)"
+  )
+}
 
 # Extract argument value helper
 get_arg_val <- function(arg_name, default = NULL) {

@@ -6,13 +6,6 @@
 # 単一HTMLダッシュボード（dashboard.html / dashboard_preview.html）を生成
 # =============================================================================
 
-suppressPackageStartupMessages({
-  if (!requireNamespace("pacman", quietly = TRUE)) {
-    utils::install.packages("pacman", repos = "https://cloud.r-project.org")
-  }
-  pacman::p_load(rmarkdown, jsonlite)
-})
-
 caf <- grep("^--file=", commandArgs(), value = TRUE)
 if (length(caf)) {
   sp <- sub("^--file=", "", caf[[length(caf)]])
@@ -35,6 +28,19 @@ find_repo_root <- function() {
 }
 
 repo_root <- find_repo_root()
+
+# 共有依存関係チェック
+dep_check_path <- file.path(repo_root, ".agents", "shared", "dependency_check.R")
+if (file.exists(dep_check_path)) {
+  source(dep_check_path)
+  check_r_dependencies(c("rmarkdown", "jsonlite"), "Pass 3 レポートレンダラー")
+}
+
+suppressPackageStartupMessages({
+  library(rmarkdown)
+  library(jsonlite)
+})
+
 source(file.path(repo_root, ".agents", "shared", "run_scope.R"))
 source(file.path(script_dir, "claims_gate.R"))
 

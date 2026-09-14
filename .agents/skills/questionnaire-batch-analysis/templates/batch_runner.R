@@ -1,8 +1,29 @@
 #!/usr/bin/env Rscript
 
+find_agent_repo <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in seq_len(25L)) {
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
+      return(d)
+    }
+    parent <- dirname(d)
+    if (parent == d) break
+    d <- parent
+  }
+  getwd()
+}
+repo_root <- find_agent_repo()
+source(file.path(repo_root, ".agents", "shared", "dependency_check.R"))
+
+check_r_dependencies(
+  c("optparse", "jsonlite", "ggplot2"),
+  context = "questionnaire-batch-analysis バッチ実行 (batch_runner.R)"
+)
+
 suppressPackageStartupMessages({
-  if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
-  pacman::p_load(optparse, jsonlite, ggplot2)
+  library(optparse)
+  library(jsonlite)
+  library(ggplot2)
 })
 
 runner_file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)

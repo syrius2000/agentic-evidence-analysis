@@ -9,18 +9,6 @@
 #    新規開発・正本実行・回帰検証はすべて本スクリプト（Antigravity主系）を唯一の正本とします。
 # =============================================================================
 
-suppressPackageStartupMessages({
-  if (!base::requireNamespace("pacman", quietly = TRUE)) {
-    utils::install.packages("pacman", repos = "https://cloud.r-project.org")
-  }
-  pacman::p_load(dplyr, tidyr, jsonlite, DT, htmlwidgets, htmltools, effectsize)
-})
-
-script_file_arg <- grep("^--file=", commandArgs(), value = TRUE)[1]
-script_dir <- dirname(sub("^--file=", "", script_file_arg))
-source(file.path(script_dir, "pass1_compute.R"))
-source(file.path(script_dir, "config_validation.R"))
-
 find_agent_repo <- function() {
   d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
   for (i in seq_len(25L)) {
@@ -35,7 +23,30 @@ find_agent_repo <- function() {
   }
   getwd()
 }
-source(file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
+repo_root <- find_agent_repo()
+
+# 共有依存関係チェック
+dep_check_path <- file.path(repo_root, ".agents", "shared", "dependency_check.R")
+if (file.exists(dep_check_path)) {
+  source(dep_check_path)
+  check_r_dependencies(c("dplyr", "tidyr", "jsonlite", "digest", "effectsize"), "Pass 1 統計計算")
+}
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(tidyr)
+  library(jsonlite)
+})
+
+script_file_arg <- grep("^--file=", commandArgs(), value = TRUE)[1]
+script_dir <- if (!is.na(script_file_arg)) {
+  dirname(sub("^--file=", "", script_file_arg))
+} else {
+  file.path(repo_root, ".agents", "skills", "vcd-bayesian-evidence-analysis", "templates")
+}
+source(file.path(script_dir, "pass1_compute.R"))
+source(file.path(script_dir, "config_validation.R"))
+source(file.path(repo_root, ".agents", "shared", "run_scope.R"))
 
 parse_args <- function(args) {
   result <- list(
@@ -181,21 +192,23 @@ if (cfg$show_help_stats) {
   quit(save = "no", status = 0)
 }
 
-if (is.null(cfg$config_path) || !nzchar(trimws(cfg$config_path))) {
+if (!is.null(cfg$config_path) && nzchar(trimws(cfg$config_path))) {
+  if (!file.exists(cfg$config_path)) {
+    stop("[ERROR] 設定ファイルが見つかりません: ", cfg$config_path, call. = FALSE)
+  }
+  raw_config <- jsonlite::fromJSON(cfg$config_path, simplifyVector = TRUE)
+  repo_root <- find_agent_repo()
+  val_res <- validate_analysis_config(raw_config, config_path = cfg$config_path, repo_root = repo_root)
+  if (!is.null(val_res$input)) {
+    raw_config$input <- val_res$input
+  }
+  for (key in names(raw_config)) {
+    cfg[[key]] <- raw_config[[key]]
+  }
+} else if (is.null(cfg$input)) {
   stop("[ERROR] Pass 1 には --config <Pass 0で確定したanalysis_config.json> が必要です。", call. = FALSE)
-}
-if (!file.exists(cfg$config_path)) {
-  stop("[ERROR] 設定ファイルが見つかりません: ", cfg$config_path, call. = FALSE)
-}
-
-raw_config <- jsonlite::fromJSON(cfg$config_path, simplifyVector = TRUE)
-repo_root <- find_agent_repo()
-val_res <- validate_analysis_config(raw_config, config_path = cfg$config_path, repo_root = repo_root)
-if (!is.null(val_res$input)) {
-  raw_config$input <- val_res$input
-}
-for (key in names(raw_config)) {
-  cfg[[key]] <- raw_config[[key]]
+} else {
+  message("[WARN] --config が指定されていません。--input による後方互換モードで実行します。")
 }
 
 # 入力データロード
@@ -237,7 +250,13 @@ assert_valid_out_root(out_root)
 artifact_dir <- reserve_run_output_dir(out_root, "vcd-bayesian-evidence-analysis", if (is.null(cfg$run_id)) NULL else rid$run_id)
 
 # 設定スナップショット保存
-cfg_snap <- save_config_snapshot(artifact_dir, cfg$config_path, config_origin = "pass0_file", config_source_path = cfg$config_path)
+config_payload <- if (!is.null(cfg$config_path) && nzchar(trimws(cfg$config_path))) cfg$config_path else cfg
+cfg_snap <- save_config_snapshot(
+  artifact_dir,
+  config_payload,
+  config_origin = if (!is.null(cfg$config_path)) "pass0_file" else "cli_legacy",
+  config_source_path = cfg$config_path
+)
 
 message(paste("[INFO] run_id:", rid$run_id, "(", rid$method %||% "hash", ")"))
 message(paste("[INFO] 出力ディレクトリ:", artifact_dir))

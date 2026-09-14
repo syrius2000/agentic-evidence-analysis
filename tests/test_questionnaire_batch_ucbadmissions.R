@@ -3,11 +3,6 @@
 # UCBAdmissions を questionnaire-batch-analysis に流したときの最小再現テスト
 # 実行: Rscript tests/test_questionnaire_batch_ucbadmissions.R
 
-suppressPackageStartupMessages({
-  if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
-  pacman::p_load(datasets)
-})
-
 ca <- commandArgs(trailingOnly = FALSE)
 fa <- ca[grep("^--file=", ca)]
 root <- if (length(fa) > 0) {
@@ -18,6 +13,10 @@ root <- if (length(fa) > 0) {
 if (!file.exists(file.path(root, ".agents")) && identical(basename(root), "tests")) {
   root <- normalizePath(file.path(root, ".."), winslash = "/", mustWork = TRUE)
 }
+
+source(file.path(root, ".agents", "shared", "dependency_check.R"))
+check_r_dependencies(c("datasets"), context = "テスト: test_questionnaire_batch_ucbadmissions.R")
+suppressPackageStartupMessages(library(datasets))
 
 runner_path <- file.path(
   root,
