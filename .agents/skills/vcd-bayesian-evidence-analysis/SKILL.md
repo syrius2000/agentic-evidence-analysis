@@ -36,7 +36,7 @@ metadata:
 Rscript .agents/shared/inspect_data.R examples/titanic.csv --out-dir output/my_inspection
 ```
 
-検分JSONは列・水準・行数・欠測数・入力SHA-256を持つ。行数は総度数と異なる。度数集約の補足検分は次のvalidate-onlyで確認する。設定は [例](templates/three_way/config_example.json) と [schema](templates/three_way/analysis_config.schema.json) に基づいて実データに合わせて作る。入力・検分・出力の相対パスはリポジトリルート基準。`consultation.rationale`に合意した理由と限界を記載し、`input_sha256`は検分からコピーする。
+検分JSONは列・水準・行数・欠測数・入力SHA-256を持つ。`input_sha256`が正式キーであり、`file_sha256`は旧成果物との移行互換用aliasである。両方がある場合は同値でなければならず、欠損・形式不正・不一致は検証エラーになる。行数は総度数と異なる。度数集約の補足検分は次のvalidate-onlyで確認する。設定は [例](templates/three_way/config_example.json) と [schema](templates/three_way/analysis_config.schema.json) に基づいて実データに合わせて作る。入力・検分・出力の相対パスはリポジトリルート基準。`consultation.rationale`に合意した理由と限界を記載し、`input_sha256`は検分からコピーする。
 
 ```bash
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analysis.R --config analysis_config.json --validate-only

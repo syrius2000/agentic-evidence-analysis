@@ -13,9 +13,31 @@ number <- function(x, lo, hi = Inf, integer = FALSE) {
 }
 sha256 <- function(path) {
   if (!file.exists(path)) fail(paste("ファイルなし:", path))
-  out <- system2("shasum", c("-a", "256", shQuote(path)), stdout = TRUE)
-  if (!is.null(attr(out, "status"))) fail("SHA-256計算失敗")
-  strsplit(out[1], " ")[[1]][1]
+  if (!requireNamespace("digest", quietly = TRUE)) fail("SHA-256計算にはdigestパッケージが必要")
+  value <- digest::digest(file = path, algo = "sha256")
+  if (!is.character(value) || length(value) != 1L || is.na(value) ||
+      !grepl("^[0-9a-f]{64}$", value)) fail("SHA-256計算失敗")
+  value
+}
+is_sha256 <- function(value) {
+  is.character(value) && length(value) == 1L && !is.na(value) &&
+    grepl("^[0-9a-f]{64}$", value)
+}
+resolve_inspection_sha256 <- function(inspection) {
+  canonical <- inspection$input_sha256
+  legacy <- inspection$file_sha256
+  if (!is.null(canonical) && !is_sha256(canonical)) {
+    fail("検分のinput_sha256形式が不正。Pass 0を再実行")
+  }
+  if (!is.null(legacy) && !is_sha256(legacy)) {
+    fail("検分のfile_sha256形式が不正。Pass 0を再実行")
+  }
+  if (!is.null(canonical) && !is.null(legacy) && !identical(canonical, legacy)) {
+    fail("検分のSHA-256キーが矛盾。Pass 0を再実行")
+  }
+  if (!is.null(canonical)) return(canonical)
+  if (!is.null(legacy)) return(legacy)
+  fail("検分に入力SHA-256がない。Pass 0を再実行")
 }
 read_config <- function(path) {
   cfg <- jsonlite::fromJSON(path, simplifyVector = FALSE)
@@ -58,10 +80,12 @@ read_config <- function(path) {
   if (!number(cfg$seed, 0, .Machine$integer.max, TRUE)) fail("seed不正")
   keys(cfg$consultation, c("inspection", "input_sha256", "rationale"), "consultation")
   for (k in c("inspection", "input_sha256", "rationale")) if (!scalar_text(cfg$consultation[[k]])) fail(paste("Pass 0",k,"が必要"))
+  if (!is_sha256(cfg$consultation$input_sha256)) fail("Pass 0 input_sha256形式が不正")
   if (!identical(sha256(cfg$input), cfg$consultation$input_sha256)) fail("Pass 0後に入力が変更された")
   inspection <- jsonlite::fromJSON(cfg$consultation$inspection)
   if (is.null(inspection$file) || normalizePath(inspection$file, mustWork = TRUE) != normalizePath(cfg$input, mustWork = TRUE)) fail("検分と入力が一致しない")
-  if (!identical(inspection$input_sha256, cfg$consultation$input_sha256)) fail("検分の入力ハッシュ不一致。Pass 0を再実行")
+  inspection_sha256 <- resolve_inspection_sha256(inspection)
+  if (!identical(inspection_sha256, cfg$consultation$input_sha256)) fail("検分の入力ハッシュ不一致。Pass 0を再実行")
   cfg
 }
 normalize_input <- function(cfg) {

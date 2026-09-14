@@ -47,7 +47,14 @@ repo_root <- tryCatch({
 file_rel <- if (!is.null(repo_root) && (input_abs == repo_root || startsWith(input_abs, paste0(repo_root, "/")))) {
   substring(input_abs, nchar(repo_root) + 2L)
 } else NULL
-file_sha256 <- if (requireNamespace("digest", quietly = TRUE)) digest::digest(file = input_abs, algo = "sha256") else NULL
+if (!requireNamespace("digest", quietly = TRUE)) {
+  stop("[ERROR] 入力SHA-256の計算には digest パッケージが必要です。")
+}
+input_sha256 <- digest::digest(file = input_abs, algo = "sha256")
+if (!is.character(input_sha256) || length(input_sha256) != 1L ||
+    is.na(input_sha256) || !grepl("^[0-9a-f]{64}$", input_sha256)) {
+  stop("[ERROR] 入力SHA-256を正しい形式で計算できませんでした。")
+}
 
 df <- read_csv(input_file, show_col_types = FALSE)
 
@@ -103,12 +110,15 @@ if (ncol(cat_vars) > 0) {
 }
 
 output <- list(
-  inspection_contract_version = "1.0",
+  inspection_contract_version = "2.0",
   inspection_status = inspection_status,
   diagnostics = diagnostics,
   file = file_rel,
   file_path_kind = if (!is.null(file_rel)) "repo_relative" else "external",
-  file_sha256 = file_sha256,
+  input_sha256 = input_sha256,
+  # inspection contract 1.0 の成果物を利用する呼び出し元との移行互換。
+  # 新規の実装は input_sha256 を正本として参照する。
+  file_sha256 = input_sha256,
   logical_label = if (is.null(file_rel)) basename(input_abs) else NULL,
   n_rows = nrow(df),
   n_cols = ncol(df),

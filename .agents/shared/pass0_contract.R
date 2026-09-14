@@ -42,6 +42,23 @@ pass0_scalar_string <- function(value) {
   is.character(value) && length(value) == 1L && !is.na(value) && nzchar(trimws(value))
 }
 
+pass0_inspection_input_sha256 <- function(inspection) {
+  canonical <- inspection$input_sha256
+  legacy <- inspection$file_sha256
+  if (!is.null(canonical) && !pass0_is_sha256(canonical)) {
+    stop("[ERROR] Pass 0 検分成果物のinput_sha256形式が不正です。", call. = FALSE)
+  }
+  if (!is.null(legacy) && !pass0_is_sha256(legacy)) {
+    stop("[ERROR] Pass 0 検分成果物のfile_sha256形式が不正です。", call. = FALSE)
+  }
+  if (!is.null(canonical) && !is.null(legacy) && !identical(canonical, legacy)) {
+    stop("[ERROR] Pass 0 検分成果物のSHA-256キーが矛盾しています。", call. = FALSE)
+  }
+  if (!is.null(canonical)) return(canonical)
+  if (!is.null(legacy)) return(legacy)
+  stop("[ERROR] Pass 0 検分成果物に入力SHA-256がありません。", call. = FALSE)
+}
+
 validate_pass0_provenance <- function(config_data, config_path, expected_skill, repo_root = getwd()) {
   if (!is.list(config_data) || is.data.frame(config_data)) {
     stop("[ERROR] analysis_config.json は JSON object である必要があります。", call. = FALSE)
@@ -100,7 +117,8 @@ validate_pass0_provenance <- function(config_data, config_path, expected_skill, 
     reason <- inspection$diagnostics[[1L]]$message %||% "入力構造を安全に解釈できません。"
     stop("[ERROR] Pass 0 検分は設定確定可能な状態ではありません: ", reason, call. = FALSE)
   }
-  if (!identical(as.character(inspection$file_sha256), as.character(provenance$input_sha256))) {
+  inspection_input_sha256 <- pass0_inspection_input_sha256(inspection)
+  if (!identical(as.character(inspection_input_sha256), as.character(provenance$input_sha256))) {
     stop("[ERROR] Pass 0 検分成果物の入力SHA-256が設定記録と一致しません。", call. = FALSE)
   }
 

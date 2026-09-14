@@ -95,3 +95,11 @@ Pass 2の後、必要に応じて同じrun出力ディレクトリに`quality_ch
 `three-way-results-v1` は既存JSONとは別契約。新しい3元表の解析は vcd-bayesian-evidence-analysis の新経路に従う。セルBFと全体BFを区別し、leverageを影響度、推定状態を安定性と呼ばない。多重性・人工倍率・標本独立性の限界を説明する。
 
 新3次元経路では `data_analysis_scope.md` の代わりに設定の `consultation.rationale` を合意理由の正本とする。入力の検分JSONとSHA-256を対応させる。
+
+### 検分JSONの入力SHA-256契約
+
+- `inspection_contract_version = "2.0"` では `input_sha256` を正式キーとし、64桁の小文字16進数を必須とする。
+- `file_sha256` は version 1.0 成果物との移行互換用aliasであり、新規の呼び出し元は `input_sha256` を参照する。
+- 両キーが存在する場合は同値でなければならない。矛盾、形式不正、両キー欠損は安全側に停止し、入力変更と区別できるエラーを返す。
+- 検分ハッシュ、`analysis_config.json` に記録したハッシュ、実入力から再計算したハッシュの三者一致を確認する。
+- SHA-256を計算できない場合、Pass 0は`NULL`を含む成功成果物を生成せず、その場で停止する。
