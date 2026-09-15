@@ -1,0 +1,9 @@
+Treatment,Outcome,Subgroup,Freq
+Active,Improved,Male,20
+Active,Improved,Female,20
+Active,NotImproved,Male,5
+Active,NotImproved,Female,5
+Placebo,Improved,Male,10
+Placebo,Improved,Female,10
+Placebo,NotImproved,Male,15
+Placebo,NotImproved,Female,15

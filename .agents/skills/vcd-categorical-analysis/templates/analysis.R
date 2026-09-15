@@ -19,6 +19,11 @@ find_agent_repo <- function() {
 repo_root <- find_agent_repo()
 base::source(base::file.path(repo_root, ".agents", "shared", "dependency_check.R"))
 base::source(base::file.path(repo_root, ".agents", "shared", "run_scope.R"))
+base::source(base::file.path(repo_root, ".agents", "skills", "vcd-categorical-analysis", "R", "validate_input.R"))
+base::source(base::file.path(repo_root, ".agents", "skills", "vcd-categorical-analysis", "R", "residual_diagnostics.R"))
+base::source(base::file.path(repo_root, ".agents", "skills", "vcd-categorical-analysis", "R", "effect_evidence_metrics.R"))
+base::source(base::file.path(repo_root, ".agents", "skills", "vcd-categorical-analysis", "R", "dirichlet_posterior.R"))
+base::source(base::file.path(repo_root, ".agents", "skills", "vcd-categorical-analysis", "R", "serializer_v3.R"))
 
 source_only <- isTRUE(base::getOption("vcd_categorical.source_only", FALSE))
 
@@ -857,21 +862,30 @@ generate_plots <- function(tab, vars, output_dir, config, data_label) {
 }
 
 # ============================================================
-# generate_categorical_results_json (for Pass 3 Dashboard)
+# generate_categorical_results_json (Interface 3.0 for Pass 3 Dashboard)
 # ============================================================
 generate_categorical_results_json <- function(df, vars, freq_col, output_dir, res_combined, data_label) {
-  # dashboard.Rmd が期待する構造
-  output <- list(
-    interface_version = "1.0",
-    dataset_name = data_label,
-    dimensions = vars,
-    n_total = sum(df[[freq_col]], na.rm = TRUE),
-    cramers_v = tryCatch(vcd::assocstats(xtabs(as.formula(paste(freq_col, "~", paste(vars[1:2], collapse = " + "))), data = df))$cramer, error = function(e) NA),
-    full_data = res_combined
-  )
-
-  jsonlite::write_json(output, file.path(output_dir, "categorical_results.json"), auto_unbox = TRUE, pretty = TRUE)
-  base::message("[JSON] categorical_results.json written for dashboard integration")
+  # 2次元専用 Interface 3.0 パイプライン実行
+  if (length(vars) == 2) {
+    v_agg <- validate_input_table(df, vars = vars, freq = freq_col, run_dir = output_dir)
+    diag_res <- compute_residual_diagnostics(v_agg)
+    evid_res <- compute_effect_evidence_metrics(diag_res)
+    post_res <- compute_dirichlet_posterior(diag_res, alpha = 1.0, n_draws = 5000L, analysis_signature = paste(data_label, vars[1], vars[2], sep = "_"))
+    results_v3 <- serialize_interface_v3(evid_res, post_res, out_dir = output_dir, run_id = data_label)
+    base::message("[JSON] categorical_results.json (Interface 3.0) written for dashboard integration")
+  } else {
+    # 3-way以上のレガシー互換
+    output <- list(
+      interface_version = "1.0",
+      dataset_name = data_label,
+      dimensions = vars,
+      n_total = sum(df[[freq_col]], na.rm = TRUE),
+      cramers_v = tryCatch(vcd::assocstats(xtabs(as.formula(paste(freq_col, "~", paste(vars[1:2], collapse = " + "))), data = df))$cramer, error = function(e) NA),
+      full_data = res_combined
+    )
+    jsonlite::write_json(output, file.path(output_dir, "categorical_results.json"), auto_unbox = TRUE, pretty = TRUE)
+    base::message("[JSON] categorical_results.json (Legacy) written for dashboard integration")
+  }
 }
 
 # ============================================================

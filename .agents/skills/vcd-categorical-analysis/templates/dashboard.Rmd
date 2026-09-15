@@ -1,11 +1,12 @@
 ---
-title: "カテゴリカル分析ダッシュボード"
-author: "vcd-categorical-analysis"
-date: "`r Sys.Date()`"
+pagetitle: "完全2次元名義カテゴリカル分析 Scientific Dashboard"
 output:
   html_document:
-    theme: flatly
-    mathjax: "default"
+    theme: null
+    mathjax: null
+    self_contained: true
+    highlight: null
+    pandoc_args: ["--mathml"]
 params:
   output_dir: "./skill_out/vcd_categorical/"
 ---
@@ -13,343 +14,379 @@ params:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
-find_agent_repo <- function() {
-  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
-  for (i in seq_len(25L)) {
-    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
-      return(d)
-    }
-    parent <- dirname(d)
-    if (parent == d) break
-    d <- parent
-  }
-  getwd()
-}
-repo_root <- find_agent_repo()
-source(file.path(repo_root, ".agents", "shared", "dependency_check.R"))
-
-check_r_dependencies(
-  c("vcd", "ggplot2", "jsonlite", "knitr", "DT", "htmltools"),
-  context = "vcd-categorical ダッシュボード生成"
-)
-
 suppressPackageStartupMessages({
-  library(vcd)
-  library(ggplot2)
   library(jsonlite)
-  library(knitr)
   library(DT)
   library(htmltools)
+  library(knitr)
+  library(ggplot2)
 })
 
-`%||%` <- function(x, y) if (is.null(x)) y else x
-
-# フォント設定
+# システムフォント検出 (外部フォント排除)
 detect_jp_font <- function() {
   os <- Sys.info()[["sysname"]]
-  candidates <- switch(os,
-    "Darwin"  = c("Hiragino Sans", "HiraginoSans-W3", "Hiragino Kaku Gothic Pro"),
-    "Windows" = c("Yu Gothic", "Meiryo", "MS Gothic"),
-    "Linux"   = c("Noto Sans CJK JP", "IPAexGothic", "IPAGothic"),
-    character(0)
+  switch(os,
+    "Darwin"  = "-apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', sans-serif",
+    "Windows" = "'Segoe UI', 'Yu Gothic UI', 'Meiryo', sans-serif",
+    "Linux"   = "'Noto Sans CJK JP', 'IPAexGothic', sans-serif",
+    "sans-serif"
   )
-  if (requireNamespace("systemfonts", quietly = TRUE)) {
-    avail <- unique(systemfonts::system_fonts()$family)
-    for (f in candidates) {
-      if (f %in% avail) return(f)
-    }
-  }
-  if (length(candidates) > 0L) return(candidates[1L])
-  ""
 }
-jp_font <- detect_jp_font()
+jp_font_family <- detect_jp_font()
 
-find_agent_repo <- function() {
-  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
-  for (i in seq_len(25L)) {
-    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
-      return(d)
-    }
-    parent <- dirname(d)
-    if (parent == d) {
-      break
-    }
-    d <- parent
-  }
-  getwd()
+# ggplot2用単一フォント名検出
+detect_ggplot_jp_font <- function() {
+  os <- Sys.info()[["sysname"]]
+  switch(os,
+    "Darwin"  = "Hiragino Sans",
+    "Windows" = "Yu Gothic",
+    "Linux"   = "Noto Sans CJK JP",
+    ""
+  )
 }
-source(file.path(find_agent_repo(), ".agents", "shared", "run_scope.R"))
+ggplot_jp_font <- detect_ggplot_jp_font()
 
-rs <- resolve_pass3_run_dir(params$output_dir, "categorical_results.json")
-output_dir <- rs$run_dir
-run_meta <- rs$run_meta
+# 結果読み込み
+output_dir <- params$output_dir
 json_path <- file.path(output_dir, "categorical_results.json")
 summ_path <- file.path(output_dir, "executive_summary.md")
 
-if (file.exists(json_path)) {
-  res <- jsonlite::fromJSON(json_path)
-  dataset_nm <- res$dataset_name %||% "Dataset"
-  dims <- res$dimensions
-  n_total <- res$n_total
-  cramers_v <- res$cramers_v
-  full_data <- as.data.frame(res$full_data)
-} else {
-  stop("categorical_results.json が見つかりません。Pass 1 を実行し、run 出力ディレクトリ（run_*）を指定してください。")
+if (!file.exists(json_path)) {
+  stop(sprintf("categorical_results.json が見つかりません: %s", json_path))
 }
 
-# データ整形
-freq_col <- if ("Freq" %in% names(full_data)) "Freq" else names(full_data)[ncol(full_data)]
-for (col in c(freq_col, "pearson_res", "abs_pearson_res")) {
-  if (col %in% names(full_data)) full_data[[col]] <- as.numeric(full_data[[col]])
+res <- jsonlite::fromJSON(json_path)
+glob <- res$global
+cells <- res$cells
+post <- res$posterior
+qual <- res$quality
+prov <- res$provenance
+
+ai_summary_text <- if (file.exists(summ_path)) {
+  paste(readLines(summ_path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+} else {
+  "Pass 2 (AI Narrative) の考察レポート（executive_summary.md）は未生成です。"
 }
 
-tab <- xtabs(as.formula(paste(freq_col, "~", paste(dims, collapse = " + "))), data = full_data)
-n_cells <- prod(dim(tab))
-
-# 最大残差
-max_res <- max(full_data$abs_pearson_res, na.rm = TRUE)
-n_sig <- sum(full_data$abs_pearson_res >= 1.96, na.rm = TRUE)
-
-# AI サマリーの読み込み
-if (file.exists(summ_path)) {
-  summary_text <- paste(readLines(summ_path, encoding = "UTF-8"), collapse = "\n")
-} else {
-  summary_text <- paste0(
-    "### AI エグゼクティブ・サマリー（未生成）\n\n",
-    "> **Pass 2 未実行**: `executive_summary.md` が見つかりません。\n>\n",
-    "> SKILL.md の指示に従い AI 考察を生成し保存してください。\n"
+# DataTables 完全インライン日本語辞書 (外部CDN排除)
+inline_dt_ja <- list(
+  emptyTable = "データが登録されていません",
+  info = "_TOTAL_ 件中 _START_ 〜 _END_ 件を表示",
+  infoEmpty = "0 件中 0 〜 0 件を表示",
+  infoFiltered = "（全 _MAX_ 件から抽出）",
+  lengthMenu = "表示件数: _MENU_",
+  loadingRecords = "読み込み中...",
+  processing = "処理中...",
+  search = "検索:",
+  zeroRecords = "一致するデータが見つかりません",
+  paginate = list(
+    first = "先頭",
+    previous = "前へ",
+    `next` = "次へ",
+    last = "最終"
   )
-}
+)
 ```
 
-```{css, echo=FALSE}
+<style>
 body {
-  font-family: "Helvetica Neue", "Yu Gothic", "Meiryo", sans-serif;
-  font-size: 14px;
-  color: #333;
-  background: #f0f2f5;
+  font-family: `r jp_font_family`;
+  line-height: 1.6;
+  color: #2c3e50;
+  background-color: #f8f9fa;
   margin: 0;
-  padding: 20px;
+  padding: 24px;
 }
-
 .dashboard-container {
   max-width: 1200px;
   margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  background: #ffffff;
+  padding: 32px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
-
-.header-banner {
-  background: linear-gradient(135deg, #1a3a5c 0%, #2d6a9f 100%);
+h1, h2, h3, h4 {
+  color: #1a252f;
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+.header-box {
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+.section-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.metric-item {
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 16px;
+  border-left: 4px solid #3498db;
+}
+.metric-title {
+  font-size: 0.85rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 4px;
+}
+.metric-sub {
+  font-size: 0.8rem;
+  color: #475569;
+  margin-top: 2px;
+}
+.badge-candidate {
+  background-color: #e02424;
   color: white;
-  padding: 24px 32px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.header-banner h2 {
-  margin: 0 0 12px 0;
-  font-size: 24px;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-weight: bold;
 }
-
-.header-banner .meta-info {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  font-size: 14px;
-  opacity: 0.9;
+.badge-quarantined {
+  background-color: #d97706;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
-
-.stats-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
+.badge-active {
+  background-color: #059669;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
 }
-
-.stat-card {
-  background: #fff;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  padding: 16px;
-  text-align: center;
-  flex: 1 1 180px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+pre {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 12px;
+  overflow-x: auto;
 }
-
-.stat-card .value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #1a3a5c;
+/* MathML ネイティブ数式スタイル */
+math {
+  font-size: 1.05em;
+  font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
 }
-
-.stat-card .label {
-  font-size: 12px;
-  color: #666;
+/* エグゼクティブ要約 Markdown スタイル */
+.ai-summary-content h1 {
+  font-size: 1.35rem;
+  margin-top: 16px;
+  margin-bottom: 10px;
+  color: #1e3a8a;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 4px;
+}
+.ai-summary-content h2 {
+  font-size: 1.15rem;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  color: #1e293b;
+}
+.ai-summary-content h3 {
+  font-size: 1.02rem;
+  margin-top: 12px;
+  margin-bottom: 6px;
+  color: #334155;
+}
+.ai-summary-content p {
   margin-top: 6px;
+  margin-bottom: 10px;
+  line-height: 1.7;
 }
-
-.stat-card.evidence-card .value { color: #27ae60; }
-
-.section-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #1a3a5c;
-  border-left: 5px solid #2d6a9f;
-  padding-left: 12px;
-  margin: 8px 0 16px 0;
+.ai-summary-content ul, .ai-summary-content ol {
+  margin-top: 4px;
+  margin-bottom: 10px;
+  padding-left: 24px;
 }
-
-.ai-summary-box {
-  background: #fff;
-  border: 1px solid #d0dce8;
-  border-radius: 8px;
-  padding: 24px 32px;
-  line-height: 1.8;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+.ai-summary-content li {
+  margin-bottom: 4px;
 }
-
-.ai-summary-box h3, .ai-summary-box h4 { color: #1a3a5c; margin-top: 24px; }
-
-.dt-section {
-  background: #fff;
-  padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
-}
-
-.dataTables_wrapper { font-size: 13px; }
-```
+</style>
 
 <div class="dashboard-container">
 
-```{r header-banner, results='asis'}
-run_line <- if (!is.null(run_meta) && !is.null(run_meta$run_id)) {
-  paste0('<span><b>run_id:</b> ', run_meta$run_id, '</span>',
-    '<span><b>run_output_dir:</b> ', run_meta$run_output_dir %||% output_dir, '</span>')
-} else {
-  paste0('<span><b>run_output_dir:</b> ', output_dir, '</span>')
-}
-cat(paste0(
-  '<div class="header-banner">',
-  '<h2>\U1F4CA カテゴリカル分析ダッシュボード</h2>',
-  '<div class="meta-info">',
-  '<span>📁 <b>データ:</b> ', dataset_nm, '</span>',
-  '<span>📊 <b>変数:</b> ', paste(dims, collapse = " \u00d7 "), '</span>',
-  '<span>🔢 <b>総度数:</b> N = ', format(n_total, big.mark = ","), '</span>',
-  '<span>\u23f1 <b>作成:</b> ', format(Sys.time(), "%Y-%m-%d %H:%M", tz="Asia/Tokyo"), '</span>',
-  run_line,
-  '</div></div>'
-))
-```
+<div class="header-box">
+  <h1>完全2次元名義カテゴリカル分析 Scientific Dashboard</h1>
+  <p style="color: #64748b; margin: 0;">
+    Interface 3.0 (two-way-results-v2) | Run ID: <code>`r prov$run_id`</code> | 生成日時: <code>`r prov$timestamp_jst`</code>
+  </p>
+</div>
 
-```{r stats-cards, results='asis'}
-cv_display <- if (!is.null(cramers_v) && length(cramers_v) && !is.na(cramers_v)) {
-  sprintf("%.4f", as.numeric(cramers_v[1]))
-} else {
-  "N/A"
-}
-
-cat(paste0(
-  '<div class="stats-grid">',
-  '<div class="stat-card"><div class="value">', n_cells, "</div>",
-  '<div class="label">\u30bb\u30eb\u6570</div></div>',
-  '<div class="stat-card"><div class="value">', sprintf("%.2f", max_res), "</div>",
-  '<div class="label">\u6700\u5927\u6b8b\u5dee\uff08\u7d76\u5bfe\u5024\uff09</div></div>',
-  '<div class="stat-card evidence-card"><div class="value">', n_sig, "</div>",
-  '<div class="label">\u6709\u610f\u30bb\u30eb\u6570\uff08|r| &gt; 1.96\uff09</div></div>',
-  '<div class="stat-card" style="border-color: #8e44ad;"><div class="value" style="color: #8e44ad;">', cv_display, "</div>",
-  '<div class="label">Cram&eacute;r\'s V\uff08\u52b9\u679c\u91cf\uff09</div></div>',
-  "</div>"
-))
-```
-
-<div class="section-title">&#129504; AI エグゼクティブ・サマリー（Pass 2 出力）</div>
-
+<!-- Section 1: エグゼクティブ要約 -->
+<div class="section-card">
+  <h2><span>1.</span> エグゼクティブ要約 (Pass 2 AI Narrative)</h2>
+  <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:16px 20px; border-radius:4px;" class="ai-summary-content">
 ```{r ai-summary, results='asis'}
-cat('<div class="ai-summary-box">\n')
-cat(knitr::knit(text = summary_text, quiet = TRUE))
-cat("\n</div>\n")
+# Plain TeX \rm を LaTeX \mathrm に安全に置換して Pandoc MathML 変換エラーを防止
+normalized_summary <- gsub("\\\\rm\\b", "\\\\mathrm", ai_summary_text)
+cat(knitr::knit(text = normalized_summary, quiet = TRUE))
 ```
-
-<div class="section-title">&#128200; ピアソン残差プロット</div>
-
-<div class="dt-section">
-```{r residual-plot, fig.width=10, fig.height=4, echo=FALSE}
-plot_df <- full_data
-plot_df$cell_label_wrap <- factor(plot_df$cell_label, levels = unique(plot_df$cell_label))
-
-p <- ggplot(plot_df, aes(x = seq_along(cell_label_wrap), y = pearson_res)) +
-  geom_hline(yintercept = c(-1.96, 0, 1.96), linetype = c("dashed", "solid", "dashed"), linewidth = 0.3) +
-  geom_point(aes(color = pearson_res), size = 1.6) +
-  scale_color_gradient2(low = "#e74c3c", mid = "grey70", high = "#2980b9") +
-  labs(x = "Index (cell order)", y = "Pearson residuals vs index") +
-  theme_minimal(base_size = 13, base_family = jp_font)
-print(p)
-```
+  </div>
 </div>
 
-<details id="all-cells-detail" open>
-<summary class="section-title" style="cursor:pointer;">&#128203; 全セル・残差テーブル</summary>
+<!-- Section 2: 全体関連度・効果量 -->
+<div class="section-card">
+  <h2><span>2.</span> 全体連関構造 (Global Association & Effect Size)</h2>
+<div class="metric-grid">
+<div class="metric-item">
+<div class="metric-title">総標本サイズ ($N$)</div>
+<div class="metric-value">`r format(glob$n_total, big.mark = ",")`</div>
+<div class="metric-sub">分割表次元: `r glob$n_rows` × `r glob$n_cols` ($df = `r glob$df`$)</div>
+</div>
+<div class="metric-item">
+<div class="metric-title">Pearson $X^2$ (独立性検定統計量)</div>
+<div class="metric-value">`r sprintf("%.2f", glob$pearson_chisq)`</div>
+<div class="metric-sub">$p$ 値: `r sprintf("%.2e", glob$pearson_p_value)`</div>
+</div>
+<div class="metric-item">
+<div class="metric-title">Cramér's $V$ (未補正)</div>
+<div class="metric-value">`r sprintf("%.4f", glob$cramers_v)`</div>
+<div class="metric-sub">95% CI: [`r sprintf("%.4f", glob$cramers_v_ci[1])`, `r sprintf("%.4f", glob$cramers_v_ci[2])`]</div>
+</div>
+<div class="metric-item">
+<div class="metric-title">偏り補正 Cramér's $\tilde{V}$ (Bergsma)</div>
+<div class="metric-value">`r sprintf("%.4f", glob$cramers_v_corrected)`</div>
+<div class="metric-sub">
+`r if (!is.null(glob$cramers_v_corrected_ci)) sprintf("95%% CI: [%.4f, %.4f]", glob$cramers_v_corrected_ci[1], glob$cramers_v_corrected_ci[2]) else "退化表フォールバック (CI: null)"`
+</div>
+</div>
+</div>
+</div>
 
-<div class="dt-section" style="margin-top:12px;">
-```{r dt-table}
-dt_data <- full_data
-datatable(
-  dt_data,
-  filter = "top",
-  rownames = FALSE,
-  options = list(
-    pageLength = 20,
-    scrollX = TRUE,
-    order = list(list(which(names(dt_data) == "abs_pearson_res") - 1, "desc")),
-    language = list(url = "https://cdn.datatables.net/plug-ins/1.13.6/i18n/ja.json")
+<!-- Section 3: Effect × Evidence 散布図と大標本Dual-Filter -->
+<div class="section-card">
+  <h2><span>3.</span> 局所効果 × 証拠散布図 (Effect × Evidence & Dual-Filter)</h2>
+  <p>
+    局所対数効果比 $\log(O/E)$ と局所 Rao スコア検定統計量 $T^{\mathrm{score}}$ による2軸診断。
+    大標本（$N \ge 2000$）では $|\log(O/E)| \ge 0.50$ かつ $T^{\mathrm{score}} \ge 3.84$ を満たす非隔離セルを注目候補として抽出します。
+  </p>
+  ```{r effect-evidence-plot, fig.width=10, fig.height=5.5}
+  finite_cells <- cells[!is.na(cells$log_oe) & cells$is_finite, ]
+  if (nrow(finite_cells) > 0) {
+    plot(
+      finite_cells$log_oe,
+      finite_cells$rao_score,
+      pch = ifelse(finite_cells$dual_filter_candidate, 19, 1),
+      col = ifelse(finite_cells$dual_filter_candidate, "#dc2626", ifelse(finite_cells$quarantine_status == "QUARANTINED", "#d97706", "#2563eb")),
+      cex = ifelse(finite_cells$dual_filter_candidate, 1.8, 1.2),
+      xlab = expression(paste("局所対数効果比 ", log(O/E))),
+      ylab = expression(paste("局所 Rao スコア検定統計量 ", T^score)),
+      main = sprintf("Effect × Evidence 散布図 (候補セル数: %d)", qual$n_candidates),
+      las = 1
+    )
+    abline(h = 3.8415, col = "#94a3b8", lty = 2)
+    abline(v = c(-0.5, 0.5), col = "#94a3b8", lty = 2)
+    abline(v = 0, col = "#cbd5e1", lty = 1)
+    text(
+      finite_cells$log_oe,
+      finite_cells$rao_score,
+      labels = paste(finite_cells$row_level, finite_cells$col_level, sep = "-"),
+      pos = 3, cex = 0.7, col = "#334155"
+    )
+  }
+  ```
+</div>
+
+<!-- Section 4: セルエクスプローラー (完全インライン日本語DataTables) -->
+<div class="section-card">
+  <h2><span>4.</span> セル診断エクスプローラー (Cell Explorer)</h2>
+  ```{r dt-table}
+  display_df <- data.frame(
+    行 = cells$row_level,
+    列 = cells$col_level,
+    観測度数 = cells$observed,
+    期待度数 = cells$expected,
+    Pearson残差 = cells$pearson_res,
+    調整残差 = cells$adj_res,
+    レバレッジ = cells$leverage,
+    `log(O/E)` = ifelse(is.na(cells$log_oe), "未定義(-Inf)", sprintf("%.4f", cells$log_oe)),
+    `Raoスコア` = cells$rao_score,
+    `p値(BH)` = sprintf("%.4f", cells$p_value_bh),
+    状態 = cells$quarantine_status,
+    候補 = ifelse(cells$dual_filter_candidate, "★候補", "-"),
+    check.names = FALSE
   )
-) |>
-  formatRound(c("pearson_res", "abs_pearson_res"), digits = 4) |>
-  formatStyle(
-    "pearson_res",
-    color = styleInterval(0, c("#e74c3c", "#2980b9"))
+
+  DT::datatable(
+    display_df,
+    rownames = FALSE,
+    options = list(
+      pageLength = 15,
+      scrollX = TRUE,
+      language = inline_dt_ja
+    )
   )
-```
-</div>
-</details>
-
-<div class="section-title">&#128444; モザイクプロット</div>
-
-<div class="dt-section">
-```{r mosaic-plot, fig.width=10, fig.height=8, echo=FALSE}
-if (isTRUE(n_cells <= 36L)) {
-  vcd::mosaic(tab, shade = TRUE, main = paste("Mosaic:", paste(dims, collapse = " x ")))
-} else {
-  cat("<p style='color:#7f8c8d; font-style:italic;'>セル数が多すぎるためモザイクプロットの生成をスキップしました。</p>")
-}
-```
+  ```
 </div>
 
-<details>
-<summary class="section-title" style="cursor:pointer;">&#128218; 統計指標の用語解説（クリックで展開）</summary>
-<div class="ai-summary-box" style="margin-top:12px;">
+<!-- Section 5: ベイズDirichlet事後推論 -->
+<div class="section-card">
+  <h2><span>5.</span> 多項Dirichlet事後推論 (Bayesian Credible Intervals)</h2>
+  <p>
+    対称Dirichlet事前分布（$\alpha = `r post$prior_specification$alpha`$）に基づく事後生起確率 $\pi_{ij}$ の 95% 信用区間（ETI: Equal-Tailed Interval）。
+  </p>
+  ```{r posterior-plot, fig.width=10, fig.height=4.8}
+  p_df <- post$cell_posteriors
+  # 縦軸ラベル: 行レベル : 列レベル
+  p_df$cell_label <- paste(p_df$row_level, p_df$col_level, sep = " : ")
+  # 上から表の順序通り（第1行・第1列、第1行・第2列...）に並ぶよう factor levels を反転設定
+  p_df$cell_label <- factor(p_df$cell_label, levels = rev(p_df$cell_label))
+  p_df$row_group <- factor(p_df$row_level, levels = unique(p_df$row_level))
 
-<h4>■ ピアソン残差 (Pearson Residuals)</h4>
-<p>観測値と期待値のズレを標準化したものです。</p>
-<ul>
-<li>|r| &gt; 1.96: 5%水準で有意なズレ</li>
-<li>|r| &gt; 2.58: 1%水準で有意なズレ</li>
-<li><span style="color:#2980b9;font-weight:bold;">正値(+)</span>: 期待より多い（過剰）</li>
-<li><span style="color:#e74c3c;font-weight:bold;">負値(−)</span>: 期待より少ない（過少）</li>
-</ul>
+  ggplot(p_df, aes(x = prob_mean, y = cell_label, color = row_group)) +
+    geom_pointrange(aes(xmin = prob_q025, xmax = prob_q975), size = 0.7, linewidth = 0.9) +
+    scale_x_continuous(
+      limits = c(0, max(p_df$prob_q975) * 1.15),
+      expand = expansion(mult = c(0, 0.05))
+    ) +
+    scale_color_brewer(palette = "Set1") +
+    labs(
+      title = "事後平均および 95% 信用区間 (Equal-Tailed Interval)",
+      x = "事後セル生起確率 π_ij",
+      y = "セル (行 : 列)",
+      color = "グループ (行変数)"
+    ) +
+    theme_minimal(base_family = ggplot_jp_font) +
+    theme(
+      plot.title = element_text(size = 13, face = "bold", color = "#1e293b", margin = margin(b = 10)),
+      axis.title.x = element_text(size = 11, color = "#334155", margin = margin(t = 8)),
+      axis.title.y = element_text(size = 11, color = "#334155", margin = margin(r = 12)),
+      axis.text.y = element_text(size = 10, color = "#1e293b", face = "bold"),
+      axis.text.x = element_text(size = 10, color = "#1e293b"),
+      legend.title = element_text(size = 10, face = "bold", color = "#334155"),
+      legend.text = element_text(size = 10, color = "#334155"),
+      legend.position = "right",
+      panel.grid.minor = element_blank(),
+      panel.grid.major.y = element_line(color = "#e2e8f0", linetype = "dashed"),
+      panel.grid.major.x = element_line(color = "#e2e8f0"),
+      plot.margin = margin(10, 16, 10, 16)
+    )
+  ```
+</div>
 
-<h4>■ Cramér's V（0〜1）</h4>
-<p>変数間の関連の「強さ」を示す効果量です。</p>
-<ul>
-<li>0.1未満: 弱い関連</li>
-<li>0.3前後: 中程度の関連</li>
-<li>0.5以上: 強い関連（Cohen, 1988 基準）</li>
-</ul>
+<!-- Section 6: 品質・プロビナンス情報 -->
+<div class="section-card">
+  <h2><span>6.</span> 品質・プロビナンス情報 (Quality & Provenance)</h2>
+  <p><strong>隔離セル数:</strong> `r qual$n_quarantined_cells` | <strong>Dual-Filter候補数:</strong> `r qual$n_candidates`</p>
+  `r if (length(qual$warnings) > 0) paste("<ul>", paste(sprintf("<li>%s</li>", qual$warnings), collapse = ""), "</ul>") else "<p>警告事項はありません。</p>"`
+  <p style="font-size:0.8rem; color:#64748b;">
+    実行環境: `r prov$platform` | R: `r prov$r_version`
+  </p>
+</div>
 
 </div>
-</details>
-
-</div> <!-- End dashboard-container -->

@@ -1,38 +1,55 @@
-# AI 解釈（Cursor 二段レンダリング）
+# AI Narrative ガイドライン — 7ステップ考察契約
 
-このスキルは本来「統計処理と図表の生成」を扱う。ここでは追加で、**Cursor デスクトップ上のエージェント**が解釈文（Markdown）を作り、**2回目のレンダリング**で HTML に差し込むための手順を示す。
+本ドキュメントは、vcd-categorical-analysis v4.0 における Pass 2 AI Narrative（`executive_summary.md`）の作成順序および禁止事項を規定する。
 
-## 前提
+---
 
-- リポジトリに **API キーを埋め込まない**
-- R/Python から外部 LLM API を呼ぶ **バッチ処理は行わない**
-- 解釈文は **エージェント（このチャットの AI）**が作る
+## 7ステップ標準考察順序（必須）
 
-## 手順（概要）
+エージェントは必ず以下の順序で考察を記述し、P値単独判定や断定的な過大解釈を行ってはならない。
 
-1. **1回目レンダリング（統計のみ）**
-   `templates/report.Rmd` を通常どおりレンダリングし、`skill_out/.../report.html` と `figures/`、`.metrics.rds` を生成する。
+```mermaid
+flowchart TD
+  S1["1. 全体関連構造<br/>(χ², G², 自由度)"] --> S2["2. 効果の大きさ<br/>(Cramér's V 95% CI, bias-corrected V)"]
+  S2 --> S3["3. 統計的証拠強度<br/>(Raoスコア T^score, BH調整p値)"]
+  S3 --> S4["4. 局所診断・安定性<br/>(Quarantine, Leverage, ゼロセル)"]
+  S4 --> S5["5. ベイズ不確実性<br/>(Dirichlet事後生起確率, 95% ETI)"]
+  S5 --> S6["6. 条件付き確率・実務解釈<br/>(P(B|A), P(A|B), 方向性)"]
+  S6 --> S7["7. 制約事項・次アクション<br/>(大標本バイアス, 限界, 保留事項)"]
+```
 
-2. **エージェントが解釈 Markdown を作成**
-   生成物を見ながら、`skill_out/<slug>/ai_interpretation.md` を作る（例: `skill_out/vcd_categorical/ucb_admit_gender_dept/ai_interpretation.md`）。
+### ステップ 1: 全体関連構造（Global Association）
+- Pearson $\chi^2$ 統計量、尤度比 Deviance $G^2$、自由度、および全体 $p$ 値を報告する。
+- 独立モデル全体の適合度・連関の有無を把握する。
 
-3. **2回目レンダリング（解釈を差し込み）**
-   `params$ai_interpretation_path` に 2. で作った Markdown を指定して再レンダリングする。
+### ステップ 2: 効果の大きさ（Effect Size & Confidence Intervals）
+- 未補正 Cramér's $V$ と Bergsma (2013) bias-corrected $\tilde{V}$ の双方を報告する。
+- 非心カイ二乗反転による 95% 信頼区間 `[lower, upper]` を示し、点推定値の不確実性を評価する。
 
-## 解釈 Markdown に含めると良い構成（素人向け）
+### ステップ 3: 統計的証拠強度（Evidence Strength & Dual-Filter）
+- 各セルの局所対数効果比 $\log(O/E)$ および Rao スコア検定統計量 $T^{\rm score}$ を確認する。
+- 大標本（$N \ge 2000$）の場合、大標本 Dual-Filter 基準（$|\log(O/E)| \ge 0.50$ かつ $T^{\rm score} \ge 3.84$）を満たす候補セルにフォーカスする。小標本での過小検出や大標本での微小効果の過大解釈を防止する。
 
-- **結論（1〜2行）**: 何が重要な示唆か
-- **どこがズレたか（上位セル2〜3個）**: 期待より多い/少ないの説明
-- **強さ（効果量）**: Cramér の V とラベル（small 等）
-- **注意（1行）**: 層別（Dept）と周辺で結論が変わりうる等
+### ステップ 4: 局所診断と安定性（Quarantine & Leverage）
+- 観測度数0（$O=0$）、期待度数小（$E < 5$）、高レバレッジ（$h \ge 0.80$）による Quarantine セルを確認し、候補から除外された理由を明記する。
+- ゼロ観測セルは $\log(O/E) = -\infty$（未定義・負の無限大）であり、数値0として扱ってはならない。
 
-## 解釈生成のプロンプト雛形（例）
+### ステップ 5: 事後不確実性と信用区間（Bayesian Credible Intervals）
+- 対称 Dirichlet 事前分布（$\alpha=1.0$）に基づく事後生起確率 $\pi_{ij}$ の 95% ETI（Equal-Tailed Interval）を報告する。
+- 頻度論の点推定値とベイズ信用区間の幅を対比し、データの情報量を評価する。
 
-以下をエージェントに渡す。
+### ステップ 6: 条件付き割合と実務的意味（Conditional Probabilities）
+- 行条件付き確率 $P(B_j \mid A_i)$ および列条件付き確率 $P(A_i \mid B_j)$ の事後平均を示し、現場での意思決定に直結する比率（例: 治療群における改善率）として解説する。
 
-- 入力: `report.html` の Summary / Decision summary / Residual table / Residual plot / mosaic
-- 出力: `ai_interpretation.md`（日本語、見出しは `##` から。1〜2画面で）
+### ステップ 7: 制約事項・解釈保留・次アクション（Limitations & Actions）
+- 観察研究・実世界データ特有の選択バイアス、未測定交絡、サンプリング偏りを明記する。
+- 3次元以上の交絡や層別解析が必要な場合は、正本スキル `vcd-bayesian-evidence-analysis` への移行を推奨する。
 
-**指示例:**
+---
 
-「このレポートを統計に不慣れな人に説明する解釈文を Markdown で書いて。参照している残差のモデル（例: 2-way交互作用まで）を最初に明記し、上位のズレのセルを2〜3つ挙げて、正負の意味を添えて。」
+## 禁止事項（厳守）
+
+1. **P値単独判定の禁止**: $p < 0.05$ のみをもって「有意な関連がある」「効果が大きい」と結論付けてはならない。
+2. **ゼロセル対数比の0扱い禁止**: $O=0$ のセルを「対数比0（差なし）」と誤認してはならない（$-\infty$ であり完全隔離対象）。
+3. **英語本文の禁止**: 専門用語・数式記号を除き、本文はすべて自然な日本語で作成する。
+4. **残差符号の未確認解釈禁止**: 観測が期待より多いのか少ないのかの方向性を残差符号および $\log(O/E)$ で確認せずに論じてはならない。

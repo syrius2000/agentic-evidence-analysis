@@ -1,0 +1,5 @@
+Treatment,Outcome,Freq
+Active,Improved,40
+Active,NotImproved,-5
+Placebo,Improved,20
+Placebo,NotImproved,30

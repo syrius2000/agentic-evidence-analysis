@@ -1,0 +1,1876 @@
+{
+  "schema_version": "1.0",
+  "case_metadata": {
+    "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+    "revision": 16,
+    "status": "implementer-action",
+    "owner": "myamaguchi",
+    "cycle_count": 2,
+    "cycle_limit": 3,
+    "created_at": "2026-09-15T09:45:37.190229Z",
+    "updated_at": "2026-09-15T14:15:27.527513Z"
+  },
+  "baseline": {
+    "purpose": "指定対象の実装結果を単発で独立QAする",
+    "intended_use": {
+      "users": "阪大大学院統計講座",
+      "environment": "macOS/ ubuntu",
+      "operational_context": "単発の実装結果QA"
+    },
+    "risk_context": {
+      "criticality": "high",
+      "safety_impact": "未指定",
+      "data_integrity_impact": "未指定",
+      "security_context": "未指定"
+    },
+    "requirements": [
+      {
+        "requirement_id": "STANDALONE-SCOPE-001",
+        "text": "指定対象の範囲と確認可能なEvidenceを明示する"
+      }
+    ],
+    "acceptance_criteria": [
+      "レビュー範囲、確認結果、未確認事項が記録されること"
+    ],
+    "exclusions": [
+      "原要求・原受入基準が未提示の場合、ドメイン適合や受入を判定しない"
+    ],
+    "targets": [
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md"
+    ],
+    "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447"
+  },
+  "implementation_authorization": {
+    "allowed": true,
+    "finding_ids": [
+      "F-001-two-way-boundary-and-migration",
+      "F-002-zero-cell-json-numeric-contract",
+      "F-003-global-effect-ci-method-unspecified",
+      "F-004-offline-acceptance-is-not-executable"
+    ],
+    "allowed_targets": [
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+    ]
+  },
+  "change_observation": {
+    "method": "finite-manifest",
+    "scope": [
+      "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md"
+    ],
+    "baseline_evidence_id": null,
+    "exclusions": [],
+    "limitations": [
+      "bootstrap時の存在・読取り確認は品質適合Evidenceではない",
+      "Reviewerは通常のreview操作でEvidenceを独立確認する"
+    ]
+  },
+  "findings": [
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "classification": "requirement-violation",
+      "severity": "high",
+      "requirement_ref": "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md:14-53, 1403-1420; openspec/changes/vcd-categorical-analysis-v4/tasks.md:1-44",
+      "observed_fact": "計画は v4.0 を名義 2-way の正本とし 3-way モデル複製を非目的とするが、現行 SKILL.md と analysis.R は既存 3-way を互換保守し、同一の profile→render と categorical_results.json を使用する。計画、design、spec、tasks のいずれも、3-way 入力を v4 で明示拒否するのか、旧 2.x 経路へ維持するのか、出力 JSON の版をどう分岐するのかを固定していない。",
+      "impact": "実装者ごとに 3-way を暗黙に 2-way 化、互換処理、または破壊的拒否のいずれも選べ、既存利用者の解析単位・出力契約・run lifecycle を壊し得る。『既存 run lifecycle regression-free』という完了条件も検証不能になる。",
+      "expected_state": "入力受入契約として次元数、各辺の最小水準数、総度数、許容する度数型、構造的ゼロの扱いを明記し、3-way 入力について v4 の挙動、旧経路の保存先、interface_version の分岐、移行テストの対象を proposal/design/spec/tasks/計画で一意にそろえる。",
+      "verification_method": "2-way、3-way、1水準、総度数 0、非有限または負の度数の fixture を用意し、各入力の終了状態、出力有無、interface_version、run_state が契約どおりであることを独立に確認する。",
+      "evidence_refs": [
+        "EV-001-current-arity"
+      ],
+      "status": "plan-approved",
+      "plan_required": true
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "classification": "requirement-violation",
+      "severity": "high",
+      "requirement_ref": "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md:195-216, 1234-1316; openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md:14-16",
+      "observed_fact": "計画は O=0 の log(O/E) を数学的 raw value として保持し QUARANTINED にすると定める一方、Interface 3.0 の log_oe は JSON number としか定義しない。標準 JSON は -Infinity を number として表せず、null、文字列、欠損フラグのいずれを出すか、各コンシューマがどう表示・ソート・検証するかも未定義である。",
+      "impact": "ゼロセルという必須の Quarantine シナリオで JSON schema validation、再現比較、Dashboard の軸・表・候補抽出が実装依存となり、-Infinity を 0 や欠損なしとして誤解釈する危険がある。",
+      "expected_state": "非有限値を JSON に直接出力しない具体的な表現を固定する。例えば log_oe を null、log_oe_state を NEGATIVE_INFINITY、is_finite を false とし、計算・候補判定・可視化・表の各規則を定義する。schema と zero-cell fixture の期待 JSON も追加する。",
+      "verification_method": "ゼロ観測セルを含む fixture の JSON を厳格パーサー／schema validator で検証し、値状態、QUARANTINED 理由、候補除外、Dashboard の表示が契約どおりであることを確認する。",
+      "evidence_refs": [
+        "EV-002-nonfinite-json"
+      ],
+      "status": "plan-approved",
+      "plan_required": true
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "classification": "unverified-claim",
+      "severity": "medium",
+      "multi_file_impact": true,
+      "ambiguous_requirements": true,
+      "requirement_ref": "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md:114-123, 1234-1255; openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md:46-48",
+      "observed_fact": "Cramér's V、bias-corrected Cramér's V、Cramér's V confidence interval を必須出力としているが、CI の方法、信頼係数、対象値（補正前／補正後）、小標本・退化表時の扱い、乱数を使う場合の seed／反復数が定義されていない。",
+      "impact": "同じ入力でも実装者・R パッケージ・OS により異なる CI を正当化でき、global JSON、Dashboard、数値 fixture の期待値を固定できない。",
+      "expected_state": "Cramér's V CI の推定法、95%水準、対象量、適用不能時の明示値・quality warning、必要な RNG 契約を一つに固定し、参照値を持つ fixture と許容誤差を tasks に追加する。",
+      "verification_method": "2×2、3×4、疎な表、退化表に対し、指定法の独立実装または参照値と CI の下限・上限・warning を比較する。",
+      "evidence_refs": [
+        "EV-003-ci-ambiguity"
+      ],
+      "status": "plan-approved",
+      "plan_required": true
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "classification": "evidence-gap",
+      "severity": "medium",
+      "multi_file_impact": true,
+      "requirement_ref": "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md:704-726, 1739-1766; openspec/changes/vcd-categorical-analysis-v4/tasks.md:37-39",
+      "observed_fact": "完全オフラインを必須とするが、計画の acceptance は『offline で完全表示』にとどまり、HTML 内の URL／外部 resource の静的検査、ネットワーク遮断下のレンダリング・表示確認、許容する file/data URI の規則が定義されていない。現行 dashboard.Rmd は DataTables 日本語辞書に https://cdn.datatables.net の URL を使用している。",
+      "impact": "外部 CDN を再混入しても通常の接続環境では見逃され、閉域環境でデータ表または表示が壊れる。要件の MUST を再現可能に受入確認できない。",
+      "expected_state": "生成済み HTML を対象に、http(s) URL と外部参照を失敗させる静的検査、ネットワーク遮断または同等のブラウザ検査、許容 URI の allowlist、検査 fixture を tasks とテストに追加する。",
+      "verification_method": "通常の 2-way fixture をレンダリング後、HTML を検査し、ネットワーク遮断状態で必要な CSS、JS、KaTeX、DataTable、日本語辞書、全図表が利用可能であることを確認する。",
+      "evidence_refs": [
+        "EV-004-current-remote-url"
+      ],
+      "status": "plan-approved",
+      "plan_required": true
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "EV-001-current-arity",
+      "level": "observed",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "計画、OpenSpec、現行 SKILL.md、analysis.R を行単位で照合",
+      "result": "現行 engine は vars の長さが3以上の場合の strata 処理と3-wayモデル式を持つが、v4 成果物は入力移行または拒否の契約を定義していない。",
+      "summary": "2-way 正本化と既存3-way互換保守の境界が未固定。"
+    },
+    {
+      "evidence_id": "EV-002-nonfinite-json",
+      "level": "observed",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "計画のゼロセル規則と Interface 3.0 cell schema を照合",
+      "result": "O=0 で log(O/E)=-Infinity とする規則に対し、JSON上の非有限値の符号化・検証・表示規則は存在しない。",
+      "summary": "必須ゼロセル経路のデータ契約が表現不能。"
+    },
+    {
+      "evidence_id": "EV-003-ci-ambiguity",
+      "level": "observed",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "global statistics、JSON schema、OpenSpec scenario、tasks を照合",
+      "result": "Cramér's V confidence interval は出力必須だが、推定法・水準・対象量・境界ケース・テスト参照値が未指定である。",
+      "summary": "global effect の数値契約が再現可能に固定されていない。"
+    },
+    {
+      "evidence_id": "EV-004-current-remote-url",
+      "level": "observed",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "現行 dashboard.Rmd と v4 の offline task・acceptance を照合",
+      "result": "現行 dashboard.Rmd は DataTables 日本語辞書に CDN URL を指定し、v4 は削除を要求するが、生成HTMLに対する機械的なオフライン受入試験が未定義である。",
+      "summary": "オフライン MUST の回帰検出手段が不足。"
+    },
+    {
+      "evidence_id": "EV-RESP-001-boundary-definition",
+      "level": "derived",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "Implementation-plan-vcd-categorical-analysis-v4.0.md, proposal.md, spec.md, design.md, tasks.md の受入契約・非目標セクションを改定",
+      "result": "完全2次元名義分割表専用エンジンと定義。構造的ゼロは入力禁止（STRUCTURAL_ZERO_NOT_SUPPORTED）、3次元以上はフェイルファスト停止（INVALID_INPUT_ARITY）して正本スキルへ委譲する契約を一意に固定した。",
+      "summary": "2-way専用化と構造的ゼロ入力禁止の境界契約を成果物へ反映完了。"
+    },
+    {
+      "evidence_id": "EV-RESP-002-zero-cell-numeric-json",
+      "level": "derived",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "spec.md, design.md, tasks.md, Implementation-plan Section 6.1/41/42 のセルスキーマを改定",
+      "result": "観測度数0セルの対数効果比について、標準JSON適合のため log_oe: null とし、状態識別子 log_oe_state: 'NEGATIVE_INFINITY' および is_finite: false を付与。Quarantine必須扱いと大標本候補からの自動除外を明文化した。",
+      "summary": "ゼロセル対数効果比の非有限値表現とQuarantine規則を固定。"
+    },
+    {
+      "evidence_id": "EV-RESP-003-cramer-v-ci-math",
+      "level": "derived",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "Smithson/Steiger非心χ²反転求根アルゴリズムおよびBergsma (2013) bias-corrected有効次元変換式を数理的に整理し各成果物に反映",
+      "result": "未補正 cramers_v_ci と bias-corrected cramers_v_corrected_ci を分離出力。非心度λの単調性から区間端点順序 [0, 1] が数学的に保証されることを示し、DescTools照合テスト（許容誤差 1e-4）をtasks.mdに追加した。",
+      "summary": "Cramér's V CIの非心χ²反転求根数理とJSON分離契約を反映完了。"
+    },
+    {
+      "evidence_id": "EV-RESP-004-offline-acceptance",
+      "level": "derived",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "Section 22, spec.md, design.md, tasks.md に正規表現による静的URLスキャン検査タスクを追加",
+      "result": "外部CDN・リモートフォント・外部MathJaxの排除に加え、DataTables日本語辞書の完全インライン化、生成HTMLに対する http(s) URL混入検出テスト（test_vcd_categorical_dashboard_v4.R）を受入条件として固定した。",
+      "summary": "完全オフラインScientific Dashboardの機械的受入検査要件を追加完了。"
+    },
+    {
+      "evidence_id": "EV-VER-001-before",
+      "level": "observed",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "初回レビュー時の現行コード・文書・テストの行単位照合",
+      "result": "初回Finding時点では2-way境界、非有限JSON、Cramér's V CI、オフライン受入試験の契約が不十分だった。",
+      "summary": "初回レビューの基準状態。"
+    },
+    {
+      "evidence_id": "EV-VER-002-after",
+      "level": "reproduced",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "git diff、OpenSpec strict validation、rgによる実装・テスト存在確認、変更申告集合との照合",
+      "result": "OpenSpecはvalid。5つの許可対象文書に契約追記を確認した。validate_input_table、STRUCTURAL_ZERO_NOT_SUPPORTED、cramers_v_corrected_ci、NEGATIVE_INFINITY、test_vcd_categorical_input_validation.R、test_vcd_categorical_dashboard_v4.Rの実装・テスト成果物は現行ツリーで確認できなかった。",
+      "summary": "文書修正は観測できるが、実装・実行Evidenceは未確認。"
+    },
+    {
+      "evidence_id": "EV-RESP-011-boundary-committed",
+      "level": "derived",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "Implementation plan, proposal.md, spec.md, design.md, tasks.md の受入基準およびタスク完了条件を最終確認",
+      "result": "完全2次元名義分割表専用化、構造的ゼロ入力禁止（STRUCTURAL_ZERO_NOT_SUPPORTED）、3次元以上の委譲停止、および全境界fixtureの終了コード記録（tasks.md Task 1.1〜1.3）が計画成果物に完全コミットされていることを確認。",
+      "summary": "2-way境界・移行設計およびfixture受入基準の文書反映を確定。"
+    },
+    {
+      "evidence_id": "EV-RESP-012-zero-cell-schema-committed",
+      "level": "derived",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "spec.md (Interface 3.0), design.md, tasks.md Task 2.1〜2.3 のセルスキーマおよび受入基準を最終確認",
+      "result": "O=0 セルに対する log_oe: null, log_oe_state: 'NEGATIVE_INFINITY', is_finite: false, Quarantine（ZERO_OBSERVED）必須化、標準JSONスキーマ検証（jsonlite::validate）、およびDashboardでの軸除外・隔離セル表示受入基準が完全コミットされていることを確認。",
+      "summary": "ゼロセル非有限JSON契約および検証受入基準の文書反映を確定。"
+    },
+    {
+      "evidence_id": "EV-RESP-013-ci-tolerance-committed",
+      "level": "derived",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "spec.md, design.md, tasks.md Task 3.1〜3.3 の非心χ²反転求根数理およびテスト基準を最終確認",
+      "result": "Smithson/Steiger非心χ²反転求根（stats::uniroot）とBergsma (2013) bias-corrected写像による未補正／補正後CI分離契約、退化表フォールバック、DescTools照合テスト（許容誤差 1e-4）受入基準が完全コミットされていることを確認。",
+      "summary": "Cramér's V CI 数理・許容誤差照合受入基準の文書反映を確定。"
+    },
+    {
+      "evidence_id": "EV-RESP-014-offline-scan-committed",
+      "level": "derived",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "design.md, tasks.md Task 4.1〜4.3 のオフライン受入検査基準を最終確認",
+      "result": "DataTables日本語辞書の完全インラインJSオブジェクト化、外部CDN・リモートフォント・MathJax排除、および生成HTML全文に対する静的正規表現スキャン（test_vcd_categorical_dashboard_v4.R）受入基準が完全コミットされていることを確認。",
+      "summary": "完全オフラインScientific Dashboard受入基準の文書反映を確定。"
+    },
+    {
+      "evidence_id": "EV-VER-003-after",
+      "level": "reproduced",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "最新Responseのchanged_targets、git status、OpenSpec strict validation、rgによる実装・テスト存在確認を独立照合",
+      "result": "Responseは5つの計画・OpenSpec文書のみを変更対象として申告し、実装・fixture・実行はOpenSpec applyへ委譲している。OpenSpecはvalidだが、validate_input_table、two_way_evidence.R、test_vcd_categorical_input_validation.R、test_vcd_categorical_dashboard_v4.R、生成JSON／HTMLは現行ツリーで確認できない。",
+      "summary": "文書確定は確認できるが、実装と実行Evidenceは未確認。"
+    }
+  ],
+  "plans": [
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "understanding": "v4.0を名義2-way専用エンジンとする一方、現行の既存3-way処理との境界、入力契約（arity, 水準数, 度数条件）、3-way入力時の挙動（フェイルファスト拒否と3-way正本スキル案内）、およびInterface 3.0 JSONの版分岐契約が未固定であり、既存run lifecycleの回帰リスクがある。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "入力受入契約（Arity = 2、各次元の水準数 >= 2、総度数 N > 0、非負度数）をImplementation Plan、design.md、spec.mdに明文化する",
+        "v4.0では3-way以上の入力を明示的にエラー（フェイルファスト）とし、3-way分析は正本スキル『vcd-bayesian-evidence-analysis』へ委譲する案内を出力する方針に固定する",
+        "Interface 3.0 (two-way-results-v2) は2-way専用契約として固定し、3-way互換混在を排除する",
+        "2-way正常系、3-way拒否系、1水準・0度数異常系の境界値fixtureと検証テストをtasks.mdおよびテストスイートに追加する"
+      ],
+      "submission_revision": 3
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "understanding": "観測度数0のセルにおけるlog(O/E)の理論値-Infinityは標準JSON数値として表現できないため、スキーマ検証、再現性比較、Dashboard表示において実装依存の誤解釈やエラーを招くリスクがある。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "JSON上の非有限値契約を固定：log_oeはnullを出力し、log_oe_state: 'NEGATIVE_INFINITY', is_finite: falseを付与するスキーマを策定する",
+        "観測0セルは必ずQUARANTINED（理由: ZERO_OBSERVED）とし、大標本Dual-Filterの候補判定から自動除外する規則を明文化する",
+        "Dashboardの散布図軸からは除外し、隔離セル一覧およびテーブル上で『-Infinity（未定義・度数0）』と明示表示する描画規則を定義する",
+        "ゼロセルを含むfixtureのJSON出力検証テストをtasks.mdおよびテストスイートに追加する"
+      ],
+      "submission_revision": 3
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "understanding": "Cramér's V信頼区間（CI）の算出アルゴリズム、信頼係数、対象量（bias-corrected版か否か）、境界ケース（退化表・疎な表）での挙動、およびRNG契約が未固定であり、環境間や実行間での結果再現性が損なわれるリスクがある。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "Cramér's V CIの算出法を非心カイ二乗分布の反転による解析的95%信頼区間（RNG非依存）に一意に固定する",
+        "対象量をbias-corrected Cramér's Vとし、区間上下限を[0, 1]にトランケートする境界契約を明文化する",
+        "退化表や自由度不足時のフォールバック値（nullおよびquality_warningsへの記録）を規定する",
+        "2x2、3x4、疎な表の参照fixtureを用いた数値一致性テスト（許容誤差 1e-4）をtasks.mdに追加する"
+      ],
+      "submission_revision": 3
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "understanding": "完全オフライン要件（MUST）を掲げているが、生成HTMLに対する外部URL・CDN参照の静的スキャンやネットワーク遮断下でのレンダリング確認などの実行可能かつ機械的な受入試験が未定義である。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "生成HTML内の外部リソース参照（http://, https://, 外部CDN URL）を正規表現等で厳格に検出・拒否する静的検証テストを実装する",
+        "現行dashboard.Rmdの外部DataTables日本語辞書URLを、完全インラインのJavaScript辞書オブジェクトに置き換える",
+        "すべてのアイコン、数式エンジン（KaTeX）、スタイルシート、スクリプトのローカル/インライン完結性を担保する",
+        "ネットワーク遮断環境を模擬したHTMLレンダリング・オフライン受入検証タスクをtasks.mdおよびテストスイートに追加する"
+      ],
+      "submission_revision": 3
+    },
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "understanding": "v4.0を2-way専用エンジンとする上で、度数の有限性・整数性、欠測・構造的ゼロの扱い、1水準やN=0時の入力検証停止フェーズ、および3-way入力や異常系に対するrun_state.json・エラー契約が未固定であり、既存利用者の運用や移行安全性を損なうリスクがある。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "入力受入契約を厳密化：Arity = 2（厳密に2次元）、各次元の水準数 I >= 2, J >= 2、総度数 N = sum(n_ij) > 0、有限非負整数（整数のカウントデータのみ許容、NA/NaN/Inf/負値/非整数重みは拒否）と定義する",
+        "欠測値・構造的ゼロの契約：欠測を含む行は前処理で除外（または拒否）。観測度数0（サンプリングゼロ）は許容しQuarantine処理するが、事前定義された構造的ゼロは2-way独立モデルでは特別扱いせず観測0として一貫処理する規則を明記する",
+        "フェイルファスト検証とエラー契約：入力検証フェーズ（validate_input_table）で即時停止し、run_state.jsonにstatus: 'failed'および明示的error_code（INVALID_INPUT_ARITY, INSUFFICIENT_LEVELS, ZERO_TOTAL_COUNT, NON_INTEGER_COUNTS）を記録し、3-way入力時は正本スキル『vcd-bayesian-evidence-analysis』への委譲メッセージを出力する",
+        "既存3-way互換を壊さない移行テスト：3-way入力時にサイレント変換や異常終了せず上記エラー契約通り安全に停止することを検証するテストをtests/test_vcd_categorical_input_validation.Rに追加する"
+      ],
+      "submission_revision": 5
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "understanding": "bias-corrected Cramér's Vの信頼区間について、非心カイ二乗分布からの変換数式、自由度・分母の補正、単調性保証、[0, 1]トランケート根拠、退化表でのフォールバック、および参照実装との一致基準が未定義であり、再現性と数値契約が担保されていない。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "算出数式の確定：観測X²に対し非心χ²分布の反転（root finding）により非心度λの95%信頼区間[λ_L, λ_U]を導出（X² <= dfの場合はλ_L = 0）。Bergsma (2013)のbias-corrected変換式 phi²_* = max(0, λ_* / N)、k_tilde = min(I - (I-1)²/(N-1), J - (J-1)²/(N-1)) を用い、V_tilde_* = min(1, sqrt(phi²_* / (k_tilde - 1))) により単調変換する",
+        "境界値とトランケート根拠：非心パラメータλの単調性により区間端点の単調性が保証され、自然に[0, 1]の閉区間に収まることを数理的に明記する",
+        "退化表・定義不能時のフォールバック：N <= df + 1 または k_tilde <= 1 等で補正分母が非正となる場合、あるいは数値解が収束しない場合は cramers_v_ci を null とし、quality_warningsに理由（'DEGENERATE_TABLE_NO_CI'等）を記録する",
+        "参照実装テストの追加：2x2、3x4、疎な表、退化表に対し、R標準またはDescTools参照値との差が1e-4以内であることを検証するユニットテストをtasks.mdおよびtests/test_vcd_categorical_evidence_v4.Rに追加する"
+      ],
+      "submission_revision": 5
+    },
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "understanding": "構造的ゼロ（発生不能セル）とサンプリングゼロ（標本偶然のゼロ）を同一視すると、独立性モデルの仮定、期待度数計算、自由度、および推論の解釈が根本的に破綻する。本エンジンにおいて構造的ゼロを扱うのか、入力禁止として別estimandへ分離するのかを統計的に明確化する必要がある。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "スコープ境界の統計的決定：vcd-categorical-analysis v4.0は『完全な2次元名義分割表（Complete 2-way contingency table）』専用エンジンと定義する。構造的ゼロ（不完全分割表・準独立モデルを要するデータ）は本エンジンの適用対象外（OutOfScope / 入力禁止）とし、サンプリングゼロ（標本抽出上の偶然の度数0）のみを対象とする",
+        "メタデータ契約と入力検証：データ定義または設定で構造的ゼロが指定されている場合、入力検証（validate_input_table）で即時フェイルファスト停止し、run_state.jsonにstatus: 'failed'およびerror_code: 'STRUCTURAL_ZERO_NOT_SUPPORTED'を出力して準独立モデル等の専用解析を案内する",
+        "サンプリングゼロの厳密処理：観測度数0はすべてサンプリングゼロとして一貫して扱い、Quarantine（理由: ZERO_OBSERVED）に分類し、Dual-Filter候補から除外する",
+        "仕様・設計・タスク反映：specs/two-way-evidence-analysis/spec.mdおよびdesign.mdに上記境界契約を明記し、tests/test_vcd_categorical_input_validation.Rに構造的ゼロ指定時の明示的エラー停止テストを追加する"
+      ],
+      "submission_revision": 7
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "understanding": "非心度λに基づく信頼区間導出において、観測X²からの非心χ²反転（両側・片側バウンド）、非心度からCramér's Vへの単調写像、Bergsma (2013) bias-corrected Cramér's Vにおける有効次元k_tilde - 1の分母整合性、補正前後の推定量・区間の分離契約、および参照実装との一致基準が明確でなかった。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "反転数理の厳密化：Smithson (2003) / Steiger (2004) に従い、観測X²に対し累積分布関数 F(X²; df, λ) の数値求根（stats::uniroot, 許容誤差 1e-8）を行う。上側限界は F(X²; df, λ_U) = 0.025、下側限界は X² > χ²_0.975(df) のとき F(X²; df, λ_L) = 0.975、X² <= χ²_0.975(df) のときは λ_L = 0 とし、0 <= λ_L <= λ_U を数学的に保証する",
+        "単調写像と補正前後の分離契約：未補正Vは V_* = sqrt( (λ_* / N) / (min(I,J) - 1) )、Bergsma (2013) の bias-corrected V は k_tilde = min(I - (I-1)²/(N-1), J - (J-1)²/(N-1)) を用いて V_tilde_* = min(1, sqrt( max(0, λ_* / N) / (k_tilde - 1) )) と定義する。λの単調性より区間端点の順序（0 <= V_L <= V_U <= 1）が厳密に保存される。JSON契約では未補正 cramers_v_ci と補正後 cramers_v_corrected_ci を明確に分離して出力する",
+        "退化表・極端ケースの契約：k_tilde <= 1 または N <= df + 1 で補正分母が非正となる場合、および数値求根不収束時は cramers_v_corrected_ci を null とし、quality_warnings に理由（'INSUFFICIENT_SAMPLE_SIZE_FOR_BIAS_CORRECTION'等）を記録する。X² = 0 時は [0.0, 0.0] を返す",
+        "参照実装照合テスト：DescTools::CramerV(conf.level=0.95, method='ncchisq') および MBESS::conf.limits.nct との数値比較（許容誤差 1e-4）を tests/test_vcd_categorical_evidence_v4.R に追加する"
+      ],
+      "submission_revision": 7
+    },
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "understanding": "計画・仕様文書への境界定義（厳密2-way、構造的ゼロ入力禁止、3-way委譲）の反映は確認されたが、実際の入力検証関数（validate_input_table）、境界fixture、実行時のrun_state.json記録とフェイルファスト停止の実行Evidenceが未確認である。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "境界値fixtureセット（2-way正常系、3-way拒否系、1水準、総度数0、負/非整数度数、構造的ゼロ指定データ）をfixtures/input_validation/に作成する",
+        "入力検証モジュール（R/validate_input.R または analysis.R内validate_input_table）を実装し、不適合入力に対し即時フェイルファスト停止（INVALID_INPUT_ARITY, STRUCTURAL_ZERO_NOT_SUPPORTED等）させ、run_state.jsonにstatus: 'failed'とerror_codeを記録する",
+        "tests/test_vcd_categorical_input_validation.Rを実装・実行し、全境界ケースにおいて期待されるエラーコードとrun_state.jsonが生成されるテスト実行Evidence（ログ・終了コード）を採取する"
+      ],
+      "submission_revision": 11
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "understanding": "文書上の非有限値契約（log_oe: null, NEGATIVE_INFINITY, is_finite: false, Quarantine）は確認されたが、JSON Schema、シリアライザ、ゼロセルfixtureを用いた解析実行と標準JSONパーサー適合、およびDashboard表示の実行Evidenceが未確認である。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "ゼロ観測セルを含む2次元分割表fixture（fixtures/evidence/zero_cell_table.csv等）を作成する",
+        "R/two_way_evidence.Rの計算・シリアライズ処理において、O=0のセルに対しlog_oeをnull、log_oe_stateを'NEGATIVE_INFINITY'、is_finiteをfalseとしてQuarantine（ZERO_OBSERVED）判定するコードを実装する",
+        "生成されたcategorical_results.jsonをjsonlite::validateおよびスキーマ検証器で検査し、非有限値構文エラーが生じず標準JSONとして有効であること、およびDashboardでエラーなく隔離セル表示される実行Evidenceを採取する"
+      ],
+      "submission_revision": 11
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "understanding": "非心χ²反転求根数理とBergsma bias-corrected Cramér's Vの区間分離契約は文書に反映されたが、実際の数値計算実装、参照パッケージ（DescTools等）との許容誤差1e-4照合、退化表フォールバックの実行Evidenceが未確認である。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "R/global_association.RにSmithson/Steiger非心χ²反転求根アルゴリズム（stats::uniroot）とBergsma (2013) bias-corrected写像による95%信頼区間計算関数を実装する",
+        "未補正cramers_v_ciと補正後cramers_v_corrected_ciを分離出力し、k_tilde <= 1や極端ケースにおけるnullフォールバックおよびquality_warnings記録を実装する",
+        "tests/test_vcd_categorical_evidence_v4.Rを実装・実行し、2x2、3x4、疎な表においてDescTools::CramerV(conf.level=0.95, method='ncchisq')等の参照値と差が1e-4以内であるテスト実行Evidenceを採取する"
+      ],
+      "submission_revision": 11
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "understanding": "生成HTMLに対する静的URLスキャン等の受入条件は文書に追加されたが、テストスクリプト（test_vcd_categorical_dashboard_v4.R）やCDN辞書除去・インライン化の実装、およびオフライン検査の実行Evidenceが未確認である。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "dashboard.Rmd内の外部DataTables日本語辞書CDN URLを完全インラインのJavaScriptオブジェクトに置換し、外部CSS/JS/フォント/MathJax参照を完全に排除する",
+        "tests/test_vcd_categorical_dashboard_v4.Rを実装し、レンダリング済みHTMLファイル全文を正規表現（http://, https://, //）で静的スキャンして外部URL混入を検出・アサートするテストを作成する",
+        "テストを実行し、外部リソース参照ゼロ件でPassすること、およびオフライン環境でダッシュボードが正常描画される実行Evidenceを採取する"
+      ],
+      "submission_revision": 11
+    },
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "understanding": "Reviewer検証（rev 14）において、文書契約は確認されたものの、入力検証関数（validate_input_table）、境界fixture、run_state.json記録、および全fixtureの終了コード等の実装・実行Evidenceが未確認であると判定された。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "OpenSpec applyフェーズにおいて、境界値fixtureセット（2-way正常系、3-way拒否系、1水準、総度数0、負/非整数度数、構造的ゼロ指定データ）をfixtures/input_validation/に作成する",
+        "入力検証モジュール（R/validate_input.R または analysis.R内）を実装し、不適合入力に対し即時フェイルファスト停止（INVALID_INPUT_ARITY, STRUCTURAL_ZERO_NOT_SUPPORTED等）させ、run_state.jsonにstatus: 'failed'とerror_codeを記録する",
+        "tests/test_vcd_categorical_input_validation.Rを実装・実行し、全fixtureの終了コードおよびrun_state.jsonを含む実行ログEvidenceを採取して提出する"
+      ],
+      "submission_revision": 15
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "understanding": "Reviewer検証（rev 14）において、文書契約は確認されたものの、JSON Schema、シリアライザ、ゼロセルfixtureを用いた解析実行、標準JSONパーサー適合、およびDashboard表示の実行Evidenceが未確認であると判定された。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "OpenSpec applyフェーズにおいて、ゼロ観測セルを含む2次元分割表fixture（fixtures/evidence/zero_cell_table.csv）を作成する",
+        "R/two_way_evidence.Rの計算・シリアライズ処理において、O=0セルに対しlog_oeをnull、log_oe_stateを'NEGATIVE_INFINITY'、is_finiteをfalseとしてQuarantine（ZERO_OBSERVED）判定するコードを実装する",
+        "生成されたcategorical_results.jsonをjsonlite::validateおよびスキーマ検証器で検査し、標準JSON構文適合ログおよびDashboardでの隔離セル表示実行Evidenceを採取して提出する"
+      ],
+      "submission_revision": 15
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "understanding": "Reviewer検証（rev 14）において、数理契約は確認されたものの、非心χ²反転数値求根コードの実装、参照パッケージ（DescTools等）との許容誤差1e-4比較、および退化表フォールバックの実行Evidenceが未確認であると判定された。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "OpenSpec applyフェーズにおいて、R/global_association.RにSmithson/Steiger非心χ²反転求根アルゴリズム（stats::uniroot）とBergsma (2013) bias-corrected写像による95%信頼区間計算関数を実装する",
+        "未補正cramers_v_ciと補正後cramers_v_corrected_ciを分離出力し、k_tilde <= 1や極端ケースにおけるnullフォールバックおよびquality_warnings記録を実装する",
+        "tests/test_vcd_categorical_evidence_v4.Rを実装・実行し、2x2、3x4、疎な表においてDescTools::CramerV等の参照値と差が1e-4以内である比較数値ログEvidenceを採取して提出する"
+      ],
+      "submission_revision": 15
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "understanding": "Reviewer検証（rev 14）において、受入条件は文書に追加されたものの、tests/test_vcd_categorical_dashboard_v4.Rスクリプト、CDN辞書除去・インライン化の実装、およびオフラインHTML静的スキャン検査の実行Evidenceが未確認であると判定された。",
+      "disposition_intent": "fix",
+      "implementation_status": "not-started",
+      "proposed_actions": [
+        "OpenSpec applyフェーズにおいて、dashboard.Rmd内の外部DataTables日本語辞書CDN URLを完全インラインのJavaScriptオブジェクトに置換し、外部参照を完全に排除する",
+        "tests/test_vcd_categorical_dashboard_v4.Rを実装し、レンダリング済みHTML全文を正規表現（http://, https://, //）で静的スキャンして外部URL混入を検出・アサートするテストを作成する",
+        "テストを実行し、外部リソース参照ゼロ件でPassする実行ログおよびオフライン環境での正常描画Evidenceを採取して提出する"
+      ],
+      "submission_revision": 15
+    }
+  ],
+  "plan_reviews": [
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "outcome": "plan-revision-required",
+      "rationale": "2-way専用化、3-way拒否、旧スキル委譲、主要な境界fixtureを定めた方向は妥当である。しかし提出Planは『非負度数』までで、有限性、整数性（または重み度数を許す場合の明示）、欠測・構造的ゼロ、1水準・N=0時にどの検証段階で停止するかが未固定である。既存の3-way互換経路を壊さない移行テストと、interface/run_stateを含むエラー契約も対象として再提出が必要である。",
+      "evidence_refs": [
+        "EV-001-current-arity"
+      ],
+      "review_revision": 4
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "null、NEGATIVE_INFINITY、is_finiteの組合せ、Quarantine、candidate除外、Dashboard表示、fixture追加まで具体化され、元の契約欠落を解消する実行可能な方針になっている。再提出時は JSON Schema の型・required、null時のソート／軸除外、他の非有限値（NaN、+Infinity）の扱いも同じ契約に含めること。",
+      "evidence_refs": [
+        "EV-002-nonfinite-json"
+      ],
+      "review_revision": 4
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "outcome": "plan-revision-required",
+      "rationale": "RNG非依存の非心χ²反転を選ぶ方向は再現性上有望だが、bias-corrected Cramér's Vを対象量とする場合の非心度区間から補正量への変換式、自由度・分母、上下端点の単調性、区間を0–1へ制限する根拠、退化表での適用不能条件が提出Planにない。補正前Vの区間を補正後Vの区間と取り違えないため、数式と参照実装または参照値を追記して再提出すること。",
+      "evidence_refs": [
+        "EV-003-ci-ambiguity"
+      ],
+      "review_revision": 4
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "外部URLの静的検査、CDN辞書のインライン化、ローカル／インライン資源、ネットワーク遮断相当の検証を明示しており、元のEvidence Gapに比例した受入計画である。allowlist、data/file URIの扱い、ブラウザ検査が実行不能な環境での代替判定、生成HTMLの検査対象をtasksとテストの完了条件に固定すること。",
+      "evidence_refs": [
+        "EV-004-current-remote-url"
+      ],
+      "review_revision": 4
+    },
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "outcome": "plan-revision-required",
+      "rationale": "有限非負整数、厳密2-way、I/J>=2、N>0、欠測とエラーコードの追加は改善されている。しかし『構造的ゼロは特別扱いせず観測0として処理』という方針は、発生不能セルとサンプリングゼロを同一視し、期待度数・log(O/E)・独立性モデルの解釈を壊し得る。構造的ゼロを入力禁止または明示的な除外・別estimandとして扱うかを統計的に決定し、仕様とfixtureに反映するまで合意できない。",
+      "evidence_refs": [
+        "EV-001-current-arity"
+      ],
+      "review_revision": 6
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "outcome": "plan-revision-required",
+      "rationale": "非心χ²反転、退化時フォールバック、参照fixtureを追加した点は前進である。一方、非心度信頼区間の端点を λ/N として Bergsma の bias-corrected φ²* に入れる写像が妥当か、`k_tilde - 1` が補正Vの定義と整合するか、観測X²からλ区間への片側・両側反転と端点順序が未検証である。採用する文献・式、数値根探索、補正前後の対象量を独立な参照実装と照合できる形で再提出する必要がある。",
+      "evidence_refs": [
+        "EV-003-ci-ambiguity"
+      ],
+      "review_revision": 6
+    },
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "厳密2-way、I/J>=2、N>0、有限非負整数、欠測・構造的ゼロの扱い、フェイルファストのerror_code、3-way委譲、境界fixtureが一貫して定義され、元の移行境界リスクを解消する実装計画になっている。実装時は構造的ゼロを指定するメタデータの入力形式と、failed状態を予約前に記録できない場合の明示的な代替証跡を固定すること。",
+      "evidence_refs": [
+        "EV-001-current-arity"
+      ],
+      "review_revision": 8
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "非心χ²反転の数値条件、補正前後の区間分離、退化条件、端点順序、参照fixtureと許容誤差が追加され、実装計画として十分に具体化された。実装時は採用文献の式とDescTools／MBESSの実在API・定義が一致することを確認し、未補正Vとbias-corrected Vの推定量・CIを混同しない独立数値検証を必須とする。",
+      "evidence_refs": [
+        "EV-003-ci-ambiguity"
+      ],
+      "review_revision": 8
+    },
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "境界fixture、入力検証、error_codeとfailed状態、構造的ゼロ拒否、3-way委譲の実装と実行Evidenceまで具体化されている。実装時は既存run reservation前の失敗記録方法と、構造的ゼロを指定するメタデータ形式を固定し、全fixtureの終了コードも記録すること。",
+      "evidence_refs": [
+        "EV-RESP-001-boundary-definition"
+      ],
+      "review_revision": 12
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "ゼロセルfixture、シリアライザ、JSON Schema検証、Quarantine、Dashboard表示の実装と実行Evidenceが計画されている。実装時はNaN/+Infinity、nullのソート・軸除外、標準JSON検証の実ログを含めること。",
+      "evidence_refs": [
+        "EV-RESP-002-zero-cell-numeric-json"
+      ],
+      "review_revision": 12
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "非心χ²反転とBergsma写像の実装、補正前後CI分離、退化フォールバック、DescToolsとの許容誤差比較が実行可能な粒度で記述されている。実装時は参照パッケージの実在API・バージョンと、補正前後を別々に比較した数値ログを提出すること。",
+      "evidence_refs": [
+        "EV-RESP-003-cramer-v-ci-math"
+      ],
+      "review_revision": 12
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "CDN除去、インライン化、http/httpsおよび//参照の静的スキャン、オフライン描画の実行Evidenceが計画されている。実装時は生成HTMLそのものを検査対象にし、許容URIの規則と検査不能時の代替証跡を記録すること。",
+      "evidence_refs": [
+        "EV-RESP-004-offline-acceptance"
+      ],
+      "review_revision": 12
+    },
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "境界fixture、入力検証、構造的ゼロ拒否、failed run_state、終了コードと実行ログまで実装・検証対象が具体化されている。実装時は既存run reservationとの順序、構造的ゼロ指定形式、3-way委譲メッセージを実行結果で確認すること。",
+      "evidence_refs": [
+        "EV-RESP-011-boundary-committed"
+      ],
+      "review_revision": 16
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "zero-cell fixture、非有限値シリアライズ、Quarantine、jsonlite::validate、Schema検証、Dashboard隔離表示の実装と実行Evidenceが具体化されている。実装時はNaN/+Infinity、nullの軸除外・ソート規則もログで確認すること。",
+      "evidence_refs": [
+        "EV-RESP-012-zero-cell-schema-committed"
+      ],
+      "review_revision": 16
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "非心χ²反転、Bergsma写像、補正前後CI分離、退化フォールバック、DescTools照合の実装・数値ログ採取が明確になっている。実装時は参照パッケージのバージョンと実在API、補正前後別の1e-4比較を提出すること。",
+      "evidence_refs": [
+        "EV-RESP-013-ci-tolerance-committed"
+      ],
+      "review_revision": 16
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "CDN辞書のインライン化、外部参照排除、生成HTML全文のhttp/httpsおよび//静的スキャン、オフライン描画ログの採取が実行可能な粒度で定義されている。実装時は生成HTML自体を検査対象とし、URI allowlistと検査不能時の代替Evidenceを明記すること。",
+      "evidence_refs": [
+        "EV-RESP-014-offline-scan-committed"
+      ],
+      "review_revision": 16
+    }
+  ],
+  "responses": [
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "disposition": "fix-submitted",
+      "rationale": "承認されたPlanに基づき、本エンジンを完全な2変数名義分割表専用とし、構造的ゼロ（不完全分割表）は入力禁止・別estimand（STRUCTURAL_ZERO_NOT_SUPPORTED）として扱う境界をImplementation Plan、proposal.md、spec.md、design.md、tasks.mdに反映しました。3次元以上の入力に対するフェイルファスト停止と正本スキル案内、および境界fixtureの検証タスクも追加しました。",
+      "evidence_refs": [
+        "EV-RESP-001-boundary-definition"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+      ],
+      "submission_revision": 9
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "disposition": "fix-submitted",
+      "rationale": "承認されたPlanに基づき、観測度数0セルにおける対数効果比 -Infinity の安全な表現として、JSON では log_oe: null とし、補助属性 log_oe_state: 'NEGATIVE_INFINITY', is_finite: false を付与するスキーマを確定しました。Quarantine（ZERO_OBSERVED）必須化、大標本Dual-Filter候補除外、Dashboard隔離表示規則を全成果物に反映しました。",
+      "evidence_refs": [
+        "EV-RESP-002-zero-cell-numeric-json"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+      ],
+      "submission_revision": 9
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "disposition": "fix-submitted",
+      "rationale": "承認されたPlanに基づき、Smithson (2003) / Steiger (2004) に従う非心χ²分布反転求根による95%信頼区間導出と、Bergsma (2013) のbias-corrected変換式（有効次元 k_tilde - 1）による単調写像数理を確定しました。未補正 cramers_v_ci と補正後 cramers_v_corrected_ci の出力分離、退化表フォールバック、DescTools参照実装照合テスト（許容誤差 1e-4）を全成果物に反映しました。",
+      "evidence_refs": [
+        "EV-RESP-003-cramer-v-ci-math"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+      ],
+      "submission_revision": 9
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "disposition": "fix-submitted",
+      "rationale": "承認されたPlanに基づき、外部CDN・リモートフォント・外部MathJaxの排除、DataTables日本語辞書の完全インラインJavaScriptオブジェクト化、および生成HTMLに対する外部http(s) URL混入の静的正規表現スキャン検査（test_vcd_categorical_dashboard_v4.R）を受入条件として確定・反映しました。",
+      "evidence_refs": [
+        "EV-RESP-004-offline-acceptance"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+      ],
+      "submission_revision": 9
+    },
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "disposition": "fix-submitted",
+      "rationale": "ReviewerのPlan承認（rev 12）に基づき、完全2次元名義分割表専用化、構造的ゼロ入力禁止（STRUCTURAL_ZERO_NOT_SUPPORTED）、3次元以上のフェイルファスト停止・委譲、および全境界fixtureの終了コード・run_state.json記録をtasks.mdに完了条件として固定し、計画・仕様文書を確定版（FIX）としました。実装およびfixture実行はOpenSpec (/opsx-apply) へ引き継ぎます。",
+      "evidence_refs": [
+        "EV-RESP-011-boundary-committed"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+      ],
+      "submission_revision": 13
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "disposition": "fix-submitted",
+      "rationale": "ReviewerのPlan承認（rev 12）に基づき、観測度数0セルに対する log_oe: null, log_oe_state: 'NEGATIVE_INFINITY', is_finite: false, Quarantine（ZERO_OBSERVED）必須化、標準JSONスキーマ適合テスト（jsonlite::validate）、およびDashboard隔離表示規則をspec.md/design.md/tasks.mdに固定し、計画・仕様文書を確定版（FIX）としました。実装およびJSON検証はOpenSpec (/opsx-apply) へ引き継ぎます。",
+      "evidence_refs": [
+        "EV-RESP-012-zero-cell-schema-committed"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+      ],
+      "submission_revision": 13
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "disposition": "fix-submitted",
+      "rationale": "ReviewerのPlan承認（rev 12）に基づき、Smithson/Steiger非心χ²反転求根数理とBergsma (2013) bias-corrected写像による未補正／補正後CI分離契約、退化表フォールバック、およびDescTools照合テスト（許容誤差 1e-4）をspec.md/design.md/tasks.mdに固定し、計画・仕様文書を確定版（FIX）としました。数値計算実装および照合テストはOpenSpec (/opsx-apply) へ引き継ぎます。",
+      "evidence_refs": [
+        "EV-RESP-013-ci-tolerance-committed"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+      ],
+      "submission_revision": 13
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "disposition": "fix-submitted",
+      "rationale": "ReviewerのPlan承認（rev 12）に基づき、DataTables日本語辞書の完全インラインJS化、外部CDN・リモートフォント排除、および生成HTML全文に対する静的正規表現スキャン検査（test_vcd_categorical_dashboard_v4.R）を受入条件としてtasks.mdに固定し、計画・仕様文書を確定版（FIX）としました。HTMLテンプレート改修および検査テストはOpenSpec (/opsx-apply) へ引き継ぎます。",
+      "evidence_refs": [
+        "EV-RESP-014-offline-scan-committed"
+      ],
+      "changed_targets": [
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+        "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+      ],
+      "submission_revision": 13
+    }
+  ],
+  "verifications": [
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "result": "partially-remediated",
+      "rationale": "計画・proposal・spec・design・tasksには厳密2-way、有限非負整数、構造的ゼロ拒否、3-way委譲、error_codeが反映されていることを独立確認した。一方、申告された境界fixtureとvalidate_input_table実装は現行ツリーに存在せず、実行時のrun_state.json記録とフェイルファストは未検証である。",
+      "evidence_refs": [
+        "EV-VER-001-before",
+        "EV-VER-002-after"
+      ],
+      "verification_revision": 10,
+      "change_observation": {
+        "method": "git-diff-and-finite-manifest-plus-static-search",
+        "scope": [
+          "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "before_evidence_id": "EV-VER-001-before",
+        "after_evidence_id": "EV-VER-002-after",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "limitations": [
+          "Response提出は文書成果物に限定され、実装コード・テスト・生成HTMLは変更対象に含まれていない",
+          "OpenSpec strict validationは構文整合性のみを確認し、統計計算やブラウザ表示の実行証跡ではない"
+        ]
+      }
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "result": "partially-remediated",
+      "rationale": "文書上はnull、NEGATIVE_INFINITY、is_finite、Quarantine、candidate除外の契約が反映されている。しかしJSON Schema、シリアライザ、ゼロセルfixture、Dashboard表示の実装および実行Evidenceは存在せず、標準JSON適合と消費側挙動を独立確認できない。",
+      "evidence_refs": [
+        "EV-VER-001-before",
+        "EV-VER-002-after"
+      ],
+      "verification_revision": 10,
+      "change_observation": {
+        "method": "git-diff-and-finite-manifest-plus-static-search",
+        "scope": [
+          "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "before_evidence_id": "EV-VER-001-before",
+        "after_evidence_id": "EV-VER-002-after",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "limitations": [
+          "Response提出は文書成果物に限定され、実装コード・テスト・生成HTMLは変更対象に含まれていない",
+          "OpenSpec strict validationは構文整合性のみを確認し、統計計算やブラウザ表示の実行証跡ではない"
+        ]
+      }
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "result": "partially-remediated",
+      "rationale": "非心χ²反転、未補正／補正後CIの分離、退化表フォールバック、DescTools照合タスクが文書へ反映されている。一方、実装された数値計算、参照パッケージとの許容誤差1e-4比較、bias correction写像の実行結果は存在せず、数理契約の実効性は未検証である。",
+      "evidence_refs": [
+        "EV-VER-001-before",
+        "EV-VER-002-after"
+      ],
+      "verification_revision": 10,
+      "change_observation": {
+        "method": "git-diff-and-finite-manifest-plus-static-search",
+        "scope": [
+          "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "before_evidence_id": "EV-VER-001-before",
+        "after_evidence_id": "EV-VER-002-after",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "limitations": [
+          "Response提出は文書成果物に限定され、実装コード・テスト・生成HTMLは変更対象に含まれていない",
+          "OpenSpec strict validationは構文整合性のみを確認し、統計計算やブラウザ表示の実行証跡ではない"
+        ]
+      }
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "result": "not-verified",
+      "rationale": "文書には静的URLスキャンの受入条件が追加されたが、申告されたtests/test_vcd_categorical_dashboard_v4.Rは現行ツリーに存在せず、DashboardのCDN除去、生成HTMLの静的検査、オフライン表示の実行Evidenceを確認できない。",
+      "evidence_refs": [
+        "EV-VER-001-before",
+        "EV-VER-002-after"
+      ],
+      "verification_revision": 10,
+      "change_observation": {
+        "method": "git-diff-and-finite-manifest-plus-static-search",
+        "scope": [
+          "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "before_evidence_id": "EV-VER-001-before",
+        "after_evidence_id": "EV-VER-002-after",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "limitations": [
+          "Response提出は文書成果物に限定され、実装コード・テスト・生成HTMLは変更対象に含まれていない",
+          "OpenSpec strict validationは構文整合性のみを確認し、統計計算やブラウザ表示の実行証跡ではない"
+        ]
+      }
+    },
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "result": "not-verified",
+      "rationale": "計画・仕様文書の確定は確認できたが、今回の提出自身が入力検証・fixture実行をOpenSpec applyへ引き継ぐと明記している。現行ツリーにvalidate_input_table、境界fixture、failed run_stateの実行結果はなく、2-way境界の実装を独立検証できない。",
+      "evidence_refs": [
+        "EV-RESP-011-boundary-committed",
+        "EV-VER-003-after"
+      ],
+      "verification_revision": 14,
+      "change_observation": {
+        "method": "git-diff-and-finite-manifest-plus-static-search",
+        "scope": [
+          "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "before_evidence_id": "EV-VER-002-after",
+        "after_evidence_id": "EV-VER-003-after",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "limitations": [
+          "今回のchanged_targetsに実装コード、テスト、Dashboardテンプレートは含まれていない",
+          "OpenSpec strict validationは成果物構文のみを検証し、実行時統計・JSON・HTMLの妥当性を検証しない"
+        ]
+      }
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "result": "not-verified",
+      "rationale": "null／NEGATIVE_INFINITY／is_finiteの文書契約は確認できたが、提出はJSONシリアライザ、zero-cell fixture、jsonlite::validate、Dashboard表示を未実装のまま引き継いでいる。標準JSON適合と隔離表示の実行Evidenceはない。",
+      "evidence_refs": [
+        "EV-RESP-012-zero-cell-schema-committed",
+        "EV-VER-003-after"
+      ],
+      "verification_revision": 14,
+      "change_observation": {
+        "method": "git-diff-and-finite-manifest-plus-static-search",
+        "scope": [
+          "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "before_evidence_id": "EV-VER-002-after",
+        "after_evidence_id": "EV-VER-003-after",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "limitations": [
+          "今回のchanged_targetsに実装コード、テスト、Dashboardテンプレートは含まれていない",
+          "OpenSpec strict validationは成果物構文のみを検証し、実行時統計・JSON・HTMLの妥当性を検証しない"
+        ]
+      }
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "result": "not-verified",
+      "rationale": "非心χ²反転と補正前後CI分離の文書化は確認できたが、数値計算コード、DescTools照合、退化表フォールバックの実行結果は未提出である。数理式の実効性と許容誤差1e-4を独立確認できない。",
+      "evidence_refs": [
+        "EV-RESP-013-ci-tolerance-committed",
+        "EV-VER-003-after"
+      ],
+      "verification_revision": 14,
+      "change_observation": {
+        "method": "git-diff-and-finite-manifest-plus-static-search",
+        "scope": [
+          "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "before_evidence_id": "EV-VER-002-after",
+        "after_evidence_id": "EV-VER-003-after",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "limitations": [
+          "今回のchanged_targetsに実装コード、テスト、Dashboardテンプレートは含まれていない",
+          "OpenSpec strict validationは成果物構文のみを検証し、実行時統計・JSON・HTMLの妥当性を検証しない"
+        ]
+      }
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "result": "not-verified",
+      "rationale": "静的URLスキャンを受入条件として文書化したことは確認できたが、Dashboard.RmdのCDN除去、検査テスト、生成HTML、オフライン表示の実行Evidenceは存在しない。",
+      "evidence_refs": [
+        "EV-RESP-014-offline-scan-committed",
+        "EV-VER-003-after"
+      ],
+      "verification_revision": 14,
+      "change_observation": {
+        "method": "git-diff-and-finite-manifest-plus-static-search",
+        "scope": [
+          "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "before_evidence_id": "EV-VER-002-after",
+        "after_evidence_id": "EV-VER-003-after",
+        "observed_changed_targets": [
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/proposal.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/design.md",
+          "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/openspec/changes/vcd-categorical-analysis-v4/tasks.md"
+        ],
+        "limitations": [
+          "今回のchanged_targetsに実装コード、テスト、Dashboardテンプレートは含まれていない",
+          "OpenSpec strict validationは成果物構文のみを検証し、実行時統計・JSON・HTMLの妥当性を検証しない"
+        ]
+      }
+    }
+  ],
+  "final_risk_assessments": [],
+  "adjudications": [],
+  "events": [
+    {
+      "operation_id": "standalone-create-6dbf1a242c99e3eaccd04f2952e9c4a2",
+      "actor_id": "myamaguchi",
+      "role": "owner",
+      "invocation_id": "standalone-invocation-6dbf1a242c99e3eaccd04f2952e9c4a2",
+      "operation": "create-case",
+      "revision": 1,
+      "timestamp": "2026-09-15T09:45:37.190229Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 1,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review",
+        "handoff": {
+          "handoff_id": "hnd-ea0689fa-46f5-4a6d-95f7-3a0db7e7fc69",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 1,
+          "next_role": "reviewer",
+          "next_action": "review",
+          "purpose": "baselineと対象成果物を独立レビューする",
+          "inputs": [
+            "baseline",
+            "対象成果物",
+            "利用可能なEvidence"
+          ],
+          "open_issues": [],
+          "open_items": [],
+          "expected_deliverables": [
+            "FindingまたはFindingなしの根拠",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "FindingまたはFindingなしの根拠",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-vcd-categorical-v4-plan-20260915-001",
+      "actor_id": "codex-independent-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-vcd-categorical-v4-plan-review-20260915-001",
+      "operation": "review",
+      "revision": 2,
+      "previous_handoff_id": "hnd-ea0689fa-46f5-4a6d-95f7-3a0db7e7fc69",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T09:46:52.550119Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 2,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-plan",
+        "handoff": {
+          "handoff_id": "hnd-9a757f6a-64c6-4e9a-8a0e-972e418516c8",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 2,
+          "next_role": "implementer",
+          "next_action": "submit-plan",
+          "purpose": "重要Findingへの修正方針・反証計画(Response Plan)を提出する",
+          "inputs": [
+            "baseline",
+            "review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "Response Plan",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Response Plan",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "op-submit-plan-v4-20260915-001",
+      "actor_id": "myamaguchi",
+      "role": "implementer",
+      "invocation_id": "inv-submit-plan-v4-20260915-001",
+      "operation": "submit-plan",
+      "revision": 3,
+      "previous_handoff_id": "hnd-9a757f6a-64c6-4e9a-8a0e-972e418516c8",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T10:00:42.662496Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 3,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review-plan",
+        "handoff": {
+          "handoff_id": "hnd-a4ff5a8c-af2b-4bad-a29a-6e25e75e2328",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 3,
+          "next_role": "reviewer",
+          "next_action": "review-plan",
+          "purpose": "Implementerが提出したResponse Planを評価・合意する",
+          "inputs": [
+            "Finding",
+            "Response Plan",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-plan-vcd-categorical-v4-20260915-001",
+      "actor_id": "codex-independent-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-vcd-categorical-v4-plan-review-plan-20260915-001",
+      "operation": "review-plan",
+      "revision": 4,
+      "previous_handoff_id": "hnd-a4ff5a8c-af2b-4bad-a29a-6e25e75e2328",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T12:41:30.321416Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 4,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-plan",
+        "handoff": {
+          "handoff_id": "hnd-5e3c4bfc-b906-4ec9-818d-7be14390b641",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 4,
+          "next_role": "implementer",
+          "next_action": "submit-plan",
+          "purpose": "未承認のrequired FindingについてResponse Planを提出または再提出する",
+          "inputs": [
+            "Response Plan",
+            "Plan Review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-003-global-effect-ci-method-unspecified"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-003-global-effect-ci-method-unspecified"
+          ],
+          "expected_deliverables": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "op-submit-plan-v4-20260915-002",
+      "actor_id": "myamaguchi",
+      "role": "implementer",
+      "invocation_id": "inv-submit-plan-v4-20260915-002",
+      "operation": "submit-plan",
+      "revision": 5,
+      "previous_handoff_id": "hnd-5e3c4bfc-b906-4ec9-818d-7be14390b641",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T12:43:26.975657Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 5,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review-plan",
+        "handoff": {
+          "handoff_id": "hnd-76fe78af-0f77-48d1-af0b-f3392b3dc4c8",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 5,
+          "next_role": "reviewer",
+          "next_action": "review-plan",
+          "purpose": "Implementerが提出したResponse Planを評価・合意する",
+          "inputs": [
+            "Finding",
+            "Response Plan",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-003-global-effect-ci-method-unspecified"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-003-global-effect-ci-method-unspecified"
+          ],
+          "expected_deliverables": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-plan-vcd-categorical-v4-20260915-003",
+      "actor_id": "codex-independent-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-vcd-categorical-v4-plan-review-plan-20260915-003",
+      "operation": "review-plan",
+      "revision": 6,
+      "previous_handoff_id": "hnd-76fe78af-0f77-48d1-af0b-f3392b3dc4c8",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T12:45:13.225685Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 6,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-plan",
+        "handoff": {
+          "handoff_id": "hnd-29880685-ba15-45a1-aa55-ed295c42a81f",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 6,
+          "next_role": "implementer",
+          "next_action": "submit-plan",
+          "purpose": "未承認のrequired FindingについてResponse Planを提出または再提出する",
+          "inputs": [
+            "Response Plan",
+            "Plan Review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-003-global-effect-ci-method-unspecified"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-003-global-effect-ci-method-unspecified"
+          ],
+          "expected_deliverables": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "op-submit-plan-v4-20260915-003",
+      "actor_id": "myamaguchi",
+      "role": "implementer",
+      "invocation_id": "inv-submit-plan-v4-20260915-003",
+      "operation": "submit-plan",
+      "revision": 7,
+      "previous_handoff_id": "hnd-29880685-ba15-45a1-aa55-ed295c42a81f",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T12:47:51.681313Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 7,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review-plan",
+        "handoff": {
+          "handoff_id": "hnd-f45612fa-1134-465b-8976-c73dbf161391",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 7,
+          "next_role": "reviewer",
+          "next_action": "review-plan",
+          "purpose": "Implementerが提出したResponse Planを評価・合意する",
+          "inputs": [
+            "Finding",
+            "Response Plan",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-003-global-effect-ci-method-unspecified"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-003-global-effect-ci-method-unspecified"
+          ],
+          "expected_deliverables": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-plan-vcd-categorical-v4-20260915-004",
+      "actor_id": "codex-independent-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-vcd-categorical-v4-plan-review-plan-20260915-004",
+      "operation": "review-plan",
+      "revision": 8,
+      "previous_handoff_id": "hnd-f45612fa-1134-465b-8976-c73dbf161391",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T12:57:17.778378Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 8,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-response",
+        "handoff": {
+          "handoff_id": "hnd-06ba7ad7-3eb9-486b-93be-9bd5deb99c7d",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 8,
+          "next_role": "implementer",
+          "next_action": "submit-response",
+          "purpose": "承認されたPlanおよびOwner許可範囲に基づき修正とEvidenceを提出する",
+          "inputs": [
+            "Response Plan",
+            "Plan Review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "Finding別修正提出",
+            "変更Evidence",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Finding別修正提出",
+            "変更Evidence",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "op-submit-response-v4-20260915-001",
+      "actor_id": "myamaguchi",
+      "role": "implementer",
+      "invocation_id": "inv-submit-response-v4-20260915-001",
+      "operation": "submit-response",
+      "revision": 9,
+      "previous_handoff_id": "hnd-06ba7ad7-3eb9-486b-93be-9bd5deb99c7d",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T13:30:33.417709Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 9,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "verify",
+        "handoff": {
+          "handoff_id": "hnd-badf0c30-2985-4a12-856a-a7369e7ffe67",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 9,
+          "next_role": "reviewer",
+          "next_action": "verify",
+          "purpose": "Implementer提出と修正結果を独立検証する",
+          "inputs": [
+            "Finding",
+            "Implementer回答",
+            "変更Evidence",
+            "変更観測"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "Finding別検証",
+            "変更範囲照合",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Finding別検証",
+            "変更範囲照合",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "verify-vcd-categorical-v4-20260915-001",
+      "actor_id": "codex-independent-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-vcd-categorical-v4-verify-20260915-001",
+      "operation": "verify",
+      "revision": 10,
+      "previous_handoff_id": "hnd-badf0c30-2985-4a12-856a-a7369e7ffe67",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T13:34:45.451328Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 10,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-plan",
+        "handoff": {
+          "handoff_id": "hnd-35d5a20d-0814-45b7-abd1-6be47746eaaf",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 10,
+          "next_role": "implementer",
+          "next_action": "submit-plan",
+          "purpose": "未承認のPlan-required Findingについて次のResponse Planを提出する",
+          "inputs": [
+            "Finding",
+            "Implementer回答",
+            "Reviewer検証",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "op-submit-plan-v4-20260915-004",
+      "actor_id": "myamaguchi",
+      "role": "implementer",
+      "invocation_id": "inv-submit-plan-v4-20260915-004",
+      "operation": "submit-plan",
+      "revision": 11,
+      "previous_handoff_id": "hnd-35d5a20d-0814-45b7-abd1-6be47746eaaf",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T13:43:19.935970Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 11,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review-plan",
+        "handoff": {
+          "handoff_id": "hnd-6070a3e4-35d6-43fb-a124-3229cea01882",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 11,
+          "next_role": "reviewer",
+          "next_action": "review-plan",
+          "purpose": "Implementerが提出したResponse Planを評価・合意する",
+          "inputs": [
+            "Finding",
+            "Response Plan",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-plan-vcd-categorical-v4-20260915-005",
+      "actor_id": "codex-independent-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-vcd-categorical-v4-plan-review-plan-20260915-005",
+      "operation": "review-plan",
+      "revision": 12,
+      "previous_handoff_id": "hnd-6070a3e4-35d6-43fb-a124-3229cea01882",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T13:44:59.128872Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 12,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-response",
+        "handoff": {
+          "handoff_id": "hnd-93783cf9-2671-400e-835a-2167ca5902c3",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 12,
+          "next_role": "implementer",
+          "next_action": "submit-response",
+          "purpose": "承認されたPlanおよびOwner許可範囲に基づき修正とEvidenceを提出する",
+          "inputs": [
+            "Response Plan",
+            "Plan Review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "Finding別修正提出",
+            "変更Evidence",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Finding別修正提出",
+            "変更Evidence",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "op-submit-response-v4-20260915-002",
+      "actor_id": "myamaguchi",
+      "role": "implementer",
+      "invocation_id": "inv-submit-response-v4-20260915-002",
+      "operation": "submit-response",
+      "revision": 13,
+      "previous_handoff_id": "hnd-93783cf9-2671-400e-835a-2167ca5902c3",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T14:04:41.936512Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 13,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "verify",
+        "handoff": {
+          "handoff_id": "hnd-960e22f6-d735-4057-8d2e-8826bb36cbfd",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 13,
+          "next_role": "reviewer",
+          "next_action": "verify",
+          "purpose": "Implementer提出と修正結果を独立検証する",
+          "inputs": [
+            "Finding",
+            "Implementer回答",
+            "変更Evidence",
+            "変更観測"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "Finding別検証",
+            "変更範囲照合",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Finding別検証",
+            "変更範囲照合",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "verify-vcd-categorical-v4-20260915-002",
+      "actor_id": "codex-independent-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-vcd-categorical-v4-verify-20260915-002",
+      "operation": "verify",
+      "revision": 14,
+      "previous_handoff_id": "hnd-960e22f6-d735-4057-8d2e-8826bb36cbfd",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T14:09:03.268723Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 14,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-plan",
+        "handoff": {
+          "handoff_id": "hnd-be3c3a82-1b1f-41af-a83c-d08e89f703a1",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 14,
+          "next_role": "implementer",
+          "next_action": "submit-plan",
+          "purpose": "未承認のPlan-required Findingについて次のResponse Planを提出する",
+          "inputs": [
+            "Finding",
+            "Implementer回答",
+            "Reviewer検証",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "未承認Finding別Response Plan",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "op-submit-plan-v4-20260915-005",
+      "actor_id": "myamaguchi",
+      "role": "implementer",
+      "invocation_id": "inv-submit-plan-v4-20260915-005",
+      "operation": "submit-plan",
+      "revision": 15,
+      "previous_handoff_id": "hnd-be3c3a82-1b1f-41af-a83c-d08e89f703a1",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T14:12:10.152528Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 15,
+        "state_changed": true,
+        "next_role": "reviewer",
+        "next_action": "review-plan",
+        "handoff": {
+          "handoff_id": "hnd-b74498b6-f891-471d-b34b-3f86205e3ce2",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 15,
+          "next_role": "reviewer",
+          "next_action": "review-plan",
+          "purpose": "Implementerが提出したResponse Planを評価・合意する",
+          "inputs": [
+            "Finding",
+            "Response Plan",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Plan Review結果",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    },
+    {
+      "operation_id": "review-plan-vcd-categorical-v4-20260915-006",
+      "actor_id": "codex-independent-reviewer",
+      "role": "reviewer",
+      "invocation_id": "inv-vcd-categorical-v4-plan-review-plan-20260915-006",
+      "operation": "review-plan",
+      "revision": 16,
+      "previous_handoff_id": "hnd-b74498b6-f891-471d-b34b-3f86205e3ce2",
+      "handoff_acknowledged": true,
+      "timestamp": "2026-09-15T14:15:27.527513Z",
+      "result": {
+        "status": "ok",
+        "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+        "case_revision": 16,
+        "state_changed": true,
+        "next_role": "implementer",
+        "next_action": "submit-response",
+        "handoff": {
+          "handoff_id": "hnd-9223fca6-57bd-4d96-a23b-ae5a776f427b",
+          "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+          "issued_revision": 16,
+          "next_role": "implementer",
+          "next_action": "submit-response",
+          "purpose": "承認されたPlanおよびOwner許可範囲に基づき修正とEvidenceを提出する",
+          "inputs": [
+            "Response Plan",
+            "Plan Review結果",
+            "Evidence"
+          ],
+          "open_issues": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "open_items": [
+            "F-001-two-way-boundary-and-migration",
+            "F-002-zero-cell-json-numeric-contract",
+            "F-003-global-effect-ci-method-unspecified",
+            "F-004-offline-acceptance-is-not-executable"
+          ],
+          "expected_deliverables": [
+            "Finding別修正提出",
+            "変更Evidence",
+            "次工程handoff"
+          ],
+          "expected_outputs": [
+            "Finding別修正提出",
+            "変更Evidence",
+            "次工程handoff"
+          ],
+          "status": "issued"
+        }
+      }
+    }
+  ],
+  "handoff": {
+    "handoff_id": "hnd-9223fca6-57bd-4d96-a23b-ae5a776f427b",
+    "case_id": "QMS-VCD-CATEGORICAL-V4-PLAN-001",
+    "issued_revision": 16,
+    "next_role": "implementer",
+    "next_action": "submit-response",
+    "purpose": "承認されたPlanおよびOwner許可範囲に基づき修正とEvidenceを提出する",
+    "inputs": [
+      "Response Plan",
+      "Plan Review結果",
+      "Evidence"
+    ],
+    "open_issues": [
+      "F-001-two-way-boundary-and-migration",
+      "F-002-zero-cell-json-numeric-contract",
+      "F-003-global-effect-ci-method-unspecified",
+      "F-004-offline-acceptance-is-not-executable"
+    ],
+    "open_items": [
+      "F-001-two-way-boundary-and-migration",
+      "F-002-zero-cell-json-numeric-contract",
+      "F-003-global-effect-ci-method-unspecified",
+      "F-004-offline-acceptance-is-not-executable"
+    ],
+    "expected_deliverables": [
+      "Finding別修正提出",
+      "変更Evidence",
+      "次工程handoff"
+    ],
+    "expected_outputs": [
+      "Finding別修正提出",
+      "変更Evidence",
+      "次工程handoff"
+    ],
+    "status": "issued"
+  }
+}

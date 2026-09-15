@@ -1,0 +1,22 @@
+{
+  "operation_id": "review-plan-vcd-categorical-v4-20260915-003",
+  "actor_id": "codex-independent-reviewer",
+  "role": "reviewer",
+  "invocation_id": "inv-vcd-categorical-v4-plan-review-plan-20260915-003",
+  "previous_handoff_id": "hnd-76fe78af-0f77-48d1-af0b-f3392b3dc4c8",
+  "expected_case_revision": 5,
+  "plan_reviews": [
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "outcome": "plan-revision-required",
+      "rationale": "有限非負整数、厳密2-way、I/J>=2、N>0、欠測とエラーコードの追加は改善されている。しかし『構造的ゼロは特別扱いせず観測0として処理』という方針は、発生不能セルとサンプリングゼロを同一視し、期待度数・log(O/E)・独立性モデルの解釈を壊し得る。構造的ゼロを入力禁止または明示的な除外・別estimandとして扱うかを統計的に決定し、仕様とfixtureに反映するまで合意できない。",
+      "evidence_refs": ["EV-001-current-arity"]
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "outcome": "plan-revision-required",
+      "rationale": "非心χ²反転、退化時フォールバック、参照fixtureを追加した点は前進である。一方、非心度信頼区間の端点を λ/N として Bergsma の bias-corrected φ²* に入れる写像が妥当か、`k_tilde - 1` が補正Vの定義と整合するか、観測X²からλ区間への片側・両側反転と端点順序が未検証である。採用する文献・式、数値根探索、補正前後の対象量を独立な参照実装と照合できる形で再提出する必要がある。",
+      "evidence_refs": ["EV-003-ci-ambiguity"]
+    }
+  ]
+}

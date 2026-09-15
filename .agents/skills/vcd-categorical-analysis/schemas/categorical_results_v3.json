@@ -1,0 +1,198 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TwoWayCategoricalResultsV3",
+  "description": "Interface 3.0 schema for complete two-way categorical analysis (two-way-results-v2)",
+  "type": "object",
+  "required": [
+    "interface_version",
+    "schema",
+    "analysis_signature",
+    "global",
+    "cells",
+    "posterior",
+    "quality",
+    "provenance"
+  ],
+  "properties": {
+    "interface_version": {
+      "type": "string",
+      "enum": ["3.0"]
+    },
+    "schema": {
+      "type": "string",
+      "enum": ["two-way-results-v2"]
+    },
+    "analysis_signature": {
+      "type": "string"
+    },
+    "global": {
+      "type": "object",
+      "required": [
+        "n_total",
+        "n_rows",
+        "n_cols",
+        "df",
+        "pearson_chisq",
+        "pearson_p_value",
+        "deviance_gsq",
+        "deviance_p_value",
+        "cramers_v",
+        "cramers_v_ci",
+        "cramers_v_corrected",
+        "cramers_v_corrected_ci"
+      ],
+      "properties": {
+        "n_total": { "type": "integer", "minimum": 1 },
+        "n_rows": { "type": "integer", "minimum": 2 },
+        "n_cols": { "type": "integer", "minimum": 2 },
+        "df": { "type": "integer", "minimum": 1 },
+        "pearson_chisq": { "type": "number", "minimum": 0 },
+        "pearson_p_value": { "type": "number", "minimum": 0, "maximum": 1 },
+        "deviance_gsq": { "type": "number", "minimum": 0 },
+        "deviance_p_value": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cramers_v": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cramers_v_ci": {
+          "type": "array",
+          "items": { "type": "number", "minimum": 0, "maximum": 1 },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "cramers_v_corrected": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cramers_v_corrected_ci": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": { "type": "number", "minimum": 0, "maximum": 1 },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "cells": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "row_level",
+          "col_level",
+          "observed",
+          "expected",
+          "pearson_res",
+          "deviance_res",
+          "adj_res",
+          "leverage",
+          "log_oe",
+          "log_oe_state",
+          "is_finite",
+          "signed_diff_ratio",
+          "rao_score",
+          "p_value_unadj",
+          "p_value_bh",
+          "quarantine_status",
+          "quarantine_reasons",
+          "dual_filter_candidate"
+        ],
+        "properties": {
+          "row_level": { "type": "string" },
+          "col_level": { "type": "string" },
+          "observed": { "type": "integer", "minimum": 0 },
+          "expected": { "type": "number", "exclusiveMinimum": 0 },
+          "pearson_res": { "type": "number" },
+          "deviance_res": { "type": "number" },
+          "adj_res": { "type": "number" },
+          "leverage": { "type": "number", "minimum": 0, "maximum": 1 },
+          "log_oe": { "type": ["number", "null"] },
+          "log_oe_state": {
+            "type": "string",
+            "enum": ["FINITE", "NEGATIVE_INFINITY", "UNDEFINED"]
+          },
+          "is_finite": { "type": "boolean" },
+          "signed_diff_ratio": { "type": "number" },
+          "rao_score": { "type": "number", "minimum": 0 },
+          "p_value_unadj": { "type": "number", "minimum": 0, "maximum": 1 },
+          "p_value_bh": { "type": "number", "minimum": 0, "maximum": 1 },
+          "quarantine_status": {
+            "type": "string",
+            "enum": ["ACTIVE", "QUARANTINED"]
+          },
+          "quarantine_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["ZERO_OBSERVED", "EXPECTED_LT_5", "HIGH_LEVERAGE"]
+            }
+          },
+          "dual_filter_candidate": { "type": "boolean" }
+        }
+      }
+    },
+    "posterior": {
+      "type": "object",
+      "required": [
+        "prior_specification",
+        "n_draws",
+        "deterministic_seed",
+        "cell_posteriors"
+      ],
+      "properties": {
+        "prior_specification": {
+          "type": "object",
+          "required": ["alpha"],
+          "properties": {
+            "alpha": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "n_draws": { "type": "integer", "minimum": 1000 },
+        "deterministic_seed": { "type": "integer" },
+        "cell_posteriors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "row_level",
+              "col_level",
+              "prob_mean",
+              "prob_sd",
+              "prob_q025",
+              "prob_q500",
+              "prob_q975",
+              "prob_eti_width",
+              "cond_row_prob_mean",
+              "cond_col_prob_mean",
+              "log_divergence_mean",
+              "prob_dir_positive"
+            ]
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": [
+        "n_quarantined_cells",
+        "n_candidates",
+        "warnings"
+      ],
+      "properties": {
+        "n_quarantined_cells": { "type": "integer", "minimum": 0 },
+        "n_candidates": { "type": "integer", "minimum": 0 },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "run_id",
+        "timestamp_jst",
+        "r_version",
+        "platform"
+      ]
+    }
+  }
+}

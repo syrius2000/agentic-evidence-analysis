@@ -2,11 +2,11 @@
 ## vcd-categorical-analysis v4.0
 ### Evidence, Residual Diagnostics, Bayesian Uncertainty & Scientific Dashboard
 
-**Status:** Proposed / implementation-ready  
-**Target:** `.agents/skills/vcd-categorical-analysis/`  
-**Target version:** `4.0`  
-**Interface version:** `3.0`  
-**Primary scope:** nominal 2-way categorical tables  
+**Status:** Proposed / implementation-ready
+**Target:** `.agents/skills/vcd-categorical-analysis/`
+**Target version:** `4.0`
+**Interface version:** `3.0`
+**Primary scope:** nominal 2-way categorical tables
 **Design principle:** Effect / Evidence / Influence / Stability / Uncertainty を混同しない
 
 ---
@@ -23,9 +23,11 @@
 
 へ拡張する。
 
-解析対象は引き続き **名義カテゴリカル2変数**を正本とする。
+解析対象は引き続き **完全な名義カテゴリカル2変数（Complete 2-way table）** を正本とする。
+入力次元数（Arity = 2）、各軸水準数 $I \ge 2, J \ge 2$、総度数 $N > 0$、有限非負整数カウントを前提とする。
 
 3-way の階層対数線形モデル・M1〜M9比較等を本スキルへ複製しない。
+3次元以上の入力が与えられた場合はフェイルファストで拒否し、正本スキル `vcd-bayesian-evidence-analysis` への委譲を案内する。
 
 v4.0 の中心概念を以下の5軸とする。
 
@@ -41,6 +43,7 @@ v4.0 の中心概念を以下の5軸とする。
 
 v4.0 では以下を目的としない。
 
+- 構造的ゼロ（理論的・生理学的に発生不可能なセル）を含む不完全分割表（Incomplete contingency table）および準独立モデル（Quasi-independence model）のサポート（完全分割表専用とし、構造的ゼロ指定時は入力禁止・フェイルファスト停止とする）
 - 3-way M1〜M9 モデル体系の複製
 - 4-way 以上の一般 log-linear model engine
 - Bayesian posterior probability と frequentist p-value の統合スコア化
@@ -56,14 +59,14 @@ v4.0 では以下を目的としない。
 
 ```mermaid
 flowchart TD
-    A["2-way contingency table"] --> B["Independence Poisson GLM"]
+    A["Complete 2-way contingency table"] --> B["Independence Poisson GLM"]
 
     B --> C["Global association"]
     B --> D["Cell diagnostics"]
     A --> E["Multinomial-Dirichlet posterior"]
 
     C --> C1["Chi-square / G2"]
-    C --> C2["Cramér's V + CI"]
+    C --> C2["Cramér's V + CI (uncorrected & corrected)"]
 
     D --> D1["Effect"]
     D --> D2["Evidence"]
@@ -89,7 +92,7 @@ flowchart TD
 
 # 4. Statistical decisions — FIXED
 
-## 4.1 Global model
+## 4.1 Global model & Cramér's V confidence interval
 
 2-way table
 
@@ -115,12 +118,29 @@ n_{ij},\qquad i=1,\dots,I,\; j=1,\dots,J
 
 - Pearson \(X^2\)
 - likelihood-ratio \(G^2\)
-- degrees of freedom
+- degrees of freedom \(df = (I-1)(J-1)\)
 - raw p-value
 - Cramér's V
-- bias-corrected Cramér's V
-- Cramér's V confidence interval
+- bias-corrected Cramér's V (\(\tilde{V}\), Bergsma 2013)
+- Cramér's V 95% confidence interval (未補正 `cramers_v_ci`)
+- bias-corrected Cramér's V 95% confidence interval (補正後 `cramers_v_corrected_ci`)
 - expected count diagnostics
+
+### Cramér's V CI の算定数理（非心 \(\chi^2\) 反転法）:
+Smithson (2003) / Steiger (2004) に従い、観測 \(X^2\) に対し非心カイ二乗累積分布関数 \(F(X^2; df, \lambda)\) を数値求根（`stats::uniroot`, 許容誤差 \(10^{-8}\)）して非心度 \(\lambda\) の 95% 信頼区間 \([\lambda_L, \lambda_U]\) を導出する。
+- 上側限界: \(F(X^2; df, \lambda_U) = 0.025\)
+- 下側限界: \(X^2 > \chi^2_{0.975}(df)\) のとき \(F(X^2; df, \lambda_L) = 0.975\)、\(X^2 \le \chi^2_{0.975}(df)\) のときは \(\lambda_L = 0\)（これにより \(0 \le \lambda_L \le \lambda_U\) が数学的に保証される）
+- 未補正 Cramér's \(V\) 区間への写像:
+  \[
+  V_* = \sqrt{\frac{\lambda_*/N}{\min(I, J) - 1}}
+  \]
+- Bergsma (2013) bias-corrected Cramér's \(\tilde{V}\) 区間への写像:
+  有効次元 \(\tilde{k} = \min\left(I - \frac{(I-1)^2}{N-1}, J - \frac{(J-1)^2}{N-1}\right)\) を用い、
+  \[
+  \tilde{V}_* = \min\left(1, \sqrt{\frac{\max(0, \lambda_*/N)}{\tilde{k} - 1}}\right)
+  \]
+  \(\lambda \mapsto \tilde{V}\) は狭義単調非減少であるため、端点順序 \(0 \le \tilde{V}_L \le \tilde{V}_U \le 1\) が厳密に保存される。
+- 退化表・小標本フォールバック: \(\tilde{k} \le 1\) または \(N \le df + 1\) で補正分母が非正となる場合、あるいは不収束時は `cramers_v_corrected_ci` を `null` とし、`quality_warnings` に記録する。\(X^2 = 0\) のときは \([0.0, 0.0]\) を返す。
 
 ---
 
@@ -205,11 +225,11 @@ L_{ij}
 
 ただし \(O=0\) は \(-\infty\) になるため、
 
-- raw value は数学的に保持
-- visualization では通常軸に無理に載せない
-- Stability = QUARANTINED として別表示
-
-とする。
+- 数学的な理論値は \(-\infty\) であるが、標準 JSON の仕様に適合させるため `log_oe: null` として出力する
+- 状態識別子として `log_oe_state: "NEGATIVE_INFINITY"` および `is_finite: false` を属性として保存する
+- 観測0はすべてサンプリング偶然のゼロ（サンプリングゼロ）として扱い、`stability_status = "QUARANTINED"`（理由: `ZERO_OBSERVED`）に分類する
+- 大標本 Dual-Filter 探索的候補からは自動除外する
+- 可視化（Dashboard 散布図）の通常軸には無理に載せず、隔離セル一覧およびテーブル上で「$-\infty$（未定義・度数0）」と注記表示する
 
 恣意的 pseudocount を canonical statistic には使用しない。
 
@@ -694,14 +714,19 @@ Dashboard は完全 self-contained HTML を維持する。
 
 - Google Fonts
 - CDN JavaScript
-- DataTables external Japanese JSON
+- DataTables external Japanese JSON (https://cdn.datatables.net URLの直接参照禁止)
 - remote MathJax
+- その他すべての外部 http:// または https:// リソース
 
 使用：
 
 - system font stack
 - local/inlined KaTeX
-- inline Japanese DataTables dictionary
+- inline Japanese DataTables dictionary (完全インラインJavaScript辞書オブジェクト)
+
+### オフライン機械的受入検査（静的スキャン）
+生成された Dashboard HTML に対し、正規表現による静的 URL スキャンテスト（`tests/test_vcd_categorical_dashboard_v4.R`）を実施する。
+HTML ソース内に外部 `http://` または `https://` 参照が検出された場合はテストを失敗させ、ネットワーク非接続環境における表示完全性を機械的に保証する。
 
 ---
 
@@ -1058,13 +1083,13 @@ D=0
 
 解釈：
 
-- interval 全体 > 0  
+- interval 全体 > 0
   → posterior 上で excess direction が一貫
 
-- interval 全体 < 0  
+- interval 全体 < 0
   → deficit direction が一貫
 
-- 0 を跨ぐ  
+- 0 を跨ぐ
   → direction uncertainty が残る
 
 注意書き：
@@ -1250,8 +1275,9 @@ Mosaic plot から統計的 significance を読み取らせない。
     "df": null,
     "p_value": null,
     "cramers_v": null,
+    "cramers_v_ci": [],
     "cramers_v_corrected": null,
-    "cramers_v_ci": []
+    "cramers_v_corrected_ci": []
   },
 
   "cells": {
@@ -1286,6 +1312,8 @@ Mosaic plot から統計的 significance を読み取らせない。
 
   "effect": {
     "log_oe": 0.261,
+    "log_oe_state": "FINITE",
+    "is_finite": true,
     "proportion_difference": 0.0057
   },
 
@@ -1315,6 +1343,14 @@ Mosaic plot から統計的 significance を読み取らせない。
   }
 }
 ```
+
+> [!NOTE]
+> 観測度数0セル（\(O=0\)）の場合：
+> - `log_oe`: `null`
+> - `log_oe_state`: `"NEGATIVE_INFINITY"`
+> - `is_finite`: `false`
+> - `stability.status`: `"QUARANTINED"`（reasons に `"ZERO_OBSERVED"` 含む）
+> - `candidate.dual_filter`: `false`（自動除外）
 
 ---
 
@@ -1487,7 +1523,7 @@ AI review の順序を固定する。
 - [ ] practical delta = NULL を固定
 - [ ] Dashboard section order を固定
 
-**Exit criterion:**  
+**Exit criterion:**
 実装者が統計仕様を変更せずコード化できる。
 
 ---

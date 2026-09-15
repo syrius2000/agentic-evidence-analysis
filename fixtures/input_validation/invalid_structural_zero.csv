@@ -1,0 +1,5 @@
+Treatment,Outcome,Freq,is_structural_zero
+Active,Improved,40,FALSE
+Active,NotImproved,10,FALSE
+Placebo,Improved,0,TRUE
+Placebo,NotImproved,30,FALSE

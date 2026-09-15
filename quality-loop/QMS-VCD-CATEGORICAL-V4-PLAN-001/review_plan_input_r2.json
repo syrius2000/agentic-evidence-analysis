@@ -1,0 +1,34 @@
+{
+  "operation_id": "review-plan-vcd-categorical-v4-20260915-002",
+  "actor_id": "codex-independent-reviewer",
+  "role": "reviewer",
+  "invocation_id": "inv-vcd-categorical-v4-plan-review-plan-20260915-002",
+  "previous_handoff_id": "hnd-76fe78af-0f77-48d1-af0b-f3392b3dc4c8",
+  "expected_case_revision": 5,
+  "plan_reviews": [
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "outcome": "plan-revision-required",
+      "rationale": "有限非負整数、厳密2-way、I/J>=2、N>0、欠測とエラーコードの追加は改善されている。しかし『構造的ゼロは特別扱いせず観測0として処理』という方針は、発生不能セルとサンプリングゼロを同一視し、期待度数・log(O/E)・独立性モデルの解釈を壊し得る。構造的ゼロを入力禁止または明示的な除外・別estimandとして扱うかを統計的に決定し、仕様とfixtureに反映するまで合意できない。",
+      "evidence_refs": ["EV-001-current-arity"]
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "非有限値のJSON表現、Quarantine、候補除外、可視化、fixtureが具体化されているため、計画としては実行可能である。実装前にSchemaのrequired/type、NaN・+Infinity、nullのソート・軸除外規則を明記すること。",
+      "evidence_refs": ["EV-002-nonfinite-json"]
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "outcome": "plan-revision-required",
+      "rationale": "非心χ²反転、退化時フォールバック、参照fixtureを追加した点は前進である。一方、非心度信頼区間の端点を λ/N として Bergsma の bias-corrected φ²* に入れる写像が妥当か、`k_tilde - 1` が補正Vの定義と整合するか、観測X²からλ区間への片側・両側反転と端点順序が未検証である。採用する文献・式、数値根探索、補正前後の対象量を独立な参照実装と照合できる形で再提出する必要がある。",
+      "evidence_refs": ["EV-003-ci-ambiguity"]
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "outcome": "plan-accepted-with-comments",
+      "rationale": "静的URL検査、インライン辞書、ローカル資源、ネットワーク遮断相当の検証が明記されており、元のEvidence Gapに対する実行可能な計画である。allowlistとURI規則、ブラウザ検査不能時の代替、生成HTMLの検査対象を完了条件に固定すること。",
+      "evidence_refs": ["EV-004-current-remote-url"]
+    }
+  ]
+}

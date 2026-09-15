@@ -1,0 +1,91 @@
+{
+  "operation_id": "review-vcd-categorical-v4-plan-20260915-001",
+  "actor_id": "codex-independent-reviewer",
+  "role": "reviewer",
+  "invocation_id": "inv-vcd-categorical-v4-plan-review-20260915-001",
+  "previous_handoff_id": "hnd-ea0689fa-46f5-4a6d-95f7-3a0db7e7fc69",
+  "expected_case_revision": 1,
+  "findings": [
+    {
+      "finding_id": "F-001-two-way-boundary-and-migration",
+      "classification": "requirement-violation",
+      "severity": "high",
+      "requirement_ref": "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md:14-53, 1403-1420; openspec/changes/vcd-categorical-analysis-v4/tasks.md:1-44",
+      "observed_fact": "計画は v4.0 を名義 2-way の正本とし 3-way モデル複製を非目的とするが、現行 SKILL.md と analysis.R は既存 3-way を互換保守し、同一の profile→render と categorical_results.json を使用する。計画、design、spec、tasks のいずれも、3-way 入力を v4 で明示拒否するのか、旧 2.x 経路へ維持するのか、出力 JSON の版をどう分岐するのかを固定していない。",
+      "impact": "実装者ごとに 3-way を暗黙に 2-way 化、互換処理、または破壊的拒否のいずれも選べ、既存利用者の解析単位・出力契約・run lifecycle を壊し得る。『既存 run lifecycle regression-free』という完了条件も検証不能になる。",
+      "expected_state": "入力受入契約として次元数、各辺の最小水準数、総度数、許容する度数型、構造的ゼロの扱いを明記し、3-way 入力について v4 の挙動、旧経路の保存先、interface_version の分岐、移行テストの対象を proposal/design/spec/tasks/計画で一意にそろえる。",
+      "verification_method": "2-way、3-way、1水準、総度数 0、非有限または負の度数の fixture を用意し、各入力の終了状態、出力有無、interface_version、run_state が契約どおりであることを独立に確認する。",
+      "evidence_refs": ["EV-001-current-arity"]
+    },
+    {
+      "finding_id": "F-002-zero-cell-json-numeric-contract",
+      "classification": "requirement-violation",
+      "severity": "high",
+      "requirement_ref": "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md:195-216, 1234-1316; openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md:14-16",
+      "observed_fact": "計画は O=0 の log(O/E) を数学的 raw value として保持し QUARANTINED にすると定める一方、Interface 3.0 の log_oe は JSON number としか定義しない。標準 JSON は -Infinity を number として表せず、null、文字列、欠損フラグのいずれを出すか、各コンシューマがどう表示・ソート・検証するかも未定義である。",
+      "impact": "ゼロセルという必須の Quarantine シナリオで JSON schema validation、再現比較、Dashboard の軸・表・候補抽出が実装依存となり、-Infinity を 0 や欠損なしとして誤解釈する危険がある。",
+      "expected_state": "非有限値を JSON に直接出力しない具体的な表現を固定する。例えば log_oe を null、log_oe_state を NEGATIVE_INFINITY、is_finite を false とし、計算・候補判定・可視化・表の各規則を定義する。schema と zero-cell fixture の期待 JSON も追加する。",
+      "verification_method": "ゼロ観測セルを含む fixture の JSON を厳格パーサー／schema validator で検証し、値状態、QUARANTINED 理由、候補除外、Dashboard の表示が契約どおりであることを確認する。",
+      "evidence_refs": ["EV-002-nonfinite-json"]
+    },
+    {
+      "finding_id": "F-003-global-effect-ci-method-unspecified",
+      "classification": "unverified-claim",
+      "severity": "medium",
+      "multi_file_impact": true,
+      "ambiguous_requirements": true,
+      "requirement_ref": "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md:114-123, 1234-1255; openspec/changes/vcd-categorical-analysis-v4/specs/two-way-evidence-analysis/spec.md:46-48",
+      "observed_fact": "Cramér's V、bias-corrected Cramér's V、Cramér's V confidence interval を必須出力としているが、CI の方法、信頼係数、対象値（補正前／補正後）、小標本・退化表時の扱い、乱数を使う場合の seed／反復数が定義されていない。",
+      "impact": "同じ入力でも実装者・R パッケージ・OS により異なる CI を正当化でき、global JSON、Dashboard、数値 fixture の期待値を固定できない。",
+      "expected_state": "Cramér's V CI の推定法、95%水準、対象量、適用不能時の明示値・quality warning、必要な RNG 契約を一つに固定し、参照値を持つ fixture と許容誤差を tasks に追加する。",
+      "verification_method": "2×2、3×4、疎な表、退化表に対し、指定法の独立実装または参照値と CI の下限・上限・warning を比較する。",
+      "evidence_refs": ["EV-003-ci-ambiguity"]
+    },
+    {
+      "finding_id": "F-004-offline-acceptance-is-not-executable",
+      "classification": "evidence-gap",
+      "severity": "medium",
+      "multi_file_impact": true,
+      "requirement_ref": "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.0.md:704-726, 1739-1766; openspec/changes/vcd-categorical-analysis-v4/tasks.md:37-39",
+      "observed_fact": "完全オフラインを必須とするが、計画の acceptance は『offline で完全表示』にとどまり、HTML 内の URL／外部 resource の静的検査、ネットワーク遮断下のレンダリング・表示確認、許容する file/data URI の規則が定義されていない。現行 dashboard.Rmd は DataTables 日本語辞書に https://cdn.datatables.net の URL を使用している。",
+      "impact": "外部 CDN を再混入しても通常の接続環境では見逃され、閉域環境でデータ表または表示が壊れる。要件の MUST を再現可能に受入確認できない。",
+      "expected_state": "生成済み HTML を対象に、http(s) URL と外部参照を失敗させる静的検査、ネットワーク遮断または同等のブラウザ検査、許容 URI の allowlist、検査 fixture を tasks とテストに追加する。",
+      "verification_method": "通常の 2-way fixture をレンダリング後、HTML を検査し、ネットワーク遮断状態で必要な CSS、JS、KaTeX、DataTable、日本語辞書、全図表が利用可能であることを確認する。",
+      "evidence_refs": ["EV-004-current-remote-url"]
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "EV-001-current-arity",
+      "level": "observed",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "計画、OpenSpec、現行 SKILL.md、analysis.R を行単位で照合",
+      "result": "現行 engine は vars の長さが3以上の場合の strata 処理と3-wayモデル式を持つが、v4 成果物は入力移行または拒否の契約を定義していない。",
+      "summary": "2-way 正本化と既存3-way互換保守の境界が未固定。"
+    },
+    {
+      "evidence_id": "EV-002-nonfinite-json",
+      "level": "observed",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "計画のゼロセル規則と Interface 3.0 cell schema を照合",
+      "result": "O=0 で log(O/E)=-Infinity とする規則に対し、JSON上の非有限値の符号化・検証・表示規則は存在しない。",
+      "summary": "必須ゼロセル経路のデータ契約が表現不能。"
+    },
+    {
+      "evidence_id": "EV-003-ci-ambiguity",
+      "level": "observed",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "global statistics、JSON schema、OpenSpec scenario、tasks を照合",
+      "result": "Cramér's V confidence interval は出力必須だが、推定法・水準・対象量・境界ケース・テスト参照値が未指定である。",
+      "summary": "global effect の数値契約が再現可能に固定されていない。"
+    },
+    {
+      "evidence_id": "EV-004-current-remote-url",
+      "level": "observed",
+      "target_revision": "standalone-sha256:6dbf1a242c99e3eaccd04f2952e9c4a28b7db1a5395c5e5efbd13ba35fa52447",
+      "method": "現行 dashboard.Rmd と v4 の offline task・acceptance を照合",
+      "result": "現行 dashboard.Rmd は DataTables 日本語辞書に CDN URL を指定し、v4 は削除を要求するが、生成HTMLに対する機械的なオフライン受入試験が未定義である。",
+      "summary": "オフライン MUST の回帰検出手段が不足。"
+    }
+  ]
+}
