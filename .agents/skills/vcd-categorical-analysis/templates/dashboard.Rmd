@@ -340,36 +340,55 @@ cat(knitr::knit(text = normalized_summary, quiet = TRUE))
   <p>
     対称Dirichlet事前分布（$\alpha = `r post$prior_specification$alpha`$）に基づく事後生起確率 $\pi_{ij}$ の 95% 信用区間（ETI: Equal-Tailed Interval）。
   </p>
-  ```{r posterior-plot, fig.width=10, fig.height=4.8}
+  ```{r posterior-plot, fig.width=10, fig.height=6.2}
   p_df <- post$cell_posteriors
-  # 縦軸ラベル: 行レベル : 列レベル
-  p_df$cell_label <- paste(p_df$row_level, p_df$col_level, sep = " : ")
-  # 上から表の順序通り（第1行・第1列、第1行・第2列...）に並ぶよう factor levels を反転設定
-  p_df$cell_label <- factor(p_df$cell_label, levels = rev(p_df$cell_label))
-  p_df$row_group <- factor(p_df$row_level, levels = unique(p_df$row_level))
+  is_large_table <- nrow(p_df) > 30
+  plot_df <- if (is_large_table) {
+    p_df[order(p_df$prob_mean, decreasing = TRUE)[1:25], ]
+  } else {
+    p_df
+  }
 
-  ggplot(p_df, aes(x = prob_mean, y = cell_label, color = row_group)) +
-    geom_pointrange(aes(xmin = prob_q025, xmax = prob_q975), size = 0.7, linewidth = 0.9) +
+  # 縦軸ラベル: 行レベル : 列レベル
+  plot_df$cell_label <- paste(plot_df$row_level, plot_df$col_level, sep = " : ")
+  plot_df$cell_label <- factor(plot_df$cell_label, levels = rev(plot_df$cell_label))
+  plot_df$row_group <- factor(plot_df$row_level, levels = unique(plot_df$row_level))
+
+  n_groups <- length(unique(plot_df$row_group))
+  color_scale <- if (n_groups <= 8) {
+    scale_color_brewer(palette = "Dark2")
+  } else {
+    scale_color_discrete()
+  }
+
+  p_title <- if (is_large_table) {
+    sprintf("事後平均および 95%% 信用区間 (事後生起確率 上位 25 セル / 全 %d セル)", nrow(p_df))
+  } else {
+    "事後平均および 95% 信用区間 (Equal-Tailed Interval)"
+  }
+
+  ggplot(plot_df, aes(x = prob_mean, y = cell_label, color = row_group)) +
+    geom_pointrange(aes(xmin = prob_q025, xmax = prob_q975), size = 0.65, linewidth = 0.85) +
     scale_x_continuous(
-      limits = c(0, max(p_df$prob_q975) * 1.15),
+      limits = c(0, max(plot_df$prob_q975) * 1.15),
       expand = expansion(mult = c(0, 0.05))
     ) +
-    scale_color_brewer(palette = "Set1") +
+    color_scale +
     labs(
-      title = "事後平均および 95% 信用区間 (Equal-Tailed Interval)",
+      title = p_title,
       x = "事後セル生起確率 π_ij",
       y = "セル (行 : 列)",
       color = "グループ (行変数)"
     ) +
     theme_minimal(base_family = ggplot_jp_font) +
     theme(
-      plot.title = element_text(size = 13, face = "bold", color = "#1e293b", margin = margin(b = 10)),
+      plot.title = element_text(size = 12.5, face = "bold", color = "#1e293b", margin = margin(b = 10)),
       axis.title.x = element_text(size = 11, color = "#334155", margin = margin(t = 8)),
       axis.title.y = element_text(size = 11, color = "#334155", margin = margin(r = 12)),
-      axis.text.y = element_text(size = 10, color = "#1e293b", face = "bold"),
-      axis.text.x = element_text(size = 10, color = "#1e293b"),
+      axis.text.y = element_text(size = 9.5, color = "#1e293b", face = "bold"),
+      axis.text.x = element_text(size = 9.5, color = "#1e293b"),
       legend.title = element_text(size = 10, face = "bold", color = "#334155"),
-      legend.text = element_text(size = 10, color = "#334155"),
+      legend.text = element_text(size = 9.5, color = "#334155"),
       legend.position = "right",
       panel.grid.minor = element_blank(),
       panel.grid.major.y = element_line(color = "#e2e8f0", linetype = "dashed"),
