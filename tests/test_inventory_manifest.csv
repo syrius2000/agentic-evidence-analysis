@@ -51,7 +51,9 @@ tests/test_vcd_dashboard_layout_foundation.R,tests_r_test,FALSE,pandoc_ui_render
 tests/test_vcd_dashboard_layout_integration.R,tests_r_test,TRUE,none,none,tests/run_regression_suite.R
 tests/test_vcd_interpretation_guide.R,tests_r_test,TRUE,none,none,tests/run_regression_suite.R
 tests/test_vcd_residual_plot_order.R,tests_r_test,TRUE,none,none,tests/run_regression_suite.R
-.agents/skills/vcd-categorical-analysis/tests/test_logic.R,agents_r_test,TRUE,none,none,tests/run_regression_suite.R
+tests/test_vcd_categorical_modular_logic.R,tests_r_test,TRUE,none,none,tests/run_regression_suite.R
+tests/test_vcd_categorical_input_boundary.R,tests_r_test,TRUE,none,none,tests/run_regression_suite.R
+tests/test_vcd_categorical_pass0_boundary.R,tests_r_test,FALSE,pandoc_ui_render,Pass 0結合テスト（正常系でHTML/Pandoc描画を実行）,tests/test_vcd_categorical_pass0_boundary.R
 tests/test_analysis_quality_contract_docs.py,tests_py_contract,FALSE,python_contract,Pythonベースの文書品質契約検証スクリプト（pytest実行）,Python contract test suite
 tests/test_skill_ownership_contract.py,tests_py_contract,FALSE,python_contract,Pythonベースのスキル所有権契約検証スクリプト（pytest実行）,Python contract test suite
 tests/gen_sample_survey.R,tests_r_helper,FALSE,data_helper,テスト用サンプルアンケートデータ生成スクリプト（単体テストではない）,Data generation utilities
