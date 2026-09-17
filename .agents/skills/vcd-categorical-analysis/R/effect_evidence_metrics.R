@@ -1,11 +1,31 @@
 # effect_evidence_metrics.R — Effect Sizes, Local Rao Score, Dual-Filter & Cramér's V CI
 
-source(".agents/shared/categorical/cramers_v_ci.R")
+# cramers_v_ci.R の安全なパス解決
+find_shared_cramer <- function() {
+  candidates <- c(
+    file.path(".agents", "shared", "categorical", "cramers_v_ci.R"),
+    file.path(getwd(), ".agents", "shared", "categorical", "cramers_v_ci.R")
+  )
+  for (c in candidates) {
+    if (file.exists(c)) return(normalizePath(c, winslash = "/", mustWork = TRUE))
+  }
+  # 親ディレクトリ探索
+  d <- getwd()
+  for (i in seq_len(10L)) {
+    p <- file.path(d, ".agents", "shared", "categorical", "cramers_v_ci.R")
+    if (file.exists(p)) return(normalizePath(p, winslash = "/", mustWork = TRUE))
+    parent <- dirname(d)
+    if (parent == d) break
+    d <- parent
+  }
+  stop("[ERROR] cramers_v_ci.R が見つかりません。")
+}
+source(find_shared_cramer())
 
 #' 局所効果・統計的証拠・大標本Dual-Filter判定および全体効果量の算出
 #'
 #' @param diagnostics_result list compute_residual_diagnostics の出力
-#' @return list(global, cells, cells_df)
+#' @return list(global, cells, cells_df, n_candidates)
 #' @export
 compute_effect_evidence_metrics <- function(diagnostics_result) {
   glob <- diagnostics_result$global
@@ -70,19 +90,12 @@ compute_effect_evidence_metrics <- function(diagnostics_result) {
     signed_diff <- (O - E) / N
 
     # 大標本 Dual-Filter 判定:
-    # 候補条件: N >= 2000 かつ |log(O/E)| >= 0.50 かつ T^score >= 3.8415 かつ 非隔離
-    # (O=0 のセルや Quarantine セルは自動除外)
+    # 大標本（N >= 2000）かつ 非隔離（ACTIVE）かつ 有限対数効果比（O > 0）のセルのみ候補判定
+    # 小標本（N < 2000）では常に FALSE
     is_candidate <- FALSE
-    if (is_finite && c_item$quarantine_status == "ACTIVE") {
-      if (N >= 2000) {
-        if (abs(log_oe_val) >= 0.50 && t_score >= 3.8415) {
-          is_candidate <- TRUE
-        }
-      } else {
-        # 小標本時もスクリーニング参考情報として記録
-        if (abs(log_oe_val) >= 0.50 && t_score >= 3.8415) {
-          is_candidate <- TRUE
-        }
+    if (N >= 2000L && is_finite && identical(c_item$quarantine_status, "ACTIVE")) {
+      if (abs(log_oe_val) >= 0.50 && t_score >= 3.8415) {
+        is_candidate <- TRUE
       }
     }
     if (is_candidate) {

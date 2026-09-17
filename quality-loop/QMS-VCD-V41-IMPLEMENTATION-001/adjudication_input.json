@@ -1,0 +1,12 @@
+{
+  "operation_id": "op-adjudicate-vcd-v41-001",
+  "actor_id": "myamaguchi",
+  "role": "owner",
+  "invocation_id": "inv-adjudicate-dcede1fd-c629-4f75-bc7d-ea00adb36755",
+  "previous_handoff_id": "hnd-3ed95f1c-2af0-4586-8a10-395cca645a55",
+  "expected_case_revision": 12,
+  "decision": "accepted",
+  "rationale": "Reviewerによる独立検証（verify）において、F-001（input_mode既定値撤廃・E2E遮断）およびF-002（evidence_profile.json正本化・同時生成・Cross-Field Invariant検証・analysis.R経由E2E遮断）の全件がremediatedと判定され、未解決Findingが0件となったことを確認した。全85テストの回帰テスト合格およびOpenSpec strict validation合格を踏まえ、vcd-categorical-analysis-v4-1-repair の実装を正式に受入・承認し、本案件を完了・クローズとする。",
+  "confirm": true,
+  "dry_run": false
+}

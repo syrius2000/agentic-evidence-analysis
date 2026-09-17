@@ -41,6 +41,7 @@
 ## Capabilities
 
 ### New Capabilities
+
 - `two-way-evidence-analysis`: 完全な名義 2 次元分割表に対する 5 軸診断（Effect, Evidence, Influence, Stability, Posterior Uncertainty）、多項 Dirichlet 事後推論、Interface 3.0 結果契約、および完全オフライン Scientific Dashboard。
 
 ### Modified Capabilities

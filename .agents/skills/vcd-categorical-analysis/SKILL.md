@@ -65,6 +65,7 @@ Rscript .agents/skills/vcd-categorical-analysis/templates/analysis.R \
 ## 4. Step 2 AI Narrative の 7ステップ考察契約
 
 `references/ai-narrative-workflow.md` に従い、以下の順序で記述する：
+
 1. **全体関連構造**: $\chi^2, G^2$、自由度、$p$ 値
 2. **効果の大きさ**: 未補正 Cramér's $V$ と bias-corrected $\tilde{V}$（95% CI）
 3. **統計的証拠強度**: $\log(O/E)$、Rao スコア $T^{\rm score}$、大標本 Dual-Filter 候補
@@ -74,6 +75,7 @@ Rscript .agents/skills/vcd-categorical-analysis/templates/analysis.R \
 7. **制約事項と次アクション**: 限界、交絡、3次元以上への移行案内
 
 **禁止事項**:
+
 - P値単独判定
 - 観測ゼロセルの対数比0扱い（$-\infty$ 隔離セルとして扱うこと）
 - 英語本文（数式・記号除く）

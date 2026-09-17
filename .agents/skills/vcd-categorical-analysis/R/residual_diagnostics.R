@@ -3,11 +3,11 @@
 #' 2次元分割表に対する Poisson 独立モデル適合・残差診断・Quarantine 判定
 #'
 #' @param agg_data data.frame (var1, var2, Freq)
-#' @return list(global, cells_df)
+#' @return list(global, cells, cells_df, table)
 #' @export
 compute_residual_diagnostics <- function(agg_data) {
   vars <- attr(agg_data, "vars")
-  if (is.null(vars) || length(vars) != 2) {
+  if (is.null(vars) || length(vars) != 2L) {
     vars <- names(agg_data)[1:2]
   }
   v1 <- vars[1]
@@ -18,7 +18,7 @@ compute_residual_diagnostics <- function(agg_data) {
   levels2 <- levels(factor(agg_data[[v2]]))
   I <- length(levels1)
   J <- length(levels2)
-  df <- (I - 1) * (J - 1)
+  df <- (I - 1L) * (J - 1L)
 
   # 完全なグリッドを作成し、観測度数をマージ（欠測セルは0埋め）
   grid <- expand.grid(
@@ -98,8 +98,8 @@ compute_residual_diagnostics <- function(agg_data) {
       q_reasons <- c(q_reasons, "HIGH_LEVERAGE")
     }
 
-    q_status <- if (length(q_reasons) > 0) "QUARANTINED" else "ACTIVE"
-    q_reasons_str <- if (length(q_reasons) > 0) paste(q_reasons, collapse = ";") else ""
+    q_status <- if (length(q_reasons) > 0L) "QUARANTINED" else "ACTIVE"
+    q_reasons_str <- if (length(q_reasons) > 0L) paste(q_reasons, collapse = ";") else ""
 
     cells_list[[k]] <- list(
       row_level = r_lvl,
@@ -126,6 +126,18 @@ compute_residual_diagnostics <- function(agg_data) {
     as.data.frame(df_item, stringsAsFactors = FALSE)
   }))
 
+  # 期待度数診断 (Cochran 条件)
+  expected_vec <- vapply(cells_list, function(c) c$expected_raw, numeric(1))
+  min_exp <- min(expected_vec)
+  prop_lt_5 <- mean(expected_vec < 5.0)
+  cochran_ok <- (min_exp >= 1.0) && (prop_lt_5 <= 0.20)
+
+  expected_count_diag <- list(
+    min_expected = as.numeric(round(min_exp, 4)),
+    prop_lt_5 = as.numeric(round(prop_lt_5, 4)),
+    cochran_satisfied = cochran_ok
+  )
+
   # 全体カイ二乗統計量とp値
   pearson_p <- stats::pchisq(total_pearson_chisq, df = df, lower.tail = FALSE)
   deviance_p <- stats::pchisq(total_deviance_gsq, df = df, lower.tail = FALSE)
@@ -138,7 +150,8 @@ compute_residual_diagnostics <- function(agg_data) {
     pearson_chisq = total_pearson_chisq,
     pearson_p_value = pearson_p,
     deviance_gsq = total_deviance_gsq,
-    deviance_p_value = deviance_p
+    deviance_p_value = deviance_p,
+    expected_count_diagnostics = expected_count_diag
   )
 
   return(list(
