@@ -3,7 +3,8 @@
 # 【正本計算エンジン】新4軸統計基盤（Effect x Evidence x Influence x Stability）
 # + 9階層対数線形モデル + 総度数N明示式BIC + 多重基準セル診断 + 汎用Dirichlet条件付き割合
 #
-# ※ 既存の templates/three_way/ は過去互換性維持のための非正本経路です。
+# 本ファイルは現行の分析入口から呼び出されるPass 1計算部です。
+# 旧実装の案内は references/legacy_usage.md に分離しています。
 #    新規開発・正本実行・回帰検証はすべて本スクリプト（Antigravity主系）を唯一の正本とします。
 # =============================================================================
 
@@ -1189,4 +1190,3 @@ compute_conditional_rank_reproducibility <- function(
     cells = cells_output
   )
 }
-

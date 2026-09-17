@@ -31,7 +31,7 @@ assert <- function(label, cond) {
 }
 
 # --- 共有ヘルパーのロード（test_questionnaire_batch_ucbadmissions.R と同一の正本実装） ---
-source(file.path(root, ".agents", "skills", "questionnaire-batch-analysis", "tests", "helpers_backup_recovery.R"))
+source(file.path(root, "tests", "helpers", "helpers_backup_recovery.R"))
 
 # --- テスト用一時サンドボックス作成 ---
 sandbox_root <- file.path(tempdir(), paste0("test_backup_recovery_", format(Sys.time(), "%Y%m%d_%H%M%S")))

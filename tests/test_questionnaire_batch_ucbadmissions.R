@@ -18,7 +18,7 @@ source(file.path(root, ".agents", "shared", "dependency_check.R"))
 check_r_dependencies(c("datasets", "digest"), context = "テスト: test_questionnaire_batch_ucbadmissions.R")
 suppressPackageStartupMessages(library(datasets))
 
-source(file.path(root, ".agents", "skills", "questionnaire-batch-analysis", "tests", "helpers_backup_recovery.R"))
+source(file.path(root, "tests", "helpers", "helpers_backup_recovery.R"))
 
 runner_path <- file.path(
   root,

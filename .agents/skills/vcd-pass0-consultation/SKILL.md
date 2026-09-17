@@ -79,7 +79,7 @@ Rscript .agents/shared/inspect_data.R <path_to_your_data.csv> \
 設定ファイル作成後、Pass 1 の本格計算に進む前に `--validate-only` フラグで設定の整合性を事前検証します：
 
 ```bash
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analysis.R \
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
   --config output/titanic/run_titanic_v1/analysis_config.json \
   --validate-only
 ```
@@ -88,7 +88,7 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analys
 検証が成功したら、ユーザーに対して次に実行すべき Pass 1 のコマンドを案内します：
 
 ```bash
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/three_way/analysis.R \
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
   --config output/titanic/run_titanic_v1/analysis_config.json
 ```
 

@@ -52,7 +52,7 @@ graph TD
 3. **Pass 2 (AI Review & Narrative / 専門家考察)**:
    AI が専門統計コンサルタントとして構造化結果を読み解き、背景ドメイン知識を交えた日本語エグゼクティブ・サマリー (`executive_summary.md`) を執筆します。品質保留や隔離セルは `quality_check.md` に明記します。
 4. **Pass 3 (Report Integration / レポート統合)**:
-   `render_report.R`（RMarkdown）が統計結果と AI 考察を統合し、層別ヒートマップやセル診断表を備えたスタンドアローンな HTML ダッシュボード (`dashboard.html`) を生成します。
+   `render_dashboard.R`（RMarkdown）が統計結果と AI 考察を統合し、層別ヒートマップやセル診断表を備えたスタンドアローンな HTML ダッシュボード (`dashboard.html`) を生成します。
 
 ---
 
@@ -95,8 +95,9 @@ graph TD
 | **questionnaire-batch-analysis** | バッチ処理 | アンケート複数設問の設定ファイルに基づく自動一括集計とサマリー量産 |
 | **sas-proc-freq** | SAS 互換集計 | PROC FREQ 互換の度数・分割表、独立性検定、2×2効果量、Fisher 正確検定、Monte Carlo 推定 |
 | **sas-proc-means** | SAS 互換記述統計 | PROC MEANS 互換の記述統計、CLASS 群化、FREQ/WEIGHT、VARDEF、QNTLDEF 1〜5 |
-| **i-have-adhd** | 出力スタイル | ADHD のある利用者向けに、次の行動を先頭に置く簡潔で実行しやすい応答形式をセッション中に適用 |
 | **vcd-categorical-reporting** | 参照用 | （レガシーテンプレートの再現・互換保守用。新規分析は上記 3 スキルを推奨） |
+
+エージェントへの依頼時は、結論・次の行動・未検証事項が分かるように、[`docs/reference/output_style_adhd.md`](docs/reference/output_style_adhd.md) の出力方針を適用します。この方針は独立したSkillではありません。
 
 ---
 
@@ -114,7 +115,7 @@ graph TD
 | カテゴリ | 対象パッケージ | 主な用途・実行経路 |
 | :--- | :--- | :--- |
 | **コア計算・データ検分**<br>(Pass 0 / Pass 1) | `jsonlite`, `digest`, `dplyr`, `readr`, `tidyr`, `effectsize`, `vcd`, `optparse` | `inspect_data.R`、`run_scope.R`、`vcd-bayesian-evidence-analysis` 計算、`vcd-categorical-analysis --profile`、`questionnaire-batch-analysis` バッチ実行 |
-| **レポート・描画**<br>(Pass 2 / Pass 3) | `rmarkdown`, `knitr`, `DT`, `htmltools`, `htmlwidgets`, `ggplot2`, `gt`, `katex` | `render_report.R`、`render_dashboard.R`、各スキルの HTML ダッシュボードおよび個別レポート生成 |
+| **レポート・描画**<br>(Pass 2 / Pass 3) | `rmarkdown`, `knitr`, `DT`, `htmltools`, `htmlwidgets`, `ggplot2`, `gt`, `katex` | `render_dashboard.R`、各スキルの HTML ダッシュボードおよび個別レポート生成 |
 
 #### 事前一括インストール用 R コマンド
 R コンソールまたは `Rscript -e` で以下を実行してください：

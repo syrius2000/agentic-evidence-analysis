@@ -1,20 +1,27 @@
 # リファレンス: questionnaire-batch-analysis
 
-アンケートデータの多設問一括処理と、層別解析に関するリファレンスです。
+アンケートデータの多設問一括処理と、層別解析に関する補足リファレンスです。実行契約の正本は [SKILL.md](SKILL.md)、設定列・実行手順・解釈の詳細は `references/` 配下の文書です。
 
 ## 1. 統計的評価の自動化
 
 本スキルでは、多数の設問に対して一貫した基準で「注目すべき設問」を抽出するために、以下のフローを採用しています。
 
 - **Pass 1 (事実)**: すべての設問に対して独立性検定を行い、統計量と残差を算出。
-- **Pass 2 (解釈)**: 効果量（V値）と最大残差に基づき、AIが実務的な重要度を判定。
+- **Pass 2 (解釈)**: 効果量、残差、欠測・疎セルなどの品質情報を踏まえ、AIが実務的な重要度を解釈。
 
 ## 2. 共通指標へのポインタ
 
-- [カイ二乗検定とピアソン残差](../../../docs/Reference/evidence-analysis/stats_categorical.md#1-ピアソン残差-pearson-residuals)
-- [Cramér's V による関連の強さ（効果量）](../../../docs/Reference/evidence-analysis/stats_categorical.md#2-cramérs-v-クラメールのv)
+- [カイ二乗検定とピアソン残差](../../../docs/reference/stats_categorical.md)
+- [Cramér's V による関連の強さ（効果量）](../../../docs/reference/stats_categorical.md)
 
-## 3. 分析上の注意
+## 3. 現行リファレンス
+
+- [設定スキーマ](references/config-schema.md)
+- [入力データ準備](references/survey_prep.md)
+- [解釈](references/interpretation.md)
+- [実行ワークフロー](references/workflow.md)
+
+## 4. 分析上の注意
 - **多重性の問題**: 大量の設問を同時に検定する場合、偶然有意になる設問が含まれる可能性があります。P値の絶対値だけでなく、効果量（V値）や実務的な文脈を重視して解釈してください。
 
 ## 参考文献

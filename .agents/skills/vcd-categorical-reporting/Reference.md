@@ -1,6 +1,6 @@
 # リファレンス: vcd-categorical-reporting
 
-AIによる分析考察の自動生成と、品質評価基準に関するリファレンスです。
+本スキルは、過去のカテゴリカル分析レポートの再現・互換保守を対象とするレガシー経路です。新規の2次元分析は [vcd-categorical-analysis](../vcd-categorical-analysis/SKILL.md) を使用してください。実行契約の正本は [SKILL.md](SKILL.md) と `references/` 配下の文書です。
 
 ## 1. 考察生成の論理構成
 
@@ -12,8 +12,8 @@ AIによる分析考察の自動生成と、品質評価基準に関するリフ
 
 ## 2. 共通指標へのポインタ
 
-- [ピアソン残差の解釈基準](../../../docs/Reference/evidence-analysis/stats_categorical.md#1-ピアソン残差-pearson-residuals)
-- [Cramér's V による効果量判定](../../../docs/Reference/evidence-analysis/stats_categorical.md#2-cramérs-v-クラメールのv)
+- [ピアソン残差の解釈基準](../../../docs/reference/stats_categorical.md)
+- [Cramér's V による効果量判定](../../../docs/reference/stats_categorical.md)
 
 ## 3. レポート品質の評価
 - **正確性**: 統計数値を誤解なく引用しているか。

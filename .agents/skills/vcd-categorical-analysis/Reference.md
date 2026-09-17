@@ -1,30 +1,26 @@
 # リファレンス: vcd-categorical-analysis
 
-カテゴリカルデータの独立性検定と、残差ベースの可視化に関する理論リファレンスです。
+本ファイルは、`vcd-categorical-analysis` の補足リファレンスです。実行条件、入力契約、成果物、品質ゲートの正本は [SKILL.md](SKILL.md) と `references/` 配下の文書です。
 
-## 1. 分析手法: 対数線形モデル (Log-linear Models)
+## 1. スコープ
 
-変数が3つ以上（3-way以上）の場合、単純な2次元のカイ二乗検定では捉えきれない複雑な交互作用を評価するために Poisson GLM を用いた対数線形モデルを使用します。
+本スキルは、名義カテゴリカル変数2つの分割表を対象とする2次元専用の分析経路です。3次元以上の集計表、層別を含む多次元構造、階層対数線形モデルの分析は、正本スキル [vcd-bayesian-evidence-analysis](../vcd-bayesian-evidence-analysis/SKILL.md) に委譲します。
 
-- **独立モデル**: すべての変数が互いに独立であると仮定。
-- **2次交互作用モデル**: 変数のペア（AB, BC, AC）間の関連のみを考慮。
-- **飽和モデル**: すべての交互作用を考慮（観測値と完全に一致）。
+## 2. 主な統計量と可視化
 
-## 2. 共通指標へのポインタ
+- 独立性検定と適合度の確認
+- Cramér's V（必要に応じたバイアス補正および信頼区間）
+- Pearson残差・標準化残差によるセル診断
+- モザイク図、関連図、セル診断表
 
-- [ピアソン残差によるセルの特異性評価](../../../docs/Reference/evidence-analysis/stats_categorical.md#1-ピアソン残差-pearson-residuals)
-- [Cramér's V による全体の関連性の強さ](../../../docs/Reference/evidence-analysis/stats_categorical.md#2-cramérs-v-クラメールのv)
+モザイク図ではセル面積が観測度数を表し、色は期待度数からの偏りの方向と大きさを表します。P値、効果量、局所診断、不確実性は別々の情報として解釈します。
 
-## 3. 可視化の解釈
-- **モザイクプロット (Mosaic Plots)**: セルの面積が観測度数を表し、色が残差の大きさ（偏りの強さ）を表します。青色は「期待より多い」、赤色は「期待より少ない」ことを視覚的に示します。
+## 3. 詳細リファレンス
 
-## 推奨 Reference
-
-- `references/workflow.md`: 分析の順序と成果物。
-- `references/glm-gnm-goodness.md`: GLM/GNM、適合度、残差診断。
-- `references/ordinal-likert-advanced.md`: 順序尺度・Likert の扱い。
-- `references/ai-narrative-workflow.md`: 数値結果から考察文へ変換する際の判断順序。
-
-## 参考文献
-- Meyer, D., Zeileis, A., & Hornik, K. (2006). The Strucplot Framework: Visualizing Multi-way Contingency Tables with vcd. *Journal of Statistical Software*.
-- 舟尾 暢男. (2011). 『The R Book (データ解析のスタンダード)』. 九天社.
+- [分析契約と入出力](references/interface.md)
+- [実行フロー](references/workflow.md)
+- [アーキテクチャ](references/architecture.md)
+- [GLM/GNMと適合度](references/glm-gnm-goodness.md)
+- [残差から考察へ変換する手順](references/ai-narrative-workflow.md)
+- [順序尺度・Likertの補足](references/ordinal-likert-advanced.md)
+- [統計数理リファレンス](../../../docs/reference/stats_categorical.md)
