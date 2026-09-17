@@ -989,14 +989,24 @@ G14 CLI override attack
 
 # 16. Task List
 
-## Phase 0 — Specification
+## Phase 0 — Specification & 3-Change Decomposition
 
-- [ ] T0.1 OpenSpec change `vcd-categorical-analysis-v4-2-dashboard-contract-hardening` を作成
-- [ ] T0.2 Purpose / Scope / Non-Goals を記載
-- [ ] T0.3 canonical CLI policy を仕様化
-- [ ] T0.4 5つのDashboard view の scientific purpose を仕様化
-- [ ] T0.5 Interface 3.0 additive extension 方針を確定
-- [ ] T0.6 Acceptance matrix を作成
+親計画 v4.2 は、責務境界と安全な段階リリースのため以下の3つの OpenSpec Change に直列分割して管理・実装する：
+
+| 親計画フェーズ | 担当 OpenSpec Change | 主たる責務 |
+|---|---|---|
+| Phase 1: Provenance Boundary Hardening | `vcd-categorical-provenance-boundary-hardening` (Change 1) | Canonical CLI ホワイトリスト化、三者SHA再検証、署名前早期遮断、Core内部の独立三者SHA再検証と実行モード分離 |
+| Phase 2: Posterior Data Model Extension | `vcd-categorical-conditional-posterior-contract` (Change 2) | 条件付き事後の完全要約、Departure/Uncertainty/SensitivityのJSON契約固定、Serializer拡張 |
+| Phase 3〜8: Dashboard Views & Integration | `vcd-categorical-scientific-dashboard` (Change 3) | 11セクション科学的視座分離、完全オフライン二重受入（静的走査＋ブラウザ）、大規模表対応 |
+| Phase 9: QA & Regression | 各Change局所QA ＋ 最終統合QA | 個別Changeの完了判定および最終的な全体統合回帰検証 |
+
+- [x] T0.1 OpenSpec change への3分割（Change 1 / Change 2 / Change 3）を確定・作成
+- [x] T0.2 Purpose / Scope / Non-Goals を3つのChangeへ整合・展開
+- [x] T0.3 canonical CLI policy を完全ホワイトリスト方式として仕様化（Change 1）
+- [x] T0.4 5つのDashboard view の scientific purpose および JSON契約を仕様化（Change 2, 3）
+- [x] T0.5 Interface 3.0 additive extension 方針を確定（Change 2）
+- [x] T0.6 3 Change 間の依存順序（Change 1 $\to$ Change 2 $\to$ Change 3）と受入マトリクスを確定
+
 
 ---
 
