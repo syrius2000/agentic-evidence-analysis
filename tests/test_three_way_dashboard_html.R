@@ -15,21 +15,36 @@ fixture_dir <- file.path(repo_root, "tests", "fixtures", "dashboard_ui", "ucb_ad
 html_path <- file.path(fixture_dir, "dashboard.html")
 json_path <- file.path(fixture_dir, "evidence_results.json")
 
-# 動的レイアウト分岐検証用の tempdir
 tmp_run_dir <- file.path(tempdir(), paste0("test_html_", Sys.getpid()))
 dir.create(tmp_run_dir, recursive = TRUE, showWarnings = FALSE)
 for (f in list.files(fixture_dir, full.names = TRUE)) {
+  # 失敗時にコピー済み旧HTMLを成功扱いしない
+  if (identical(basename(f), "dashboard.html")) next
   file.copy(f, tmp_run_dir, overwrite = TRUE)
 }
 
 render_script <- file.path(repo_root, ".agents", "skills", "vcd-bayesian-evidence-analysis", "templates", "render_dashboard.R")
-system2("Rscript", c(render_script, "--run-dir", tmp_run_dir, "--layout-variant", "band"), stdout = FALSE, stderr = FALSE)
+band_status <- system2(
+  "Rscript",
+  c(render_script, "--run-dir", tmp_run_dir, "--layout-variant", "band", "--output-file", "dashboard_band.html"),
+  stdout = TRUE,
+  stderr = TRUE
+)
 band_html_path <- file.path(tmp_run_dir, "dashboard_band.html")
-file.copy(file.path(tmp_run_dir, "dashboard.html"), band_html_path, overwrite = TRUE)
+if (!is.null(attr(band_status, "status")) && !identical(as.integer(attr(band_status, "status")), 0L)) {
+  stop(paste(c("[ERROR] band render failed:", band_status), collapse = "\n"))
+}
 
-system2("Rscript", c(render_script, "--run-dir", tmp_run_dir, "--layout-variant", "card"), stdout = FALSE, stderr = FALSE)
+card_status <- system2(
+  "Rscript",
+  c(render_script, "--run-dir", tmp_run_dir, "--layout-variant", "card", "--output-file", "dashboard_card.html"),
+  stdout = TRUE,
+  stderr = TRUE
+)
 card_html_path <- file.path(tmp_run_dir, "dashboard_card.html")
-file.rename(file.path(tmp_run_dir, "dashboard.html"), card_html_path)
+if (!is.null(attr(card_status, "status")) && !identical(as.integer(attr(card_status, "status")), 0L)) {
+  stop(paste(c("[ERROR] card render failed:", card_status), collapse = "\n"))
+}
 
 test_that("生成された HTML ファイルが存在すること", {
   expect_true(file.exists(html_path))
@@ -38,26 +53,24 @@ test_that("生成された HTML ファイルが存在すること", {
   expect_true(file.exists(json_path))
 })
 
-test_that("完全オフライン契約：外部CDN・Ajax・フォント取得URLが0件であること", {
-  lines <- readLines(html_path, warn = FALSE, encoding = "UTF-8")
-
-  # script タグおよび link タグでの外部 http(s) URL
+scan_offline <- function(path) {
+  lines <- readLines(path, warn = FALSE, encoding = "UTF-8")
   bad_tags <- grep("<(script|link)[^>]+(src|href)=[\"']https?://", lines, perl = TRUE, value = TRUE)
-  expect_equal(length(bad_tags), 0L, info = paste(bad_tags, collapse = "\n"))
-
-  # MathJax CDN 参照が一切ないこと
+  expect_equal(length(bad_tags), 0L, info = paste(path, paste(bad_tags, collapse = "\n")))
   expect_false(any(grepl("cdn\\.jsdelivr\\.net/npm/mathjax", lines)))
   expect_false(any(grepl("MathJax\\.js", lines)))
-
-  # DataTables 外部 ja.json CDN 参照がないこと
   expect_false(any(grepl("cdn\\.datatables\\.net/plug-ins/.*/ja\\.json", lines)))
-
-  # 外部 Google Fonts 参照がないこと
   expect_false(any(grepl("fonts\\.googleapis\\.com", lines)))
+  expect_false(any(grepl("(?:src|href)=[\"'](?:/Users/|/home/)", lines)))
+}
+
+test_that("完全オフライン契約：外部CDN・Ajax・フォント取得URLが0件であること", {
+  scan_offline(band_html_path)
+  scan_offline(card_html_path)
 })
 
 test_that("因子凡例（A, B, C）と変数定義が一貫して表示されていること", {
-  lines <- readLines(html_path, warn = FALSE, encoding = "UTF-8")
+  lines <- readLines(band_html_path, warn = FALSE, encoding = "UTF-8")
   content <- paste(lines, collapse = "\n")
 
   # 因子記号と変数名
@@ -89,7 +102,7 @@ test_that("最良モデル表示：案A (band) と 案B (card) の分岐表示�
 })
 
 test_that("対数線形モデル比較表が BIC 昇順初期ソートおよび列ソート可能に設定されていること", {
-  lines <- readLines(html_path, warn = FALSE, encoding = "UTF-8")
+  lines <- readLines(band_html_path, warn = FALSE, encoding = "UTF-8")
   content <- paste(lines, collapse = "\n")
 
   # DataTables の ordering オプションが有効であること
@@ -104,7 +117,7 @@ test_that("対数線形モデル比較表が BIC 昇順初期ソートおよび�
 })
 
 test_that("セル診断が基準モデル別タブ（M1 vs M5）で分離され、分母付き件数が表示されていること", {
-  lines <- readLines(html_path, warn = FALSE, encoding = "UTF-8")
+  lines <- readLines(band_html_path, warn = FALSE, encoding = "UTF-8")
   content <- paste(lines, collapse = "\n")
 
   # タブ切り替えボタン
@@ -128,7 +141,7 @@ test_that("セル診断が基準モデル別タブ（M1 vs M5）で分離され�
 })
 
 test_that("条件付き割合（conditional_rate_view）が点・区間図と数値表で表示されていること", {
-  lines <- readLines(html_path, warn = FALSE, encoding = "UTF-8")
+  lines <- readLines(band_html_path, warn = FALSE, encoding = "UTF-8")
   content <- paste(lines, collapse = "\n")
 
   # 条件付き割合セクション
@@ -144,7 +157,7 @@ test_that("条件付き割合（conditional_rate_view）が点・区間図と数
 })
 
 test_that("旧 Evidence Score が監査専用として隔離表示されていること", {
-  lines <- readLines(html_path, warn = FALSE, encoding = "UTF-8")
+  lines <- readLines(band_html_path, warn = FALSE, encoding = "UTF-8")
   content <- paste(lines, collapse = "\n")
 
   # 監査専用表記
@@ -154,16 +167,27 @@ test_that("旧 Evidence Score が監査専用として隔離表示されてい�
 })
 
 test_that("統計指標解説セクションの数式（Score統計量など）がKaTeX静的HTMLとしてレンダリングされていること", {
-  lines <- readLines(html_path, warn = FALSE, encoding = "UTF-8")
+  lines <- readLines(band_html_path, warn = FALSE, encoding = "UTF-8")
   content <- paste(lines, collapse = "\n")
 
-  # 生の未レンダリング TeX 表記（$$ や raw math display）が残っていないこと
   expect_false(grepl("\\$\\$T_i", content))
   expect_false(grepl("<span class=\"math display\">", content))
-
-  # KaTeX レンダリング結果が含まれていること
   expect_true(grepl("Leverage補正Score統計量", content))
   expect_true(grepl("katex-display", content))
+})
+
+test_that("共有用語集が旧α=1.0成果物をJeffreysと誤表示せず、DOMとして存在する", {
+  for (path in c(band_html_path, card_html_path)) {
+    content <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    expect_true(grepl("details class=\"glossary-accordion\"", content, fixed = TRUE), info = path)
+    expect_true(grepl("#1f4d7a", content, fixed = TRUE), info = path)
+    expect_true(grepl("#f6f8fb", content, fixed = TRUE), info = path)
+    expect_true(grepl("データが登録されていません", content, fixed = TRUE), info = path)
+    expect_false(grepl("主事前: 多項Jeffreys", content, fixed = TRUE), info = path)
+    expect_true(grepl("未確認", content, fixed = TRUE) || grepl("α = 1.0", content, fixed = TRUE), info = path)
+    sec <- sub(".*id=\"section-glossary\"", "", content)
+    expect_false(grepl("<pre>", sec, fixed = TRUE), info = path)
+  }
 })
 
 cat("\n==================================================\n")

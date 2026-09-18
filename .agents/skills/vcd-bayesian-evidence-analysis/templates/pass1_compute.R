@@ -536,7 +536,99 @@ compute_multi_baseline_diagnostics <- function(df, vars, freq_col, fitted_models
 }
 
 # --- [5. 汎用 Dirichlet 事後推論と条件付き割合ビュー (conditional_rate_view)] ---
-compute_conditional_rate_view <- function(df, vars, freq_col, crv_spec, draws = 20000, seed = 20260906) {
+# primary_alpha / sensitivity_alpha は Dirichlet のセル対称事前。interval_level の信用区間水準と混同しない。
+dirichlet_prior_name <- function(alpha) {
+  a <- as.numeric(alpha)
+  if (is.finite(a) && abs(a - 0.5) < 1e-12) return("jeffreys")
+  if (is.finite(a) && abs(a - 1.0) < 1e-12) return("uniform")
+  "symmetric_dirichlet"
+}
+
+draw_symmetric_dirichlet_pi <- function(y, alpha, draws) {
+  K <- length(y)
+  alpha_post <- y + alpha
+  gamma_draws <- matrix(
+    stats::rgamma(K * draws, shape = rep(alpha_post, each = draws), rate = 1),
+    nrow = draws, ncol = K
+  )
+  gamma_draws / rowSums(gamma_draws)
+}
+
+summarize_conditional_rate_slices <- function(df, y, resp_var, comp_var, strat_var,
+                                              num_levels, denom_levels, ref_level,
+                                              actual_comp, actual_strat, pi_draws, probs_eti) {
+  rate_records <- list()
+  slice_draws_map <- list()
+  has_zero_denom <- FALSE
+  for (s in actual_strat) {
+    for (c in actual_comp) {
+      idx_denom <- which(df[[strat_var]] == s & df[[comp_var]] == c & df[[resp_var]] %in% denom_levels)
+      idx_num <- which(df[[strat_var]] == s & df[[comp_var]] == c & df[[resp_var]] %in% num_levels)
+      obs_denom <- sum(y[idx_denom])
+      obs_num <- sum(y[idx_num])
+      slice_key <- sprintf("%s__%s", s, c)
+      if (obs_denom == 0) {
+        has_zero_denom <- TRUE
+        rate_records[[slice_key]] <- list(
+          strat_var = strat_var, strat_level = s, comp_var = comp_var, comp_level = c,
+          resp_var = resp_var, num_levels = num_levels, denom_levels = denom_levels,
+          obs_numerator = 0, obs_denominator = 0,
+          raw_rate = NA_real_, post_mean = NA_real_, post_median = NA_real_,
+          ci_lower = NA_real_, ci_upper = NA_real_,
+          status = "HOLD_ZERO_DENOMINATOR",
+          hold_reason = "該当スライスの分母度数が0です。"
+        )
+      } else {
+        raw_rate <- obs_num / obs_denom
+        denom_d <- if (length(idx_denom) == 1L) pi_draws[, idx_denom] else rowSums(pi_draws[, idx_denom, drop = FALSE])
+        num_d <- if (length(idx_num) == 1L) pi_draws[, idx_num] else rowSums(pi_draws[, idx_num, drop = FALSE])
+        cond_d <- num_d / pmax(denom_d, 1e-12)
+        slice_draws_map[[slice_key]] <- cond_d
+        ci_vals <- stats::quantile(cond_d, probs = probs_eti)
+        rate_records[[slice_key]] <- list(
+          strat_var = strat_var, strat_level = s, comp_var = comp_var, comp_level = c,
+          resp_var = resp_var, num_levels = num_levels, denom_levels = denom_levels,
+          obs_numerator = obs_num, obs_denominator = obs_denom,
+          raw_rate = safe_round(raw_rate, 4),
+          post_mean = safe_round(mean(cond_d), 4),
+          post_median = safe_round(stats::median(cond_d), 4),
+          ci_lower = safe_round(ci_vals[1L], 4),
+          ci_upper = safe_round(ci_vals[2L], 4),
+          status = "VALID",
+          hold_reason = NULL
+        )
+      }
+    }
+  }
+  differences_list <- list()
+  if (!is.null(ref_level) && nzchar(ref_level) && (ref_level %in% actual_comp)) {
+    for (s in actual_strat) {
+      ref_key <- sprintf("%s__%s", s, ref_level)
+      if (!is.null(slice_draws_map[[ref_key]])) {
+        ref_draws <- slice_draws_map[[ref_key]]
+        for (ct in setdiff(actual_comp, ref_level)) {
+          target_key <- sprintf("%s__%s", s, ct)
+          if (!is.null(slice_draws_map[[target_key]])) {
+            diff_d <- slice_draws_map[[target_key]] - ref_draws
+            diff_ci <- stats::quantile(diff_d, probs = probs_eti)
+            diff_key <- sprintf("%s__%s_minus_%s", s, ct, ref_level)
+            differences_list[[diff_key]] <- list(
+              strat_level = s, target_level = ct, reference_level = ref_level,
+              difference_mean = safe_round(mean(diff_d), 4),
+              ci_lower = safe_round(diff_ci[1L], 4),
+              ci_upper = safe_round(diff_ci[2L], 4),
+              prob_positive = safe_round(mean(diff_d > 0), 4)
+            )
+          }
+        }
+      }
+    }
+  }
+  list(rates = rate_records, differences = differences_list, has_zero_denom = has_zero_denom)
+}
+
+compute_conditional_rate_view <- function(df, vars, freq_col, crv_spec, draws = 20000, seed = 20260906,
+                                          primary_alpha = 0.5, sensitivity_alpha = 1.0) {
   if (is.null(crv_spec) || !is.list(crv_spec)) {
     return(list(
       status = "HOLD",
@@ -594,131 +686,84 @@ compute_conditional_rate_view <- function(df, vars, freq_col, crv_spec, draws = 
     ))
   }
 
-  # Dirichlet事後サンプリング
-  set.seed(seed)
+  # Dirichlet事後サンプリング（支持集合 = 入力表に現れる行。構造的ゼロを疑似度数で生成しない）
+  if (!is.numeric(primary_alpha) || length(primary_alpha) != 1L || !is.finite(primary_alpha) || primary_alpha <= 0) {
+    stop("[ERROR] primary_alpha は正の有限数値である必要があります。interval_level と混同しないでください。", call. = FALSE)
+  }
+  if (!is.numeric(sensitivity_alpha) || length(sensitivity_alpha) != 1L || !is.finite(sensitivity_alpha) || sensitivity_alpha <= 0) {
+    stop("[ERROR] sensitivity_alpha は正の有限数値である必要があります。", call. = FALSE)
+  }
+
   y <- df[[freq_col]]
   K <- length(y)
-  alpha_post <- y + 1.0 # 共役Dirichlet事後分布 (一様事前分布 a_0 = 1.0)
+  support <- list(
+    definition = "observed_table_rows",
+    K = as.integer(K),
+    structural_zeros_excluded = TRUE
+  )
 
-  gamma_draws <- matrix(rgamma(K * draws, shape = rep(alpha_post, each = draws), rate = 1),
-                        nrow = draws, ncol = K)
-  sum_gamma <- rowSums(gamma_draws)
-  pi_draws <- gamma_draws / sum_gamma # [draws x K]
-
-  # クレド区間の分位点計算用確率
   alpha_ci <- 1.0 - interval_lvl
   probs_eti <- c(alpha_ci / 2.0, 1.0 - alpha_ci / 2.0)
 
-  # 各層・比較グループごとの条件付き割合集計
-  rate_records <- list()
-  slice_draws_map <- list()
-  has_zero_denom <- FALSE
+  set.seed(seed)
+  pi_primary <- draw_symmetric_dirichlet_pi(y, primary_alpha, draws)
+  primary_sum <- summarize_conditional_rate_slices(
+    df, y, resp_var, comp_var, strat_var, num_levels, denom_levels, ref_level,
+    actual_comp, actual_strat, pi_primary, probs_eti
+  )
 
-  for (s in actual_strat) {
-    for (c in actual_comp) {
-      idx_denom <- which(df[[strat_var]] == s & df[[comp_var]] == c & df[[resp_var]] %in% denom_levels)
-      idx_num <- which(df[[strat_var]] == s & df[[comp_var]] == c & df[[resp_var]] %in% num_levels)
+  set.seed(seed + 1L)
+  pi_sens <- draw_symmetric_dirichlet_pi(y, sensitivity_alpha, draws)
+  sens_sum <- summarize_conditional_rate_slices(
+    df, y, resp_var, comp_var, strat_var, num_levels, denom_levels, ref_level,
+    actual_comp, actual_strat, pi_sens, probs_eti
+  )
 
-      obs_denom <- sum(y[idx_denom])
-      obs_num <- sum(y[idx_num])
+  rate_keys <- intersect(names(primary_sum$rates), names(sens_sum$rates))
+  cell_comparisons <- lapply(rate_keys, function(k) {
+    p <- primary_sum$rates[[k]]
+    s <- sens_sum$rates[[k]]
+    if (!identical(p$status, "VALID") || !identical(s$status, "VALID")) return(NULL)
+    list(
+      slice_key = k,
+      strat_level = p$strat_level,
+      comp_level = p$comp_level,
+      primary_mean = p$post_mean,
+      sensitivity_mean = s$post_mean,
+      mean_shift = safe_round(abs(s$post_mean - p$post_mean), 4),
+      primary_median = p$post_median,
+      sensitivity_median = s$post_median,
+      median_shift = safe_round(abs(s$post_median - p$post_median), 4),
+      primary_eti_width = safe_round(p$ci_upper - p$ci_lower, 4),
+      sensitivity_eti_width = safe_round(s$ci_upper - s$ci_lower, 4),
+      eti_width_difference = safe_round((s$ci_upper - s$ci_lower) - (p$ci_upper - p$ci_lower), 4)
+    )
+  })
+  cell_comparisons <- Filter(Negate(is.null), cell_comparisons)
+  mean_shifts <- vapply(cell_comparisons, function(x) x$mean_shift, numeric(1))
+  median_shifts <- vapply(cell_comparisons, function(x) x$median_shift, numeric(1))
+  width_diffs <- vapply(cell_comparisons, function(x) abs(x$eti_width_difference), numeric(1))
 
-      slice_key <- sprintf("%s__%s", s, c)
-
-      if (obs_denom == 0) {
-        has_zero_denom <- TRUE
-        rate_records[[slice_key]] <- list(
-          strat_var = strat_var,
-          strat_level = s,
-          comp_var = comp_var,
-          comp_level = c,
-          resp_var = resp_var,
-          num_levels = num_levels,
-          denom_levels = denom_levels,
-          obs_numerator = 0,
-          obs_denominator = 0,
-          raw_rate = NA_real_,
-          post_mean = NA_real_,
-          ci_lower = NA_real_,
-          ci_upper = NA_real_,
-          status = "HOLD_ZERO_DENOMINATOR",
-          hold_reason = "該当スライスの分母度数が0です。"
-        )
-      } else {
-        raw_rate <- obs_num / obs_denom
-
-        # Dirichlet事後ドローによる条件付き割合
-        if (length(idx_denom) == 1L) {
-          denom_d <- pi_draws[, idx_denom]
-        } else {
-          denom_d <- rowSums(pi_draws[, idx_denom, drop = FALSE])
-        }
-        if (length(idx_num) == 1L) {
-          num_d <- pi_draws[, idx_num]
-        } else {
-          num_d <- rowSums(pi_draws[, idx_num, drop = FALSE])
-        }
-
-        cond_d <- num_d / pmax(denom_d, 1e-12)
-        slice_draws_map[[slice_key]] <- cond_d
-
-        p_mean <- mean(cond_d)
-        ci_vals <- quantile(cond_d, probs = probs_eti)
-
-        rate_records[[slice_key]] <- list(
-          strat_var = strat_var,
-          strat_level = s,
-          comp_var = comp_var,
-          comp_level = c,
-          resp_var = resp_var,
-          num_levels = num_levels,
-          denom_levels = denom_levels,
-          obs_numerator = obs_num,
-          obs_denominator = obs_denom,
-          raw_rate = safe_round(raw_rate, 4),
-          post_mean = safe_round(p_mean, 4),
-          ci_lower = safe_round(ci_vals[1L], 4),
-          ci_upper = safe_round(ci_vals[2L], 4),
-          status = "VALID",
-          hold_reason = NULL
-        )
-      }
-    }
-  }
-
-  # 参照水準との割合差（各層内）
-  differences_list <- list()
-  if (!is.null(ref_level) && nzchar(ref_level) && (ref_level %in% actual_comp)) {
-    for (s in actual_strat) {
-      ref_key <- sprintf("%s__%s", s, ref_level)
-      if (!is.null(slice_draws_map[[ref_key]])) {
-        ref_draws <- slice_draws_map[[ref_key]]
-        comp_targets <- setdiff(actual_comp, ref_level)
-        for (ct in comp_targets) {
-          target_key <- sprintf("%s__%s", s, ct)
-          if (!is.null(slice_draws_map[[target_key]])) {
-            diff_d <- slice_draws_map[[target_key]] - ref_draws
-            diff_ci <- quantile(diff_d, probs = probs_eti)
-            diff_key <- sprintf("%s__%s_minus_%s", s, ct, ref_level)
-            differences_list[[diff_key]] <- list(
-              strat_level = s,
-              target_level = ct,
-              reference_level = ref_level,
-              difference_mean = safe_round(mean(diff_d), 4),
-              ci_lower = safe_round(diff_ci[1L], 4),
-              ci_upper = safe_round(diff_ci[2L], 4),
-              prob_positive = safe_round(mean(diff_d > 0), 4)
-            )
-          }
-        }
-      }
-    }
-  }
-
-  overall_status <- if (has_zero_denom) "PARTIAL_HOLD" else "VALID"
+  overall_status <- if (primary_sum$has_zero_denom) "PARTIAL_HOLD" else "VALID"
+  prior_spec <- list(
+    family = "symmetric_dirichlet",
+    alpha = primary_alpha,
+    role = "primary",
+    name = dirichlet_prior_name(primary_alpha)
+  )
+  sens_prior <- list(
+    family = "symmetric_dirichlet",
+    alpha = sensitivity_alpha,
+    role = "sensitivity",
+    name = dirichlet_prior_name(sensitivity_alpha)
+  )
 
   list(
     status = overall_status,
-    hold_reason = if (has_zero_denom) "一部のスライスの分母度数がゼロのため部分HOLDとなっています。" else NULL,
+    hold_reason = if (primary_sum$has_zero_denom) "一部のスライスの分母度数がゼロのため部分HOLDとなっています。" else NULL,
+    prior_specification = prior_spec,
+    sensitivity_prior = sens_prior,
+    support = support,
     config_echo = list(
       response_var = resp_var,
       compare_by = comp_var,
@@ -726,10 +771,24 @@ compute_conditional_rate_view <- function(df, vars, freq_col, crv_spec, draws = 
       numerator_levels = num_levels,
       denominator_levels = denom_levels,
       reference_level = ref_level,
-      interval_level = interval_lvl
+      interval_level = interval_lvl,
+      primary_alpha = primary_alpha,
+      sensitivity_alpha = sensitivity_alpha,
+      n_draws = as.integer(draws),
+      seed = as.integer(seed)
     ),
-    rates = rate_records,
-    differences = differences_list
+    rates = primary_sum$rates,
+    differences = primary_sum$differences,
+    sensitivity_analysis = list(
+      primary_alpha = primary_alpha,
+      sensitivity_alpha = sensitivity_alpha,
+      max_absolute_mean_diff = if (length(mean_shifts)) safe_round(max(mean_shifts), 4) else NA_real_,
+      max_median_shift = if (length(median_shifts)) safe_round(max(median_shifts), 4) else NA_real_,
+      max_eti_width_diff = if (length(width_diffs)) safe_round(max(width_diffs), 4) else NA_real_,
+      rates = sens_sum$rates,
+      differences = sens_sum$differences,
+      cell_comparisons = cell_comparisons
+    )
   )
 }
 

@@ -1318,7 +1318,8 @@ render_run_dashboard <- function(run_dir, rmd_path, preview = FALSE, allow_legac
     if (!file.copy(rmd_path, local_rmd, overwrite = FALSE)) stop("[ERROR] Rmd作業コピー失敗")
     rmarkdown::render(local_rmd, output_file = basename(target), output_dir = work,
       intermediates_dir = work, knit_root_dir = RUN_SCOPE_REPO_ROOT,
-      params = list(run_dir = run_dir, preview_mode = is_preview, require_pass2 = !is_preview),
+      params = list(run_dir = run_dir, preview_mode = is_preview, require_pass2 = !is_preview,
+                    repo_root = RUN_SCOPE_REPO_ROOT),
       envir = new.env(parent = globalenv()), quiet = TRUE)
     if (!file.exists(target)) stop("[ERROR] ダッシュボードが生成されません")
     # 自分の一時作業領域だけを掃除し、公開対象HTMLを残す。

@@ -3,7 +3,7 @@
 analysis_config_allowed_keys <- c(
   "input", "vars", "freq", "output_dir", "run_id", "dataset_name",
   "response_var", "top_k", "large_n_threshold", "base_models", "base_model",
-  "conditional_rate_view", "pass0_provenance",
+  "conditional_rate_view", "dirichlet_prior", "pass0_provenance",
   "factor_levels_order", "conditional_rank_reproducibility"
 )
 
@@ -244,6 +244,29 @@ validate_analysis_config <- function(config_data, config_path = NULL, repo_root 
         if ("reference_level" %in% names(crv) && !is.null(crv$reference_level)) {
           if (!is_nonempty_scalar_string(crv$reference_level)) {
             errors <- c(errors, "conditional_rate_view$reference_level は空でない文字列である必要があります。")
+          }
+        }
+      }
+    }
+  }
+
+  # --- dirichlet_prior（条件付き割合の対称Dirichlet。interval_level と混同しない） ---
+  if ("dirichlet_prior" %in% names(config_data)) {
+    dp <- config_data$dirichlet_prior
+    if (!is.list(dp) || is.data.frame(dp)) {
+      errors <- c(errors, "dirichlet_prior は JSON object である必要があります。")
+    } else {
+      if ("interval_level" %in% names(dp)) {
+        errors <- c(errors, "dirichlet_prior$interval_level は無効です。信用区間水準は conditional_rate_view$interval_level を指定してください。")
+      }
+      extra_dp <- setdiff(names(dp), c("primary_alpha", "sensitivity_alpha"))
+      if (length(extra_dp) > 0L) {
+        errors <- c(errors, paste0("dirichlet_prior に未知キーがあります: ", paste(extra_dp, collapse = ", ")))
+      }
+      for (ak in c("primary_alpha", "sensitivity_alpha")) {
+        if (ak %in% names(dp) && !is.null(dp[[ak]])) {
+          if (!is_finite_number(dp[[ak]]) || dp[[ak]] <= 0) {
+            errors <- c(errors, paste0("dirichlet_prior$", ak, " は正の有限数値である必要があります。"))
           }
         }
       }

@@ -9,6 +9,10 @@
   "top_k": 10,
   "large_n_threshold": 2000,
   "base_model": "M1",
+  "dirichlet_prior": {
+    "primary_alpha": 0.5,
+    "sensitivity_alpha": 1.0
+  },
   "pass0_provenance": {
     "inspection_file": "output/titanic_inspection/inspection_results.json",
     "input_sha256": "3a01e4a6eefd30ff0498b3c8f85f8faeeabecb2a4bf74dd77f23c965b32378f4"

@@ -184,7 +184,7 @@ if (c1 && c2 && c3 && c4) {
 writeLines(html_verified_content, "/tmp/dbg_dash.html")
 # 8. Section 7 (Conditional Posterior) の表示検証
 p1 <- grepl("条件付き事後推論 (Conditional Posterior Distributions)", html_verified_content, fixed = TRUE)
-p2 <- grepl("中央値や分位点の総和は数学的に\\s*1\\s*にはなりません", html_verified_content)
+p2 <- grepl("中央値や分位点の総和は一般には\\s*1\\s*に制約されません", html_verified_content)
 p3 <- grepl("7.1 行条件付き事後予測確率", html_verified_content, fixed = TRUE)
 p4 <- grepl("7.2 列条件付き事後予測確率", html_verified_content, fixed = TRUE)
 p5 <- grepl("主表示は中央値および\\s*95%\\s*等裾信用区間", html_verified_content)

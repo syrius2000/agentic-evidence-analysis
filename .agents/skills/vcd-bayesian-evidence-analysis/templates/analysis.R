@@ -354,13 +354,21 @@ cell_data <- primary_diag$cell_table
 
 # --- [Step 4: 汎用条件付き割合ビュー (conditional_rate_view)] ---
 message("[INFO] 条件付き割合ビュー (conditional_rate_view) を算出中...")
+dirichlet_prior_cfg <- cfg$dirichlet_prior %||% list()
+primary_alpha <- dirichlet_prior_cfg$primary_alpha %||% 0.5
+sensitivity_alpha <- dirichlet_prior_cfg$sensitivity_alpha %||% 1.0
+if (!is.null(dirichlet_prior_cfg$interval_level)) {
+  stop("[ERROR] dirichlet_prior$interval_level は無効です。信用区間水準は conditional_rate_view$interval_level を使ってください。", call. = FALSE)
+}
 crv_res <- compute_conditional_rate_view(
   df = df,
   vars = cat_vars,
   freq_col = freq_col,
   crv_spec = cfg$conditional_rate_view,
   draws = 20000,
-  seed = 20260906
+  seed = 20260906,
+  primary_alpha = primary_alpha,
+  sensitivity_alpha = sensitivity_alpha
 )
 
 # --- [Step 4b: 条件付きセル順位再現性評価 (conditional_rank_reproducibility)] ---
@@ -479,7 +487,17 @@ extra_meta <- list(
   config_origin = cfg_snap$config_origin,
   config_source_path = cfg_snap$config_source_path,
   config_snapshot = cfg_snap$config_snapshot,
-  config_sha256 = cfg_snap$config_sha256
+  config_sha256 = cfg_snap$config_sha256,
+  dirichlet_prior = list(
+    family = "symmetric_dirichlet",
+    primary_alpha = primary_alpha,
+    primary_role = "primary",
+    primary_name = if (is.list(crv_res$prior_specification)) crv_res$prior_specification$name else NULL,
+    sensitivity_alpha = sensitivity_alpha,
+    sensitivity_role = "sensitivity",
+    sensitivity_name = if (is.list(crv_res$sensitivity_prior)) crv_res$sensitivity_prior$name else NULL,
+    support = crv_res$support
+  )
 )
 write_run_meta(out_root, artifact_dir, "vcd-bayesian-evidence-analysis", rid$run_id, cfg$input, extra = extra_meta)
 

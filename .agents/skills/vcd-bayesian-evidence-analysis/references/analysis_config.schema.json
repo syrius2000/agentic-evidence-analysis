@@ -142,7 +142,25 @@
       "additionalProperties": false,
       "description": "Specification for generic conditional Bayesian rate and difference inference."
     },
-    "arm_min_confidence": {
+    "dirichlet_prior": {
+      "type": "object",
+      "description": "Symmetric Dirichlet hyperparameters for 3-way conditional rates. interval_level lives under conditional_rate_view, not here.",
+      "properties": {
+        "primary_alpha": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0.5,
+          "description": "Primary symmetric Dirichlet cell alpha (Jeffreys = 0.5)."
+        },
+        "sensitivity_alpha": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 1.0,
+          "description": "Sensitivity symmetric Dirichlet cell alpha (uniform-on-simplex = 1.0)."
+        }
+      },
+      "additionalProperties": false
+    },
       "type": "number"
     },
     "factor_levels_order": {

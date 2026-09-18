@@ -9,6 +9,7 @@ output:
     pandoc_args: ["--mathml"]
 params:
   output_dir: "./skill_out/vcd_categorical/"
+  repo_root: NULL
 ---
 
 ```{r setup, include=FALSE}
@@ -21,6 +22,44 @@ suppressPackageStartupMessages({
   library(knitr)
   library(ggplot2)
 })
+
+find_agent_repo <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in seq_len(25L)) {
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
+      return(d)
+    }
+    parent <- dirname(d)
+    if (parent == d) break
+    d <- parent
+  }
+  getwd()
+}
+
+resolve_shared_dashboard_root <- function(explicit = NULL) {
+  root <- if (!is.null(explicit) && nzchar(trimws(as.character(explicit)))) {
+    normalizePath(trimws(as.character(explicit)), winslash = "/", mustWork = FALSE)
+  } else {
+    find_agent_repo()
+  }
+  needed <- c("dashboard_theme.css", "dashboard_dt_ja.R", "dashboard_glossary.R")
+  paths <- file.path(root, ".agents", "shared", needed)
+  missing <- needed[!file.exists(paths)]
+  if (length(missing) > 0L) {
+    stop(sprintf("[ERROR] 共有ダッシュボード資産が欠落しています: %s (root=%s)",
+                 paste(missing, collapse = ", "), root), call. = FALSE)
+  }
+  normalizePath(root, winslash = "/", mustWork = TRUE)
+}
+
+shared_root <- resolve_shared_dashboard_root(params$repo_root)
+source(file.path(shared_root, ".agents", "shared", "dashboard_dt_ja.R"), local = TRUE)
+source(file.path(shared_root, ".agents", "shared", "dashboard_glossary.R"), local = TRUE)
+shared_theme_css <- paste(
+  readLines(file.path(shared_root, ".agents", "shared", "dashboard_theme.css"), warn = FALSE, encoding = "UTF-8"),
+  collapse = "\n"
+)
+inline_dt_ja <- get_dt_ja_lang()
 
 # システムフォント検出 (外部フォント排除)
 detect_jp_font <- function() {
@@ -88,25 +127,6 @@ ai_summary_text <- if (file.exists(summ_path)) {
 } else {
   "Pass 2 (AI Narrative) の考察レポート（executive_summary.md）は未生成です。"
 }
-
-# DataTables 完全インライン日本語辞書 (外部CDN排除)
-inline_dt_ja <- list(
-  emptyTable = "データが登録されていません",
-  info = "_TOTAL_ 件中 _START_ 〜 _END_ 件を表示",
-  infoEmpty = "0 件中 0 〜 0 件を表示",
-  infoFiltered = "（全 _MAX_ 件から抽出）",
-  lengthMenu = "表示件数: _MENU_",
-  loadingRecords = "読み込み中...",
-  processing = "処理中...",
-  search = "検索:",
-  zeroRecords = "一致するデータが見つかりません",
-  paginate = list(
-    first = "先頭",
-    previous = "前へ",
-    `next` = "次へ",
-    last = "最終"
-  )
-)
 
 # 決定論的Top-N選定ヘルパー (design.md 準拠: N=25, 同順位UTF-8昇順固定, 非有限値末尾, 統計量再計算排除)
 select_top_n_cells <- function(df, metric_col, decreasing = TRUE, n = 25, abs_val = FALSE) {
@@ -204,225 +224,11 @@ get_row_palette <- function(row_levels) {
 master_row_palette <- get_row_palette(cells$row_level)
 ```
 
-<style>
-body {
-  font-family: `r jp_font_family`;
-  line-height: 1.6;
-  color: #152238;
-  background-color: #f6f8fb;
-  margin: 0;
-  padding: 24px;
-}
-.dashboard-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  background: #ffffff;
-  padding: 32px;
-  border-radius: 4px;
-  border: 1px solid #e2e8f0;
-  box-shadow: none;
-}
-h1, h2, h3, h4 {
-  color: #152238;
-  margin-top: 24px;
-  margin-bottom: 12px;
-  font-weight: 700;
-}
-.header-box {
-  border-bottom: 2px solid #1f4d7a;
-  padding-bottom: 16px;
-  margin-bottom: 24px;
-}
-.section-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  padding: 22px;
-  margin-bottom: 24px;
-}
-.metric-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-.metric-item {
-  background: #f6f8fb;
-  border-radius: 4px;
-  padding: 16px;
-  border-left: 4px solid #1f4d7a;
-  border-top: 1px solid #e2e8f0;
-  border-right: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
-}
-.metric-title {
-  font-size: 0.82rem;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-}
-.metric-value {
-  font-size: 1.45rem;
-  font-weight: 700;
-  color: #152238;
-  margin-top: 4px;
-}
-.metric-sub {
-  font-size: 0.8rem;
-  color: #64748b;
-  margin-top: 2px;
-}
-.badge-candidate {
-  background-color: #6d28d9;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-weight: 600;
-}
-.badge-quarantined {
-  background-color: #a16207;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-weight: 600;
-}
-.badge-active {
-  background-color: #0f766e;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-weight: 600;
-}
-pre {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  padding: 12px;
-  overflow-x: auto;
-}
-/* Section 12 用語集・数理モデルアコーディオン (NEJM / Nature Medical 調 - px絶対指定による可読性保証) */
-.glossary-accordion {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 4px;
-  margin-bottom: 14px;
-  overflow: hidden;
-  transition: border-color 0.2s ease;
-}
-.glossary-accordion:hover {
-  border-color: #1f4d7a;
-}
-.glossary-accordion summary {
-  padding: 14px 18px;
-  font-weight: 700;
-  color: #152238;
-  cursor: pointer;
-  background: #f8fafc;
-  user-select: none;
-  font-size: 16px;
-  outline: none;
-}
-.glossary-accordion summary:hover {
-  background: #f1f5f9;
-}
-.glossary-accordion[open] summary {
-  border-bottom: 1px solid #e2e8f0;
-  background: #f1f5f9;
-  color: #1f4d7a;
-}
-.glossary-body {
-  padding: 20px 24px;
-  font-size: 14.5px;
-  color: #1e293b;
-  line-height: 1.75;
-}
-.glossary-item {
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px dashed #e2e8f0;
-}
-.glossary-item:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
-}
-.glossary-item-title {
-  font-weight: 700;
-  color: #1f4d7a;
-  font-size: 16px;
-  margin-bottom: 6px;
-}
-.glossary-def {
-  color: #1e293b;
-  font-size: 14.5px;
-  line-height: 1.7;
-  margin-bottom: 6px;
-}
-.glossary-meta {
-  display: block;
-  font-size: 13.5px;
-  color: #475569;
-  margin-top: 5px;
-  line-height: 1.5;
-}
-.glossary-caution {
-  display: block;
-  font-size: 13.5px;
-  color: #9b2945;
-  margin-top: 5px;
-  line-height: 1.5;
-}
-.glossary-body ol {
-  padding-left: 22px;
-  margin: 0;
-}
-.glossary-body li {
-  margin-bottom: 10px;
-  font-size: 14px;
-  color: #1e293b;
-  line-height: 1.65;
-}
-/* MathML ネイティブ数式スタイル */
-math {
-  font-size: 1.05em;
-  font-family: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', 'Times New Roman', serif;
-}
-/* エグゼクティブ要約 Markdown スタイル */
-.ai-summary-content h1 {
-  font-size: 1.35rem;
-  margin-top: 16px;
-  margin-bottom: 10px;
-  color: #1e3a8a;
-  border-bottom: 1px solid #cbd5e1;
-  padding-bottom: 4px;
-}
-.ai-summary-content h2 {
-  font-size: 1.15rem;
-  margin-top: 16px;
-  margin-bottom: 8px;
-  color: #1e293b;
-}
-.ai-summary-content h3 {
-  font-size: 1.02rem;
-  margin-top: 12px;
-  margin-bottom: 6px;
-  color: #334155;
-}
-.ai-summary-content p {
-  margin-top: 6px;
-  margin-bottom: 10px;
-  line-height: 1.7;
-}
-.ai-summary-content ul, .ai-summary-content ol {
-  margin-top: 4px;
-  margin-bottom: 10px;
-  padding-left: 24px;
-}
-.ai-summary-content li {
-  margin-bottom: 4px;
-}
-</style>
+```{r embed-shared-theme, results='asis'}
+cat("<style>\n")
+cat(shared_theme_css)
+cat("\n</style>\n")
+```
 
 <div class="dashboard-container">
 
@@ -716,7 +522,7 @@ cat(knitr::knit(text = normalized_summary, quiet = TRUE))
 <strong>統計的・科学的問い:</strong> 行カテゴリ $A=i$ が観測された条件のもとで列カテゴリ $B=j$ が生起する予測確率 $P(B=j\mid A=i)$、および列カテゴリ $B=j$ が観測された条件のもとで行カテゴリ $A=i$ が生起する予測確率 $P(A=i\mid B=j)$ はどの程度か？
   </div>
   <p style="font-size:0.9rem; color:#475569; margin-bottom:16px;">
-    ※ <strong>解釈上の注意:</strong> 条件付き事後確率は行または列を条件づけた予測確率を表します。主表示は中央値および 95% 等裾信用区間（ETI: [Q2.5, Q97.5]）であり、平均値は補助指標（点）として表示しています。<strong>非線形要約である中央値や分位点の総和は数学的に 1 にはなりません</strong>（総和が厳密に 1 となるのは各モンテカルロドローの確率値および事後平均のみです）。中央値の総和が 1 にならないことをもって計算の誤りと誤認しないでください。
+    ※ <strong>解釈上の注意:</strong> 条件付き事後確率は行または列を条件づけた予測確率を表します。主表示は中央値および 95% 等裾信用区間（ETI: [Q2.5, Q97.5]）であり、平均値は補助指標（点）として表示しています。次の1観測の予測確率は対応する条件付き確率の事後平均であり、中央値ではありません。<strong>中央値や分位点の総和は一般には 1 に制約されません</strong>（2カテゴリの連続分布では中央値が補数となり和が 1 となる場合があります。総和が厳密に 1 となるのは各モンテカルロドローおよび事後平均です）。中央値の総和が 1 でないことをもって計算の誤りと誤認しないでください。
   </p>
 
   <!-- 7.1 行条件付き事後予測確率 P(B|A) -->
@@ -1131,131 +937,43 @@ cat(knitr::knit(text = normalized_summary, quiet = TRUE))
   </p>
 </div>
 
-```{=html}
-<div class="section-card" id="section-glossary">
-  <h2><span>12.</span> 統計用語集・方法論解説・学術リファレンス (Glossary & Scientific References)</h2>
-  <div style="background:#f8fafc; border-left:4px solid #1f4d7a; padding:14px 18px; border-radius:4px; margin-bottom:18px;">
-    <div style="font-weight:700; color:#152238; font-size:15px; margin-bottom:4px;">統計的・科学的問い:</div>
-    <div style="color:#1e293b; font-size:14px; line-height:1.65;">本ダッシュボードで使用されている統計指標、診断アルゴリズム、および数理モデルの定義・解釈境界および学術的出典は何か？</div>
-    <div style="margin-top:10px; font-size:13.5px; color:#475569; border-top:1px dashed #e2e8f0; padding-top:8px; line-height:1.6;">
-      <strong>3大利用原則:</strong> ① P値単独判定の排除（全体検定の有意差のみで実務的重要性や個別セルを判定しない） / ② 局所効果（Effect）と統計的証拠（Evidence）の厳格分離（標本数比例の証拠強度と標本数不変の乖離倍率を混同しない） / ③ 不確実性の明示（点推定ではなく 95% ETI 信用区間幅で精度を評価）
-    </div>
-  </div>
-  <p style="font-size:14px; color:#475569; margin-bottom:18px;">
-    ※ 各項目をクリックして開閉できます。臨床・疫学およびリアルワールドデータ分析におけるエビデンス解釈の拠り所としてご活用ください。
-  </p>
-
-  <details class="glossary-accordion">
-    <summary><span>1.</span> 全体連関・効果量 (Global Association & Effect Size) ── [対応: Sections 1–2]</summary>
-    <div class="glossary-body">
-      <div class="glossary-item">
-        <div class="glossary-item-title">Pearson X² 独立性検定統計量</div>
-        <div class="glossary-def">行変数と列変数の相互独立帰無仮説 (H0: &pi;<sub>ij</sub> = &pi;<sub>i+</sub> &pi;<sub>+j</sub>) のもとで算出される漸近カイ二乗統計量 X<sup>2</sup> = &sum; (O<sub>ij</sub> - E<sub>ij</sub>)<sup>2</sup> / E<sub>ij</sub>（自由度 (I-1)(J-1)）。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 1（全体連関サマリー）、Section 2（クロス集計表）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 大標本下（N &rarr; &infin;）では微小な差異でも X<sup>2</sup> が極大化し P 値が飽和するため、臨床的・実務的効果の大きさを測る指標としては用いません。</span>
-      </div>
-      <div class="glossary-item">
-        <div class="glossary-item-title">Cramér's V</div>
-        <div class="glossary-def">分割表全体の連関度合いを 0〜1 で標準化した効果量指標 V = &radic;((X<sup>2</sup> / N) / min(I-1, J-1))。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 1（全体効果量）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 標本サイズ N が有限のとき上方にバイアス（過大評価傾向）を持ちます。</span>
-      </div>
-      <div class="glossary-item">
-        <div class="glossary-item-title">偏り補正 Cramér's Ṽ (Bergsma 2013)</div>
-        <div class="glossary-def">有限標本における自由度と標本サイズに基づく漸近バイアス低減量。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 1（95% CI と併記）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 有限標本バイアスの低減量であり、厳密な意味での最小分散「不偏推定量」ではありません。</span>
-      </div>
-    </div>
-  </details>
-
-  <details class="glossary-accordion">
-    <summary><span>2.</span> 局所セル診断と 4 軸フレームワーク (Four-Axis Local Cell Diagnostics) ── [対応: Sections 3–5]</summary>
-    <div class="glossary-body">
-      <div class="glossary-item">
-        <div class="glossary-item-title">【第1軸】Effect (局所対数効果比 λ_ij = log(O/E))</div>
-        <div class="glossary-def">独立モデルの期待度数に対する観測度数の局所的乗法乖離。標本サイズ N に依存しない純粋な乖離倍率を表します。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 3（横軸: Effect）、Section 9（事後乖離）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 因果効果を表すものではありません。観測度数 O<sub>ij</sub> = 0 では有限値として扱わず -&infin;（隔離セル）とします。</span>
-      </div>
-      <div class="glossary-item">
-        <div class="glossary-item-title">【第2軸】Evidence (局所 Rao スコア検定統計量 T_score / 対数 P 値)</div>
-        <div class="glossary-def">ハット行列の対角成分（レバレッジ h<sub>ii</sub>）で局所分散を補正したスコア検定統計量 T<sub>i</sub><sup>score</sup> = (O<sub>ij</sub> - E<sub>ij</sub>)<sup>2</sup> / (E<sub>ij</sub> (1 - h<sub>ii</sub>)) = r<sub>ij</sub><sup>2</sup>。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 3（縦軸: Evidence）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 標本サイズ N に比例する統計的証拠強度であり、実務的重要性や再現性を単独で保証するものではありません。</span>
-      </div>
-      <div class="glossary-item">
-        <div class="glossary-item-title">【第3軸】Influence (レバレッジ h_ii)</div>
-        <div class="glossary-def">Pregibon (1981) の対数線形診断に基づくハット行列対角成分 h<sub>ii</sub> = p<sub>i+</sub> + p<sub>+j</sub> - 2 p<sub>i+</sub> p<sub>+j</sub>。当該セルが分割表全体のパラメータ推定に与える幾何学的影響度を示します。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 5（Cell Explorer 表）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 幾何学的影響力が大きいことは、モデルの異常やデータ誤りとは同一視しません。</span>
-      </div>
-      <div class="glossary-item">
-        <div class="glossary-item-title">【第4軸】Stability (隔離条件 QUARANTINED)</div>
-        <div class="glossary-def">観測度数 O<sub>ij</sub> = 0、期待度数 E<sub>ij</sub> &lt; 5.0、または高レバレッジ h<sub>ii</sub> &ge; 0.80 のいずれかを満たす数値的不安定セル。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 3（中空丸プロット ○）、Section 4・5（琥珀色 #A16207 太枠・注記）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 大標本 Dual-Filter 探索から除外して解釈を保留するための安全弁であり、第三の臨床群や削除すべき無効データではありません。</span>
-      </div>
-      <div class="glossary-item">
-        <div class="glossary-item-title">調整標準化残差 (Adjusted Standardized Residual z_ij)</div>
-        <div class="glossary-def">Haberman (1973) に基づく標準化残差 z<sub>ij</sub> = (O<sub>ij</sub> - E<sub>ij</sub>) / &radic;(E<sub>ij</sub> (1 - h<sub>ii</sub>)) &sim; N(0, 1)。独立帰無仮説からの局所的乖離度を測ります。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 4（棒グラフ: 正の偏り #0F766E / 負の偏り #B45309）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 残差の統計的有意性は効果量そのものではありません。</span>
-      </div>
-    </div>
-  </details>
-
-  <details class="glossary-accordion">
-    <summary><span>3.</span> ベイズ事後推論と不確実性 (Bayesian Posterior & Uncertainty) ── [対応: Sections 6–10]</summary>
-    <div class="glossary-body">
-      <div class="glossary-item">
-        <div class="glossary-item-title">多項 Jeffreys 事前分布 (α = 0.5)</div>
-        <div class="glossary-def">多項分布のフィッシャー情報行列の行列式 det(I(&pi;))<sup>1/2</sup> に比例する客観的・局所ハール不変事前分布。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 6〜10 の主推論</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> ゼロ度数や低頻度セルが存在しても過度な一様平滑化を起こさず、情報幾何学的一貫性を保持した推論を導きます。</span>
-      </div>
-      <div class="glossary-item">
-        <div class="glossary-item-title">事前感度分析 (Laplace 一様事前分布 α = 1.0)</div>
-        <div class="glossary-def">事前分布を一様分布 &alpha; = 1.0 に変更した際の中央値シフトおよび信用区間幅の比較。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 10（感度分析表およびプロット）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 事前分布間で推論がわずかに変動することは自然な挙動であり、モデルの誤りや解析の欠陥と自動判定しないでください。</span>
-      </div>
-      <div class="glossary-item">
-        <div class="glossary-item-title">等裾信用区間 (Equal-Tailed Interval: 95% ETI)</div>
-        <div class="glossary-def">事後確率分布の 2.5% 点から 97.5% 点までの区間。母数 &pi;<sub>ij</sub> が 95% の事後確率で存在する不確実性の範囲（区間幅: prob_eti_width）。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 6（結合事後信用区間）、Section 8（不確実性順位）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 区間幅の狭さは推定精度を示しますが、セルの臨床的重要性や有意性そのものを意味しません。</span>
-      </div>
-      <div class="glossary-item">
-        <div class="glossary-item-title">条件付き事後予測確率 P(B|A) / P(A|B)</div>
-        <div class="glossary-def">要因条件が与えられたときの反応事象の事後予測確率。行条件付き P(B=j|A=i) = &pi;<sub>ij</sub> / &pi;<sub>i+</sub>、列条件付き P(A=i|B=j) = &pi;<sub>ij</sub> / &pi;<sub>+j</sub>。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 7.1 および Section 7.2</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 原因と結果の向きを取り違えないよう厳格に分離。事後中央値（主）と平均（副: グレーダイヤ）を併記。非線形要約である中央値の総和は数学的に 1 にはなりません。</span>
-      </div>
-      <div class="glossary-item">
-        <div class="glossary-item-title">独立モデルからの事後対数乖離 (Log Divergence)</div>
-        <div class="glossary-def">log(&pi;<sub>ij</sub>) - log(&pi;<sub>i+</sub> &pi;<sub>+j</sub>)。事後分布スケールで独立予測から乗法的にどの程度逸脱しているかの指標。</div>
-        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 9（0 を独立基準線とする分布プロット）</span>
-        <span class="glossary-caution"><strong>誤解しないこと:</strong> 0 をまたぐか否かだけで自動二値判定を行ってはならず、不確実性の幅と乖離の中央値を統合的に評価します。</span>
-      </div>
-    </div>
-  </details>
-
-  <details class="glossary-accordion">
-    <summary><span>4.</span> 学術リファレンス・参考文献 (Scientific References)</summary>
-    <div class="glossary-body">
-      <ol>
-        <li>American Statistical Association (2016). Statement on Statistical Significance and P-Values. <em>The American Statistician</em>, 70(2), 129–133.</li>
-        <li>Agresti, A. (2013). <em>Categorical Data Analysis</em> (3rd ed.). John Wiley & Sons.</li>
-        <li>Bergsma, W. (2013). A bias-correction for Cramér's V and Tschuprow's T. <em>Journal of the Korean Statistical Society</em>, 42(3), 323–328.</li>
-        <li>Haberman, S. J. (1973). The analysis of residuals in cross-classification tables. <em>Biometrics</em>, 29(1), 205–220.</li>
-        <li>Pregibon, D. (1981). Logistic regression diagnostics. <em>The Annals of Statistics</em>, 9(4), 705–724.</li>
-        <li>Rao, C. R. (1948). Large sample tests of statistical hypotheses concerning several parameters with applications to problems of estimation. <em>Mathematical Proceedings of the Cambridge Philosophical Society</em>, 44(1), 50–57.</li>
-        <li>Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., & Rubin, D. B. (2013). <em>Bayesian Data Analysis</em> (3rd ed.). Chapman & Hall/CRC.</li>
-      </ol>
-    </div>
-  </details>
-</div>
+```{r glossary-render, results='asis'}
+sens <- post$sensitivity_analysis
+sens_prior <- if (!is.null(sens$sensitivity_alpha)) {
+  list(
+    family = "symmetric_dirichlet",
+    alpha = sens$sensitivity_alpha,
+    role = "sensitivity",
+    name = "uniform"
+  )
+} else {
+  NULL
+}
+k_cells <- if (!is.null(glob$n_rows) && !is.null(glob$n_cols)) {
+  as.integer(glob$n_rows) * as.integer(glob$n_cols)
+} else if (!is.null(cells) && NROW(cells) > 0) {
+  NROW(cells)
+} else {
+  NULL
+}
+cat(render_dashboard_glossary(list(
+  dimension = 2L,
+  section_id = "section-glossary",
+  prior = post$prior_specification,
+  sensitivity_prior = sens_prior,
+  interval_level = 0.95,
+  zero_cell_convention = "nonfinite",
+  candidate_rule = "N ≥ 2000 かつ |log(O/E)| ≥ 0.50 かつ T_score ≥ 3.84 かつ非隔離",
+  support_k = k_cells,
+  section_effect = "Section 3（横軸: Effect）、Section 9（事後乖離）",
+  section_evidence = "Section 3（縦軸: Evidence）",
+  section_influence = "Section 5（Cell Explorer 表）",
+  section_stability = "Section 3（中空丸プロット）、Section 4・5",
+  section_prior = "Section 6〜10 の主推論",
+  section_sensitivity = "Section 10（感度分析表およびプロット）",
+  section_eti = "Section 6（結合事後信用区間）、Section 8（不確実性順位）",
+  section_conditional = "Section 7.1 および Section 7.2"
+)))
 ```
 
 </div>

@@ -152,7 +152,9 @@ rmarkdown::render(
   params = list(
     run_dir = run_dir,
     preview_mode = is_preview,
-    layout_variant = layout_variant
+    require_pass2 = !is_preview,
+    layout_variant = layout_variant,
+    repo_root = repo_root
   ),
   quiet = TRUE
 )
