@@ -62,6 +62,27 @@ post <- res$posterior
 qual <- res$quality
 prov <- res$provenance
 
+# run_state.json からの三者SHA再検証状態の取得 (Dashboard独自SHA再検証は行わない)
+run_state_path <- file.path(output_dir, "run_state.json")
+provenance_status_label <- if (file.exists(run_state_path)) {
+  rs <- tryCatch(jsonlite::fromJSON(run_state_path), error = function(e) NULL)
+  if (!is.null(rs) && !is.null(rs$provenance_status) && identical(as.character(rs$provenance_status), "verified")) {
+    "検証済み (Pass 0 承認合致)"
+  } else {
+    "未確認"
+  }
+} else {
+  "未確認"
+}
+
+mc_draws <- if (!is.null(post$n_draws)) {
+  post$n_draws
+} else if (!is.null(post$draws_count)) {
+  post$draws_count
+} else {
+  10000L
+}
+
 ai_summary_text <- if (file.exists(summ_path)) {
   paste(readLines(summ_path, encoding = "UTF-8", warn = FALSE), collapse = "\n")
 } else {
@@ -86,6 +107,42 @@ inline_dt_ja <- list(
     last = "最終"
   )
 )
+
+# 決定論的Top-N選定ヘルパー (design.md 準拠: N=25, 同順位UTF-8昇順固定, 非有限値末尾, 統計量再計算排除)
+select_top_n_cells <- function(df, metric_col, decreasing = TRUE, n = 25, abs_val = FALSE) {
+  k <- nrow(df)
+  if (k <= 30) {
+    # 小規模表 (K <= 30): 全セル図と全件表
+    res_df <- df
+    res_df$display_order <- seq_len(k)
+    return(list(data = res_df, mode = "all", k = k, n_shown = k, n_hidden = 0))
+  } else if (k <= 100) {
+    # 中規模表 (31 <= K <= 100): 過密図を抑制し全件表を主表示
+    return(list(data = df, mode = "table_only", k = k, n_shown = 0, n_hidden = k))
+  } else {
+    # 大規模表 (K >= 101): 決定論的Top-25図と全件表
+    vals <- df[[metric_col]]
+    if (abs_val) {
+      vals <- abs(vals)
+    }
+    is_fin <- !is.na(vals) & is.finite(vals)
+
+    # ソート順序:
+    # 1. 有限値優先 (有限値が前, 非有限値が後ろ)
+    # 2. 指標値 (decreasing に応じて降順/昇順)
+    # 3. row_level (UTF-8昇順)
+    # 4. col_level (UTF-8昇順)
+    val_key <- if (decreasing) -vals else vals
+    val_key[!is_fin] <- Inf
+
+    ord <- order(!is_fin, val_key, as.character(df$row_level), as.character(df$col_level))
+    top_indices <- ord[seq_len(min(n, k))]
+
+    selected_df <- df[top_indices, ]
+    selected_df$display_order <- seq_len(nrow(selected_df))
+    return(list(data = selected_df, mode = "top_n", k = k, n_shown = nrow(selected_df), n_hidden = k - nrow(selected_df)))
+  }
+}
 ```
 
 <style>
@@ -302,9 +359,81 @@ cat(knitr::knit(text = normalized_summary, quiet = TRUE))
   ```
 </div>
 
-<!-- Section 4: セルエクスプローラー (完全インライン日本語DataTables) -->
+<!-- Section 4: 調整残差構造 (Adjusted Residual Structure) -->
 <div class="section-card">
-  <h2><span>4.</span> セル診断エクスプローラー (Cell Explorer)</h2>
+  <h2><span>4.</span> 調整残差構造 (Adjusted Residual Structure)</h2>
+  <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:4px; margin-bottom:14px;">
+<strong>統計的・科学的問い:</strong> 独立モデル（行と列が無関連）を仮定したとき、各セルの観測度数は期待度数から統計的にどの程度逸脱しているか（標準化残差）？
+  </div>
+  <p style="font-size:0.9rem; color:#475569; margin-bottom:16px;">
+    ※ <strong>解釈上の注意:</strong> 調整残差（Haberman の調整残差 $z_{ij}$）は、独立帰無仮説からの乖離度を漸近標準正規分布 $N(0, 1)$ で測る検定統計量相当の指標であり（破線: 名目 5% 境界 $\pm 1.96$、点線: 名目 1% 境界 $\pm 2.58$）、<strong>効果の大きさ（効果量）そのものではありません</strong>。大標本では実質的に小さな差でも大きな残差が生じます。効果の大きさは Section 3 の局所対数効果比 $\log(O/E)$ や Section 2 の Cramér's $V$ を併せて評価してください。
+  </p>
+  ```{r adjusted-residual-plot, fig.width=10, fig.height=5.8, results='asis'}
+  res_sel <- select_top_n_cells(cells, metric_col = "adj_res", decreasing = TRUE, n = 25, abs_val = TRUE)
+  if (res_sel$mode == "table_only") {
+    cat("<p style='color:#64748b; font-style:italic;'>中規模表（31〜100セル）のため過密プロットを抑制しました。<a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>全件表（Section 5 セルエクスプローラー）</a>をご利用ください。</p>")
+  } else {
+    if (res_sel$mode == "top_n") {
+      cat(sprintf("<p style='font-size:0.85rem; color:#475569; margin-bottom:8px;'><strong>大規模表縮約表示:</strong> 上位 25 セル / 全 %d セル（非表示: %d セル）。全セルの完全な数値は <a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>Section 5 セルエクスプローラー</a> を参照してください。</p>\n", res_sel$k, res_sel$n_hidden))
+    }
+    adj_df <- res_sel$data
+    adj_df$cell_label <- paste(adj_df$row_level, adj_df$col_level, sep = " : ")
+    if (res_sel$mode == "top_n") {
+      adj_df$cell_label <- factor(adj_df$cell_label, levels = rev(adj_df$cell_label))
+      p_title <- sprintf("調整残差構造 (絶対値上位 25 セル / 全 %d セル | 非表示: %d セル)", res_sel$k, res_sel$n_hidden)
+    } else {
+      adj_df <- adj_df[order(adj_df$adj_res, decreasing = TRUE), ]
+      adj_df$cell_label <- factor(adj_df$cell_label, levels = rev(adj_df$cell_label))
+      p_title <- "調整残差構造 (全セル表示: 0 中心正負表現)"
+    }
+
+    adj_df$fill_cat <- ifelse(
+      adj_df$quarantine_status == "QUARANTINED", "隔離セル (不安定)",
+      ifelse(adj_df$dual_filter_candidate, "Dual-Filter注目候補",
+             ifelse(adj_df$adj_res >= 0, "正の残差 (観測 > 期待)", "負の残差 (観測 < 期待)"))
+    )
+    adj_df$fill_cat <- factor(adj_df$fill_cat, levels = c("Dual-Filter注目候補", "正の残差 (観測 > 期待)", "負の残差 (観測 < 期待)", "隔離セル (不安定)"))
+
+    p_adj <- ggplot(adj_df, aes(x = adj_res, y = cell_label, fill = fill_cat)) +
+      geom_col(width = 0.68) +
+      geom_vline(xintercept = 0, color = "#1e293b", linewidth = 0.8) +
+      geom_vline(xintercept = c(-1.96, 1.96), color = "#94a3b8", linetype = "dashed", linewidth = 0.6) +
+      geom_vline(xintercept = c(-2.58, 2.58), color = "#cbd5e1", linetype = "dotted", linewidth = 0.6) +
+      scale_fill_manual(
+        values = c(
+          "Dual-Filter注目候補" = "#dc2626",
+          "正の残差 (観測 > 期待)" = "#2563eb",
+          "負の残差 (観測 < 期待)" = "#3b82f6",
+          "隔離セル (不安定)" = "#d97706"
+        )
+      ) +
+      labs(
+        title = p_title,
+        subtitle = "破線: 名目 5% 境界 (±1.96) | 点線: 名目 1% 境界 (±2.58)",
+        x = "調整残差 z_ij",
+        y = "セル (行 : 列)",
+        fill = "状態区分"
+      ) +
+      theme_minimal(base_family = ggplot_jp_font) +
+      theme(
+        plot.title = element_text(size = 12, face = "bold", color = "#1e293b", margin = margin(b = 4)),
+        plot.subtitle = element_text(size = 9.5, color = "#64748b", margin = margin(b = 10)),
+        axis.title.x = element_text(size = 10.5, color = "#334155", margin = margin(t = 8)),
+        axis.title.y = element_text(size = 10.5, color = "#334155", margin = margin(r = 10)),
+        axis.text.y = element_text(size = 9, color = "#1e293b"),
+        legend.position = "bottom",
+        panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(color = "#e2e8f0")
+      )
+    print(p_adj)
+  }
+  ```
+</div>
+
+<!-- Section 5: セルエクスプローラー (完全インライン日本語DataTables) -->
+<div class="section-card" id="section-cell-explorer">
+  <h2><span>5.</span> セル診断エクスプローラー (Cell Explorer)</h2>
   ```{r dt-table}
   display_df <- data.frame(
     行 = cells$row_level,
@@ -334,77 +463,492 @@ cat(knitr::knit(text = normalized_summary, quiet = TRUE))
   ```
 </div>
 
-<!-- Section 5: ベイズDirichlet事後推論 -->
+<!-- Section 6: ベイズDirichlet事後推論 -->
 <div class="section-card">
-  <h2><span>5.</span> 多項Dirichlet事後推論 (Bayesian Credible Intervals)</h2>
+  <h2><span>6.</span> 結合事後推論 (Joint Posterior Credible Intervals)</h2>
   <p>
     対称Dirichlet事前分布（$\alpha = `r post$prior_specification$alpha`$）に基づく事後生起確率 $\pi_{ij}$ の 95% 信用区間（ETI: Equal-Tailed Interval）。
+    <span style="font-size:0.85rem; color:#64748b;">（全セルの完全な数値は <a href="#section-cell-explorer" style="color:#2563eb; text-decoration:underline;">Section 5 セルエクスプローラー</a> を参照）</span>
   </p>
-  ```{r posterior-plot, fig.width=10, fig.height=6.2}
+  ```{r posterior-plot, fig.width=10, fig.height=6.2, results='asis'}
   p_df <- post$cell_posteriors
-  is_large_table <- nrow(p_df) > 30
-  plot_df <- if (is_large_table) {
-    p_df[order(p_df$prob_mean, decreasing = TRUE)[1:25], ]
+  p_sel <- select_top_n_cells(p_df, metric_col = "prob_mean", decreasing = TRUE, n = 25)
+  if (p_sel$mode == "table_only") {
+    cat("<p style='color:#64748b; font-style:italic;'>中規模表（31〜100セル）のため過密プロットを抑制しました。<a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>全件表（Section 5 セルエクスプローラー）</a>をご参照ください。</p>")
   } else {
-    p_df
+    if (p_sel$mode == "top_n") {
+      cat(sprintf("<p style='font-size:0.85rem; color:#475569; margin-bottom:8px;'><strong>大規模表縮約表示:</strong> 上位 25 セル / 全 %d セル（非表示: %d セル）。全セルの完全な数値は <a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>Section 5 セルエクスプローラー</a> を参照してください。</p>\n", p_sel$k, p_sel$n_hidden))
+    }
+    plot_df <- p_sel$data
+    plot_df$cell_label <- paste(plot_df$row_level, plot_df$col_level, sep = " : ")
+    if (p_sel$mode == "top_n") {
+      plot_df$cell_label <- factor(plot_df$cell_label, levels = rev(plot_df$cell_label))
+      p_title <- sprintf("結合事後生起確率 (事後平均 上位 25 セル / 全 %d セル | 非表示: %d セル)", p_sel$k, p_sel$n_hidden)
+    } else {
+      plot_df <- plot_df[order(plot_df$prob_mean, decreasing = TRUE), ]
+      plot_df$cell_label <- factor(plot_df$cell_label, levels = rev(plot_df$cell_label))
+      p_title <- "事後平均および 95% 信用区間 (Equal-Tailed Interval)"
+    }
+
+    plot_df$row_group <- factor(plot_df$row_level, levels = unique(plot_df$row_level))
+    n_groups <- length(unique(plot_df$row_group))
+    color_scale <- if (n_groups <= 8) {
+      scale_color_brewer(palette = "Dark2")
+    } else {
+      scale_color_discrete()
+    }
+
+    p_post <- ggplot(plot_df, aes(x = prob_mean, y = cell_label, color = row_group)) +
+      geom_pointrange(aes(xmin = prob_q025, xmax = prob_q975), size = 0.65, linewidth = 0.85) +
+      scale_x_continuous(
+        limits = c(0, max(plot_df$prob_q975) * 1.15),
+        expand = expansion(mult = c(0, 0.05))
+      ) +
+      color_scale +
+      labs(
+        title = p_title,
+        x = "事後セル生起確率 π_ij",
+        y = "セル (行 : 列)",
+        color = "グループ (行変数)"
+      ) +
+      theme_minimal(base_family = ggplot_jp_font) +
+      theme(
+        plot.title = element_text(size = 12.5, face = "bold", color = "#1e293b", margin = margin(b = 10)),
+        axis.title.x = element_text(size = 11, color = "#334155", margin = margin(t = 8)),
+        axis.title.y = element_text(size = 11, color = "#334155", margin = margin(r = 12)),
+        axis.text.y = element_text(size = 9.5, color = "#1e293b", face = "bold"),
+        axis.text.x = element_text(size = 9.5, color = "#1e293b"),
+        legend.title = element_text(size = 10, face = "bold", color = "#334155"),
+        legend.text = element_text(size = 9.5, color = "#334155"),
+        legend.position = "right",
+        panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(color = "#e2e8f0", linetype = "dashed"),
+        panel.grid.major.x = element_line(color = "#e2e8f0"),
+        plot.margin = margin(10, 16, 10, 16)
+      )
+    print(p_post)
   }
-
-  # 縦軸ラベル: 行レベル : 列レベル
-  plot_df$cell_label <- paste(plot_df$row_level, plot_df$col_level, sep = " : ")
-  plot_df$cell_label <- factor(plot_df$cell_label, levels = rev(plot_df$cell_label))
-  plot_df$row_group <- factor(plot_df$row_level, levels = unique(plot_df$row_level))
-
-  n_groups <- length(unique(plot_df$row_group))
-  color_scale <- if (n_groups <= 8) {
-    scale_color_brewer(palette = "Dark2")
-  } else {
-    scale_color_discrete()
-  }
-
-  p_title <- if (is_large_table) {
-    sprintf("事後平均および 95%% 信用区間 (事後生起確率 上位 25 セル / 全 %d セル)", nrow(p_df))
-  } else {
-    "事後平均および 95% 信用区間 (Equal-Tailed Interval)"
-  }
-
-  ggplot(plot_df, aes(x = prob_mean, y = cell_label, color = row_group)) +
-    geom_pointrange(aes(xmin = prob_q025, xmax = prob_q975), size = 0.65, linewidth = 0.85) +
-    scale_x_continuous(
-      limits = c(0, max(plot_df$prob_q975) * 1.15),
-      expand = expansion(mult = c(0, 0.05))
-    ) +
-    color_scale +
-    labs(
-      title = p_title,
-      x = "事後セル生起確率 π_ij",
-      y = "セル (行 : 列)",
-      color = "グループ (行変数)"
-    ) +
-    theme_minimal(base_family = ggplot_jp_font) +
-    theme(
-      plot.title = element_text(size = 12.5, face = "bold", color = "#1e293b", margin = margin(b = 10)),
-      axis.title.x = element_text(size = 11, color = "#334155", margin = margin(t = 8)),
-      axis.title.y = element_text(size = 11, color = "#334155", margin = margin(r = 12)),
-      axis.text.y = element_text(size = 9.5, color = "#1e293b", face = "bold"),
-      axis.text.x = element_text(size = 9.5, color = "#1e293b"),
-      legend.title = element_text(size = 10, face = "bold", color = "#334155"),
-      legend.text = element_text(size = 9.5, color = "#334155"),
-      legend.position = "right",
-      panel.grid.minor = element_blank(),
-      panel.grid.major.y = element_line(color = "#e2e8f0", linetype = "dashed"),
-      panel.grid.major.x = element_line(color = "#e2e8f0"),
-      plot.margin = margin(10, 16, 10, 16)
-    )
   ```
 </div>
 
-<!-- Section 6: 品質・プロビナンス情報 -->
+<!-- Section 7: 条件付き事後推論 (Conditional Posterior Distributions) -->
 <div class="section-card">
-  <h2><span>6.</span> 品質・プロビナンス情報 (Quality & Provenance)</h2>
-  <p><strong>隔離セル数:</strong> `r qual$n_quarantined_cells` | <strong>Dual-Filter候補数:</strong> `r qual$n_candidates`</p>
-  `r if (length(qual$warnings) > 0) paste("<ul>", paste(sprintf("<li>%s</li>", qual$warnings), collapse = ""), "</ul>") else "<p>警告事項はありません。</p>"`
-  <p style="font-size:0.8rem; color:#64748b;">
-    実行環境: `r prov$platform` | R: `r prov$r_version`
+  <h2><span>7.</span> 条件付き事後推論 (Conditional Posterior Distributions)</h2>
+  <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:4px; margin-bottom:14px;">
+<strong>統計的・科学的問い:</strong> 行カテゴリ $A=i$ が観測された条件のもとで列カテゴリ $B=j$ が生起する予測確率 $P(B=j\mid A=i)$、および列カテゴリ $B=j$ が観測された条件のもとで行カテゴリ $A=i$ が生起する予測確率 $P(A=i\mid B=j)$ はどの程度か？
+  </div>
+  <p style="font-size:0.9rem; color:#475569; margin-bottom:16px;">
+    ※ <strong>解釈上の注意:</strong> 条件付き事後確率は行または列を条件づけた予測確率を表します。主表示は中央値および 95% 等裾信用区間（ETI: [Q2.5, Q97.5]）であり、平均値は補助指標（点）として表示しています。<strong>非線形要約である中央値や分位点の総和は数学的に 1 にはなりません</strong>（総和が厳密に 1 となるのは各モンテカルロドローの確率値および事後平均のみです）。中央値の総和が 1 にならないことをもって計算の誤りと誤認しないでください。
+  </p>
+
+  <!-- 7.1 行条件付き事後予測確率 P(B|A) -->
+  <h3 style="color:#1e3a8a; border-bottom:1px solid #cbd5e1; padding-bottom:4px; margin-top:20px;">
+    7.1 行条件付き事後予測確率 $P(B=j\mid A=i)$
+  </h3>
+  <p style="font-size:0.85rem; color:#64748b;">
+    行カテゴリ $A$ を所与としたときの列カテゴリ $B$ の事後生起確率分布（行方向の予測プロファイル）。
+  </p>
+  ```{r cond-row-plot, fig.width=10, fig.height=5.8, results='asis'}
+  row_sel <- select_top_n_cells(post$cell_posteriors, metric_col = "cond_row_prob_median", decreasing = TRUE, n = 25)
+  if (row_sel$mode == "table_only") {
+    cat("<p style='color:#64748b; font-style:italic;'>中規模表（31〜100セル）のため過密プロットを抑制しました。<a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>全件表（Section 5 セルエクスプローラー）</a>をご参照ください。</p>")
+  } else {
+    if (row_sel$mode == "top_n") {
+      cat(sprintf("<p style='font-size:0.85rem; color:#475569; margin-bottom:8px;'><strong>大規模表縮約表示:</strong> 上位 25 セル / 全 %d セル（非表示: %d セル）。全セルの完全な数値は <a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>Section 5 セルエクスプローラー</a> を参照してください。</p>\n", row_sel$k, row_sel$n_hidden))
+    }
+    r_df <- row_sel$data
+    r_df$cell_label <- paste(r_df$row_level, "→", r_df$col_level)
+    if (row_sel$mode == "top_n") {
+      r_df$cell_label <- factor(r_df$cell_label, levels = rev(r_df$cell_label))
+      p_title <- sprintf("行条件付き事後確率 P(B|A) (事後中央値 上位 25 セル / 全 %d セル | 非表示: %d セル)", row_sel$k, row_sel$n_hidden)
+    } else {
+      r_df <- r_df[order(r_df$cond_row_prob_median, decreasing = TRUE), ]
+      r_df$cell_label <- factor(r_df$cell_label, levels = rev(r_df$cell_label))
+      p_title <- "行条件付き事後確率 P(B|A) (全セル表示)"
+    }
+
+    p_row <- ggplot(r_df, aes(y = cell_label)) +
+      geom_errorbarh(aes(xmin = cond_row_prob_q025, xmax = cond_row_prob_q975), height = 0.3, color = "#2563eb", linewidth = 0.8) +
+      geom_point(aes(x = cond_row_prob_median, color = "事後中央値 (主表示)"), size = 2.8) +
+      geom_point(aes(x = cond_row_prob_mean, color = "事後平均 (補助表示)"), shape = 18, size = 2.4) +
+      scale_color_manual(
+        name = "要約指標",
+        values = c("事後中央値 (主表示)" = "#1d4ed8", "事後平均 (補助表示)" = "#64748b")
+      ) +
+      scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+      labs(
+        title = p_title,
+        subtitle = "エラーバー: 95% ETI [Q2.5, Q97.5] | 実線: 確率 [0, 1] 範囲",
+        x = "行条件付き生起確率 P(B=j | A=i)",
+        y = "条件 (行 A → 列 B)"
+      ) +
+      theme_minimal(base_family = ggplot_jp_font) +
+      theme(
+        plot.title = element_text(size = 11.5, face = "bold", color = "#1e293b", margin = margin(b = 4)),
+        plot.subtitle = element_text(size = 9, color = "#64748b", margin = margin(b = 8)),
+        axis.title.x = element_text(size = 10, color = "#334155", margin = margin(t = 6)),
+        axis.title.y = element_text(size = 10, color = "#334155", margin = margin(r = 8)),
+        axis.text.y = element_text(size = 8.5, color = "#1e293b"),
+        legend.position = "bottom",
+        panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(color = "#f1f5f9"),
+        panel.grid.major.x = element_line(color = "#e2e8f0")
+      )
+    print(p_row)
+  }
+  ```
+
+  <!-- 7.2 列条件付き事後予測確率 P(A|B) -->
+  <h3 style="color:#1e3a8a; border-bottom:1px solid #cbd5e1; padding-bottom:4px; margin-top:24px;">
+    7.2 列条件付き事後予測確率 $P(A=i\mid B=j)$
+  </h3>
+  <p style="font-size:0.85rem; color:#64748b;">
+    列カテゴリ $B$ を所与としたときの行カテゴリ $A$ の事後生起確率分布（列方向の予測プロファイル）。
+  </p>
+  ```{r cond-col-plot, fig.width=10, fig.height=5.8, results='asis'}
+  col_sel <- select_top_n_cells(post$cell_posteriors, metric_col = "cond_col_prob_median", decreasing = TRUE, n = 25)
+  if (col_sel$mode == "table_only") {
+    cat("<p style='color:#64748b; font-style:italic;'>中規模表（31〜100セル）のため過密プロットを抑制しました。<a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>全件表（Section 5 セルエクスプローラー）</a>をご参照ください。</p>")
+  } else {
+    if (col_sel$mode == "top_n") {
+      cat(sprintf("<p style='font-size:0.85rem; color:#475569; margin-bottom:8px;'><strong>大規模表縮約表示:</strong> 上位 25 セル / 全 %d セル（非表示: %d セル）。全セルの完全な数値は <a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>Section 5 セルエクスプローラー</a> を参照してください。</p>\n", col_sel$k, col_sel$n_hidden))
+    }
+    c_df <- col_sel$data
+    c_df$cell_label <- paste(c_df$col_level, "→", c_df$row_level)
+    if (col_sel$mode == "top_n") {
+      c_df$cell_label <- factor(c_df$cell_label, levels = rev(c_df$cell_label))
+      p_title <- sprintf("列条件付き事後確率 P(A|B) (事後中央値 上位 25 セル / 全 %d セル | 非表示: %d セル)", col_sel$k, col_sel$n_hidden)
+    } else {
+      c_df <- c_df[order(c_df$cond_col_prob_median, decreasing = TRUE), ]
+      c_df$cell_label <- factor(c_df$cell_label, levels = rev(c_df$cell_label))
+      p_title <- "列条件付き事後確率 P(A|B) (全セル表示)"
+    }
+
+    p_col <- ggplot(c_df, aes(y = cell_label)) +
+      geom_errorbarh(aes(xmin = cond_col_prob_q025, xmax = cond_col_prob_q975), height = 0.3, color = "#059669", linewidth = 0.8) +
+      geom_point(aes(x = cond_col_prob_median, color = "事後中央値 (主表示)"), size = 2.8) +
+      geom_point(aes(x = cond_col_prob_mean, color = "事後平均 (補助表示)"), shape = 18, size = 2.4) +
+      scale_color_manual(
+        name = "要約指標",
+        values = c("事後中央値 (主表示)" = "#047857", "事後平均 (補助表示)" = "#64748b")
+      ) +
+      scale_x_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.2)) +
+      labs(
+        title = p_title,
+        subtitle = "エラーバー: 95% ETI [Q2.5, Q97.5] | 実線: 確率 [0, 1] 範囲",
+        x = "列条件付き生起確率 P(A=i | B=j)",
+        y = "条件 (列 B → 行 A)"
+      ) +
+      theme_minimal(base_family = ggplot_jp_font) +
+      theme(
+        plot.title = element_text(size = 11.5, face = "bold", color = "#1e293b", margin = margin(b = 4)),
+        plot.subtitle = element_text(size = 9, color = "#64748b", margin = margin(b = 8)),
+        axis.title.x = element_text(size = 10, color = "#334155", margin = margin(t = 6)),
+        axis.title.y = element_text(size = 10, color = "#334155", margin = margin(r = 8)),
+        axis.text.y = element_text(size = 8.5, color = "#1e293b"),
+        legend.position = "bottom",
+        panel.grid.minor = element_blank(),
+        panel.grid.major.y = element_line(color = "#f1f5f9"),
+        panel.grid.major.x = element_line(color = "#e2e8f0")
+      )
+    print(p_col)
+  }
+  ```
+</div>
+
+<!-- Section 8: 不確実性順位 (Uncertainty Ranking) -->
+<div class="section-card">
+  <h2><span>8.</span> 不確実性順位 (Uncertainty Ranking)</h2>
+  <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:4px; margin-bottom:14px;">
+<strong>統計的・科学的問い:</strong> 各セルの結合生起確率の推定における不確実性（95% 等裾信用区間幅: prob_eti_width）はどの程度か？ どのセルの推定精度が相対的に高く／低いか？
+  </div>
+  <p style="font-size:0.9rem; color:#475569; margin-bottom:16px;">
+※ <strong>解釈上の注意:</strong> 信用区間幅（<code>prob_eti_width</code>）は生起確率推定の不確実性の大きさ（情報量の多寡）を示す指標であり、<strong>セルの重要性または統計的有意性を示すものではありません</strong>。観測度数が小さいセルや比率が 0.5 に近いセルでは不確実性幅が広くなる傾向がありますが、不確実性の大小をもって効果の有無や優先順位を機械的に二値判定しないでください。順位は既存の <code>rank</code> 昇順をそのまま使用しています。
+  </p>
+  ```{r uncertainty-ranking-plot, fig.width=10, fig.height=5.8, results='asis'}
+  u_df <- if (!is.null(post$uncertainty_ranking)) {
+    if (is.data.frame(post$uncertainty_ranking)) {
+      post$uncertainty_ranking
+    } else if (is.list(post$uncertainty_ranking)) {
+      do.call(rbind, lapply(post$uncertainty_ranking, as.data.frame))
+    } else {
+      NULL
+    }
+  } else {
+    NULL
+  }
+
+  if (!is.null(u_df) && nrow(u_df) > 0 && "rank" %in% names(u_df)) {
+    u_sel <- select_top_n_cells(u_df, metric_col = "rank", decreasing = FALSE, n = 25)
+    if (u_sel$mode == "table_only") {
+      cat("<p style='color:#64748b; font-style:italic;'>中規模表（31〜100セル）のため過密プロットを抑制しました。<a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>全件表（Section 5 セルエクスプローラー）</a>をご参照ください。</p>")
+    } else {
+      if (u_sel$mode == "top_n") {
+        cat(sprintf("<p style='font-size:0.85rem; color:#475569; margin-bottom:8px;'><strong>大規模表縮約表示:</strong> 上位 25 セル / 全 %d セル（非表示: %d セル）。全セルの完全な数値は <a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>Section 5 セルエクスプローラー</a> を参照してください。</p>\n", u_sel$k, u_sel$n_hidden))
+      }
+      u_plot_df <- u_sel$data
+      u_plot_df$cell_label <- paste0(u_plot_df$row_level, " × ", u_plot_df$col_level, " (#", u_plot_df$rank, ")")
+      if (u_sel$mode == "top_n") {
+        u_plot_df$cell_label <- factor(u_plot_df$cell_label, levels = rev(u_plot_df$cell_label))
+        p_title <- sprintf("不確実性順位 (95%% ETI幅 昇順 上位 25 セル / 全 %d セル | 非表示: %d セル)", u_sel$k, u_sel$n_hidden)
+      } else {
+        u_plot_df <- u_plot_df[order(u_plot_df$rank), ]
+        u_plot_df$cell_label <- factor(u_plot_df$cell_label, levels = rev(u_plot_df$cell_label))
+        p_title <- "不確実性順位 (全セル 95% ETI幅)"
+      }
+
+      p_unc <- ggplot(u_plot_df, aes(y = cell_label, x = prob_eti_width)) +
+        geom_col(fill = "#8b5cf6", width = 0.6) +
+        geom_text(aes(label = sprintf("%.4f (N=%d)", prob_eti_width, observed)), hjust = -0.1, size = 3.2, color = "#475569", family = ggplot_jp_font) +
+        scale_x_continuous(expand = expansion(mult = c(0, 0.2))) +
+        labs(
+          title = p_title,
+          subtitle = "指標: prob_eti_width = Q97.5 - Q02.5 | 順位: rank (小さいほど推定精度が高い)",
+          x = "結合確率の 95% 等裾信用区間幅 (prob_eti_width)",
+          y = "セル (行 × 列)"
+        ) +
+        theme_minimal(base_family = ggplot_jp_font) +
+        theme(
+          plot.title = element_text(size = 11.5, face = "bold", color = "#1e293b", margin = margin(b = 4)),
+          plot.subtitle = element_text(size = 9, color = "#64748b", margin = margin(b = 8)),
+          axis.title.x = element_text(size = 10, color = "#334155", margin = margin(t = 6)),
+          axis.title.y = element_text(size = 10, color = "#334155", margin = margin(r = 8)),
+          axis.text.y = element_text(size = 8.5, color = "#1e293b"),
+          panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_line(color = "#f1f5f9"),
+          panel.grid.major.x = element_line(color = "#e2e8f0")
+        )
+      print(p_unc)
+    }
+  } else {
+    cat("<p style='color:#64748b;'>不確実性順位データは含まれていません。</p>")
+  }
+  ```
+</div>
+
+<!-- Section 9: 独立モデルからの事後乖離 (Posterior Departure from Independence) -->
+<div class="section-card">
+  <h2><span>9.</span> 独立モデルからの事後乖離 (Posterior Departure from Independence)</h2>
+  <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:4px; margin-bottom:14px;">
+<strong>統計的・科学的問い:</strong> 独立モデル（行と列が無関連）を仮定したときの期待確率から、各セルの事後結合確率はどの程度乖離（log divergence）しているか？
+  </div>
+  <p style="font-size:0.9rem; color:#475569; margin-bottom:16px;">
+※ <strong>解釈上の注意:</strong> 対数乖離（Log Divergence: $\log(p_{ij} / (p_{i\cdot} p_{\cdot j}))$）は、独立モデル予測に対するセルの相対的な増減（正: 過剰、負: 過少）を表します。主指標は事後中央値および 95% 等裾信用区間（ETI）です。<strong>対数乖離の信用区間が 0（独立基準線）をまたぐか否かだけで自動二値判定（有意／非有意の二値分類）を行わないでください</strong>。乖離の大きさ、区間幅の不確実性、実務的意味を総合的に考慮してください。
+  </p>
+  ```{r posterior-departure-plot, fig.width=10, fig.height=5.8, results='asis'}
+  dep_df <- if (!is.null(post$cell_posteriors)) {
+    if (is.data.frame(post$cell_posteriors)) {
+      post$cell_posteriors
+    } else if (is.list(post$cell_posteriors)) {
+      do.call(rbind, lapply(post$cell_posteriors, as.data.frame))
+    } else {
+      NULL
+    }
+  } else {
+    NULL
+  }
+
+  if (!is.null(dep_df) && nrow(dep_df) > 0 && "log_divergence_median" %in% names(dep_df)) {
+    dep_sel <- select_top_n_cells(dep_df, metric_col = "log_divergence_median", decreasing = TRUE, n = 25, abs_val = TRUE)
+    if (dep_sel$mode == "table_only") {
+      cat("<p style='color:#64748b; font-style:italic;'>中規模表（31〜100セル）のため過密プロットを抑制しました。<a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>全件表（Section 5 セルエクスプローラー）</a>をご参照ください。</p>")
+    } else {
+      if (dep_sel$mode == "top_n") {
+        cat(sprintf("<p style='font-size:0.85rem; color:#475569; margin-bottom:8px;'><strong>大規模表縮約表示:</strong> 上位 25 セル / 全 %d セル（非表示: %d セル）。全セルの完全な数値は <a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>Section 5 セルエクスプローラー</a> を参照してください。</p>\n", dep_sel$k, dep_sel$n_hidden))
+      }
+      d_df <- dep_sel$data
+      d_df$cell_label <- paste(d_df$row_level, "×", d_df$col_level)
+      if (dep_sel$mode == "top_n") {
+        d_df$cell_label <- factor(d_df$cell_label, levels = rev(d_df$cell_label))
+        p_title <- sprintf("独立モデルからの事後対数乖離 (|事後中央値| 上位 25 セル / 全 %d セル | 非表示: %d セル)", dep_sel$k, dep_sel$n_hidden)
+      } else {
+        d_df <- d_df[order(abs(d_df$log_divergence_median), decreasing = TRUE), ]
+        d_df$cell_label <- factor(d_df$cell_label, levels = rev(d_df$cell_label))
+        p_title <- "独立モデルからの事後対数乖離 (全セル表示)"
+      }
+
+      p_dep <- ggplot(d_df, aes(y = cell_label)) +
+        geom_vline(xintercept = 0, linetype = "dashed", color = "#64748b", linewidth = 0.8) +
+        geom_errorbarh(aes(xmin = log_divergence_q025, xmax = log_divergence_q975), height = 0.3, color = "#0284c7", linewidth = 0.8) +
+        geom_point(aes(x = log_divergence_median, color = "事後中央値 (主表示)"), size = 2.8) +
+        geom_point(aes(x = log_divergence_mean, color = "事後平均 (補助表示)"), shape = 18, size = 2.4) +
+        scale_color_manual(
+          name = "要約指標",
+          values = c("事後中央値 (主表示)" = "#0369a1", "事後平均 (補助表示)" = "#64748b")
+        ) +
+        labs(
+          title = p_title,
+          subtitle = "点: 事後中央値・平均 | エラーバー: 95% ETI [Q2.5, Q97.5] | 破線: 独立モデル基準 (0)",
+          x = "事後対数乖離 log(p_ij / (p_i. * p_.j))",
+          y = "セル (行 × 列)"
+        ) +
+        theme_minimal(base_family = ggplot_jp_font) +
+        theme(
+          plot.title = element_text(size = 11.5, face = "bold", color = "#1e293b", margin = margin(b = 4)),
+          plot.subtitle = element_text(size = 9, color = "#64748b", margin = margin(b = 8)),
+          axis.title.x = element_text(size = 10, color = "#334155", margin = margin(t = 6)),
+          axis.title.y = element_text(size = 10, color = "#334155", margin = margin(r = 8)),
+          axis.text.y = element_text(size = 8.5, color = "#1e293b"),
+          legend.position = "bottom",
+          panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_line(color = "#f1f5f9"),
+          panel.grid.major.x = element_line(color = "#e2e8f0")
+        )
+      print(p_dep)
+    }
+  } else {
+    cat("<p style='color:#64748b;'>事後対数乖離データは含まれていません。</p>")
+  }
+  ```
+</div>
+
+<!-- Section 10: 事前感度分析 (Prior Sensitivity Analysis) -->
+<div class="section-card">
+  <h2><span>10.</span> 事前感度分析 (Prior Sensitivity Analysis)</h2>
+  <div style="background:#f8fafc; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:4px; margin-bottom:14px;">
+<strong>統計的・科学的問い:</strong> 主解析の無情報事前分布（Jeffreys事前 $\alpha=0.5$）から感度解析の一様事前分布（$\alpha=1.0$）へ事前パラメータを変更した際、事後推論結果はどの程度影響を受けるか（頑健性）？
+  </div>
+  <p style="font-size:0.9rem; color:#475569; margin-bottom:16px;">
+※ <strong>解釈上の注意:</strong> 事後中央値シフト量（<code>median_shift</code>）および信用区間幅差（<code>eti_width_difference</code>）は、事前分布の選定に対する事後分布の頑健性を確認するための診断指標です。<strong>$\alpha=1.0$ と $\alpha=0.5$ の差が存在することをもってモデル誤りや解析の欠陥と自動判定しないでください</strong>。標本サイズが小さいセルほど事前分布の感度が高くなる傾向があります。
+  </p>
+  ```{r prior-sensitivity-prep}
+  sens <- post$sensitivity_analysis
+  s_cells <- if (!is.null(sens) && !is.null(sens$cell_comparisons)) {
+    if (is.data.frame(sens$cell_comparisons)) {
+      sens$cell_comparisons
+    } else if (is.list(sens$cell_comparisons)) {
+      do.call(rbind, lapply(sens$cell_comparisons, as.data.frame))
+    } else {
+      NULL
+    }
+  } else {
+    NULL
+  }
+  ```
+<div class="metric-grid" style="margin-bottom:16px;">
+<div class="metric-item">
+<div class="metric-title">主解析事前分布 (Primary)</div>
+<div class="metric-value" style="font-size:1.2rem;">Jeffreys (α = `r if (!is.null(sens$primary_alpha)) sens$primary_alpha else "0.5"`)</div>
+<div class="metric-sub">主解析 Dirichlet パラメータ</div>
+</div>
+<div class="metric-item">
+<div class="metric-title">感度解析事前分布 (Sensitivity)</div>
+<div class="metric-value" style="font-size:1.2rem;">Uniform (α = `r if (!is.null(sens$sensitivity_alpha)) sens$sensitivity_alpha else "1.0"`)</div>
+<div class="metric-sub">比較用一様 Dirichlet パラメータ</div>
+</div>
+<div class="metric-item">
+<div class="metric-title">最大中央値シフト量</div>
+<div class="metric-value" style="font-size:1.2rem;">`r if (!is.null(sens$max_median_shift)) sprintf("%.4f", sens$max_median_shift) else "未計算"`</div>
+<div class="metric-sub">max(|median_primary - median_sens|)</div>
+</div>
+<div class="metric-item">
+<div class="metric-title">最大ETI幅差</div>
+<div class="metric-value" style="font-size:1.2rem;">`r if (!is.null(sens$max_eti_width_diff)) sprintf("%.4f", sens$max_eti_width_diff) else "未計算"`</div>
+<div class="metric-sub">max(|ETI_sens - ETI_primary|)</div>
+</div>
+</div>
+  ```{r prior-sensitivity-cell-plot, fig.width=10, fig.height=5.8, results='asis'}
+  if (!is.null(s_cells) && nrow(s_cells) > 0 && "median_shift" %in% names(s_cells)) {
+    s_sel <- select_top_n_cells(s_cells, metric_col = "median_shift", decreasing = TRUE, n = 25)
+    if (s_sel$mode == "table_only") {
+      cat("<p style='color:#64748b; font-style:italic;'>中規模表（31〜100セル）のため過密プロットを抑制しました。<a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>全件表（Section 5 セルエクスプローラー）</a>をご参照ください。</p>")
+    } else {
+      if (s_sel$mode == "top_n") {
+        cat(sprintf("<p style='font-size:0.85rem; color:#475569; margin-bottom:8px;'><strong>大規模表縮約表示:</strong> 上位 25 セル / 全 %d セル（非表示: %d セル）。全セルの完全な数値は <a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>Section 5 セルエクスプローラー</a> を参照してください。</p>\n", s_sel$k, s_sel$n_hidden))
+      }
+      s_df <- s_sel$data
+      s_df$cell_label <- paste(s_df$row_level, "×", s_df$col_level)
+      if (s_sel$mode == "top_n") {
+        s_df$cell_label <- factor(s_df$cell_label, levels = rev(s_df$cell_label))
+        p_title <- sprintf("事前感度: 事後中央値シフト量 (上位 25 セル / 全 %d セル | 非表示: %d セル)", s_sel$k, s_sel$n_hidden)
+      } else {
+        s_df <- s_df[order(s_df$median_shift, decreasing = TRUE), ]
+        s_df$cell_label <- factor(s_df$cell_label, levels = rev(s_df$cell_label))
+        p_title <- "事前感度: 各セルの事後中央値シフト量 (全セル表示)"
+      }
+
+      p_sens <- ggplot(s_df, aes(y = cell_label, x = median_shift)) +
+        geom_col(fill = "#d97706", width = 0.6) +
+        geom_text(aes(label = sprintf("%.4f", median_shift)), hjust = -0.1, size = 3.2, color = "#475569", family = ggplot_jp_font) +
+        scale_x_continuous(expand = expansion(mult = c(0, 0.2))) +
+        labs(
+          title = p_title,
+          subtitle = "指標: median_shift = |median(α=0.5) - median(α=1.0)|",
+          x = "事後中央値シフト量 (median_shift)",
+          y = "セル (行 × 列)"
+        ) +
+        theme_minimal(base_family = ggplot_jp_font) +
+        theme(
+          plot.title = element_text(size = 11.5, face = "bold", color = "#1e293b", margin = margin(b = 4)),
+          plot.subtitle = element_text(size = 9, color = "#64748b", margin = margin(b = 8)),
+          axis.title.x = element_text(size = 10, color = "#334155", margin = margin(t = 6)),
+          axis.title.y = element_text(size = 10, color = "#334155", margin = margin(r = 8)),
+          axis.text.y = element_text(size = 8.5, color = "#1e293b"),
+          panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_line(color = "#f1f5f9"),
+          panel.grid.major.x = element_line(color = "#e2e8f0")
+        )
+      print(p_sens)
+    }
+  } else {
+    cat("<p style='color:#64748b;'>事前感度分析データは含まれていません。</p>")
+  }
+  ```
+</div>
+
+<!-- Section 11: 品質・プロビナンス情報 -->
+<div class="section-card">
+  <h2><span>11.</span> 品質・プロビナンス情報 (Quality & Provenance)</h2>
+  <div style="background:#f8fafc; border-left:4px solid #64748b; padding:10px 14px; border-radius:4px; margin-bottom:16px;">
+<strong>統計的・科学的問い:</strong> 本解析の実行パラメータ、Pass 0承認入力との整合性、および再現性監査情報は保証されているか？
+  </div>
+<div class="metric-grid">
+<div class="metric-item">
+<div class="metric-title">実行モード (Execution Mode)</div>
+<div class="metric-value" style="font-size:1.2rem;"><code>`r if (!is.null(prov$execution_mode)) prov$execution_mode else "未指定"`</code></div>
+<div class="metric-sub">モード境界: Canonical Core 封緘</div>
+</div>
+<div class="metric-item">
+<div class="metric-title">Pass 0 三者SHA検証状態</div>
+<div class="metric-value" style="font-size:1.2rem; color: `r if (grepl("検証済み", provenance_status_label)) "#059669" else "#d97706"`;">`r provenance_status_label`</div>
+<div class="metric-sub">入力データ・設定・検査SHAの三者照合</div>
+</div>
+<div class="metric-item">
+<div class="metric-title">決定論的乱数シード</div>
+<div class="metric-value" style="font-size:1.2rem;"><code>`r if (!is.null(prov$deterministic_seed)) prov$deterministic_seed else "未記録"`</code></div>
+<div class="metric-sub">署名ハッシュ導出・完全再現可能</div>
+</div>
+<div class="metric-item">
+<div class="metric-title">Monte Carlo ドロー数</div>
+<div class="metric-value" style="font-size:1.2rem;">`r format(mc_draws, big.mark = ",")`</div>
+<div class="metric-sub">Dirichlet事後推論サンプリング数</div>
+</div>
+</div>
+
+  <table style="width:100%; border-collapse:collapse; margin-top:12px; font-size:0.9rem;">
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:6px 8px; font-weight:bold; width:180px; color:#475569;">解析署名 (Signature):</td>
+      <td style="padding:6px 8px; font-family:monospace; word-break:break-all;">`r if (!is.null(prov$analysis_signature)) prov$analysis_signature else "未記録"`</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:6px 8px; font-weight:bold; color:#475569;">入力データ SHA-256:</td>
+      <td style="padding:6px 8px; font-family:monospace; word-break:break-all;">`r if (!is.null(prov$input_sha256)) prov$input_sha256 else "未記録"`</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:6px 8px; font-weight:bold; color:#475569;">正規化設定 SHA-256:</td>
+      <td style="padding:6px 8px; font-family:monospace; word-break:break-all;">`r if (!is.null(prov$config_sha256)) prov$config_sha256 else "未記録"`</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:6px 8px; font-weight:bold; color:#475569;">隔離セル数 / 候補数:</td>
+      <td style="padding:6px 8px;">隔離セル: <strong>`r qual$n_quarantined_cells`</strong> 個 | Dual-Filter注目候補: <strong>`r qual$n_candidates`</strong> 個</td>
+    </tr>
+  </table>
+
+  <h4 style="margin-top:16px; margin-bottom:6px; color:#475569;">品質警告事項</h4>
+  `r if (length(qual$warnings) > 0) paste("<ul>", paste(sprintf("<li>%s</li>", qual$warnings), collapse = ""), "</ul>") else "<p style='color:#64748b;'>警告事項はありません。</p>"`
+
+  <p style="font-size:0.8rem; color:#64748b; margin-top:16px; margin-bottom:0;">
+    実行プラットフォーム: `r prov$platform` | Rバージョン: `r prov$r_version` | タイムスタンプ(JST): `r prov$timestamp_jst`
   </p>
 </div>
 

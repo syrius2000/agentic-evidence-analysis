@@ -33,7 +33,29 @@
 
 ### 大規模表は決定論的Top-Nと全件アクセスを併用する
 
-セル数に応じて、全セル図、スクロール・フィルタ可能表、Top-N図を切り替える。Top-Nの順序、同順位、閾値、非表示件数を明記し、常に全件表またはCSVへの導線を残す。
+表示規模は、ゼロ度数・隔離セルを含むJSONの全セル数 `K` で区分する。既存Dashboardの30セル境界と上位25セルを踏まえ、次の表示方針に固定する。100セル境界は本Changeの表示設計値であり、性能保証や統計的な標本サイズ・重要性の閾値ではない。
+
+| 表示規模 | セル数 | セル別表示 |
+| --- | --- | --- |
+| 小規模 | `K <= 30` | 全セル図と全件表 |
+| 中規模 | `31 <= K <= 100` | スクロール・フィルタ可能な全件表を主表示とし、過密な全セル図を置き換える |
+| 大規模 | `K >= 101` | 視座別のTop-25図とスクロール・フィルタ可能な全件表 |
+
+Top-Nは `N = 25` とし、次の既存JSON値だけで選定する。全体効果量などセル単位でない表示には適用しない。
+
+| 視座 | 選定順序 |
+| --- | --- |
+| Effect × Evidence | `abs(cells.log_oe)` の降順。証拠強度は別軸のまま表示する |
+| Adjusted Residual Structure | `abs(cells.adj_res)` の降順 |
+| Joint Posterior | `posterior.cell_posteriors.prob_mean` の降順（既存方針を維持） |
+| Conditional Posterior | `cond_row_prob_median`、`cond_col_prob_median` の降順で、方向ごとに別選定 |
+| Uncertainty Ranking | `posterior.uncertainty_ranking.rank` の昇順をそのまま使用し、順位を再計算しない |
+| Posterior Departure from Independence | `abs(log_divergence_median)` の降順 |
+| Prior Sensitivity | `posterior.sensitivity_analysis.cell_comparisons` の `median_shift` の降順 |
+
+既存rank以外の同順位は `row_level`、`col_level` の順にUTF-8バイト順で昇順とし、境界の同順位を追加せず25セルに固定する。選定指標が欠落・非有限のセルは有限値の後ろに同じセルキー順で置き、値を補完せず算出不能等の状態を示す。隔離セルは選定対象から一律除外せず、隔離状態を区別する。表示用の絶対値・並べ替え以外に統計量を再計算しない。
+
+各縮約図には選定指標・順序、表示セル数、非表示セル数 `K - N` を明記する。順位は当該指標による表示順であり、重要性・有意性の判定ではない。Cell Explorerは常に全件を保持し、各視座から全件表へ移動できるようにする。条件付き確率のTop-Nは条件付き分布全体ではないことも明示する。
 
 Top-Nのみを表示する案は、選ばれなかったセルの監査可能性を失うため採用しない。
 
@@ -45,6 +67,8 @@ Top-Nのみを表示する案は、選ばれなかったセルの監査可能性
 
 Dashboardの実装開始前に、Change 1（`vcd-categorical-provenance-boundary-hardening`）の実行モード・署名契約、およびChange 2（`vcd-categorical-conditional-posterior-contract`）の条件付き事後要約Schema・serializer・fixtureが完了していることを確認する。
 Section 11（Quality & Provenance）は、これらの先行成果物から `execution_mode: "canonical"`、三者SHA再検証状態、決定論的乱数シード、解析署名を描画する。Dashboard側で統計量の独自計算や再推論は一切行わず、JSON契約の純粋な可視化に専念する。
+
+実行モード・シード・解析署名は `categorical_results.json` の既存 `provenance` ブロックから取得する。三者SHA再検証状態は、そのJSONと同じrunディレクトリの `run_state.json` にある `provenance_status` から取得し、`"verified"` を「検証済み」と表示する。`categorical_results.json` に検証状態のフィールドを追加せず、JSON Schemaやserializerの拡張は行わない。`run_state.json` または当該フィールドが欠落する場合は「未確認」と表示し、実行モードや署名の存在だけから「検証済み」と推測しない。Dashboard自身によるSHA再検証は行わない。
 
 
 ## Risks / Trade-offs
