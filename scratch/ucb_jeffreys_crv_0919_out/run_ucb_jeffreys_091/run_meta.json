@@ -1,0 +1,79 @@
+{
+  "interface_version": "2.0",
+  "path_schema_version": "1.0",
+  "skill": "vcd-bayesian-evidence-analysis",
+  "run_id": "ucb_jeffreys_0919",
+  "run_id_short": "ucb_jeffreys_091",
+  "requested_run_id": "ucb_jeffreys_0919",
+  "run_state": "sealed",
+  "supersedes_run": null,
+  "supersedes_run_path_kind": null,
+  "superseded_results_manifest_sha256": null,
+  "supersede_reason": null,
+  "inputs_changed": null,
+  "config_changed": null,
+  "out_root": "scratch/ucb_jeffreys_crv_0919_out",
+  "out_root_path_kind": "repo_relative",
+  "run_output_dir": ".",
+  "run_output_dir_path_kind": "run_relative",
+  "results_manifest": "results_manifest.json",
+  "results_manifest_sha256": "ccc3e9592b5b59a2aa1c749ac30e947b035a10821e70c49a281c1fcacc2db6dc",
+  "inputs": [
+    {
+      "role": "data",
+      "source_kind": "file",
+      "source_path": "examples/ucb_admissions.csv",
+      "snapshot": null,
+      "snapshot_policy": "hash_only",
+      "sha256": "3c869703114951dfac2b3bb72b41ea4efaface26a5fc84e64b3358efe409cf54",
+      "source_path_kind": "repo_relative"
+    }
+  ],
+  "config_origin": "pass0_file",
+  "config_source_path": "scratch/ucb_jeffreys_crv_0919_config.json",
+  "config_source_path_kind": "repo_relative",
+  "config_snapshot": "analysis_config.json",
+  "config_sha256": "8860a1a2e2f9250b2aa64c3a44715b112052012e5e1b592fdbb1bb2a31759155",
+  "question_config_sha256": null,
+  "artifacts": {
+    "narrative": {
+      "path": "executive_summary.md",
+      "sha256": "a54a600725cb1c80cc7183dda79f94a040c3eff805f861e79a4adb0f58500afb",
+      "based_on_results_manifest_sha256": "ccc3e9592b5b59a2aa1c749ac30e947b035a10821e70c49a281c1fcacc2db6dc"
+    },
+    "dashboard": {
+      "path": "dashboard.html",
+      "sha256": "ea790aa335da11fe3d368d39c884dfec78089ca2705ca7a7b6696d715b0f4df1",
+      "based_on_results_manifest_sha256": "ccc3e9592b5b59a2aa1c749ac30e947b035a10821e70c49a281c1fcacc2db6dc",
+      "based_on_narrative_sha256": "a54a600725cb1c80cc7183dda79f94a040c3eff805f861e79a4adb0f58500afb"
+    }
+  },
+  "partial_failures": null,
+  "pass_status": {
+    "pass0": "completed",
+    "pass1": "completed",
+    "pass2": "completed",
+    "pass3": "completed"
+  },
+  "timestamps": {
+    "created": "2026-09-19T01:01:01+0900",
+    "pass1_completed": "2026-09-19T01:01:01+0900",
+    "pass2_completed": "2026-09-19T01:28:25+0900",
+    "pass3_completed": "2026-09-19T01:29:06+0900",
+    "sealed": "2026-09-19T01:29:06+0900"
+  },
+  "dirichlet_prior": {
+    "family": "symmetric_dirichlet",
+    "primary_alpha": 0.5,
+    "primary_role": "primary",
+    "primary_name": "jeffreys",
+    "sensitivity_alpha": 1,
+    "sensitivity_role": "sensitivity",
+    "sensitivity_name": "uniform",
+    "support": {
+      "definition": "observed_table_rows",
+      "K": 24,
+      "structural_zeros_excluded": true
+    }
+  }
+}

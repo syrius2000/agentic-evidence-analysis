@@ -1,0 +1,25 @@
+{
+  "input": "examples/ucb_admissions.csv",
+  "vars": ["Dept", "Gender", "Admit"],
+  "freq": "Freq",
+  "response_var": "Admit",
+  "base_models": ["M1", "M5"],
+  "conditional_rate_view": {
+    "response_var": "Admit",
+    "numerator_levels": ["Admitted"],
+    "denominator_levels": ["Admitted", "Rejected"],
+    "compare_by": "Gender",
+    "stratify_by": "Dept",
+    "interval_level": 0.95,
+    "reference_level": "Female"
+  },
+  "dirichlet_prior": {
+    "primary_alpha": 0.5,
+    "sensitivity_alpha": 1.0
+  },
+  "output_dir": "scratch/ucb_jeffreys_crv_0919_out",
+  "run_id": "ucb_jeffreys_0919",
+  "dataset_name": "UCBAdmissions",
+  "large_n_threshold": 2000,
+  "top_k": 10
+}

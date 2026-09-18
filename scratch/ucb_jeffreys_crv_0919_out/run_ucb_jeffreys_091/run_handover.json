@@ -1,0 +1,48 @@
+{
+  "interface_version": "1.0",
+  "path_schema_version": "1.0",
+  "run_output_dir": "scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091",
+  "run_output_dir_path_kind": "repo_relative",
+  "cwd": ".",
+  "cwd_kind": "repo_root_marker",
+  "repo_root_marker": ".",
+  "run_meta": "run_meta.json",
+  "results_manifest": "results_manifest.json",
+  "results_manifest_sha256": "ccc3e9592b5b59a2aa1c749ac30e947b035a10821e70c49a281c1fcacc2db6dc",
+  "config": "analysis_config.json",
+  "next_actions": {
+    "pass2_ai": {
+      "kind": "agent_action",
+      "action": "narrative_generation",
+      "input_manifest": "results_manifest.json",
+      "expected_results_manifest_sha256": "ccc3e9592b5b59a2aa1c749ac30e947b035a10821e70c49a281c1fcacc2db6dc",
+      "output": "executive_summary.md",
+      "staging_output": "staging/executive_summary.md",
+      "instructions": "Pass 2 AI expert narrative generation. Write to staging_output first, then execute the finalize command.",
+      "finalize": {
+        "kind": "command",
+        "argv": ["Rscript", ".agents/shared/finalize_run_stage.R", "--stage", "pass2", "--run-dir", "scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091", "--source-artifact", "staging/executive_summary.md", "--target-name", "executive_summary.md", "--expected-results-manifest-sha256", "ccc3e9592b5b59a2aa1c749ac30e947b035a10821e70c49a281c1fcacc2db6dc"]
+      }
+    },
+    "pass2_stub_preview": {
+      "kind": "command",
+      "argv": ["Rscript", ".agents/skills/vcd-bayesian-evidence-analysis/templates/pass2_stub.R", "--run-dir", "scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091"],
+      "output": "executive_summary_preview.md",
+      "production_eligible": false
+    },
+    "pass3_preview": {
+      "kind": "command",
+      "argv": ["Rscript", ".agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R", "--run-dir", "scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091", "--preview"],
+      "output": "dashboard_preview.html",
+      "production_eligible": false
+    },
+    "pass3": {
+      "kind": "command",
+      "argv": ["Rscript", ".agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R", "--run-dir", "scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091"],
+      "output": "dashboard.html",
+      "requires": [
+        "pass2_ai"
+      ]
+    }
+  }
+}

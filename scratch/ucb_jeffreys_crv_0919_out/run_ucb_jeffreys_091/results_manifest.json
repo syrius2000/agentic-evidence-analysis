@@ -1,0 +1,11 @@
+{
+  "interface_version": "1.0",
+  "skill": "vcd-bayesian-evidence-analysis",
+  "artifacts": [
+    {
+      "path": "evidence_results.json",
+      "role": "primary_results",
+      "sha256": "19289826998d061ee62e943d8e1fe662e6801cc0b67be0d28300674f1cd4736a"
+    }
+  ]
+}

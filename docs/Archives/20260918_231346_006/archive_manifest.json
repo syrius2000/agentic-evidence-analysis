@@ -1,0 +1,43 @@
+{
+  "archive_batch_id": "20260918_231346_006",
+  "created_at": "2026-09-18 23:15:55 +0900",
+  "operation": "通常アーカイブ",
+  "source_count": 5,
+  "items": [
+    {
+      "source": "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.2.md",
+      "destination": "docs/Archives/20260918_231346_006/sources/Implementation-plan-vcd-categorical-analysis-v4.2.md",
+      "operation": "move",
+      "sha256": "bd28aa26f8845c33215ae682c11a5524318bfef07ed352a43533055eb20f6b18",
+      "status": "archived"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_003_0918.md",
+      "destination": "docs/Archives/20260918_231346_006/sources/implementation_plan_003_0918.md",
+      "operation": "move",
+      "sha256": "d7dda4d9c432184a9b7357cbffa2e897c21a0f45aa804390321350332d651e25",
+      "status": "archived"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_004_0918.md",
+      "destination": "docs/Archives/20260918_231346_006/sources/implementation_plan_004_0918.md",
+      "operation": "move",
+      "sha256": "da9ab5d6bf30f57fd97df045f9110b21a6fab8dfc8fe94d24eba8d4478d269a4",
+      "status": "archived"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_005_0918.md",
+      "destination": "docs/Archives/20260918_231346_006/sources/implementation_plan_005_0918.md",
+      "operation": "move_with_relative_link_repair",
+      "sha256": "303864d30e335d28b873b5366bec86a281347cb7bf30ca0fa1814bb0e47438a0",
+      "status": "archived"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_006_0918.md",
+      "destination": "docs/Archives/20260918_231346_006/sources/implementation_plan_006_0918.md",
+      "operation": "move",
+      "sha256": "5c7d6d2ae4564ae60717bf6ae8006791950b7ca6c47b2337cb6892dfd6c78d88",
+      "status": "archived_with_incomplete_browser_acceptance_record"
+    }
+  ]
+}
