@@ -86,7 +86,7 @@
 
 ### 1. テンプレート
 
-- [MODIFY] [`.agents/skills/vcd-categorical-analysis/templates/dashboard.Rmd`](.agents/skills/vcd-categorical-analysis/templates/dashboard.Rmd)
+- [MODIFY] [`.agents/skills/vcd-categorical-analysis/templates/dashboard.Rmd`](../../../../.agents/skills/vcd-categorical-analysis/templates/dashboard.Rmd)
   - 11 セクションの HTML / R チャンク実装
   - 表サイズ別フォールバック（小・中・大）および Top-25 決定論的ロジック
   - 日本語問い・解釈限界の説明ブロック
@@ -94,7 +94,7 @@
 
 ### 2. テストスイート
 
-- [MODIFY] [`tests/test_vcd_categorical_dashboard_v4.R`](tests/test_vcd_categorical_dashboard_v4.R)
+- [MODIFY] [`tests/test_vcd_categorical_dashboard_v4.R`](../../../../tests/test_vcd_categorical_dashboard_v4.R)
   - Test 1: 小規模表（2x2）での 11 セクション正常レンダリング
   - Test 2: 中規模表（31〜100 セル）でのフォールバック動作
   - Test 3: 大規模表（101 セル以上）での Top-25 選定・同順位固定・非表示セル数表示
@@ -105,7 +105,7 @@
 
 ### 3. OpenSpec タスク追跡
 
-- [MODIFY] [`openspec/changes/vcd-categorical-scientific-dashboard/tasks.md`](openspec/changes/vcd-categorical-scientific-dashboard/tasks.md)
+- [MODIFY] [`openspec/changes/vcd-categorical-scientific-dashboard/tasks.md`](../../../../openspec/changes/archive/2026-09-18-vcd-categorical-scientific-dashboard/tasks.md)
   - タスク進捗（1.1 〜 4.3）の更新
 
 ---
