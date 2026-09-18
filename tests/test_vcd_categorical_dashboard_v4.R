@@ -248,16 +248,21 @@ g6 <- grepl("学術リファレンス・参考文献", html_verified_content, fi
 g7 <- grepl("Haberman, S. J. (1973)", html_verified_content, fixed = TRUE)
 g8 <- grepl("Bergsma, W. (2013)", html_verified_content, fixed = TRUE)
 
+# Section 12 内のコードブロックエスケープ（pre/code）崩れ防止検証
+sec12_pos <- regexpr("id=\"section-glossary\"", html_verified_content)
+sec12_html <- if (sec12_pos > 0) substr(html_verified_content, sec12_pos, nchar(html_verified_content)) else ""
+no_pre_code <- !grepl("<pre>", sec12_html, fixed = TRUE) && !grepl("<code>", sec12_html, fixed = TRUE)
+
 # テーマCSS（Nature/NEJM学術標準ネイビー・オフホワイト）の検証
 theme_c1 <- grepl("#1f4d7a", html_verified_content, fixed = TRUE)
 theme_c2 <- grepl("#f6f8fb", html_verified_content, fixed = TRUE)
 
-if (g1 && g2 && g3 && g4 && g5 && g6 && g7 && g8 && theme_c1 && theme_c2) {
-  cat("[PASS] Section 12 Glossary & References rendered with 4 accordions, academic citations, and Nature/NEJM theme tokens.\n")
+if (g1 && g2 && g3 && g4 && g5 && g6 && g7 && g8 && theme_c1 && theme_c2 && no_pre_code) {
+  cat("[PASS] Section 12 Glossary & References rendered with 4 accordions, academic citations, Nature/NEJM theme tokens, and clean HTML (no pre/code escaping).\n")
   test_pass <- test_pass + 1L
 } else {
-  cat(sprintf("[FAIL] Section 12 Glossary check failed (g1:%s, g2:%s, g3:%s, g4:%s, g5:%s, g6:%s, g7:%s, g8:%s, t1:%s, t2:%s)\n",
-              g1, g2, g3, g4, g5, g6, g7, g8, theme_c1, theme_c2))
+  cat(sprintf("[FAIL] Section 12 Glossary check failed (g1:%s, g2:%s, g3:%s, g4:%s, g5:%s, g6:%s, g7:%s, g8:%s, t1:%s, t2:%s, no_pre_code:%s)\n",
+              g1, g2, g3, g4, g5, g6, g7, g8, theme_c1, theme_c2, no_pre_code))
   test_fail <- test_fail + 1L
 }
 

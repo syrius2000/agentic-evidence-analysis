@@ -262,61 +262,68 @@ if (file.exists(css_file)) {
 ```
 
 ```{css, echo=FALSE}
-/* --- デスクトップ特化レイアウト & Antigravity 視覚言語 --- */
+/* --- NEJM / Nature Medical 学術標準スタイル --- */
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Yu Gothic", "Meiryo", sans-serif;
   font-size: 14px;
-  color: #1e293b;
+  color: #152238;
   max-width: 1440px;
   margin: 0 auto;
   padding: 24px 32px;
-  background-color: #f8fafc;
+  background-color: #f6f8fb;
   line-height: 1.6;
 }
 
 .dashboard-main-content {
   max-width: 1200px;
   margin: 0 auto;
+  background: #ffffff;
+  padding: 32px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
 }
 
-/* ヘッダーバナー */
+/* ヘッダーバナー (NEJM / 学術ネイビー調) */
 .header-banner {
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%);
-  color: white;
-  padding: 26px 36px;
-  border-radius: 12px;
+  background: #1f4d7a;
+  color: #ffffff;
+  padding: 22px 28px;
+  border-radius: 4px;
   margin-bottom: 24px;
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.2);
+  box-shadow: none;
 }
 
 .header-banner h2 {
-  margin: 0 0 10px 0;
-  font-size: 24px;
+  margin: 0 0 8px 0;
+  font-size: 21px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  color: #ffffff;
+  letter-spacing: -0.3px;
 }
 
 .header-banner .meta {
-  font-size: 13.5px;
-  opacity: 0.92;
-  line-height: 1.7;
+  font-size: 13px;
+  opacity: 0.95;
+  line-height: 1.6;
+  color: #f1f5f9;
 }
 
-/* 因子記号・凡例ボックス */
+/* 因子記号・凡例ボックス (NEJM / 学術調) */
 .factor-legend-box {
-  background: #ffffff;
+  background: #f6f8fb;
   border: 1px solid #e2e8f0;
-  border-left: 6px solid #2563eb;
-  border-radius: 8px;
-  padding: 16px 22px;
+  border-left: 4px solid #1f4d7a;
+  border-radius: 4px;
+  padding: 16px 20px;
   margin-bottom: 24px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  box-shadow: none;
 }
 .factor-legend-box h4 {
   margin: 0 0 10px 0;
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 700;
-  color: #0f172a;
+  color: #152238;
 }
 .factor-legend-list {
   display: flex;
@@ -333,21 +340,21 @@ body {
 }
 .factor-symbol-badge {
   display: inline-block;
-  background: #1e3a8a;
-  color: white;
+  background: #1f4d7a;
+  color: #ffffff;
   font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 6px;
+  padding: 2px 9px;
+  border-radius: 3px;
   margin-right: 8px;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 .factor-role-badge {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #e2e8f0;
+  color: #1f4d7a;
   font-size: 11px;
   font-weight: 600;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 3px;
   margin-left: 6px;
 }
 .factor-note {
@@ -357,18 +364,19 @@ body {
   line-height: 1.5;
 }
 
-/* 最良モデル表示：案A（横長コンパクト帯） */
+/* 最良モデル表示：案A（横長コンパクト帯・NEJM調） */
 .best-model-band {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 8px;
-  padding: 16px 22px;
+  background: #f6f8fb;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 16px 20px;
   margin-bottom: 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+  box-shadow: none;
 }
 .best-model-band .badge-col {
   display: flex;
@@ -376,60 +384,60 @@ body {
   gap: 12px;
 }
 .best-model-badge-large {
-  background: #1d4ed8;
-  color: white;
-  font-size: 18px;
+  background: #1f4d7a;
+  color: #ffffff;
+  font-size: 17px;
   font-weight: 800;
-  padding: 6px 14px;
-  border-radius: 6px;
+  padding: 6px 13px;
+  border-radius: 4px;
   letter-spacing: 0.5px;
 }
 .best-model-band .desc-text {
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 600;
-  color: #1e3a8a;
+  color: #152238;
 }
 .best-model-band .sub-text {
-  font-size: 12.5px;
-  color: #475569;
+  font-size: 12px;
+  color: #64748b;
 }
 .best-model-band .metrics-col {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
   font-size: 13px;
   color: #334155;
   background: #ffffff;
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: 1px solid #dbeafe;
+  padding: 8px 14px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
 }
 .best-model-band .metrics-col strong {
-  color: #0f172a;
-  font-size: 14px;
+  color: #152238;
+  font-size: 13.5px;
 }
 
-/* 最良モデル表示：案B（抑制した独立カード） */
+/* 最良モデル表示：案B（抑制した独立カード・NEJM調） */
 .best-model-card {
   background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 20px 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 20px 22px;
   margin-bottom: 24px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 .best-model-card .card-header-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 12px;
-  margin-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
 }
 .best-model-card .card-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  color: #0f172a;
+  color: #152238;
 }
 .best-model-card .card-body-grid {
   display: grid;
@@ -437,88 +445,88 @@ body {
   gap: 20px;
 }
 .best-model-card .model-title-large {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  color: #1d4ed8;
+  color: #1f4d7a;
   margin-bottom: 6px;
 }
 .best-model-card .metrics-box {
-  background: #f8fafc;
+  background: #f6f8fb;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 12px 16px;
-  font-size: 13px;
+  border-radius: 4px;
+  padding: 12px 14px;
+  font-size: 12.5px;
 }
 
-/* カード型統計グリッド */
+/* カード型統計グリッド (NEJM調) */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 14px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 .stat-card {
-  background: #ffffff;
+  background: #f6f8fb;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 16px 14px;
+  border-radius: 4px;
+  padding: 14px 12px;
   text-align: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  box-shadow: none;
 }
 .stat-card .value {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  color: #0f172a;
+  color: #152238;
 }
 .stat-card .label {
   font-size: 11.5px;
   color: #64748b;
-  margin-top: 5px;
+  margin-top: 4px;
   font-weight: 500;
 }
-.stat-card.regular-card .value { color: #16a34a; }
-.stat-card.quarantine-card .value { color: #ea580c; }
-.stat-card.candidate-card .value { color: #2563eb; }
+.stat-card.regular-card .value { color: #0f766e; }
+.stat-card.quarantine-card .value { color: #a16207; }
+.stat-card.candidate-card .value { color: #6d28d9; }
 
-/* セクション見出し */
+/* セクション見出し (NEJM調) */
 .section-title {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
-  color: #0f172a;
-  border-left: 5px solid #2563eb;
-  padding-left: 12px;
-  margin: 32px 0 16px 0;
-  letter-spacing: -0.3px;
+  color: #152238;
+  border-left: 4px solid #1f4d7a;
+  padding-left: 10px;
+  margin: 28px 0 14px 0;
+  letter-spacing: -0.2px;
 }
 
-/* AI サマリーボックス */
+/* AI サマリーボックス (NEJM調) */
 .ai-summary-box {
   background: #ffffff;
-  border: 1px solid #dbeafe;
-  border-radius: 10px;
-  padding: 24px 28px;
-  margin-bottom: 28px;
-  line-height: 1.75;
-  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.04);
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 22px 24px;
+  margin-bottom: 24px;
+  line-height: 1.7;
+  box-shadow: none;
 }
 .ai-summary-box h1, .ai-summary-box h2, .ai-summary-box h3, .ai-summary-box h4 {
-  color: #0f172a;
-  margin-top: 1.3em;
-  margin-bottom: 0.6em;
+  color: #152238;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
   font-weight: 700;
 }
-.ai-summary-box h1 { font-size: 1.3em; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
-.ai-summary-box h2 { font-size: 1.18em; border-bottom: 1px solid #edf2f7; padding-bottom: 4px; }
-.ai-summary-box h3 { font-size: 1.08em; }
+.ai-summary-box h1 { font-size: 1.25em; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; }
+.ai-summary-box h2 { font-size: 1.15em; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+.ai-summary-box h3 { font-size: 1.05em; }
 .ai-summary-box table {
   width: 100%;
-  margin: 16px 0;
+  margin: 14px 0;
   border-collapse: collapse;
   font-size: 13px;
 }
 .ai-summary-box th, .ai-summary-box td {
   border: 1px solid #cbd5e1;
-  padding: 8px 12px;
+  padding: 8px 10px;
   text-align: left;
 }
 .ai-summary-box th {
@@ -530,61 +538,64 @@ body {
 .topk-panel {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
-  padding: 18px 22px;
-  margin-bottom: 28px;
+  border-radius: 4px;
+  box-shadow: none;
+  padding: 18px 20px;
+  margin-bottom: 24px;
 }
 
-/* お知らせ・警告ボックス */
+/* お知らせ・警告ボックス (NEJM調) */
 .notice-box {
-  border-radius: 6px;
-  padding: 12px 18px;
+  border-radius: 4px;
+  padding: 12px 16px;
   font-size: 13px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
   line-height: 1.6;
 }
 .notice-warning {
   background: #fffbeb;
   border: 1px solid #fef3c7;
+  border-left: 4px solid #d97706;
   color: #92400e;
 }
 .notice-info {
-  background: #eff6ff;
-  border: 1px solid #dbeafe;
-  color: #1e40af;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #1f4d7a;
+  color: #152238;
 }
 
-/* タブ UI */
+/* タブ UI (NEJM調) */
 .tab-container {
   margin-top: 16px;
 }
 .tab-buttons {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   border-bottom: 2px solid #e2e8f0;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 .tab-btn {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-bottom: none;
-  padding: 10px 20px;
-  font-size: 14px;
+  padding: 9px 18px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #64748b;
   cursor: pointer;
-  border-radius: 6px 6px 0 0;
+  border-radius: 4px 4px 0 0;
   transition: all 0.15s ease;
 }
 .tab-btn:hover {
   background: #f1f5f9;
-  color: #0f172a;
+  color: #152238;
 }
 .tab-btn.active {
   background: #ffffff;
-  color: #2563eb;
+  color: #1f4d7a;
   border-color: #cbd5e1;
+  border-top: 2px solid #1f4d7a;
   border-bottom: 2px solid #ffffff;
   margin-bottom: -2px;
 }
@@ -598,36 +609,120 @@ body {
 /* アコーディオン・数式 */
 .model-detail-accordion {
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  margin-bottom: 12px;
+  border-radius: 4px;
+  margin-bottom: 10px;
   background: #ffffff;
   overflow: hidden;
 }
 .model-detail-accordion summary {
-  padding: 12px 16px;
+  padding: 11px 15px;
   font-weight: 600;
   background: #f8fafc;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  outline: none;
 }
 .model-detail-accordion summary:hover {
   background: #f1f5f9;
 }
 .model-detail-content {
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-top: 1px solid #e2e8f0;
-  font-size: 13.5px;
+  font-size: 13px;
   line-height: 1.6;
 }
 .formula-box {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 12px 16px;
-  margin: 12px 0;
+  border-radius: 4px;
+  padding: 12px 14px;
+  margin: 10px 0;
   overflow-x: auto;
+}
+
+/* 用語集・数理モデルアコーディオン (NEJM / Nature Medical 調 - px絶対指定による可読性保証) */
+.glossary-accordion {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+.glossary-accordion:hover {
+  border-color: #1f4d7a;
+}
+.glossary-accordion summary {
+  padding: 14px 18px;
+  font-weight: 700;
+  color: #152238;
+  cursor: pointer;
+  background: #f8fafc;
+  user-select: none;
+  font-size: 16px;
+  outline: none;
+}
+.glossary-accordion summary:hover {
+  background: #f1f5f9;
+}
+.glossary-accordion[open] summary {
+  border-bottom: 1px solid #e2e8f0;
+  background: #f1f5f9;
+  color: #1f4d7a;
+}
+.glossary-body {
+  padding: 20px 24px;
+  font-size: 14.5px;
+  color: #1e293b;
+  line-height: 1.75;
+}
+.glossary-item {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+.glossary-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.glossary-item-title {
+  font-weight: 700;
+  color: #1f4d7a;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+.glossary-def {
+  color: #1e293b;
+  font-size: 14.5px;
+  line-height: 1.7;
+  margin-bottom: 6px;
+}
+.glossary-meta {
+  display: block;
+  font-size: 13.5px;
+  color: #475569;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.glossary-caution {
+  display: block;
+  font-size: 13.5px;
+  color: #9b2945;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.glossary-body ol {
+  padding-left: 22px;
+  margin: 0;
+}
+.glossary-body li {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #1e293b;
+  line-height: 1.65;
 }
 
 .dataTables_wrapper { font-size: 13px; }
@@ -834,7 +929,7 @@ if (!is.null(cond_rate_view) && identical(cond_rate_view$status %||% "", "VALID"
     p <- ggplot(df_plot, aes(x = post_mean, y = strat_level, color = comp_level, group = comp_level)) +
       geom_point(position = position_dodge(width = 0.5), size = 3) +
       geom_errorbarh(aes(xmin = ci_lower, xmax = ci_upper), position = position_dodge(width = 0.5), height = 0.25, size = 0.8) +
-      scale_color_manual(values = c("#2563eb", "#ea580c", "#16a34a", "#9333ea")) +
+      scale_color_manual(values = c("#1f4d7a", "#9b2945", "#2e7d7a", "#d97706", "#5b21b6", "#475569")) +
       scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
       labs(
         title = sprintf("層別条件付き割合の事後推論 (Dirichlet %s%% ETI)", round(as.numeric(cfg$interval_level %||% 0.95) * 100)),
@@ -845,9 +940,9 @@ if (!is.null(cond_rate_view) && identical(cond_rate_view$status %||% "", "VALID"
       theme_minimal(base_family = font_family, base_size = 12) +
       theme(
         panel.grid.minor = element_blank(),
-        panel.border = element_rect(color = "#cbd5e1", fill = NA, size = 0.5),
+        panel.border = element_rect(color = "#e2e8f0", fill = NA, size = 0.5),
         legend.position = "top",
-        plot.title = element_text(face = "bold", size = 13, color = "#0f172a")
+        plot.title = element_text(face = "bold", size = 13, color = "#152238")
       )
     print(p)
   }
@@ -1220,9 +1315,14 @@ for (k in seq_along(base_model_keys)) {
     ) |>
       formatRound(round_cols_f, digits = 4) |>
       formatSignif(intersect(c("P値"), names(full_disp)), digits = 3) |>
-      formatStyle("効果比:log(O/E)", backgroundColor = styleInterval(0, c("#fee2e2", "#dbeafe")), fontWeight = "bold") |>
-      formatStyle("診断状態", backgroundColor = styleEqual(c("REGULAR", "QUARANTINED"), c("#dcfce7", "#ffedd5")),
-                  color = styleEqual(c("REGULAR", "QUARANTINED"), c("#15803d", "#c2410c")), fontWeight = "bold")
+      formatStyle("効果比:log(O/E)",
+                  backgroundColor = styleInterval(0, c("#fff7ed", "#f0fdf4")),
+                  color = styleInterval(0, c("#b45309", "#0f766e")),
+                  fontWeight = "bold") |>
+      formatStyle("診断状態",
+                  backgroundColor = styleEqual(c("REGULAR", "QUARANTINED"), c("#f0fdf4", "#fef3c7")),
+                  color = styleEqual(c("REGULAR", "QUARANTINED"), c("#0f766e", "#a16207")),
+                  fontWeight = "bold")
 
     cat(htmltools::renderTags(dt_full)$html)
     cat('</div></details>')
@@ -1248,70 +1348,172 @@ for (k in seq_along(base_model_keys)) {
 ```
 </div><!-- end tab-container -->
 
-```{r, results='asis'}
+```{r glossary-prep, results='asis'}
 k_in <- function(tex) render_katex(tex, display = FALSE)
 k_disp <- function(tex) render_katex(tex, display = TRUE)
+score_katex_display <- k_disp("T_i^{\\mathrm{score}} = \\frac{r_{P,i}^2}{1 - h_{ii}}")
+bic_katex_display <- k_disp("\\mathrm{BIC} = G^2 - \\mathrm{df} \\cdot \\ln(N) = -2 \\ln L + p \\ln(N)")
+dirichlet_katex_display <- k_disp("\\boldsymbol{\\pi} \\mid \\boldsymbol{y} \\sim \\mathrm{Dirichlet}(\\boldsymbol{y} + \\boldsymbol{\\alpha}), \\quad \\alpha_k = 0.5")
+```
 
-cat('<details>\n')
-cat('<summary class="section-title" style="cursor:pointer;">&#128218; 統計指標の解説：4軸セル診断フレームワーク（クリックで展開）</summary>\n')
-cat('<div class="ai-summary-box glossary-md" style="margin-top:12px;">\n\n')
+```{=html}
+<div class="section-card" id="section-glossary" style="margin-top: 32px;">
+  <div class="section-title">&#128218; 統計用語集・方法論解説・学術リファレンス (Glossary & Scientific References)</div>
+  <div style="background:#f8fafc; border-left:4px solid #1f4d7a; padding:14px 18px; border-radius:4px; margin-bottom:18px;">
+    <div style="font-weight:700; color:#152238; font-size:15px; margin-bottom:4px;">統計的・科学的問い:</div>
+    <div style="color:#1e293b; font-size:14px; line-height:1.65;">本ダッシュボードで使用されている3次元対数線形モデル、4軸セル診断、Raoスコア検定、およびベイズDirichlet推論の定義・解釈境界および学術的出典は何か？</div>
+    <div style="margin-top:10px; font-size:13.5px; color:#475569; border-top:1px dashed #e2e8f0; padding-top:8px; line-height:1.6;">
+      <strong>3大利用原則:</strong> ① P値単独判定の排除（全体検定の有意差のみで実務的重要性や個別セルを判定しない） / ② 局所効果（Effect）と統計的証拠（Evidence）の厳格分離（標本数比例の証拠強度と標本数不変の乖離倍率を混同しない） / ③ 不確実性の明示（点推定ではなく 95% ETI 信用区間幅で精度を評価）
+    </div>
+  </div>
+  <p style="font-size:14px; color:#475569; margin-bottom:18px;">
+    ※ 各項目をクリックして開閉できます。臨床・疫学およびリアルワールドデータ分析におけるエビデンス解釈の拠り所としてご活用ください。
+  </p>
 
-cat('<h3><span class="heading-num">1.</span> 4軸セル診断フレームワーク（4-Axis Framework）</h3>\n')
-cat(sprintf('<p>大標本データ（%s）において、従来の検定統計量やP値だけに頼ると、些細な度数差がすべて「極めて有意」と判定され、実務上の本質的シグナルが埋没する課題が生じます。<br>\n', k_in("N > 2{,}000")))
-cat('本ダッシュボードでは、セルごとの乖離を以下の <strong>4つの独立した軸</strong> で多面的に評価します。</p>\n\n')
+  <!-- Accordion 1: 4軸セル診断 -->
+  <details class="glossary-accordion" open>
+    <summary><span>1.</span> 局所セル診断と 4 軸フレームワーク (Four-Axis Local Cell Diagnostics)</summary>
+    <div class="glossary-body">
+      <div class="glossary-item">
+        <div class="glossary-item-title">【第1軸】Effect (局所対数効果比: log(O/E))</div>
+        <div class="glossary-def">基準対数線形モデルの期待度数 E に対する観測度数 O の局所的乗法乖離 &lambda; = ln(O/E)。総度数 N の増加によってインフレしない標本規模不変尺度です。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 局所セル診断表（効果比:log(O/E) 列、正の乖離: 緑背景、負の乖離: 橙背景）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 因果効果そのものを表すものではありません。観測度数 O = 0 のセルは対数変換が不能なため -Inf として隔離（QUARANTINED）されます。</span>
+      </div>
 
-cat('<ol style="padding-left:20px; line-height:1.7;">\n')
-cat(sprintf('<li><strong>Effect（効果量・乖離の大きさ: %s 不変）</strong>:\n', k_in("N")))
-cat('<ul>\n')
-cat(sprintf('<li><strong>対数効果比 %s</strong>: 観測度数 %s が期待度数 %s に対して何倍乖離しているかの対数尺度。標本規模 %s の増加によってインフレしないため、大標本下でのセル間比較・スクリーニングにおいて最も信頼できる尺度です。</li>\n',
-            k_in("\\log(O/E)"), k_in("O"), k_in("E"), k_in("N")))
-cat(sprintf('<li><strong>全体効果量（Cramér\'s %s）</strong>: 表全体の連関の強さを表す標準化指標（[0, 1]）。</li>\n', k_in("V")))
-cat('</ul>\n')
-cat('</li>\n')
+      <div class="glossary-item">
+        <div class="glossary-item-title">【第2軸】Evidence (Leverage補正Score統計量 T_score / 対数P値)</div>
+        <div class="glossary-def">ポアソンGLMにおけるハット行列対角成分（Leverage h_ii）でピアソン残差の局所分散を補正した Rao のスコア検定統計量：
+```
 
-cat(sprintf('<li><strong>Evidence（統計的証拠・有意性: %s 比例）</strong>:\n', k_in("N")))
-cat('<ul>\n')
-cat(sprintf('<li><strong>Leverage補正Score統計量 %s</strong>:\n', k_in("T_i^{\\mathrm{score}}")))
-cat(k_disp("T_i^{\\mathrm{score}} = \\frac{r_{P,i}^2}{1 - h_{ii}}"))
-cat(sprintf('ここで %s はピアソン残差、%s はポアソンGLMにおけるハット行列の対角成分（Leverage）です。これは「特定セル %s にのみ局所特異パラメータ %s を追加した代替モデル」に対する <strong>厳密なRaoのスコア検定統計量</strong> です。</li>\n',
-            k_in("r_{P,i} = (O_i - E_i) / \\sqrt{E_i}"), k_in("h_{ii}"), k_in("i"), k_in("\\delta_i")))
-cat(sprintf('<li><strong>P値 / 対数P値</strong>: %s 分布に基づく検定P値、およびその自然対数 %s。</li>\n',
-            k_in("\\chi^2(1)"), k_in("\\ln(P)")))
-cat('</ul>\n')
-cat('</li>\n')
+```{r, results='asis', echo=FALSE}
+cat(score_katex_display)
+```
 
-cat('<li><strong>Influence（影響度・てこ比）</strong>:\n')
-cat('<ul>\n')
-cat(sprintf('<li><strong>Leverage %s</strong>: そのセルが分割表全体のモデル適合にどれだけ強い影響力を持っているかを表す尺度（[0, 1]）。</li>\n', k_in("h_{ii}")))
-cat('</ul>\n')
-cat('</li>\n')
+```{=html}
+        特定セルにのみ局所特異母数 &delta;_i を追加したモデルに対する厳密な検定統計量であり、漸近的に自由度 1 のカイ二乗分布 &chi;&sup2;(1) に従います。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 局所セル診断表（Score統計量(T) 列、対数P値 列）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 標本サイズ N に比例して統計量が増大するため、大標本下では微小な差異でも極大化します。実務的・臨床的有意性を単独で証明するものではありません。</span>
+      </div>
 
-cat('<li><strong>Stability（数値安定性・信頼性）</strong>:\n')
-cat('<ul>\n')
-cat('<li><strong>診断状態（Stability Status）</strong>:\n')
-cat('<ul>\n')
-cat(sprintf('<li><code>REGULAR</code>: 観測度数 %s、期待度数 %s、かつ Leverage %s。大標本漸近正規性が成立する信頼性の高いセル。</li>\n',
-            k_in("O > 0"), k_in("E \\ge 5.0"), k_in("h < 0.80")))
-cat(sprintf('<li><code>QUARANTINED</code>: 観測ゼロ（%s）、小期待度数（%s）、または過大レバレッジ（%s）のいずれかに該当するセル。</li>\n',
-            k_in("O = 0"), k_in("E < 5.0"), k_in("h \\ge 0.80")))
-cat('</ul>\n')
-cat('</li>\n')
-cat('</ul>\n')
-cat('</li>\n')
-cat('</ol>\n\n')
+      <div class="glossary-item">
+        <div class="glossary-item-title">【第3軸】Influence (レバレッジ h_ii)</div>
+        <div class="glossary-def">ポアソン対数線形モデルのハット行列の対角成分 h_ii &isin; [0, 1]。当該セルが分割表全体のパラメータ推定に与える幾何学的影響度・てこ比を表します。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 局所セル診断表（Leverage(h) 列）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> レバレッジが高いセルは「モデル推定への影響力が大きい」ことを意味する幾何学的性質であり、データ異常や外れ値と同一視してはなりません。</span>
+      </div>
 
-cat('<hr style="border:none; border-top:1px solid #e2e8f0; margin:16px 0;">\n\n')
-cat('<h3><span class="heading-num">2.</span> 大標本 Dual-Filter 原則</h3>\n')
-cat(sprintf('<p>総度数 %s の大標本下では、以下の二段階判定（Dual-Filter）を厳格に適用します：</p>\n', k_in("N > 2{,}000")))
-cat('<ul style="padding-left:20px; line-height:1.7;">\n')
-cat(sprintf('<li><strong>第1フィルタ（Effect軸）</strong>: まず対数効果比 %s に基づき、実務的・臨床的に意味のある乖離が存在するかをスクリーニングする。</li>\n',
-            k_in("|\\log(O/E)| \\ge 0.50")))
-cat(sprintf('<li><strong>第2フィルタ（Evidence軸）</strong>: 十分な効果量を持つセルに対してのみ、Score統計量 %s（%s 相当）を確認し、標本抽出ノイズでないことを検証する。</li>\n',
-            k_in("T_i^{\\mathrm{score}} \\ge 3.84"), k_in("P < 0.05")))
-cat('</ul>\n\n')
+      <div class="glossary-item">
+        <div class="glossary-item-title">【第4軸】Stability (隔離条件 QUARANTINED)</div>
+        <div class="glossary-def">以下の3条件のいずれかに該当する数値的不安定セル：① 観測度数 O = 0、② 期待度数 E &lt; 5.0、③ 高レバレッジ h_ii &ge; 0.80。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 局所セル診断表（診断状態 列: 琥珀色 #A16207 バッジ）および統計カード（隔離セル件数）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 漸近正規近似の破綻を防ぐための安全弁（隔離）であり、第三の臨床群や即座に削除すべき不正データではありません。</span>
+      </div>
 
-cat('</div>\n')
-cat('</details>\n')
+      <div class="glossary-item">
+        <div class="glossary-item-title">大標本 Dual-Filter 原則</div>
+        <div class="glossary-def">総度数 N &gt; 2,000 の大標本下で些細な統計的有意差に惑わされないための二段階選定基準：第1フィルタ（Effect軸: |log(O/E)| &ge; 0.50）&times; 第2フィルタ（Evidence軸: Score統計量 T &ge; 3.84, P &lt; 0.05）かつ REGULAR。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 局所セル診断表の探索候補セル件数</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 機械的な合否判定ではなく、多重比較下で優先的に精査すべき局所シグナルを抽出するスクリーニング基準です。</span>
+      </div>
+    </div>
+  </details>
+
+  <!-- Accordion 2: 対数線形モデル -->
+  <details class="glossary-accordion">
+    <summary><span>2.</span> 3次元対数線形モデル群と明示式 BIC (Hierarchical Log-Linear Models & Explicit BIC)</summary>
+    <div class="glossary-body">
+      <div class="glossary-item">
+        <div class="glossary-item-title">階層的対数線形モデル群 (M1〜M9)</div>
+        <div class="glossary-def">3つの因子 A, B, C の度数データに対して定義される階層構造モデル：
+        <ul style="margin:6px 0; padding-left:20px;">
+          <li><code>M1: [A][B][C]</code> 完全相互独立モデル</li>
+          <li><code>M2: [AB][C]</code> / <code>M3: [AC][B]</code> / <code>M4: [BC][A]</code> 1対2の複合独立モデル</li>
+          <li><code>M5: [AB][AC]</code> / <code>M6: [AB][BC]</code> / <code>M7: [AC][BC]</code> 条件付き独立モデル（M5は A与件下で BとCが独立）</li>
+          <li><code>M8: [AB][BC][AC]</code> 全2因子交互作用モデル（3因子均一連関）</li>
+          <li><code>M9: [ABC]</code> 飽和モデル（3因子交互作用を含む完全適合）</li>
+        </ul>
+        </div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 対数線形モデル比較表（モデルと仮定、生成クラス）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 対数線形モデルは変数間の対称な連関構造をモデル化するものであり、単独で有向な因果関係を主張するものではありません。</span>
+      </div>
+
+      <div class="glossary-item">
+        <div class="glossary-item-title">総度数 N 基準の明示式 BIC</div>
+        <div class="glossary-def">ポアソン完全尤度に基づく Schwarz の情報量規準。総標本サイズ N（表全体の総観測度数）をペナルティ項に明示的に採用：
+```
+
+```{r, results='asis', echo=FALSE}
+cat(bic_katex_display)
+```
+
+```{=html}
+        ここで G&sup2; はポアソン逸脱度（2 &sum; O ln(O/E)）、p はパラメータ数、df は残差自由度です。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 対数線形モデル比較表（BIC 列、&Delta;BIC 列）および最良モデル要約帯</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> セル数 K ではなく総観測度数 N を基準とすることで、大標本下での過剰適合（過剰パラメータの採用）を厳格に抑制します。</span>
+      </div>
+
+      <div class="glossary-item">
+        <div class="glossary-item-title">相対評価の原則 (Principle of Relative Evaluation)</div>
+        <div class="glossary-def">最良モデル（BIC 最小モデル）の採択は、提示された候補モデル集合（M1〜M9）の中での相対的な優位性を示すものです。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 最良モデル表示帯の注記、次点モデルとの &Delta;BIC</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 最良モデルに選定されたことは、真の独立性や因果メカニズムが成立していることを「証明」するものではありません。未測定の交絡因子や他のモデル族の可能性を排除しません。</span>
+      </div>
+    </div>
+  </details>
+
+  <!-- Accordion 3: ベイズ事後推論 -->
+  <details class="glossary-accordion">
+    <summary><span>3.</span> 多項 Dirichlet 事後推論と条件付き確率 (Bayesian Dirichlet & Conditional Inference)</summary>
+    <div class="glossary-body">
+      <div class="glossary-item">
+        <div class="glossary-item-title">多項 Jeffreys 客観事前分布 (&alpha; = 0.5)</div>
+        <div class="glossary-def">多項分布のフィッシャー情報行列の行列式に比例する客観事前分布：
+```
+
+```{r, results='asis', echo=FALSE}
+cat(dirichlet_katex_display)
+```
+
+```{=html}
+        ゼロ度数や低頻度セルが存在しても過度な一様平滑化を起こさず、情報幾何学的不変性を担保した事後推論を導出します。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 条件付き割合セクション（Dirichlet 推論）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> ゼロ度数セルに小さな疑似度数を付与しますが、これは数値安定化のためであり、観測が存在しない事実を歪めるものではありません。</span>
+      </div>
+
+      <div class="glossary-item">
+        <div class="glossary-item-title">等裾信用区間 (Equal-Tailed Interval: 95% ETI)</div>
+        <div class="glossary-def">事後確率密度の 2.5% 点から 97.5% 点までの区間。パラメータが 95% の事後確率で存在する真の範囲を示します。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 条件付き割合プロットのエラーバー（横ヒゲ）、数値表の 95%CI 列</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 頻度論の信頼区間（95% の試行で区間が真値を覆う）とは異なり、与えられたデータのもとで母数が区間内に存在する事後確率そのものを直接解釈できます。</span>
+      </div>
+
+      <div class="glossary-item">
+        <div class="glossary-item-title">条件付き割合とシンプソン・パラドックス (Simpson's Paradox)</div>
+        <div class="glossary-def">周辺集計における見かけの関連が、交絡変数や層別変数で条件付けた場合に消失または逆転する現象。P(Admit | Gender) の周辺割合と、P(Admit | Dept, Gender) の層別割合を対比して評価します。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> 条件付き割合プロット（各学科 Dept ごとの男女合格率推移）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 単一の周辺集計だけで「偏りがある」と結論づけてはならず、交互作用構造と層別条件付き確率を総合して解釈する必要があります。</span>
+      </div>
+    </div>
+  </details>
+
+  <!-- Accordion 4: 学術リファレンス -->
+  <details class="glossary-accordion">
+    <summary><span>4.</span> 学術リファレンス・一次文献 (Primary Academic References)</summary>
+    <div class="glossary-body">
+      <ol>
+        <li><strong>Agresti, A. (2013).</strong> <em>Categorical Data Analysis</em> (3rd ed.). John Wiley & Sons. ［対数線形モデル、ポアソン回帰、ピアソン残差］</li>
+        <li><strong>Haberman, S. J. (1973).</strong> The analysis of residuals in cross-classification tables. <em>Biometrics</em>, 29(1), 205–220. ［調整標準化残差］</li>
+        <li><strong>Haberman, S. J. (1974).</strong> <em>The Analysis of Frequency Data</em>. University of Chicago Press. ［対数線形モデルの尤度理論］</li>
+        <li><strong>Rao, C. R. (1948).</strong> Large sample tests of statistical hypotheses concerning several parameters with applications to problems of estimation. <em>Mathematical Proceedings of the Cambridge Philosophical Society</em>, 44(1), 50–57. ［スコア検定］</li>
+        <li><strong>Schwarz, G. (1978).</strong> Estimating the dimension of a model. <em>The Annals of Statistics</em>, 6(2), 461–464. ［明示式 BIC］</li>
+        <li><strong>Pregibon, D. (1981).</strong> Logistic regression diagnostics. <em>The Annals of Statistics</em>, 9(4), 705–724. ［ハット行列対角成分・レバレッジ］</li>
+        <li><strong>Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., & Rubin, D. B. (2013).</strong> <em>Bayesian Data Analysis</em> (3rd ed.). Chapman & Hall/CRC. ［多項Dirichlet事後推論、Jeffreys事前分布］</li>
+        <li><strong>Okabe, M., & Ito, K. (2008).</strong> Color Universal Design (CUD) - How to make figures and presentations that are friendly to Colorblind people. <em>J-STAGE</em>. ［学術色覚多様性パレット］</li>
+      </ol>
+    </div>
+  </details>
+</div>
 ```
 
 <script>

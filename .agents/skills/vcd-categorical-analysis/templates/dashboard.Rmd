@@ -301,53 +301,87 @@ pre {
   padding: 12px;
   overflow-x: auto;
 }
-/* Section 12 用語集アコーディオン */
+/* Section 12 用語集・数理モデルアコーディオン (NEJM / Nature Medical 調 - px絶対指定による可読性保証) */
 .glossary-accordion {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 4px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+.glossary-accordion:hover {
+  border-color: #1f4d7a;
 }
 .glossary-accordion summary {
-  padding: 12px 16px;
-  font-weight: 600;
+  padding: 14px 18px;
+  font-weight: 700;
   color: #152238;
   cursor: pointer;
   background: #f8fafc;
   user-select: none;
+  font-size: 16px;
+  outline: none;
 }
 .glossary-accordion summary:hover {
   background: #f1f5f9;
 }
 .glossary-accordion[open] summary {
   border-bottom: 1px solid #e2e8f0;
+  background: #f1f5f9;
+  color: #1f4d7a;
 }
 .glossary-body {
-  padding: 16px 20px;
-  font-size: 0.92rem;
-  color: #334155;
-  line-height: 1.65;
+  padding: 20px 24px;
+  font-size: 14.5px;
+  color: #1e293b;
+  line-height: 1.75;
 }
-.glossary-body dl dt {
+.glossary-item {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+.glossary-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.glossary-item-title {
   font-weight: 700;
   color: #1f4d7a;
-  margin-top: 10px;
+  font-size: 16px;
+  margin-bottom: 6px;
 }
-.glossary-body dl dt:first-child {
-  margin-top: 0;
+.glossary-def {
+  color: #1e293b;
+  font-size: 14.5px;
+  line-height: 1.7;
+  margin-bottom: 6px;
 }
-.glossary-body dl dd {
-  margin-left: 0;
-  margin-bottom: 12px;
+.glossary-meta {
+  display: block;
+  font-size: 13.5px;
   color: #475569;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+.glossary-caution {
+  display: block;
+  font-size: 13.5px;
+  color: #9b2945;
+  margin-top: 5px;
+  line-height: 1.5;
 }
 .glossary-body ol {
-  padding-left: 20px;
+  padding-left: 22px;
   margin: 0;
 }
 .glossary-body li {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #1e293b;
+  line-height: 1.65;
 }
 /* MathML ネイティブ数式スタイル */
 math {
@@ -1097,59 +1131,113 @@ cat(knitr::knit(text = normalized_summary, quiet = TRUE))
   </p>
 </div>
 
-<!-- Section 12: 統計用語集・方法論解説・学術リファレンス -->
+```{=html}
 <div class="section-card" id="section-glossary">
   <h2><span>12.</span> 統計用語集・方法論解説・学術リファレンス (Glossary & Scientific References)</h2>
-  <div style="background:#f8fafc; border-left:4px solid #1f4d7a; padding:10px 14px; border-radius:4px; margin-bottom:16px;">
-    <strong>統計的・科学的問い:</strong> 本ダッシュボードで使用されている統計指標、診断アルゴリズム、および数理的根拠の定義と学術的出典は何か？
+  <div style="background:#f8fafc; border-left:4px solid #1f4d7a; padding:14px 18px; border-radius:4px; margin-bottom:18px;">
+    <div style="font-weight:700; color:#152238; font-size:15px; margin-bottom:4px;">統計的・科学的問い:</div>
+    <div style="color:#1e293b; font-size:14px; line-height:1.65;">本ダッシュボードで使用されている統計指標、診断アルゴリズム、および数理モデルの定義・解釈境界および学術的出典は何か？</div>
+    <div style="margin-top:10px; font-size:13.5px; color:#475569; border-top:1px dashed #e2e8f0; padding-top:8px; line-height:1.6;">
+      <strong>3大利用原則:</strong> ① P値単独判定の排除（全体検定の有意差のみで実務的重要性や個別セルを判定しない） / ② 局所効果（Effect）と統計的証拠（Evidence）の厳格分離（標本数比例の証拠強度と標本数不変の乖離倍率を混同しない） / ③ 不確実性の明示（点推定ではなく 95% ETI 信用区間幅で精度を評価）
+    </div>
   </div>
-  <p style="font-size:0.9rem; color:#475569; margin-bottom:16px;">
+  <p style="font-size:14px; color:#475569; margin-bottom:18px;">
     ※ 各項目をクリックして開閉できます。臨床・疫学およびリアルワールドデータ分析におけるエビデンス解釈の拠り所としてご活用ください。
   </p>
 
   <details class="glossary-accordion">
-    <summary><span>1.</span> 全体連関・効果量 (Global Association & Effect Size)</summary>
+    <summary><span>1.</span> 全体連関・効果量 (Global Association & Effect Size) ── [対応: Sections 1–2]</summary>
     <div class="glossary-body">
-      <dl>
-        <dt>Pearson X² 独立性検定統計量</dt>
-        <dd>行変数と列変数の相互独立帰無仮説のもとで算出される漸近カイ二乗統計量。大標本下では微小な乖離でも極大化し P 値が飽和するため、効果の大きさを測る指標としては用いません。</dd>
-        <dt>Cramér's V / 偏り補正 Cramér's Ṽ (Bergsma 2013)</dt>
-        <dd>分割表全体の連関度合いを 0〜1 で標準化した効果量指標。標準の Cramér's V は標本サイズが有限のとき上方にバイアスを持つため、本システムでは Bergsma (2013) に基づく有限標本バイアス低減量を併記します。</dd>
-      </dl>
+      <div class="glossary-item">
+        <div class="glossary-item-title">Pearson X² 独立性検定統計量</div>
+        <div class="glossary-def">行変数と列変数の相互独立帰無仮説 (H0: &pi;<sub>ij</sub> = &pi;<sub>i+</sub> &pi;<sub>+j</sub>) のもとで算出される漸近カイ二乗統計量 X<sup>2</sup> = &sum; (O<sub>ij</sub> - E<sub>ij</sub>)<sup>2</sup> / E<sub>ij</sub>（自由度 (I-1)(J-1)）。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 1（全体連関サマリー）、Section 2（クロス集計表）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 大標本下（N &rarr; &infin;）では微小な差異でも X<sup>2</sup> が極大化し P 値が飽和するため、臨床的・実務的効果の大きさを測る指標としては用いません。</span>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-item-title">Cramér's V</div>
+        <div class="glossary-def">分割表全体の連関度合いを 0〜1 で標準化した効果量指標 V = &radic;((X<sup>2</sup> / N) / min(I-1, J-1))。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 1（全体効果量）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 標本サイズ N が有限のとき上方にバイアス（過大評価傾向）を持ちます。</span>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-item-title">偏り補正 Cramér's Ṽ (Bergsma 2013)</div>
+        <div class="glossary-def">有限標本における自由度と標本サイズに基づく漸近バイアス低減量。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 1（95% CI と併記）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 有限標本バイアスの低減量であり、厳密な意味での最小分散「不偏推定量」ではありません。</span>
+      </div>
     </div>
   </details>
 
   <details class="glossary-accordion">
-    <summary><span>2.</span> 局所セル診断と 4 軸フレームワーク (Four-Axis Cell Diagnostics)</summary>
+    <summary><span>2.</span> 局所セル診断と 4 軸フレームワーク (Four-Axis Local Cell Diagnostics) ── [対応: Sections 3–5]</summary>
     <div class="glossary-body">
-      <dl>
-        <dt>Effect (局所対数効果比 log(O/E))</dt>
-        <dd>独立モデルの期待度数に対する観測度数の局所的乗法乖離。標本サイズ N に依存しない純粋な乖離倍率を表します。</dd>
-        <dt>Evidence (局所 Rao スコア検定統計量 T_score / 対数 P 値)</dt>
-        <dd>ハット行列の対角成分（レバレッジ h_ii）で補正した局所スコア検定統計量。標本サイズ N に比例する統計的証拠強度を表します。</dd>
-        <dt>Influence (レバレッジ h_ii)</dt>
-        <dd>Pregibon (1981) のロジスティック／対数線形診断に基づくハット行列対角成分。当該セルが分割表全体のパラメータ推定に与える幾何学的影響度を示します。</dd>
-        <dt>Stability (隔離条件 QUARANTINED)</dt>
-        <dd>観測度数 O=0、期待度数 E &lt; 5.0、またはレバレッジ h_ii &ge; 0.80 のいずれかを満たす数値的不安定セル。大標本 Dual-Filter 候補から除外して解釈の暴走を防ぎます。</dd>
-        <dt>調整残差 (Adjusted Standardized Residual z_ij)</dt>
-        <dd>Haberman (1973) に基づく標準化残差。漸近標準正規分布 N(0, 1) に従い、独立帰無仮説からの乖離度を測ります（効果量そのものではありません）。</dd>
-      </dl>
+      <div class="glossary-item">
+        <div class="glossary-item-title">【第1軸】Effect (局所対数効果比 λ_ij = log(O/E))</div>
+        <div class="glossary-def">独立モデルの期待度数に対する観測度数の局所的乗法乖離。標本サイズ N に依存しない純粋な乖離倍率を表します。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 3（横軸: Effect）、Section 9（事後乖離）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 因果効果を表すものではありません。観測度数 O<sub>ij</sub> = 0 では有限値として扱わず -&infin;（隔離セル）とします。</span>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-item-title">【第2軸】Evidence (局所 Rao スコア検定統計量 T_score / 対数 P 値)</div>
+        <div class="glossary-def">ハット行列の対角成分（レバレッジ h<sub>ii</sub>）で局所分散を補正したスコア検定統計量 T<sub>i</sub><sup>score</sup> = (O<sub>ij</sub> - E<sub>ij</sub>)<sup>2</sup> / (E<sub>ij</sub> (1 - h<sub>ii</sub>)) = r<sub>ij</sub><sup>2</sup>。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 3（縦軸: Evidence）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 標本サイズ N に比例する統計的証拠強度であり、実務的重要性や再現性を単独で保証するものではありません。</span>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-item-title">【第3軸】Influence (レバレッジ h_ii)</div>
+        <div class="glossary-def">Pregibon (1981) の対数線形診断に基づくハット行列対角成分 h<sub>ii</sub> = p<sub>i+</sub> + p<sub>+j</sub> - 2 p<sub>i+</sub> p<sub>+j</sub>。当該セルが分割表全体のパラメータ推定に与える幾何学的影響度を示します。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 5（Cell Explorer 表）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 幾何学的影響力が大きいことは、モデルの異常やデータ誤りとは同一視しません。</span>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-item-title">【第4軸】Stability (隔離条件 QUARANTINED)</div>
+        <div class="glossary-def">観測度数 O<sub>ij</sub> = 0、期待度数 E<sub>ij</sub> &lt; 5.0、または高レバレッジ h<sub>ii</sub> &ge; 0.80 のいずれかを満たす数値的不安定セル。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 3（中空丸プロット ○）、Section 4・5（琥珀色 #A16207 太枠・注記）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 大標本 Dual-Filter 探索から除外して解釈を保留するための安全弁であり、第三の臨床群や削除すべき無効データではありません。</span>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-item-title">調整標準化残差 (Adjusted Standardized Residual z_ij)</div>
+        <div class="glossary-def">Haberman (1973) に基づく標準化残差 z<sub>ij</sub> = (O<sub>ij</sub> - E<sub>ij</sub>) / &radic;(E<sub>ij</sub> (1 - h<sub>ii</sub>)) &sim; N(0, 1)。独立帰無仮説からの局所的乖離度を測ります。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 4（棒グラフ: 正の偏り #0F766E / 負の偏り #B45309）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 残差の統計的有意性は効果量そのものではありません。</span>
+      </div>
     </div>
   </details>
 
   <details class="glossary-accordion">
-    <summary><span>3.</span> ベイズ事後推論と不確実性 (Bayesian Posterior & Uncertainty)</summary>
+    <summary><span>3.</span> ベイズ事後推論と不確実性 (Bayesian Posterior & Uncertainty) ── [対応: Sections 6–10]</summary>
     <div class="glossary-body">
-      <dl>
-        <dt>多項 Jeffreys 事前分布 (α = 0.5)</dt>
-        <dd>多項分布のフィッシャー情報行列の行列式に比例する局所不変事前分布。ゼロ度数や低頻度セルが存在しても過度な一様平滑化を起こさず、理論的整合性を保った事後推論を導きます。</dd>
-        <dt>等裾信用区間 (Equal-Tailed Interval: 95% ETI)</dt>
-        <dd>事後確率分布の 2.5% 点から 97.5% 点までの区間。パラメータの統計的不確実性の幅を表します。区間幅の狭さは推定精度を示しますが、重要性や有意性そのものを意味するものではありません。</dd>
-        <dt>条件付き事後予測確率 P(B|A) / P(A|B)</dt>
-        <dd>要因条件が与えられたときの反応事象の事後予測確率。事後中央値を主表示、平均を補助表示とします。非線形要約である中央値の総和は数学的に 1 にはなりません。</dd>
-        <dt>独立モデルからの事後対数乖離 (Log Divergence)</dt>
-        <dd>log(π_ij) - log(π_i+ * π_+j)。事後分布スケールで独立予測から乗法的にどの程度逸脱しているかの指標。0 をまたぐか否かだけで自動二値判定を行ってはなりません。</dd>
-      </dl>
+      <div class="glossary-item">
+        <div class="glossary-item-title">多項 Jeffreys 事前分布 (α = 0.5)</div>
+        <div class="glossary-def">多項分布のフィッシャー情報行列の行列式 det(I(&pi;))<sup>1/2</sup> に比例する客観的・局所ハール不変事前分布。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 6〜10 の主推論</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> ゼロ度数や低頻度セルが存在しても過度な一様平滑化を起こさず、情報幾何学的一貫性を保持した推論を導きます。</span>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-item-title">事前感度分析 (Laplace 一様事前分布 α = 1.0)</div>
+        <div class="glossary-def">事前分布を一様分布 &alpha; = 1.0 に変更した際の中央値シフトおよび信用区間幅の比較。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 10（感度分析表およびプロット）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 事前分布間で推論がわずかに変動することは自然な挙動であり、モデルの誤りや解析の欠陥と自動判定しないでください。</span>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-item-title">等裾信用区間 (Equal-Tailed Interval: 95% ETI)</div>
+        <div class="glossary-def">事後確率分布の 2.5% 点から 97.5% 点までの区間。母数 &pi;<sub>ij</sub> が 95% の事後確率で存在する不確実性の範囲（区間幅: prob_eti_width）。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 6（結合事後信用区間）、Section 8（不確実性順位）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 区間幅の狭さは推定精度を示しますが、セルの臨床的重要性や有意性そのものを意味しません。</span>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-item-title">条件付き事後予測確率 P(B|A) / P(A|B)</div>
+        <div class="glossary-def">要因条件が与えられたときの反応事象の事後予測確率。行条件付き P(B=j|A=i) = &pi;<sub>ij</sub> / &pi;<sub>i+</sub>、列条件付き P(A=i|B=j) = &pi;<sub>ij</sub> / &pi;<sub>+j</sub>。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 7.1 および Section 7.2</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 原因と結果の向きを取り違えないよう厳格に分離。事後中央値（主）と平均（副: グレーダイヤ）を併記。非線形要約である中央値の総和は数学的に 1 にはなりません。</span>
+      </div>
+      <div class="glossary-item">
+        <div class="glossary-item-title">独立モデルからの事後対数乖離 (Log Divergence)</div>
+        <div class="glossary-def">log(&pi;<sub>ij</sub>) - log(&pi;<sub>i+</sub> &pi;<sub>+j</sub>)。事後分布スケールで独立予測から乗法的にどの程度逸脱しているかの指標。</div>
+        <span class="glossary-meta"><strong>どこを見るか:</strong> Section 9（0 を独立基準線とする分布プロット）</span>
+        <span class="glossary-caution"><strong>誤解しないこと:</strong> 0 をまたぐか否かだけで自動二値判定を行ってはならず、不確実性の幅と乖離の中央値を統合的に評価します。</span>
+      </div>
     </div>
   </details>
 
@@ -1163,9 +1251,11 @@ cat(knitr::knit(text = normalized_summary, quiet = TRUE))
         <li>Haberman, S. J. (1973). The analysis of residuals in cross-classification tables. <em>Biometrics</em>, 29(1), 205–220.</li>
         <li>Pregibon, D. (1981). Logistic regression diagnostics. <em>The Annals of Statistics</em>, 9(4), 705–724.</li>
         <li>Rao, C. R. (1948). Large sample tests of statistical hypotheses concerning several parameters with applications to problems of estimation. <em>Mathematical Proceedings of the Cambridge Philosophical Society</em>, 44(1), 50–57.</li>
+        <li>Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., & Rubin, D. B. (2013). <em>Bayesian Data Analysis</em> (3rd ed.). Chapman & Hall/CRC.</li>
       </ol>
     </div>
   </details>
 </div>
+```
 
 </div>
