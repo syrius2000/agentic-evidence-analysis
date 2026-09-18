@@ -18,17 +18,30 @@ cat("=== Starting Offline Dashboard & Static URL Scan Tests ===\n")
 
 # 1. テスト用データの解析と Interface 3.0 出力
 d_valid <- read.csv("fixtures/input_validation/valid_2way.csv")
-v_data <- validate_input_table(d_valid, vars = c("Treatment", "Outcome"), freq = "Freq")
+v_data <- validate_input_table(d_valid, vars = c("Treatment", "Outcome"), freq = "Freq", input_mode = "aggregated")
 diag <- compute_residual_diagnostics(v_data)
 evid <- compute_effect_evidence_metrics(diag)
-post <- compute_dirichlet_posterior(diag, alpha = 1.0, n_draws = 1000L, analysis_signature = "sig_dash_test")
+
+sig_64 <- "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+input_sha_64 <- "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+config_sha_64 <- "9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba"
+
+post <- compute_dirichlet_posterior(diag, alpha = 0.5, n_draws = 1000L, analysis_signature = sig_64)
 
 tmp_dir <- tempfile(pattern = "dash_test_")
 dir.create(tmp_dir)
 
 # executive_summary.md の作成
 writeLines(c("# サマリー", "テスト実行によるAI Narrative要約です。"), file.path(tmp_dir, "executive_summary.md"))
-serialize_interface_v3(evid, post, out_dir = tmp_dir, run_id = "test_dash_run")
+serialize_interface_v3(
+  evid, post,
+  out_dir = tmp_dir,
+  run_id = "test_dash_run",
+  analysis_signature = sig_64,
+  input_sha256 = input_sha_64,
+  config_sha256 = config_sha_64,
+  execution_mode = "canonical"
+)
 
 # 2. dashboard.Rmd のレンダリング
 html_output <- file.path(tmp_dir, "dashboard.html")

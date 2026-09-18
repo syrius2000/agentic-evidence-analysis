@@ -21,7 +21,7 @@ cat("=== Starting Residual Diagnostics Tests ===\n")
 
 # 1. 2x2 分割表での理論値・Haberman残差比較
 d_valid <- read.csv("fixtures/input_validation/valid_2way.csv")
-v_data <- validate_input_table(d_valid, vars = c("Treatment", "Outcome"), freq = "Freq")
+v_data <- validate_input_table(d_valid, vars = c("Treatment", "Outcome"), freq = "Freq", input_mode = "aggregated")
 diag <- compute_residual_diagnostics(v_data)
 
 # R標準の chisq.test
@@ -48,7 +48,7 @@ zero_cell_data <- data.frame(
   Col = c("X", "Y", "X", "Y"),
   Freq = c(30, 0, 20, 50)
 )
-v_zero <- validate_input_table(zero_cell_data, vars = c("Row", "Col"), freq = "Freq")
+v_zero <- validate_input_table(zero_cell_data, vars = c("Row", "Col"), freq = "Freq", input_mode = "aggregated")
 diag_zero <- compute_residual_diagnostics(v_zero)
 
 # O=0 のセルを探す
@@ -76,7 +76,7 @@ sparse_data <- data.frame(
   Col = c("X", "Y", "X", "Y"),
   Freq = c(2, 50, 1, 50)
 )
-v_sparse <- validate_input_table(sparse_data, vars = c("Row", "Col"), freq = "Freq")
+v_sparse <- validate_input_table(sparse_data, vars = c("Row", "Col"), freq = "Freq", input_mode = "aggregated")
 diag_sparse <- compute_residual_diagnostics(v_sparse)
 
 sparse_cells <- Filter(function(c) c$expected_raw < 5.0, diag_sparse$cells)
@@ -94,7 +94,7 @@ high_lev_data <- data.frame(
   Col = c("Dominant", "Minor", "Dominant", "Minor"),
   Freq = c(950, 20, 25, 5)
 )
-v_hlev <- validate_input_table(high_lev_data, vars = c("Row", "Col"), freq = "Freq")
+v_hlev <- validate_input_table(high_lev_data, vars = c("Row", "Col"), freq = "Freq", input_mode = "aggregated")
 diag_hlev <- compute_residual_diagnostics(v_hlev)
 
 hlev_cells <- Filter(function(c) c$leverage_raw >= 0.80, diag_hlev$cells)

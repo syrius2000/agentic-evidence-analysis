@@ -70,7 +70,7 @@ sha_a_config <- compute_canonical_config_sha256(
   vars = c("Treatment", "Response"),
   freq = "Freq",
   input_mode = "aggregated",
-  prior_alpha = 1.0,
+  prior_alpha = 0.5,
   practical_delta = NULL
 )
 
@@ -118,7 +118,7 @@ sha_b_config <- compute_canonical_config_sha256(
   vars = c("Gender", "Preference"),
   freq = "Freq",
   input_mode = "aggregated",
-  prior_alpha = 1.0,
+  prior_alpha = 0.5,
   practical_delta = NULL
 )
 

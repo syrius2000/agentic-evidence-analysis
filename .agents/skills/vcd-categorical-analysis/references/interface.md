@@ -18,6 +18,7 @@
 ## 2. 出力ディレクトリ規約
 
 常に `<out>/run_<first16>[_N]/`。
+
 - `first16`: 要求 run ID の先頭16文字
 - `_N`: 既存 run との衝突回避サフィックス
 
@@ -42,6 +43,7 @@
 スキーマ定義: [schemas/categorical_results_v3.json](../schemas/categorical_results_v3.json)
 
 ### 4.1 全体関連（`global`）
+
 - `n_total`: 総サンプルサイズ $N$
 - `n_rows`, `n_cols`, `df`: 行水準数 $I$、列水準数 $J$、自由度 $(I-1)(J-1)$
 - `pearson_chisq`, `pearson_p_value`: Pearson $\chi^2$ 統計量および $p$ 値
@@ -52,6 +54,7 @@
 - `cramers_v_corrected_ci`: 補正後 $\tilde{V}$ の 95% 信頼区間 `[lower, upper]`（退化表時は `null`）
 
 ### 4.2 セル診断（`cells`）
+
 - `row_level`, `col_level`: 水準名
 - `observed`, `expected`: 観測度数 $O_{ij}$、独立モデル期待度数 $E_{ij}$
 - `pearson_res`: Pearson 残差 $r^P_{ij} = (O-E)/\sqrt{E}$
@@ -75,20 +78,44 @@
 - `dual_filter_candidate`: $N \ge 2000$ かつ $|\log(O/E)| \ge 0.50$ かつ $T^{\rm score} \ge 3.84$ かつ非隔離（`is_finite=true` かつ非 Quarantine）
 
 ### 4.3 ベイズ事後推論（`posterior`）
-- `prior_specification`: `{ "alpha": 1.0 }`（対称 Dirichlet 事前分布）
+
+- `prior_specification`: `{ "family": "symmetric_dirichlet", "alpha": 0.5, "role": "primary", "name": "jeffreys" }`
+  - **直接比較禁止境界**: 主解析事前分布が異なる過去成果物（$\alpha = 1.0$ 主解析）と本成果物（$\alpha = 0.5$ 主解析）は、事後平均・中央値・信用区間の意味論が異なるため、直接の数値比較・突合を禁止する。
 - `n_draws`: 10,000（事後モンテカルロサンプリング）
 - `deterministic_seed`: `analysis_signature` から決定論的に生成された 32-bit 整数シード
+- `practical_delta`: 実務的乖離閾値（未指定時は `null`）
 - `cell_posteriors`:
-  - `prob_mean`, `prob_sd`: セル確率 $\pi_{ij}$ の事後平均・標準偏差
-  - `prob_q025`, `prob_q500`, `prob_q975`: 95% ETI（Equal-Tailed Interval）パーセンタイル
-  - `prob_eti_width`: 区間幅
-  - `cond_row_prob_mean`: 行条件付き確率 $P(B_j | A_i)$ の事後平均
-  - `cond_col_prob_mean`: 列条件付き確率 $P(A_i | B_j)$ の事後平均
-  - `log_divergence_mean`: 独立モデルからの局所事後乖離 $D_{ij} = \log(\pi_{ij} / (\pi_{i+} \pi_{+j}))$ の事後平均
-  - `prob_dir_positive`: 事後方向確率 $P(D_{ij} > 0 \mid \text{data})$
+  - 結合確率要約（6桁）: `prob_analytic_mean`, `prob_analytic_sd`, `prob_mean`, `prob_sd`, `prob_q025`, `prob_q250`, `prob_q500`, `prob_q750`, `prob_q975`, `prob_eti_width`
+  - 行条件付き確率 $P(B_j \mid A_i)$ 要約（6桁）: `cond_row_prob_mean`, `cond_row_prob_sd`, `cond_row_prob_median`, `cond_row_prob_q025`, `cond_row_prob_q975`, `cond_row_prob_eti_width`
+  - 列条件付き確率 $P(A_i \mid B_j)$ 要約（6桁）: `cond_col_prob_mean`, `cond_col_prob_sd`, `cond_col_prob_median`, `cond_col_prob_q025`, `cond_col_prob_q975`, `cond_col_prob_eti_width`
+  - 局所対数乖離要約（4桁）: `log_divergence_mean`, `log_divergence_median`, `log_divergence_q025`, `log_divergence_q975`, `log_divergence_eti_width`, `prob_dir_positive`, `prob_practical_delta`
+- `uncertainty_ranking`:
+  - 決定論的ソート規則: `prob_eti_width` 降順 $\to$ `observed` 昇順 $\to$ `row_level` 昇順 $\to$ `col_level` 昇順
+  - 各要素: `{ rank, row_level, col_level, prob_eti_width, observed }`
+- `sensitivity_analysis`:
+  - 主解析（$\alpha = 0.5$）と感度分析（$\alpha = 1.0$）の数値比較要約。
+  - `primary_alpha: 0.5`, `sensitivity_alpha: 1.0`, `max_absolute_mean_diff`, `max_median_shift`, `max_eti_width_diff`
+  - 各セル比較: `primary_median`, `sensitivity_median`, `median_shift`（絶対値差）, `primary_eti_width`, `sensitivity_eti_width`, `eti_width_difference`（符号付き: `sensitivity - primary`）
+  - ※ 恣意的な二値フラグ `is_sensitive` および `0.05` 閾値警告は完全廃止。
 
 ### 4.4 品質とプロビナンス（`quality`, `provenance`）
+
 - `n_quarantined_cells`: 隔離セル総数
 - `n_candidates`: Dual-Filter 候補セル数
 - `warnings`: 品質警告メッセージ配列
-- `provenance`: `run_id`, `timestamp_jst`, `r_version`, `platform`
+- `provenance`:
+  - `run_id`: 要求 run 識別子
+  - `execution_mode`: `"canonical"`（Serializer は Canonical 専用）
+  - `analysis_signature`: 64桁 SHA-256
+  - `input_sha256`: 64桁 SHA-256
+  - `config_sha256`: 64桁 SHA-256（Canonical Core で再検証済みの `canonical_config_sha256`）
+  - `timestamp_jst`, `r_version`, `platform`
+
+### 4.5 丸め規則と許容差契約
+
+| 対象フィールド | 出力桁数 | 丸め前許容差（Engine） | 丸め後許容差（Serializer） |
+| :--- | :---: | :---: | :---: |
+| 結合確率・条件付き確率要約 | **6桁** | $10^{-12}$ | 水準数 $\times 10^{-6}$ |
+| 局所対数乖離要約 | **4桁** | $10^{-12}$ | 順序・有限値のみ |
+| 方向確率・実務差確率 | **4桁** | $10^{-12}$ | $[0, 1]$ 範囲のみ |
+| 事前感度比較要約 | **6桁** | — | 符号付き保持 |

@@ -22,7 +22,7 @@ cat("=== Starting Effects, Evidence & Cramér's V CI Tests ===\n")
 
 # 1. 2x2 分割表での基本計算と照合
 d_valid <- read.csv("fixtures/input_validation/valid_2way.csv")
-v_data <- validate_input_table(d_valid, vars = c("Treatment", "Outcome"), freq = "Freq")
+v_data <- validate_input_table(d_valid, vars = c("Treatment", "Outcome"), freq = "Freq", input_mode = "aggregated")
 diag <- compute_residual_diagnostics(v_data)
 evid <- compute_effect_evidence_metrics(diag)
 
@@ -36,7 +36,7 @@ d_zero <- data.frame(
   Col = c("X", "Y", "X", "Y"),
   Freq = c(40, 0, 20, 40)
 )
-v_zero <- validate_input_table(d_zero, vars = c("Row", "Col"), freq = "Freq")
+v_zero <- validate_input_table(d_zero, vars = c("Row", "Col"), freq = "Freq", input_mode = "aggregated")
 diag_zero <- compute_residual_diagnostics(v_zero)
 evid_zero <- compute_effect_evidence_metrics(diag_zero)
 
@@ -58,7 +58,7 @@ large_n_data <- data.frame(
   Col = c("Event", "NoEvent", "Event", "NoEvent"),
   Freq = c(900, 1100, 100, 1900)  # Total N = 4000, E(Active, Event)=500, log(900/500)=0.588 >= 0.50
 )
-v_large <- validate_input_table(large_n_data, vars = c("Row", "Col"), freq = "Freq")
+v_large <- validate_input_table(large_n_data, vars = c("Row", "Col"), freq = "Freq", input_mode = "aggregated")
 diag_large <- compute_residual_diagnostics(v_large)
 evid_large <- compute_effect_evidence_metrics(diag_large)
 
@@ -113,7 +113,7 @@ tiny_data <- data.frame(
   Col = c("C1", "C2", "C1", "C2"),
   Freq = c(1, 0, 0, 1)  # N = 2, df = 1. N <= df + 1
 )
-v_tiny <- validate_input_table(tiny_data, vars = c("Row", "Col"), freq = "Freq")
+v_tiny <- validate_input_table(tiny_data, vars = c("Row", "Col"), freq = "Freq", input_mode = "aggregated")
 diag_tiny <- compute_residual_diagnostics(v_tiny)
 evid_tiny <- compute_effect_evidence_metrics(diag_tiny)
 

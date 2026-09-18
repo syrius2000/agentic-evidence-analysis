@@ -212,7 +212,7 @@ run_categorical_analysis_core <- function(
     evid_res <- compute_effect_evidence_metrics(diag_res)
     post_res <- compute_dirichlet_posterior(
       diag_res,
-      alpha = 1.0,
+      alpha = 0.5,
       n_draws = 10000L,
       analysis_signature = "development_in_memory_only",
       practical_delta = practical_delta
@@ -318,7 +318,7 @@ run_categorical_analysis_core <- function(
     vars = vars,
     freq = freq_col,
     input_mode = input_mode,
-    prior_alpha = 1.0,
+    prior_alpha = 0.5,
     practical_delta = practical_delta
   )
 
@@ -375,7 +375,7 @@ run_categorical_analysis_core <- function(
     vars = unname(as.character(vars)),
     freq = if (is.null(freq_col)) "" else as.character(freq_col),
     input_mode = as.character(input_mode),
-    prior_alpha = 1.0,
+    prior_alpha = 0.5,
     data_label = as.character(data_label)
   )
   analysis_signature <- digest::digest(sig_payload, algo = "sha256")
@@ -445,7 +445,7 @@ run_categorical_analysis_core <- function(
   evid_res <- compute_effect_evidence_metrics(diag_res)
   post_res <- compute_dirichlet_posterior(
     diag_res,
-    alpha = 1.0,
+    alpha = 0.5,
     n_draws = 10000L,
     analysis_signature = analysis_signature,
     practical_delta = practical_delta
@@ -459,7 +459,8 @@ run_categorical_analysis_core <- function(
       run_id = run_id,
       analysis_signature = analysis_signature,
       input_sha256 = input_sha,
-      config_sha256 = canonical_config_sha256
+      config_sha256 = canonical_config_sha256,
+      execution_mode = "canonical"
     ),
     error = function(e) {
       err_msg <- conditionMessage(e)

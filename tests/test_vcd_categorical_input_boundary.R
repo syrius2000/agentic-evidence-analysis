@@ -182,12 +182,12 @@ assert(is.logical(diag_small$global$expected_count_diagnostics$cochran_satisfied
 # Test 9: practical delta の既定無効化 (既定 null)
 # ============================================================
 cat("[TEST 9] practical delta の既定無効化\n")
-post_def <- compute_dirichlet_posterior(diag_small, alpha = 1.0, n_draws = 1000L)
+post_def <- compute_dirichlet_posterior(diag_small, alpha = 0.5, n_draws = 1000L)
 assert(is.null(post_def$practical_delta), "既定では practical_delta は NULL である")
 assert(is.null(post_def$cell_posteriors[[1]]$prob_practical_delta), "既定では各セルの prob_practical_delta は NULL である")
 
 # 明示指定時は計算される
-post_delta <- compute_dirichlet_posterior(diag_small, alpha = 1.0, n_draws = 1000L, practical_delta = 0.05)
+post_delta <- compute_dirichlet_posterior(diag_small, alpha = 0.5, n_draws = 1000L, practical_delta = 0.05)
 assert(!is.null(post_delta$cell_posteriors[[1]]$prob_practical_delta), "practical_delta 指定時は実務差確率が計算される")
 
 # ============================================================
@@ -204,12 +204,18 @@ assert(is.numeric(sens$max_median_shift), "max_median_shift が数値として�
 # ============================================================
 cat("[TEST 11] Cross-Field Invariant 検証\n")
 out_test_dir <- file.path(tmp_dir, "serializer_out")
+sig_64 <- "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+input_sha_64 <- "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+config_sha_64 <- "9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba"
 res_v3 <- serialize_interface_v3(
   effect_result = evid_small,
   posterior_result = post_def,
   out_dir = out_test_dir,
   run_id = "test_run_001",
-  analysis_signature = "sig1234567890abcdef"
+  analysis_signature = sig_64,
+  input_sha256 = input_sha_64,
+  config_sha256 = config_sha_64,
+  execution_mode = "canonical"
 )
 assert(file.exists(file.path(out_test_dir, "categorical_results.json")), "categorical_results.json が生成された")
 assert(file.exists(file.path(out_test_dir, "evidence_profile.json")), "evidence_profile.json が生成された")
@@ -286,7 +292,7 @@ e2e_canonical_sha <- compute_canonical_config_sha256(
   vars = c("Treatment", "Response"),
   freq = "Freq",
   input_mode = "aggregated",
-  prior_alpha = 1.0,
+  prior_alpha = 0.5,
   practical_delta = NULL
 )
 
@@ -383,7 +389,7 @@ config_valid$pass0_provenance$canonical_config_sha256 <- compute_canonical_confi
   vars = config_valid$vars,
   freq = config_valid$freq,
   input_mode = config_valid$input_mode,
-  prior_alpha = 1.0,
+  prior_alpha = 0.5,
   practical_delta = NULL
 )
 config_valid_path <- file.path(tmp_dir, "config_valid_for_invariant_test.json")

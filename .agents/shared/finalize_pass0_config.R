@@ -67,7 +67,7 @@ canonical_config_sha <- if (skill == "vcd-categorical-analysis") {
     vars = vars_parsed,
     freq = freq,
     input_mode = input_mode,
-    prior_alpha = 1.0,
+    prior_alpha = 0.5,
     practical_delta = practical_delta_val
   )
 } else NULL

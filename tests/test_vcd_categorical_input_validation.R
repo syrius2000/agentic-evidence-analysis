@@ -35,7 +35,7 @@ cat("=== Starting Input Validation Tests ===\n")
 # 1. 正常系: 2-way
 d_valid <- read.csv("fixtures/input_validation/valid_2way.csv")
 res_valid <- tryCatch({
-  validate_input_table(d_valid, vars = c("Treatment", "Outcome"), freq = "Freq")
+  validate_input_table(d_valid, vars = c("Treatment", "Outcome"), freq = "Freq", input_mode = "aggregated")
 }, error = function(e) e)
 if (is.data.frame(res_valid) && nrow(res_valid) == 4 && sum(res_valid$Freq) == 100) {
   cat("[PASS] Valid 2-way contingency table accepted.\n")
@@ -49,7 +49,7 @@ if (is.data.frame(res_valid) && nrow(res_valid) == 4 && sum(res_valid$Freq) == 1
 d_3way <- read.csv("fixtures/input_validation/invalid_3way.csv")
 assert_error_code(
   "3-way input rejection with delegation guidance",
-  validate_input_table(d_3way, vars = c("Treatment", "Outcome", "Subgroup"), freq = "Freq"),
+  validate_input_table(d_3way, vars = c("Treatment", "Outcome", "Subgroup"), freq = "Freq", input_mode = "aggregated"),
   "INVALID_INPUT_ARITY"
 )
 
@@ -57,7 +57,7 @@ assert_error_code(
 d_single <- read.csv("fixtures/input_validation/invalid_single_level.csv")
 assert_error_code(
   "Single level input rejection",
-  validate_input_table(d_single, vars = c("Treatment", "Outcome"), freq = "Freq"),
+  validate_input_table(d_single, vars = c("Treatment", "Outcome"), freq = "Freq", input_mode = "aggregated"),
   "INSUFFICIENT_LEVELS"
 )
 
@@ -65,7 +65,7 @@ assert_error_code(
 d_zero <- read.csv("fixtures/input_validation/invalid_zero_total.csv")
 assert_error_code(
   "Zero total count input rejection",
-  validate_input_table(d_zero, vars = c("Treatment", "Outcome"), freq = "Freq"),
+  validate_input_table(d_zero, vars = c("Treatment", "Outcome"), freq = "Freq", input_mode = "aggregated"),
   "ZERO_TOTAL_COUNT"
 )
 
@@ -73,7 +73,7 @@ assert_error_code(
 d_neg <- read.csv("fixtures/input_validation/invalid_negative_count.csv")
 assert_error_code(
   "Negative count input rejection",
-  validate_input_table(d_neg, vars = c("Treatment", "Outcome"), freq = "Freq"),
+  validate_input_table(d_neg, vars = c("Treatment", "Outcome"), freq = "Freq", input_mode = "aggregated"),
   "NEGATIVE_COUNT_DETECTED"
 )
 
@@ -81,7 +81,7 @@ assert_error_code(
 d_nonint <- read.csv("fixtures/input_validation/invalid_non_integer_count.csv")
 assert_error_code(
   "Non-integer count input rejection",
-  validate_input_table(d_nonint, vars = c("Treatment", "Outcome"), freq = "Freq"),
+  validate_input_table(d_nonint, vars = c("Treatment", "Outcome"), freq = "Freq", input_mode = "aggregated"),
   "NON_INTEGER_COUNTS"
 )
 
@@ -89,7 +89,7 @@ assert_error_code(
 d_sz <- read.csv("fixtures/input_validation/invalid_structural_zero.csv")
 assert_error_code(
   "Structural zero input rejection",
-  validate_input_table(d_sz, vars = c("Treatment", "Outcome"), freq = "Freq"),
+  validate_input_table(d_sz, vars = c("Treatment", "Outcome"), freq = "Freq", input_mode = "aggregated"),
   "STRUCTURAL_ZERO_NOT_SUPPORTED"
 )
 
@@ -97,7 +97,7 @@ assert_error_code(
 temp_run <- tempfile(pattern = "run_test_")
 dir.create(temp_run)
 tryCatch({
-  validate_input_table(d_sz, vars = c("Treatment", "Outcome"), freq = "Freq", run_dir = temp_run)
+  validate_input_table(d_sz, vars = c("Treatment", "Outcome"), freq = "Freq", run_dir = temp_run, input_mode = "aggregated")
 }, error = function(e) {})
 state_file <- file.path(temp_run, "run_state.json")
 if (file.exists(state_file)) {

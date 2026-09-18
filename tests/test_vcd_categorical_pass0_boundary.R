@@ -60,7 +60,7 @@ valid_canonical_config_sha <- compute_canonical_config_sha256(
   vars = c("Treatment", "Response"),
   freq = "Freq",
   input_mode = "aggregated",
-  prior_alpha = 1.0,
+  prior_alpha = 0.5,
   practical_delta = NULL
 )
 
@@ -174,7 +174,7 @@ valid_canonical_config_sha <- compute_canonical_config_sha256(
   vars = c("Treatment", "Response"),
   freq = "Freq",
   input_mode = "aggregated",
-  prior_alpha = 1.0,
+  prior_alpha = 0.5,
   practical_delta = NULL
 )
 
@@ -445,7 +445,7 @@ cat("[TEST 11] aggregated モードで freq 列未指定の拒否 (MISSING_FREQU
 cfg11_nofreq <- cfg4_data
 cfg11_nofreq$freq <- NULL
 cfg11_nofreq$pass0_provenance$canonical_config_sha256 <- compute_canonical_config_sha256(
-  vars = cfg11_nofreq$vars, freq = "", input_mode = "aggregated", prior_alpha = 1.0, practical_delta = NULL
+  vars = cfg11_nofreq$vars, freq = "", input_mode = "aggregated", prior_alpha = 0.5, practical_delta = NULL
 )
 cfg11_path <- file.path(tmp_dir, "config_nofreq.json")
 writeLines(jsonlite::toJSON(cfg11_nofreq, auto_unbox = TRUE, pretty = TRUE), cfg11_path)
@@ -474,7 +474,7 @@ cfg12_indiv_freq <- cfg4_data
 cfg12_indiv_freq$input_mode <- "individual"
 cfg12_indiv_freq$freq <- "Freq"
 cfg12_indiv_freq$pass0_provenance$canonical_config_sha256 <- compute_canonical_config_sha256(
-  vars = cfg12_indiv_freq$vars, freq = "Freq", input_mode = "individual", prior_alpha = 1.0, practical_delta = NULL
+  vars = cfg12_indiv_freq$vars, freq = "Freq", input_mode = "individual", prior_alpha = 0.5, practical_delta = NULL
 )
 cfg12_path <- file.path(tmp_dir, "config_indiv_freq.json")
 writeLines(jsonlite::toJSON(cfg12_indiv_freq, auto_unbox = TRUE, pretty = TRUE), cfg12_path)
@@ -502,7 +502,7 @@ cat("[TEST 13] 2変数分割表専用の次元検証 (INVALID_INPUT_ARITY)\n")
 cfg13_arity <- cfg4_data
 cfg13_arity$vars <- c("Treatment") # 1変数のみ
 cfg13_arity$pass0_provenance$canonical_config_sha256 <- compute_canonical_config_sha256(
-  vars = cfg13_arity$vars, freq = "Freq", input_mode = "aggregated", prior_alpha = 1.0, practical_delta = NULL
+  vars = cfg13_arity$vars, freq = "Freq", input_mode = "aggregated", prior_alpha = 0.5, practical_delta = NULL
 )
 cfg13_path <- file.path(tmp_dir, "config_arity.json")
 writeLines(jsonlite::toJSON(cfg13_arity, auto_unbox = TRUE, pretty = TRUE), cfg13_path)
@@ -530,7 +530,7 @@ cat("[TEST 14] 設定ファイル単体の偽造書き換え遮断 (PROVENANCE_C
 # 攻撃者が vars を書き換え、かつ config 内の canonical_config_sha256 も再計算して差し替えたケース
 hacked_vars <- c("Treatment", "HackedResponse")
 hacked_sha <- compute_canonical_config_sha256(
-  vars = hacked_vars, freq = "Freq", input_mode = "aggregated", prior_alpha = 1.0, practical_delta = NULL
+  vars = hacked_vars, freq = "Freq", input_mode = "aggregated", prior_alpha = 0.5, practical_delta = NULL
 )
 cfg14_hacked <- cfg4_data
 cfg14_hacked$vars <- hacked_vars
@@ -556,6 +556,88 @@ if (file.exists(run_state14)) {
 subdirs14 <- list.dirs(out14_dir, recursive = FALSE)
 run_dirs14 <- subdirs14[grepl("^run_", basename(subdirs14))]
 assert(length(run_dirs14) == 0L, "偽造改ざん時に run_<sig> ディレクトリが未作成であること")
+
+# ============================================================
+# Test 15: 旧 alpha = 1.0 で封緘された設定の遮断 (Task 4.8)
+# ============================================================
+cat("[TEST 15] 旧 alpha = 1.0 封緘設定の遮断 (PROVENANCE_CONFIG_MISMATCH)\n")
+legacy_alpha_sha <- compute_canonical_config_sha256(
+  vars = c("Treatment", "Response"),
+  freq = "Freq",
+  input_mode = "aggregated",
+  prior_alpha = 1.0, # 旧仕様
+  practical_delta = NULL
+)
+cfg15_legacy <- cfg4_data
+cfg15_legacy$pass0_provenance$canonical_config_sha256 <- legacy_alpha_sha
+cfg15_path <- file.path(tmp_dir, "config_legacy_alpha.json")
+writeLines(jsonlite::toJSON(cfg15_legacy, auto_unbox = TRUE, pretty = TRUE), cfg15_path)
+
+out15_dir <- file.path(tmp_dir, "out15")
+cmd15 <- sprintf("Rscript %s --config %s --out %s", analysis_script, cfg15_path, out15_dir)
+out15 <- suppressWarnings(system(cmd15, intern = TRUE, ignore.stderr = FALSE))
+status15 <- attr(out15, "status")
+assert(!is.null(status15) && status15 != 0, "旧 alpha=1.0 封緘時は非ゼロ終了する")
+
+run_state15 <- file.path(out15_dir, "run_state.json")
+assert(file.exists(run_state15), "出力root直下に run_state.json が記録される (旧alpha封緘)")
+if (file.exists(run_state15)) {
+  s15 <- jsonlite::fromJSON(run_state15)
+  assert(identical(s15$status, "failed"), "run_state status == 'failed' (旧alpha封緘)")
+  assert(identical(s15$error_code, "PROVENANCE_CONFIG_MISMATCH"), "error_code == 'PROVENANCE_CONFIG_MISMATCH'")
+  assert(is.null(s15$run_id) || is.na(s15$run_id), "早期失敗時は run_id が null であること")
+  assert(is.null(s15$analysis_signature) || is.na(s15$analysis_signature), "早期失敗時は analysis_signature が null であること")
+}
+subdirs15 <- list.dirs(out15_dir, recursive = FALSE)
+run_dirs15 <- subdirs15[grepl("^run_", basename(subdirs15))]
+assert(length(run_dirs15) == 0L, "旧alpha封緘時に run_<sig> ディレクトリが未作成であること")
+
+# ============================================================
+# Test 16: finalize_pass0_config.R 実生成からの Canonical 解析成功 (CRITICAL 1 対応)
+# ============================================================
+cat("[TEST 16] finalize_pass0_config.R 実生成設定での E2E パイプライン実行成功確認\n")
+
+# スコープ文書ダミー作成
+scope_doc <- file.path(tmp_dir, "scope_doc.md")
+writeLines(c("# Pass 0 Scope", "テスト用スコープ確定文書"), scope_doc)
+
+cfg16_out <- file.path(tmp_dir, "config_pass0_finalized.json")
+finalize_script <- file.path(repo_root, ".agents", "shared", "finalize_pass0_config.R")
+out16_dir <- file.path(tmp_dir, "out16")
+
+cmd_finalize <- sprintf(
+  'Rscript "%s" --inspection-results "%s" --scope "%s" --config-out "%s" --skill "vcd-categorical-analysis" --input "%s" --output-dir "%s" --run-id "run_e2e_pass0" --vars "Treatment,Response" --freq "Freq" --input-mode "aggregated"',
+  finalize_script, inspection_path, scope_doc, cfg16_out, test_csv, out16_dir
+)
+out_fin <- suppressWarnings(system(cmd_finalize, intern = TRUE, ignore.stderr = FALSE))
+status_fin <- attr(out_fin, "status")
+assert(is.null(status_fin) || status_fin == 0, "finalize_pass0_config.R はゼロ終了（成功）する")
+assert(file.exists(cfg16_out), "finalize_pass0_config.R により設定ファイルが生成された")
+
+# 生成された設定ファイルを解析スクリプトに渡して E2E 実行
+cmd16 <- sprintf('Rscript "%s" --config "%s" --out "%s" --label e2e_pass0_success', analysis_script, cfg16_out, out16_dir)
+out16 <- suppressWarnings(system(cmd16, intern = TRUE, ignore.stderr = FALSE))
+status16 <- attr(out16, "status")
+assert(is.null(status16) || status16 == 0, "finalize_pass0_config.R 生成設定で解析が正常ゼロ終了（成功）する")
+
+out16_runs <- list.dirs(out16_dir, recursive = FALSE)
+run_dirs16 <- out16_runs[grepl("^run_", basename(out16_runs))]
+assert(length(run_dirs16) >= 1L, "finalize_pass0_config.R 設定から run_<first16> が生成された")
+if (length(run_dirs16) >= 1L) {
+  state16_file <- file.path(run_dirs16[1], "run_state.json")
+  assert(file.exists(state16_file), "run_state.json が生成された (実生成設定)")
+  if (file.exists(state16_file)) {
+    s16 <- jsonlite::fromJSON(state16_file)
+    assert(identical(s16$status, "completed"), "run_state status == 'completed' (実生成設定)")
+    assert(!is.null(s16$analysis_signature), "analysis_signature が記録されている (実生成設定)")
+  }
+  json16_file <- file.path(run_dirs16[1], "categorical_results.json")
+  assert(file.exists(json16_file), "categorical_results.json が生成された (実生成設定)")
+  if (file.exists(json16_file)) {
+    j16 <- jsonlite::fromJSON(json16_file)
+    assert(identical(j16$posterior$prior_specification$alpha, 0.5), "成果物 JSON の prior alpha が 0.5 である")
+  }
+}
 
 cat("\n============================================================\n")
 cat(sprintf("結果: %d PASS / %d FAIL\n", PASS, FAIL))

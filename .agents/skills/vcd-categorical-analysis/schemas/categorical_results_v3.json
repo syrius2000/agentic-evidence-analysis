@@ -23,7 +23,8 @@
       "enum": ["two-way-results-v2"]
     },
     "analysis_signature": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
     },
     "global": {
       "type": "object",
@@ -135,18 +136,23 @@
         "prior_specification",
         "n_draws",
         "deterministic_seed",
-        "cell_posteriors"
+        "cell_posteriors",
+        "sensitivity_analysis"
       ],
       "properties": {
         "prior_specification": {
           "type": "object",
-          "required": ["alpha"],
+          "required": ["family", "alpha", "role", "name"],
           "properties": {
-            "alpha": { "type": "number", "exclusiveMinimum": 0 }
+            "family": { "type": "string", "enum": ["symmetric_dirichlet"] },
+            "alpha": { "type": "number", "exclusiveMinimum": 0 },
+            "role": { "type": "string", "enum": ["primary"] },
+            "name": { "type": "string", "enum": ["jeffreys"] }
           }
         },
         "n_draws": { "type": "integer", "minimum": 1000 },
         "deterministic_seed": { "type": "integer" },
+        "practical_delta": { "type": ["number", "null"] },
         "cell_posteriors": {
           "type": "array",
           "items": {
@@ -161,10 +167,116 @@
               "prob_q975",
               "prob_eti_width",
               "cond_row_prob_mean",
+              "cond_row_prob_sd",
+              "cond_row_prob_median",
+              "cond_row_prob_q025",
+              "cond_row_prob_q975",
+              "cond_row_prob_eti_width",
               "cond_col_prob_mean",
+              "cond_col_prob_sd",
+              "cond_col_prob_median",
+              "cond_col_prob_q025",
+              "cond_col_prob_q975",
+              "cond_col_prob_eti_width",
               "log_divergence_mean",
-              "prob_dir_positive"
-            ]
+              "log_divergence_median",
+              "log_divergence_q025",
+              "log_divergence_q975",
+              "log_divergence_eti_width",
+              "prob_dir_positive",
+              "prob_practical_delta"
+            ],
+            "properties": {
+              "row_level": { "type": "string" },
+              "col_level": { "type": "string" },
+              "prob_analytic_mean": { "type": "number" },
+              "prob_analytic_sd": { "type": "number" },
+              "prob_mean": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_sd": { "type": "number", "minimum": 0 },
+              "prob_q025": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_q250": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_q500": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_q750": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_q975": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_eti_width": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_row_prob_mean": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_row_prob_sd": { "type": "number", "minimum": 0 },
+              "cond_row_prob_median": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_row_prob_q025": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_row_prob_q975": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_row_prob_eti_width": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_col_prob_mean": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_col_prob_sd": { "type": "number", "minimum": 0 },
+              "cond_col_prob_median": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_col_prob_q025": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_col_prob_q975": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_col_prob_eti_width": { "type": "number", "minimum": 0, "maximum": 1 },
+              "log_divergence_mean": { "type": "number" },
+              "log_divergence_median": { "type": "number" },
+              "log_divergence_q025": { "type": "number" },
+              "log_divergence_q975": { "type": "number" },
+              "log_divergence_eti_width": { "type": "number", "minimum": 0 },
+              "prob_dir_positive": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_practical_delta": { "type": ["number", "null"] }
+            }
+          }
+        },
+        "uncertainty_ranking": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["rank", "row_level", "col_level", "prob_eti_width", "observed"],
+            "properties": {
+              "rank": { "type": "integer", "minimum": 1 },
+              "row_level": { "type": "string" },
+              "col_level": { "type": "string" },
+              "prob_eti_width": { "type": "number", "minimum": 0, "maximum": 1 },
+              "observed": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "sensitivity_analysis": {
+          "type": "object",
+          "required": [
+            "primary_alpha",
+            "sensitivity_alpha",
+            "max_absolute_mean_diff",
+            "max_median_shift",
+            "max_eti_width_diff",
+            "cell_comparisons"
+          ],
+          "properties": {
+            "primary_alpha": { "type": "number" },
+            "sensitivity_alpha": { "type": "number" },
+            "max_absolute_mean_diff": { "type": "number" },
+            "max_median_shift": { "type": "number" },
+            "max_eti_width_diff": { "type": "number" },
+            "cell_comparisons": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "row_level",
+                  "col_level",
+                  "primary_median",
+                  "sensitivity_median",
+                  "median_shift",
+                  "primary_eti_width",
+                  "sensitivity_eti_width",
+                  "eti_width_difference"
+                ],
+                "properties": {
+                  "row_level": { "type": "string" },
+                  "col_level": { "type": "string" },
+                  "primary_median": { "type": "number" },
+                  "sensitivity_median": { "type": "number" },
+                  "median_shift": { "type": "number", "minimum": 0 },
+                  "primary_eti_width": { "type": "number", "minimum": 0 },
+                  "sensitivity_eti_width": { "type": "number", "minimum": 0 },
+                  "eti_width_difference": { "type": "number" }
+                }
+              }
+            }
           }
         }
       }
@@ -189,10 +301,25 @@
       "type": "object",
       "required": [
         "run_id",
+        "execution_mode",
+        "analysis_signature",
+        "input_sha256",
+        "config_sha256",
         "timestamp_jst",
         "r_version",
         "platform"
-      ]
+      ],
+      "properties": {
+        "run_id": { "type": "string" },
+        "execution_mode": { "type": "string", "enum": ["canonical"] },
+        "analysis_signature": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "input_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "config_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "deterministic_seed": { "type": "integer" },
+        "timestamp_jst": { "type": "string" },
+        "r_version": { "type": "string" },
+        "platform": { "type": "string" }
+      }
     }
   }
 }

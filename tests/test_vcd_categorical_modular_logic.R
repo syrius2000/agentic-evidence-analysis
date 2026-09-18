@@ -78,14 +78,21 @@ assert(evid_res$global$cramers_v > 0, "Cramér's V が算出されている")
 assert(!is.null(evid_res$global$cramers_v_ci), "Cramér's V 信頼区間が算出されている")
 assert(evid_res$n_candidates == 0L, "小標本 (N=189 < 2000) では candidate = 0")
 
-# Test 4: compute_dirichlet_posterior 正常動作
+# Test 4: compute_dirichlet_posterior 正常動作 (主解析 alpha = 0.5)
 cat("[TEST 4] compute_dirichlet_posterior モンテカルロ事後推論\n")
-post_res <- compute_dirichlet_posterior(diag_res, alpha = 1.0, n_draws = 2000L, analysis_signature = "test_sig_41")
+sig_64 <- "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+input_sha_64 <- "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+config_sha_64 <- "9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba"
+
+post_res <- compute_dirichlet_posterior(diag_res, alpha = 0.5, n_draws = 2000L, analysis_signature = sig_64)
 assert(length(post_res$cell_posteriors) == 4L, "事後推論セル数が 4")
 assert(is.null(post_res$practical_delta), "practical_delta は既定で NULL")
-assert(post_res$sensitivity_analysis$is_sensitive %in% c(TRUE, FALSE), "事前感度判定がブール値")
+assert(is.numeric(post_res$sensitivity_analysis$max_absolute_mean_diff), "事前感度分析の平均差が数値")
+assert(post_res$sensitivity_analysis$primary_alpha == 0.5, "主事前 alpha は 0.5")
+assert(post_res$sensitivity_analysis$sensitivity_alpha == 1.0, "感度事前 alpha は 1.0")
+assert(is.null(post_res$sensitivity_analysis$is_sensitive), "is_sensitive は廃止済みで NULL")
 
-# Test 5: serialize_interface_v3 正常動作
+# Test 5: serialize_interface_v3 正常動作 (canonical 実行モード)
 cat("[TEST 5] serialize_interface_v3 シリアライザ & Schema不変量\n")
 tmp_out <- tempfile("test_ser_")
 dir.create(tmp_out, recursive = TRUE)
@@ -95,8 +102,11 @@ res_v3 <- serialize_interface_v3(
   effect_result = evid_res,
   posterior_result = post_res,
   out_dir = tmp_out,
-  run_id = "test_run",
-  analysis_signature = "sig_fixed_41"
+  run_id = "test_run_001",
+  analysis_signature = sig_64,
+  input_sha256 = input_sha_64,
+  config_sha256 = config_sha_64,
+  execution_mode = "canonical"
 )
 assert(identical(res_v3$interface_version, "3.0"), "interface_version == '3.0'")
 assert(file.exists(file.path(tmp_out, "categorical_results.json")), "categorical_results.json が出力された")
