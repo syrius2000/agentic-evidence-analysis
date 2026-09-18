@@ -52,7 +52,7 @@ graph TD
 3. **Pass 2 (AI Review & Narrative / 専門家考察)**:
    AI が専門統計コンサルタントとして構造化結果を読み解き、背景ドメイン知識を交えた日本語エグゼクティブ・サマリー (`executive_summary.md`) を執筆します。品質保留や隔離セルは `quality_check.md` に明記します。
 4. **Pass 3 (Report Integration / レポート統合)**:
-   `render_dashboard.R`（RMarkdown）が統計結果と AI 考察を統合し、層別ヒートマップやセル診断表を備えたスタンドアローンな HTML ダッシュボード (`dashboard.html`) を生成します。
+   `render_dashboard.R`（RMarkdown）が統計結果と AI 考察を統合し、外部通信・リモートCDNを一切排除した完全自己完結型（スタンドアローン）の 11 セクション HTML ダッシュボード (`dashboard.html`) を生成します。
 
 ---
 
@@ -63,7 +63,7 @@ graph TD
 | **1** | **全体構造の階層比較**<br>(Global Model Hierarchy) | 9 階層対数線形モデル（M1〜M9）<br>総度数 $N$ 基準の明示式 BIC | $\mathrm{BIC}_{\mathrm{explicit}} = -2 \ln L + p \ln N$<br>ポアソン完全対数尤度に基づき、過大・過小ペナルティを排した決定論的モデル選択 |
 | **2** | **新 4 軸セル診断フレームワーク**<br>(Four-Axis Cell Diagnostics) | ・Effect（効果量）<br>・Evidence（証拠強度）<br>・Influence（影響度）<br>・Stability（数値安定性） | ・Effect: 標本倍率不変 $\log(O/E)$、標準化差 $e_i^{(\mathrm{global})}$、率差 $d_i$<br>・Evidence: 標本数比例 Rao Score $T_i^{\mathrm{score}}$、対数 P 値 $\ln(P)$<br>・Influence: ハット行列 Leverage $h_{ii}$（Pregibon 1981）<br>・Stability: $O_i=0$、$E_i<5.0$、$h_{ii} \ge 0.80$ の論理和判定（`QUARANTINED` 隔離） |
 | **3** | **大標本 Dual-Filter 原則**<br>($N > 2,000$) | 2 段階スクリーニング | ・Step 1 (Effect): $\lvert\log(O/E)\rvert \ge 0.50$ で実質的乖離をスクリーニング<br>・Step 2 (Evidence): $T_i^{\mathrm{score}} \ge 3.84$（未調整の探索的足切り［FWER/FDR未保証］）で標本誤差・不確実セルを除外 |
-| **4** | **多項 Dirichlet 事後推論と不確実性評価** | 共役事前分布による事後標本化<br>事後予測チェック（PPC） | ・部分集合分子・分母による条件付き割合と 95% 等裾信用区間（ETI）<br>・全セル同時事後標本による層間差 $\Delta \theta$ の事後推論<br>・Freeman-Tukey 統計量による事後予測 P 値（PPP-value） |
+| **4** | **多項 Dirichlet 事後推論と不確実性評価** | 多項 Jeffreys 事前（$\alpha = 0.5$）<br>Laplace 事前感度分析（$\alpha = 1.0$）<br>条件付き事後予測確率・事後予測チェック | ・フィッシャー情報行列に整合し小標本・疎セルで安定する多項 Jeffreys 事前 $\alpha=0.5$ を主事前として採用<br>・行条件付き $P(B \mid A)$ および列条件付き $P(A \mid B)$ の事後中央値・95% 等裾信用区間（ETI）による予測確率評価<br>・独立性からの事後対数乖離 $\log D_{ij}$、事後信用区間幅ランキング<br>・全セル同時事後標本による層間差 $\Delta \theta$ の推論と Freeman-Tukey 統計量による事後予測チェック（PPP-value） |
 | **5** | **標本変動下における条件付き順位再現性**<br>(Conditional Rank Reproducibility: CRR) | 多項再標本化と各反復でのモデル再適合（M1/M5）<br>運用品質ゲート（有効反復率 $\ge 0.95$） | ・元データ `REGULAR` 適格セル集合 $\mathcal{C}_{\mathrm{reg}}$ に限定した条件付き Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$ と MCSE<br>・固定期待度数の誤謬を排除した反復閉形式 MLE 推定<br>・階数落ち・特異分割表に対する安全な解釈保留（HOLD）契約 |
 
 ### 指標の読み分けガイド
@@ -75,7 +75,9 @@ graph TD
 | **証拠の強さ（確信度）** | Rao の局所スコア検定統計量 $T_i^{\mathrm{score}} = \frac{r_{P,i}^2}{1-h_{ii}}$、対数 P 値 $\ln(P)$ | 偶然の標本誤差ではない統計的確信度（$N$ に比例） |
 | **モデル改善量** | 局所逸脱度改善 $\Delta G_i^2 / N$ | 1 観測あたりの逸脱度改善（KL 乖離縮小）。標準化効果量とは区別 |
 | **数値安定性と影響度** | ハット行列 Leverage $h_{ii}$、Stability フラグ（`QUARANTINED` / `REGULAR`） | 観測ゼロ $O_i=0$、疎セル $E_i < 5.0$、過大レバレッジ $h_{ii} \ge 0.80$ を自動隔離 |
-| **統計的不確実性** | 多項 Dirichlet 事後分布、条件付き割合の 95% 等裾信用区間（ETI） | 点ごとの事後信用区間、Freeman-Tukey 事後予測チェック（PPP-value） |
+| **統計的不確実性** | 多項 Dirichlet 事後分布（主事前 $\alpha=0.5$）、95% 等裾信用区間（ETI）、ETI 幅ランキング | 事後不確実性の幅。ETI 幅の狭さは有意性・重要性を意味しない |
+| **条件付き予測確率** | 条件付き事後分布 $P(B \mid A)$、$P(A \mid B)$（中央値・95% ETI・平均） | 特定要因のもとでの結果発生確率。中央値・分位点の総和は 1 にならない |
+| **独立性からの事後乖離** | 事後対数乖離 $\log D_{ij} = \log\pi_{ij} - \log(\pi_{i+}\pi_{+j})$ | 独立モデルからの局所乗法的乖離。0またぎのみで安易に二値判定しない |
 | **順位の再現性（安定度）** | 条件付きセル順位再現性（CRR）、Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$、MCSE | 標本変動（多項再標本化）および反復モデル再適合下での優先セル順位の頑健性 |
 
 > [!NOTE]
@@ -91,7 +93,7 @@ graph TD
 | :--- | :--- | :--- |
 | **vcd-pass0-consultation** | 事前相談 | データ検分、次元削減・層別解析の提案、`analysis_config.json` の作成 |
 | **vcd-bayesian-evidence-analysis** | 3次元正本 | 3次元集計表の 9 階層対数線形モデル、新 4 軸セル診断、明示式 BIC、Dirichlet 事後推論、HTML レポート生成 |
-| **vcd-categorical-analysis** | 2次元解析 | 名義 2 変数の全体効果量（Cramér's V、Bergsma 補正）、残差分析、executive_summary・ダッシュボード生成 |
+| **vcd-categorical-analysis** | 2次元正本 | 名義 2 変数の全体効果量（Cramér's V、Bergsma 補正）、新 4 軸セル診断、多項 Jeffreys 事前推論、条件付き事後分布、11 セクション完全オフライン Scientific Dashboard 生成 |
 | **questionnaire-batch-analysis** | バッチ処理 | アンケート複数設問の設定ファイルに基づく自動一括集計とサマリー量産 |
 | **sas-proc-freq** | SAS 互換集計 | PROC FREQ 互換の度数・分割表、独立性検定、2×2効果量、Fisher 正確検定、Monte Carlo 推定 |
 | **sas-proc-means** | SAS 互換記述統計 | PROC MEANS 互換の記述統計、CLASS 群化、FREQ/WEIGHT、VARDEF、QNTLDEF 1〜5 |
