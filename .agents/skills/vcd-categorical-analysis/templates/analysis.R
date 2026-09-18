@@ -48,23 +48,46 @@ get_arg_val <- function(args_vec, arg_name, default = NULL) {
   return(default)
 }
 
-record_run_failure <- function(run_dir, error_code, message) {
-  if (!is.null(run_dir)) {
-    if (!dir.exists(run_dir)) {
-      tryCatch(dir.create(run_dir, recursive = TRUE, showWarnings = FALSE), error = function(e) {})
+record_run_failure <- function(target_dir, error_code, message, is_root = FALSE, execution_mode = "canonical") {
+  if (!is.null(target_dir)) {
+    if (!dir.exists(target_dir)) {
+      tryCatch(dir.create(target_dir, recursive = TRUE, showWarnings = FALSE), error = function(e) {})
     }
-    if (dir.exists(run_dir)) {
-      state_file <- file.path(run_dir, "run_state.json")
+    if (dir.exists(target_dir)) {
+      state_file <- file.path(target_dir, "run_state.json")
       payload <- list(
         status = "failed",
         error_code = error_code,
         message = message,
+        execution_mode = execution_mode,
+        provenance_status = "failed",
+        phase = if (is_root) "gateway" else "execution",
+        run_id = if (is_root) NULL else basename(target_dir),
+        analysis_signature = NULL,
         timestamp_jst = format(Sys.time(), "%Y-%m-%dT%H:%M:%S+09:00")
       )
-      tryCatch(writeLines(jsonlite::toJSON(payload, auto_unbox = TRUE, pretty = TRUE), state_file), error = function(e) {})
+      tryCatch(
+        writeLines(jsonlite::toJSON(payload, auto_unbox = TRUE, pretty = TRUE, null = "null"), state_file),
+        error = function(e) {}
+      )
     }
   }
   stop(sprintf("[%s] %s", error_code, message), call. = FALSE)
+}
+
+# Canonical CLI ホワイトリスト
+CANONICAL_CLI_WHITELIST <- c("--config", "--out", "--label", "--help", "-h")
+
+validate_canonical_cli_args <- function(args_vec, out_root) {
+  arg_names <- args_vec[grepl("^-", args_vec)]
+  unknown_or_forbidden <- setdiff(arg_names, CANONICAL_CLI_WHITELIST)
+  if (length(unknown_or_forbidden) > 0L) {
+    err_msg <- sprintf(
+      "Canonical実行ではPass 0確定設定のCLI上書きおよび未知引数は禁止されています（完全ホワイトリスト方式）。検出された禁止引数: %s",
+      paste(unknown_or_forbidden, collapse = ", ")
+    )
+    record_run_failure(out_root, "CANONICAL_CONFIG_OVERRIDE_FORBIDDEN", err_msg, is_root = TRUE)
+  }
 }
 
 # ============================================================
@@ -148,30 +171,83 @@ generate_plots <- function(agg_df, vars, output_dir, data_label) {
 }
 
 # ============================================================
-# Main Execution Pipeline
+# Core Execution Engine (2層分離: run_categorical_analysis_core)
 # ============================================================
-run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
-  config_path <- get_arg_val(args_vec, "--config")
-  out_root <- get_arg_val(args_vec, "--out", "./skill_out/vcd_categorical")
-  data_label <- get_arg_val(args_vec, "--label", "two_way_analysis")
+run_categorical_analysis_core <- function(
+  config_data,
+  config_path = NULL,
+  out_root = "./skill_out/vcd_categorical",
+  data_label = "two_way_analysis",
+  execution_mode = "canonical"
+) {
+  if (!execution_mode %in% c("canonical", "development")) {
+    stop(sprintf("[INVALID_EXECUTION_MODE] execution_mode は 'canonical' または 'development' である必要があります (指定値: %s)", execution_mode), call. = FALSE)
+  }
 
-  # 1. Pass 0 設定ファイル（analysis_config.json）必須契約
-  if (is.null(config_path) || !file.exists(config_path)) {
+  # ------------------------------------------------------------
+  # DEVELOPMENT モード: インメモリ専用（成果物・run_<sig> 未作成）
+  # ------------------------------------------------------------
+  if (identical(execution_mode, "development")) {
+    vars <- if (!is.null(config_data$vars)) unlist(config_data$vars) else NULL
+    freq_col <- if (!is.null(config_data$freq)) as.character(config_data$freq) else NULL
+    input_mode <- if (!is.null(config_data$input_mode)) as.character(config_data$input_mode) else NULL
+    practical_delta <- if (!is.null(config_data$practical_delta)) as.numeric(config_data$practical_delta) else NULL
+
+    raw_df <- if (is.data.frame(config_data$input)) {
+      config_data$input
+    } else if (is.character(config_data$input) && file.exists(config_data$input)) {
+      utils::read.csv(config_data$input, stringsAsFactors = FALSE, check.names = FALSE)
+    } else {
+      stop("[DEV_INPUT_ERROR] 有効なデータフレームまたはCSVパスを指定してください", call. = FALSE)
+    }
+
+    agg_df <- validate_input_table(
+      data = raw_df,
+      vars = vars,
+      freq = freq_col,
+      input_mode = input_mode,
+      run_dir = NULL
+    )
+    diag_res <- compute_residual_diagnostics(agg_df)
+    evid_res <- compute_effect_evidence_metrics(diag_res)
+    post_res <- compute_dirichlet_posterior(
+      diag_res,
+      alpha = 1.0,
+      n_draws = 10000L,
+      analysis_signature = "development_in_memory_only",
+      practical_delta = practical_delta
+    )
+    return(list(
+      execution_mode = "development",
+      agg_df = agg_df,
+      diag_res = diag_res,
+      evid_res = evid_res,
+      post_res = post_res
+    ))
+  }
+
+  # ------------------------------------------------------------
+  # CANONICAL モード: Core 内部での独立三者 SHA 再検証
+  # ------------------------------------------------------------
+  # 呼び出し元フラグを盲信せず偽造 attestation を遮断
+  if (isTRUE(config_data$mock_verified) || isTRUE(config_data$bypass_provenance)) {
     record_run_failure(
       out_root,
-      "MISSING_REQUIRED_CONFIG",
-      "vcd-categorical-analysis v4.1 では analysis_config.json の指定（--config <path>）が必須です。Pass 0 (vcd-pass0-consultation) を完了して設定を作成してください。"
+      "CANONICAL_CONFIG_VERIFICATION_REQUIRED",
+      "偽造 attestation フラグまたは無検証バイパスフラグが検出されました。Canonical Core は独立再検証を強制します。",
+      is_root = TRUE
     )
   }
 
-  config_data <- tryCatch(
-    jsonlite::read_json(config_path, simplifyVector = FALSE),
-    error = function(e) {
-      record_run_failure(out_root, "INVALID_CONFIG_JSON", paste0("analysis_config.json の読み込みに失敗しました: ", conditionMessage(e)))
-    }
-  )
+  if (is.null(config_data$pass0_provenance)) {
+    record_run_failure(
+      out_root,
+      "MISSING_PASS0_PROVENANCE",
+      "analysis_config.json に pass0_provenance ブロックが存在しません。Pass 0 を完了してください。",
+      is_root = TRUE
+    )
+  }
 
-  # 2. Pass 0 由来の先行検証 (pass0_contract.R)
   provenance_check <- tryCatch(
     validate_pass0_provenance(config_data, config_path, expected_skill = "vcd-categorical-analysis", repo_root = repo_root),
     error = function(e) {
@@ -183,39 +259,124 @@ run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
       } else {
         "PASS0_VALIDATION_FAILED"
       }
-      record_run_failure(out_root, code, err_msg)
+      record_run_failure(out_root, code, err_msg, is_root = TRUE)
     }
   )
 
-  # 設定の抽出
   data_path <- provenance_check$input_path
   vars <- if (!is.null(config_data$vars)) unlist(config_data$vars) else NULL
   freq_col <- if (!is.null(config_data$freq)) as.character(config_data$freq) else NULL
   input_mode <- if (!is.null(config_data$input_mode)) as.character(config_data$input_mode) else NULL
   practical_delta <- if (!is.null(config_data$practical_delta)) as.numeric(config_data$practical_delta) else NULL
 
-  # CLI による上書きの反映（存在する場合）
-  data_path_cli <- get_arg_val(args_vec, "--data")
-  if (!is.null(data_path_cli)) data_path <- data_path_cli
-  vars_cli <- get_arg_val(args_vec, "--vars")
-  if (!is.null(vars_cli)) vars <- trimws(unlist(strsplit(vars_cli, ",")))
-  freq_cli <- get_arg_val(args_vec, "--freq")
-  if (!is.null(freq_cli)) freq_col <- freq_cli
-  mode_cli <- get_arg_val(args_vec, "--input-mode")
-  if (!is.null(mode_cli)) input_mode <- mode_cli
+  # input_mode の厳格な即時検証（署名・ディレクトリ作成の前！）
+  if (is.null(input_mode) || is.na(input_mode) || !nzchar(trimws(input_mode)) ||
+      !input_mode %in% c("aggregated", "individual")) {
+    record_run_failure(
+      out_root,
+      "INVALID_INPUT_MODE",
+      sprintf("input_mode は 'aggregated' または 'individual' である必要があります (指定値: %s)。暗黙の既定値投入は禁止されています。",
+              if (is.null(input_mode)) "NULL (未指定)" else as.character(input_mode)),
+      is_root = TRUE
+    )
+  }
+
+  # input_mode に応じた freq 列指定の厳格検証
+  if (identical(input_mode, "aggregated")) {
+    if (is.null(freq_col) || is.na(freq_col) || !nzchar(trimws(freq_col))) {
+      record_run_failure(
+        out_root,
+        "MISSING_FREQUENCY_COLUMN",
+        "input_mode が 'aggregated' の場合、頻度列（freq）の指定が必須です。",
+        is_root = TRUE
+      )
+    }
+  } else if (identical(input_mode, "individual")) {
+    if (!is.null(freq_col) && nzchar(trimws(freq_col))) {
+      record_run_failure(
+        out_root,
+        "FREQUENCY_COLUMN_NOT_PERMITTED",
+        sprintf("input_mode が 'individual' の場合、頻度列（freq）の指定は禁止されています（指定値: %s）。", freq_col),
+        is_root = TRUE
+      )
+    }
+  }
+
+  # 2変数分割表専用の厳格な検証
+  if (is.null(vars) || length(vars) != 2L) {
+    record_run_failure(
+      out_root,
+      "INVALID_INPUT_ARITY",
+      sprintf("vcd-categorical-analysis は2変数分割表専用です（指定変数数: %d）。3次元以上の解析は正本スキル vcd-bayesian-evidence-analysis を使用してください。",
+              if (is.null(vars)) 0L else length(vars)),
+      is_root = TRUE
+    )
+  }
+
+  # 設定の正規化ダイジェスト（canonical_config_sha256）の計算と封緘照合（Config Provenance Binding）
+  canonical_config_sha256 <- compute_canonical_config_sha256(
+    vars = vars,
+    freq = freq_col,
+    input_mode = input_mode,
+    prior_alpha = 1.0,
+    practical_delta = practical_delta
+  )
+
+  # 1. analysis_config.json 内部の自己記録値との照合
+  provenance_canonical_sha <- config_data$pass0_provenance$canonical_config_sha256
+  if (is.null(provenance_canonical_sha) || !identical(as.character(provenance_canonical_sha), canonical_config_sha256)) {
+    err_msg <- if (is.null(provenance_canonical_sha)) {
+      "pass0_provenance に canonical_config_sha256 が記録されていません（未束縛設定）。Pass 0 を再実行して設定を確定してください。"
+    } else {
+      sprintf(
+        "設定ファイル内の解析パラメータ（vars, freq, input_mode, practical_delta 等）が Pass 0 確定時の封緘ハッシュと一致しません。事後改ざんが検出されました。(期待値: %s, 実測値: %s)",
+        provenance_canonical_sha, canonical_config_sha256
+      )
+    }
+    record_run_failure(out_root, "PROVENANCE_CONFIG_MISMATCH", err_msg, is_root = TRUE)
+  }
+
+  # 2. 改ざん防止された Pass 0 検分成果物 (inspection_results.json) 内の承認値との外部アンカー照合
+  approved_canonical_sha <- provenance_check$inspection$approved_config$canonical_config_sha256
+  if (is.null(approved_canonical_sha) || !identical(as.character(approved_canonical_sha), canonical_config_sha256)) {
+    err_msg <- if (is.null(approved_canonical_sha)) {
+      "Pass 0 検分成果物 (inspection_results.json) に approved_config$canonical_config_sha256 が記録されていません。Pass 0 を再実行して設定を確定してください。"
+    } else {
+      sprintf(
+        "設定ファイル内の解析パラメータが Pass 0 検分成果物の承認ダイジェストと一致しません。事後改ざんが検出されました。(Pass0承認値: %s, 実設定計算値: %s)",
+        approved_canonical_sha, canonical_config_sha256
+      )
+    }
+    record_run_failure(out_root, "PROVENANCE_CONFIG_MISMATCH", err_msg, is_root = TRUE)
+  }
+
+  if (!file.exists(data_path)) {
+    record_run_failure(out_root, "MISSING_INPUT_FILE", sprintf("入力データファイルが見つかりません: %s", data_path), is_root = TRUE)
+  }
 
   input_sha <- pass0_sha256_file(data_path)
-  config_sha <- pass0_sha256_file(config_path)
+  if (!identical(input_sha, config_data$pass0_provenance$input_sha256)) {
+    record_run_failure(out_root, "PROVENANCE_SHA_MISMATCH",
+                       "実入力ファイルのSHA-256がPass 0記録と一致しません。", is_root = TRUE)
+  }
 
-  # 3. 単一決定論的解析署名（Canonical Analysis Signature）の算出
+  config_file_sha256 <- if (!is.null(config_path) && file.exists(config_path)) {
+    pass0_sha256_file(config_path)
+  } else {
+    digest::digest(config_data, algo = "sha256")
+  }
+
+  # 単一決定論的解析署名（Canonical Analysis Signature）の算出
+  # 成果物名に反映される data_label を算入して同一設定・異なるlabelのディレクトリ完全分離を保証
   sig_payload <- list(
     engine_version = "4.1",
     input_sha256 = input_sha,
-    config_sha256 = config_sha,
+    config_sha256 = canonical_config_sha256,
     vars = unname(as.character(vars)),
     freq = if (is.null(freq_col)) "" else as.character(freq_col),
-    input_mode = if (is.null(input_mode)) "" else as.character(input_mode),
-    prior_alpha = 1.0
+    input_mode = as.character(input_mode),
+    prior_alpha = 1.0,
+    data_label = as.character(data_label)
   )
   analysis_signature <- digest::digest(sig_payload, algo = "sha256")
   prefix16 <- substr(analysis_signature, 1L, 16L)
@@ -226,28 +387,38 @@ run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
     dir.create(run_output_dir, recursive = TRUE, showWarnings = FALSE)
   }
 
-  # run_state.json 開始記録
+  # 同一署名・同一出力 root の原子的排他ロック (Atomic Lock)
+  lock_dir <- file.path(run_output_dir, ".run_lock")
+  acquired_lock <- dir.create(lock_dir, showWarnings = FALSE)
+  if (!acquired_lock) {
+    record_run_failure(
+      out_root,
+      "CONCURRENT_RUN_IN_PROGRESS",
+      sprintf("同一解析署名 (%s) の実行が既に進行中です。並行競合および成果物破壊を防ぐため即時停止します。", analysis_signature),
+      is_root = TRUE
+    )
+  }
+  base::on.exit({
+    if (dir.exists(lock_dir)) {
+      unlink(lock_dir, recursive = TRUE, force = TRUE)
+    }
+  }, add = TRUE)
+
+
   state_file <- file.path(run_output_dir, "run_state.json")
   run_state_payload <- list(
     status = "running",
     run_id = run_id,
     analysis_signature = analysis_signature,
+    execution_mode = "canonical",
+    provenance_status = "verified",
+    input_sha256 = input_sha,
+    config_file_sha256 = config_file_sha256,
+    canonical_config_sha256 = canonical_config_sha256,
     timestamp_jst = format(Sys.time(), "%Y-%m-%dT%H:%M:%S+09:00")
   )
   writeLines(jsonlite::toJSON(run_state_payload, auto_unbox = TRUE, pretty = TRUE), state_file)
 
-  # input_mode の厳格な即時検証（集約・生データ読み込み・モデリング前）
-  if (is.null(input_mode) || is.na(input_mode) || !nzchar(trimws(input_mode)) ||
-      !input_mode %in% c("aggregated", "individual")) {
-    record_run_failure(
-      run_output_dir,
-      "INVALID_INPUT_MODE",
-      sprintf("input_mode は 'aggregated' または 'individual' である必要があります (指定値: %s)。暗黙の既定値投入は禁止されています。",
-              if (is.null(input_mode)) "NULL (未指定)" else as.character(input_mode))
-    )
-  }
-
-  # 4. データの生読み込み
   raw_df <- tryCatch(
     utils::read.csv(data_path, stringsAsFactors = FALSE, check.names = FALSE),
     error = function(e) {
@@ -255,7 +426,6 @@ run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
     }
   )
 
-  # 5. データ集約・モデリングに先行する入力境界検証（Fail-Fast）
   agg_df <- tryCatch(
     validate_input_table(
       data = raw_df,
@@ -265,21 +435,14 @@ run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
       run_dir = run_output_dir
     ),
     error = function(e) {
-      # validate_input_table 内部ですでに run_state.json を記録している
       stop(e)
     }
   )
 
   message("[INFO] 入力検証完了: 総度数 N = ", attr(agg_df, "n_total"), " (", vars[1], " x ", vars[2], ")")
 
-  # 6. 2-way 専任統計パイプライン実行
-  # (1) 残差診断 & Quarantine 判定 & 期待度数診断
   diag_res <- compute_residual_diagnostics(agg_df)
-
-  # (2) 効果量 & 局所証拠 & 大標本 Dual-Filter
   evid_res <- compute_effect_evidence_metrics(diag_res)
-
-  # (3) 多項 Dirichlet 事後推論 (10,000 draws, 決定論的シード)
   post_res <- compute_dirichlet_posterior(
     diag_res,
     alpha = 1.0,
@@ -288,7 +451,6 @@ run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
     practical_delta = practical_delta
   )
 
-  # (4) 成果物 JSON (Interface 3.0) & CSV シリアライズ (Cross-Field Invariant 検証付き)
   results_v3 <- tryCatch(
     serialize_interface_v3(
       effect_result = evid_res,
@@ -297,7 +459,7 @@ run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
       run_id = run_id,
       analysis_signature = analysis_signature,
       input_sha256 = input_sha,
-      config_sha256 = config_sha
+      config_sha256 = canonical_config_sha256
     ),
     error = function(e) {
       err_msg <- conditionMessage(e)
@@ -310,12 +472,10 @@ run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
     }
   )
 
-  # (5) GTマトリクス & DTテーブル & Mosaic/Assoc プロット出力
   generate_gt_matrix(evid_res$cells_df, vars, freq_col, run_output_dir, data_label)
   generate_dt_table(evid_res$cells_df, vars, run_output_dir, data_label)
   generate_plots(agg_df, vars, run_output_dir, data_label)
 
-  # 7. run_state.json 正常完了記録
   artifacts_list <- c(
     "categorical_results.json",
     "evidence_profile.json",
@@ -330,12 +490,58 @@ run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
     status = "completed",
     run_id = run_id,
     analysis_signature = analysis_signature,
+    execution_mode = "canonical",
+    provenance_status = "verified",
+    input_sha256 = input_sha,
+    config_file_sha256 = config_file_sha256,
+    canonical_config_sha256 = canonical_config_sha256,
     artifacts = artifacts_list,
     timestamp_jst = format(Sys.time(), "%Y-%m-%dT%H:%M:%S+09:00")
   )
   writeLines(jsonlite::toJSON(completed_state, auto_unbox = TRUE, pretty = TRUE), state_file)
   message("[SUCCESS] vcd-categorical-analysis v4.1 完了: ", run_output_dir)
   invisible(results_v3)
+}
+
+# ============================================================
+# Main Execution Gateway (run_analysis)
+# ============================================================
+run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
+  out_root <- get_arg_val(args_vec, "--out", "./skill_out/vcd_categorical")
+  data_label <- get_arg_val(args_vec, "--label", "two_way_analysis")
+
+  # 1. Canonical CLI ホワイトリスト検証
+  validate_canonical_cli_args(args_vec, out_root)
+
+  if ("--help" %in% args_vec || "-h" %in% args_vec) {
+    cat("Usage: Rscript analysis.R --config <analysis_config.json> [--out <dir>] [--label <name>]\n")
+    return(invisible(NULL))
+  }
+
+  config_path <- get_arg_val(args_vec, "--config")
+  if (is.null(config_path) || !file.exists(config_path)) {
+    record_run_failure(
+      out_root,
+      "MISSING_REQUIRED_CONFIG",
+      "vcd-categorical-analysis v4.1 では analysis_config.json の指定（--config <path>）が必須です。Pass 0 (vcd-pass0-consultation) を完了して設定を作成してください。",
+      is_root = TRUE
+    )
+  }
+
+  config_data <- tryCatch(
+    jsonlite::read_json(config_path, simplifyVector = FALSE),
+    error = function(e) {
+      record_run_failure(out_root, "INVALID_CONFIG_JSON", paste0("analysis_config.json の読み込みに失敗しました: ", conditionMessage(e)), is_root = TRUE)
+    }
+  )
+
+  run_categorical_analysis_core(
+    config_data = config_data,
+    config_path = config_path,
+    out_root = out_root,
+    data_label = data_label,
+    execution_mode = "canonical"
+  )
 }
 
 if (!source_only) {

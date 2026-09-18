@@ -29,6 +29,11 @@
 - **WHEN** canonical実行（`vcd-categorical-analysis`）を開始する
 - **THEN** `analysis_config.json` の指定を必須とし、設定未指定時は `MISSING_REQUIRED_CONFIG` で即時停止する。指定時は共有Pass 0 provenance契約により、設定で参照された入力CSVのSHA-256、設定内の `input_sha256`、Pass 0 inspectionの入力SHA-256、および対象スキル `vcd-categorical-analysis` の一致を、解析署名算出前に検証する。ハッシュ不一致時は `PROVENANCE_SHA_MISMATCH`、スキル不一致時は `TARGET_SKILL_MISMATCH` で即時停止する
 
+#### Scenario: Pass 0 確定設定の整合性検証（運用上の信頼済み正本照合）
+
+- **WHEN** Pass 0 確定後に `analysis_config.json` 内の解析設定（`vars`、`freq`、`input_mode`、`practical_delta` 等）が変更された状態で canonical 実行が呼び出される
+- **THEN** Pass 0 検分成果物（`inspection_results.json`）を運用上の信頼済み正本とみなし、Core 内部で現在の解析パラメータから再算出した `canonical_config_sha256` が、設定ファイル内の `pass0_provenance$canonical_config_sha256` および `inspection_results.json` 内の承認値 `approved_config$canonical_config_sha256` の両方と一致することを検証する。いずれかの未束縛または不一致時は `PROVENANCE_CONFIG_MISMATCH` で即時停止し、解析署名算出および `run_<signature>` ディレクトリ作成を一切行わない
+
 #### Scenario: Canonical CLI 上書きおよび未知引数のホワイトリスト拒否
 
 - **WHEN** canonical実行（`analysis.R`）において、ホワイトリスト許可引数（`--config`, `--out`, `--label`, `--help`）以外の引数（`--data`, `--vars`, `--freq`, `--input-mode`, `--prior-alpha`, `--practical-delta` 等の解析変更型引数、および未知引数）が指定される
@@ -54,7 +59,7 @@
 #### Scenario: Canonical Signature の一意生成と伝播
 
 - **WHEN** canonical解析実行を初期化する
-- **THEN** 再検証済みの `engine_version`、実入力CSVの生ハッシュ `input_sha256`、および正規化された解析設定ダイジェスト `canonical_config_sha256`（変数名、頻度列指定、入力モード、事前分布パラメータ、閾値設定を含む）から `analysis_signature` を単一算出（SHA-256）し、ディレクトリ名、乱数シード、JSONメタデータ、Dashboardに同一値を埋め込む。署名算出後にCLIまたは内部処理でこれらの値を変更してはならない
+- **THEN** 再検証済みの `engine_version`、実入力CSVの生ハッシュ `input_sha256`、正規化された解析設定ダイジェスト `canonical_config_sha256`（変数名、頻度列指定、入力モード、事前分布パラメータ、閾値設定を含む）、および成果物名に反映される `data_label` から `analysis_signature` を単一算出（SHA-256）し、ディレクトリ名（`run_<first16>`）、乱数シード、JSONメタデータ、Dashboardに同一値を埋め込む。label が異なる場合は異なる署名・別ディレクトリとして分離し、署名算出後にCLIまたは内部処理でこれらの値を変更してはならない
 
 #### Scenario: 拡張 Provenance および環境情報の記録
 
@@ -76,7 +81,7 @@
 #### Scenario: Run State ライフサイクルの確定記録
 
 - **WHEN** 解析プロセスの各フェーズ（開始、失敗、成功）を遷移する
-- **THEN** `run_state.json` を更新し、開始時は `status: "running"`、異常終了時は `status: "failed"`、確定 `error_code`、メッセージ、実行モード、検証済みprovenanceの利用可否を記録する。正常完了時は `status: "completed"`、`run_id`、および成果物ファイル一覧を記録する
+- **THEN** `run_state.json` を更新し、署名算出前の早期失敗時は出力root直下に `status: "failed"`、確定 `error_code`、`phase: "gateway"`、および明示的な `run_id: null`、`analysis_signature: null` を記録する。同一署名・同一出力 root の並行実行開始時は原子的排他ロック（`.run_lock`）の取得を試み、先行プロセスが実行中であれば後続プロセスは `status: "failed"`、`error_code: "CONCURRENT_RUN_IN_PROGRESS"` を出力root直下に記録して即時非ゼロ終了する。ロック取得成功後の実行開始時は `status: "running"`、異常終了時は `status: "failed"` を記録する。正常完了時は `status: "completed"`、`run_id`、および成果物ファイル一覧を記録し、終了時に原子的ロックを解放する。強制終了等でロックが残存（stale lock）した場合は手動削除により復旧する
 
 ## ADDED Requirements
 
@@ -87,7 +92,7 @@
 #### Scenario: Development 実行モードによる本番成果物および run ディレクトリ生成の抑止
 
 - **WHEN** コア関数が内部開発・テスト用として `execution_mode: "development"` で呼び出される
-- **THEN** ディスク上に本番成果物（`categorical_results.json`、`evidence_profile.json`、Dashboard HTML 等）および `run_<signature>` ディレクトリを一切生成せず、インメモリの計算結果リストのみを返す。本番 Canonical 成果物との混同や偽装を物理的に排除する
+- **THEN** ディスク上に本番成果物（`categorical_results.json`、`evidence_profile.json`、Dashboard HTML 等）および `run_<signature>` ディレクトリを一切生成せず、インメモリの計算結果リストのみを返す。本番 Canonical 成果物との混同や誤認を防止する
 
 #### Scenario: Canonical Core における偽造フラグおよび未検証設定の拒否
 

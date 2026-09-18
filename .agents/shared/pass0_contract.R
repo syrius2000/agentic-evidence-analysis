@@ -130,10 +130,11 @@ validate_pass0_provenance <- function(config_data, config_path, expected_skill, 
     stop("[ERROR] 入力CSVがPass 0検分後に変更されています。新しいPass 0を実施してください。", call. = FALSE)
   }
 
-  invisible(list(inspection_path = inspection_path, input_path = input_path, provenance = provenance))
+  invisible(list(inspection_path = inspection_path, input_path = input_path, provenance = provenance, inspection = inspection))
 }
 
-build_pass0_provenance <- function(inspection_results, input_path, target_skill, scope_path = NULL, finalized_at_jst = format(Sys.time(), "%Y-%m-%d %H:%M", tz = "Asia/Tokyo"), repo_root = getwd()) {
+
+build_pass0_provenance <- function(inspection_results, input_path, target_skill, scope_path = NULL, canonical_config_sha256 = NULL, finalized_at_jst = format(Sys.time(), "%Y-%m-%d %H:%M", tz = "Asia/Tokyo"), repo_root = getwd()) {
   inspection_abs <- pass0_resolve_path(inspection_results, repo_root = repo_root)
   input_abs <- pass0_resolve_path(input_path, repo_root = repo_root)
   if (is.null(inspection_abs) || is.null(input_abs)) {
@@ -155,6 +156,12 @@ build_pass0_provenance <- function(inspection_results, input_path, target_skill,
     finalized_at_jst = finalized_at_jst,
     target_skill = target_skill
   )
+  if (!is.null(canonical_config_sha256)) {
+    if (!pass0_is_sha256(canonical_config_sha256)) {
+      stop("[ERROR] canonical_config_sha256 は64桁の16進数文字列である必要があります。", call. = FALSE)
+    }
+    provenance$canonical_config_sha256 <- canonical_config_sha256
+  }
   if (!is.null(scope_path)) {
     scope_abs <- pass0_resolve_path(scope_path, repo_root = repo_root)
     if (is.null(scope_abs)) stop("[ERROR] Pass 0 スコープ文書が見つかりません: ", scope_path, call. = FALSE)
@@ -162,4 +169,18 @@ build_pass0_provenance <- function(inspection_results, input_path, target_skill,
     provenance$scope_document_sha256 <- pass0_sha256_file(scope_abs)
   }
   provenance
+}
+
+compute_canonical_config_sha256 <- function(vars, freq = "", input_mode = "aggregated", prior_alpha = 1.0, practical_delta = NULL) {
+  obj <- list(
+    vars = unname(as.character(vars)),
+    freq = if (is.null(freq) || is.na(freq)) "" else as.character(freq),
+    input_mode = as.character(input_mode),
+    prior_alpha = as.numeric(prior_alpha),
+    practical_delta = if (!is.null(practical_delta) && !is.na(practical_delta)) as.numeric(practical_delta) else NULL
+  )
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("[ERROR] canonical_config_sha256 の計算には digest パッケージが必要です。", call. = FALSE)
+  }
+  digest::digest(obj, algo = "sha256")
 }

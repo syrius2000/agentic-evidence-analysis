@@ -1,608 +1,370 @@
 #!/usr/bin/env Rscript
+# tests/test_vcd_categorical_run_isolation.R — Run Isolation & Signature Contract Tests for v4.1
+# Verifies:
+# 1. Deterministic run isolation: Different inputs/configs produce distinct run_<signature> directories.
+# 2. Complete artifact isolation: Output root has no leaking analysis artifacts.
+# 3. run_state.json verification: execution_mode == "canonical", provenance_status == "verified", correct SHAs.
+# 4. Deterministic idempotency: Identical config reproduces the identical run_<signature>.
+# 5. Concurrent execution safety: Parallel runs for different configs do not collide or corrupt files.
 
-root <- normalizePath(".", mustWork = TRUE)
-analysis <- file.path(
-  root,
-  ".agents",
-  "skills",
-  "vcd-categorical-analysis",
-  "templates",
-  "analysis.R"
+find_agent_repo <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in seq_len(25L)) {
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
+      return(d)
+    }
+    parent <- dirname(d)
+    if (parent == d) break
+    d <- parent
+  }
+  getwd()
+}
+repo_root <- find_agent_repo()
+
+source(file.path(repo_root, ".agents", "shared", "dependency_check.R"))
+source(file.path(repo_root, ".agents", "shared", "pass0_contract.R"))
+
+check_r_dependencies(
+  c("vcd", "gt", "DT", "htmlwidgets", "ggplot2", "jsonlite", "digest"),
+  context = "test_vcd_categorical_run_isolation.R"
 )
-stopifnot(file.exists(analysis))
 
-td <- tempfile("vcd_categorical_runs_")
+PASS <- 0L
+FAIL <- 0L
+
+assert <- function(cond, msg) {
+  if (isTRUE(cond)) {
+    cat(sprintf("  [PASS] %s\n", msg))
+    PASS <<- PASS + 1L
+  } else {
+    cat(sprintf("  [FAIL] %s\n", msg))
+    FAIL <<- FAIL + 1L
+  }
+}
+
+cat("============================================================\n")
+cat("vcd-categorical-analysis v4.1 Run Isolation & Contract Tests\n")
+cat("============================================================\n\n")
+
+analysis_script <- file.path(repo_root, ".agents", "skills", "vcd-categorical-analysis", "templates", "analysis.R")
+stopifnot(file.exists(analysis_script))
+
+td <- tempfile("vcd_cat_run_iso_")
 dir.create(td, recursive = TRUE)
 on.exit(unlink(td, recursive = TRUE), add = TRUE)
 
-run_analysis <- function(mode, extra_args = character(0)) {
-  mode_arg <- if (identical(mode, "profile")) "--profile" else "--render"
-  output <- suppressWarnings(system2(
-    "Rscript",
-    c("--vanilla", analysis, mode_arg, "--out", td, extra_args),
-    stdout = TRUE,
-    stderr = TRUE
-  ))
-  status <- attr(output, "status")
-  if (is.null(status)) status <- 0L
-  if (!identical(as.integer(status), 0L)) {
-    stop(paste(output, collapse = "\n"))
+# ------------------------------------------------------------
+# 1. 2組の異なるテストデータと Pass 0 Fixture の作成
+# ------------------------------------------------------------
+# Dataset A: Treatment x Response
+csv_a <- file.path(td, "data_a.csv")
+write.csv(data.frame(
+  Treatment = c("Drug", "Drug", "Placebo", "Placebo"),
+  Response  = c("Yes", "No", "Yes", "No"),
+  Freq      = c(60L, 20L, 25L, 55L),
+  stringsAsFactors = FALSE
+), csv_a, row.names = FALSE)
+sha_a <- pass0_sha256_file(csv_a)
+
+sha_a_config <- compute_canonical_config_sha256(
+  vars = c("Treatment", "Response"),
+  freq = "Freq",
+  input_mode = "aggregated",
+  prior_alpha = 1.0,
+  practical_delta = NULL
+)
+
+insp_a_path <- file.path(td, "inspection_a.json")
+writeLines(jsonlite::toJSON(list(
+  contract_version = "1.0",
+  inspection_status = "ready",
+  input_sha256 = sha_a,
+  candidate_variables = list("Treatment", "Response"),
+  detected_freq = "Freq",
+  approved_config = list(
+    canonical_config_sha256 = sha_a_config
+  )
+), auto_unbox = TRUE, pretty = TRUE), insp_a_path)
+insp_a_sha <- pass0_sha256_file(insp_a_path)
+
+cfg_a_path <- file.path(td, "config_a.json")
+writeLines(jsonlite::toJSON(list(
+  input = csv_a,
+  vars = c("Treatment", "Response"),
+  freq = "Freq",
+  input_mode = "aggregated",
+  pass0_provenance = list(
+    contract_version = "1.0",
+    inspection_results = insp_a_path,
+    inspection_results_sha256 = insp_a_sha,
+    input_sha256 = sha_a,
+    canonical_config_sha256 = sha_a_config,
+    finalized_at_jst = "2026-09-17 12:00",
+    target_skill = "vcd-categorical-analysis"
+  )
+), auto_unbox = TRUE, pretty = TRUE), cfg_a_path)
+
+# Dataset B: Gender x Preference (異なる変数名・度数)
+csv_b <- file.path(td, "data_b.csv")
+write.csv(data.frame(
+  Gender     = c("Male", "Male", "Female", "Female"),
+  Preference = c("Tea", "Coffee", "Tea", "Coffee"),
+  Freq       = c(35L, 45L, 50L, 30L),
+  stringsAsFactors = FALSE
+), csv_b, row.names = FALSE)
+sha_b <- pass0_sha256_file(csv_b)
+
+sha_b_config <- compute_canonical_config_sha256(
+  vars = c("Gender", "Preference"),
+  freq = "Freq",
+  input_mode = "aggregated",
+  prior_alpha = 1.0,
+  practical_delta = NULL
+)
+
+insp_b_path <- file.path(td, "inspection_b.json")
+writeLines(jsonlite::toJSON(list(
+  contract_version = "1.0",
+  inspection_status = "ready",
+  input_sha256 = sha_b,
+  candidate_variables = list("Gender", "Preference"),
+  detected_freq = "Freq",
+  approved_config = list(
+    canonical_config_sha256 = sha_b_config
+  )
+), auto_unbox = TRUE, pretty = TRUE), insp_b_path)
+insp_b_sha <- pass0_sha256_file(insp_b_path)
+
+cfg_b_path <- file.path(td, "config_b.json")
+writeLines(jsonlite::toJSON(list(
+  input = csv_b,
+  vars = c("Gender", "Preference"),
+  freq = "Freq",
+  input_mode = "aggregated",
+  pass0_provenance = list(
+    contract_version = "1.0",
+    inspection_results = insp_b_path,
+    inspection_results_sha256 = insp_b_sha,
+    input_sha256 = sha_b,
+    canonical_config_sha256 = sha_b_config,
+    finalized_at_jst = "2026-09-17 12:00",
+    target_skill = "vcd-categorical-analysis"
+  )
+), auto_unbox = TRUE, pretty = TRUE), cfg_b_path)
+
+# ============================================================
+# Test 1: 異なる解析設定における決定論的 Run Isolation
+# ============================================================
+cat("[TEST 1] 異なる設定での実行分離と決定論的シグネチャ検証\n")
+out1_dir <- file.path(td, "out1_runs")
+
+cmd_a <- sprintf("Rscript %s --config %s --out %s --label analysis_a", analysis_script, cfg_a_path, out1_dir)
+cmd_b <- sprintf("Rscript %s --config %s --out %s --label analysis_b", analysis_script, cfg_b_path, out1_dir)
+
+out_a <- suppressWarnings(system(cmd_a, intern = TRUE, ignore.stderr = FALSE))
+status_a <- attr(out_a, "status")
+assert(is.null(status_a) || status_a == 0, "Dataset A の Canonical 解析が正常終了する")
+
+out_b <- suppressWarnings(system(cmd_b, intern = TRUE, ignore.stderr = FALSE))
+status_b <- attr(out_b, "status")
+assert(is.null(status_b) || status_b == 0, "Dataset B の Canonical 解析が正常終了する")
+
+# run_<first16> ディレクトリの確認
+run_dirs <- list.dirs(out1_dir, recursive = FALSE)
+run_dirs <- run_dirs[grepl("^run_[0-9a-f]{16}$", basename(run_dirs))]
+assert(length(run_dirs) == 2L, "2つの独立した run_<first16> ディレクトリが生成される")
+
+# 出力ルート直下に成果物が漏洩していないこと
+root_json <- list.files(out1_dir, pattern = "\\.json$", recursive = FALSE)
+assert(length(root_json) == 0L, "出力root直下に JSON 成果物が漏洩していないこと")
+root_csv <- list.files(out1_dir, pattern = "\\.csv$", recursive = FALSE)
+assert(length(root_csv) == 0L, "出力root直下に CSV 成果物が漏洩していないこと")
+root_html <- list.files(out1_dir, pattern = "\\.html$", recursive = FALSE)
+assert(length(root_html) == 0L, "出力root直下に HTML 成果物が漏洩していないこと")
+
+# ============================================================
+# Test 2: run_state.json 契約および成果物整合性 (Task 3.1)
+# ============================================================
+cat("[TEST 2] 各 run ディレクトリの run_state.json 契約検証\n")
+for (r_dir in run_dirs) {
+  state_p <- file.path(r_dir, "run_state.json")
+  assert(file.exists(state_p), sprintf("run_state.json が存在する: %s", basename(r_dir)))
+  if (file.exists(state_p)) {
+    rs <- jsonlite::fromJSON(state_p)
+    assert(identical(rs$status, "completed"), "status == 'completed'")
+    assert(identical(rs$execution_mode, "canonical"), "execution_mode == 'canonical'")
+    assert(identical(rs$provenance_status, "verified"), "provenance_status == 'verified'")
+    assert(!is.null(rs$analysis_signature) && nchar(rs$analysis_signature) == 64L,
+           "有効な SHA-256 analysis_signature が記録されている")
+    assert(!is.null(rs$canonical_config_sha256), "canonical_config_sha256 が記録されている")
+    assert(!is.null(rs$config_file_sha256), "config_file_sha256 が記録されている")
+    assert(identical(paste0("run_", substr(rs$analysis_signature, 1L, 16L)), basename(r_dir)),
+           "run ディレクトリ名が analysis_signature の先頭16文字と完全一致する")
+    assert(length(rs$artifacts) >= 8L, "全成果物が artifacts 配列にリストされている")
   }
-  invisible(output)
+
+  res_p <- file.path(r_dir, "categorical_results.json")
+  assert(file.exists(res_p), sprintf("categorical_results.json が存在する: %s", basename(r_dir)))
+  if (file.exists(res_p)) {
+    cr <- jsonlite::fromJSON(res_p)
+    assert(identical(cr$interface_version, "3.0"), "interface_version == '3.0'")
+    assert(!is.null(cr$provenance$input_sha256), "成果物 JSON provenance$input_sha256 が記録されている")
+  }
 }
 
-run_profile <- function(extra_args = character(0)) {
-  run_analysis("profile", extra_args)
-}
+# ============================================================
+# Test 3: 決定論的冪等性（同一設定での再実行による同一シグネチャ導出）
+# ============================================================
+cat("[TEST 3] 同一設定での決定論的再現性（冪等性）検証\n")
+cmd_a_repeat <- sprintf("Rscript %s --config %s --out %s --label analysis_a", analysis_script, cfg_a_path, out1_dir)
+out_a_rep <- suppressWarnings(system(cmd_a_repeat, intern = TRUE, ignore.stderr = FALSE))
+status_a_rep <- attr(out_a_rep, "status")
+assert(is.null(status_a_rep) || status_a_rep == 0, "再実行が正常終了する")
 
-run_render <- function(extra_args = character(0)) {
-  run_analysis("render", extra_args)
-}
+run_dirs_after <- list.dirs(out1_dir, recursive = FALSE)
+run_dirs_after <- run_dirs_after[grepl("^run_[0-9a-f]{16}$", basename(run_dirs_after))]
+assert(length(run_dirs_after) == 2L, "同一設定の再実行で新規ディレクトリが増加せず、同一 run_<first16> に決定論的に収束する")
 
-missing_data_out <- file.path(td, "missing_data_out")
-missing_data_path <- file.path(td, "does_not_exist.csv")
-missing_data_output <- suppressWarnings(system2(
-  "Rscript",
-  c(
-    "--vanilla",
-    analysis,
-    "--profile",
-    "--out", missing_data_out,
-    "--run-id", "missing_data",
-    "--data", missing_data_path
-  ),
-  stdout = TRUE,
-  stderr = TRUE
-))
-missing_data_status <- attr(missing_data_output, "status")
-if (is.null(missing_data_status)) missing_data_status <- 0L
-stopifnot(as.integer(missing_data_status) != 0L)
-stopifnot(any(grepl("--data.*存在しません", missing_data_output)))
-stopifnot(!dir.exists(missing_data_out))
-
-missing_config_out <- file.path(td, "missing_config_out")
-missing_config_input <- file.path(td, "config_input_does_not_exist.csv")
-missing_config_path <- file.path(td, "missing_input_config.json")
-jsonlite::write_json(
-  list(
-    input = missing_config_input,
-    output_dir = missing_config_out,
-    run_id = "missing_config_input"
-  ),
-  missing_config_path,
-  auto_unbox = TRUE,
-  pretty = TRUE
-)
-missing_config_output <- suppressWarnings(system2(
-  "Rscript",
-  c(
-    "--vanilla",
-    analysis,
-    "--profile",
-    "--config", missing_config_path
-  ),
-  stdout = TRUE,
-  stderr = TRUE
-))
-missing_config_status <- attr(missing_config_output, "status")
-if (is.null(missing_config_status)) missing_config_status <- 0L
-stopifnot(as.integer(missing_config_status) != 0L)
-stopifnot(any(grepl("config input.*存在しません", missing_config_output)))
-stopifnot(!dir.exists(missing_config_out))
-
-run_profile()
-
-auto_runs <- list.dirs(td, recursive = FALSE, full.names = FALSE)
-auto_runs <- auto_runs[grepl("^run_[0-9]{8}_[0-9]{6}$", auto_runs)]
-stopifnot(length(auto_runs) == 1L)
-auto_meta <- jsonlite::fromJSON(file.path(td, auto_runs, "run_meta.json"))
-stopifnot(grepl("^[0-9]{8}_[0-9]{6}$", auto_meta$run_id))
-stopifnot(identical(auto_meta$run_state, "profile_complete"))
-
-run_profile(c("--run-id", "collision_case"))
-run_profile(c("--run-id", "collision_case"))
-
-stopifnot(dir.exists(file.path(td, "run_collision_case")))
-stopifnot(dir.exists(file.path(td, "run_collision_case_2")))
-stopifnot(file.exists(file.path(td, "run_collision_case", "data_profile.json")))
-stopifnot(file.exists(file.path(td, "run_collision_case_2", "data_profile.json")))
-
-meta_1 <- jsonlite::fromJSON(
-  file.path(td, "run_collision_case", "run_meta.json")
-)
-meta_2 <- jsonlite::fromJSON(
-  file.path(td, "run_collision_case_2", "run_meta.json")
-)
-stopifnot(identical(meta_1$run_id, "collision_case"))
-stopifnot(identical(meta_2$run_id, "collision_case_2"))
-stopifnot(identical(meta_1$requested_run_id, "collision_case"))
-stopifnot(identical(meta_2$requested_run_id, "collision_case"))
-stopifnot(grepl("^[0-9a-f]{64}$", meta_1$analysis_signature))
-stopifnot(identical(meta_1$analysis_signature, meta_2$analysis_signature))
-
+# ============================================================
+# Test 4: 並行実行時の隔離性（Concurrency Safety）
+# ============================================================
 if (identical(.Platform$OS.type, "unix")) {
-  atomic_jobs <- lapply(seq_len(4L), function(i) {
-    parallel::mcparallel(
-      suppressWarnings(system2(
-        "Rscript",
-        c(
-          "--vanilla",
-          analysis,
-          "--profile",
-          "--out", td,
-          "--run-id", "atomic_case"
-        ),
-        stdout = TRUE,
-        stderr = TRUE
-      )),
-      silent = TRUE,
-      mc.set.seed = FALSE
-    )
-  })
-  atomic_outputs <- parallel::mccollect(atomic_jobs)
-  atomic_statuses <- vapply(atomic_outputs, function(output) {
-    if (inherits(output, "try-error")) return(1L)
-    status <- attr(output, "status")
-    if (is.null(status)) 0L else as.integer(status)
-  }, integer(1))
-  stopifnot(all(atomic_statuses == 0L))
+  cat("[TEST 4] 並行実行時のファイル隔離性検証 (parallel execution)\n")
+  out4_dir <- file.path(td, "out4_parallel")
+  dir.create(out4_dir, recursive = TRUE)
 
-  atomic_dirs <- list.dirs(td, recursive = FALSE, full.names = TRUE)
-  atomic_dirs <- atomic_dirs[grepl(
-    "^run_atomic_case(_[0-9]+)?$",
-    basename(atomic_dirs)
-  )]
-  stopifnot(length(atomic_dirs) == 4L)
-  atomic_meta <- lapply(
-    file.path(atomic_dirs, "run_meta.json"),
-    jsonlite::fromJSON
-  )
-  atomic_run_ids <- vapply(atomic_meta, `[[`, character(1), "run_id")
-  atomic_states <- vapply(atomic_meta, `[[`, character(1), "run_state")
-  stopifnot(length(unique(atomic_run_ids)) == 4L)
-  stopifnot(all(atomic_states == "profile_complete"))
+  job_a <- parallel::mcparallel({
+    system2("Rscript", c(analysis_script, "--config", cfg_a_path, "--out", out4_dir, "--label", "par_a"))
+  }, silent = TRUE)
+  job_b <- parallel::mcparallel({
+    system2("Rscript", c(analysis_script, "--config", cfg_b_path, "--out", out4_dir, "--label", "par_b"))
+  }, silent = TRUE)
+
+  res_par <- parallel::mccollect(list(job_a, job_b))
+  assert(!inherits(res_par[[1]], "try-error") && identical(as.integer(res_par[[1]]), 0L),
+         "並行実行 Job A が正常終了する")
+  assert(!inherits(res_par[[2]], "try-error") && identical(as.integer(res_par[[2]]), 0L),
+         "並行実行 Job B が正常終了する")
+
+  par_dirs <- list.dirs(out4_dir, recursive = FALSE)
+  par_dirs <- par_dirs[grepl("^run_[0-9a-f]{16}$", basename(par_dirs))]
+  assert(length(par_dirs) == 2L, "並行実行後も2つの独立した run_<first16> が安全に分離生成される")
 } else {
-  message("SKIP: atomic run reservation concurrency test requires Unix fork support")
+  cat("[TEST 4] SKIP: Windows環境のため並行mcparallelテストをスキップ\n")
 }
 
+# ============================================================
+# Test 5: 同一設定で異なる --label 指定時の Run 分離 (Task 2.7)
+# ============================================================
+cat("[TEST 5] 同一設定・異なる --label 指定時の署名分離と独立実行検証 (Task 2.7)\n")
+out5_dir <- file.path(td, "out5_labels")
+dir.create(out5_dir, recursive = TRUE)
+
+cmd_label1 <- sprintf("Rscript %s --config %s --out %s --label label_alpha", analysis_script, cfg_a_path, out5_dir)
+cmd_label2 <- sprintf("Rscript %s --config %s --out %s --label label_beta", analysis_script, cfg_a_path, out5_dir)
+
+out_l1 <- suppressWarnings(system(cmd_label1, intern = TRUE, ignore.stderr = FALSE))
+status_l1 <- attr(out_l1, "status")
+assert(is.null(status_l1) || status_l1 == 0, "--label label_alpha の実行が正常終了する")
+
+out_l2 <- suppressWarnings(system(cmd_label2, intern = TRUE, ignore.stderr = FALSE))
+status_l2 <- attr(out_l2, "status")
+assert(is.null(status_l2) || status_l2 == 0, "--label label_beta の実行が正常終了する")
+
+run_dirs5 <- list.dirs(out5_dir, recursive = FALSE)
+run_dirs5 <- run_dirs5[grepl("^run_[0-9a-f]{16}$", basename(run_dirs5))]
+assert(length(run_dirs5) == 2L, "同一設定・異なる --label で2つの独立した run_<first16> が生成される")
+
+if (length(run_dirs5) == 2L) {
+  # 各ディレクトリの成果物名を確認
+  dir_files_1 <- list.files(run_dirs5[1])
+  dir_files_2 <- list.files(run_dirs5[2])
+
+  has_alpha_1 <- any(grepl("label_alpha", dir_files_1))
+  has_beta_1  <- any(grepl("label_beta", dir_files_1))
+  has_alpha_2 <- any(grepl("label_alpha", dir_files_2))
+  has_beta_2  <- any(grepl("label_beta", dir_files_2))
+
+  assert((has_alpha_1 && !has_beta_1 && !has_alpha_2 && has_beta_2) ||
+         (!has_alpha_1 && has_beta_1 && has_alpha_2 && !has_beta_2),
+         "成果物ファイル名（gt/dt/plots）が各ディレクトリで混在・衝突せず完全分離されている")
+
+  s1 <- jsonlite::fromJSON(file.path(run_dirs5[1], "run_state.json"))
+  s2 <- jsonlite::fromJSON(file.path(run_dirs5[2], "run_state.json"))
+  assert(!identical(s1$analysis_signature, s2$analysis_signature),
+         "異なる --label で異なる analysis_signature が算出されている")
+}
+
+# ============================================================
+# Test 6: 同一署名・同一出力 root の並行実行排他ロック (Task 2.8, Task 2.9)
+# ============================================================
 if (identical(.Platform$OS.type, "unix")) {
-  concurrent_run_id <- "exclusive_render"
-  run_profile(c("--run-id", concurrent_run_id))
-  concurrent_profile_dir <- file.path(td, "run_exclusive_render")
-  concurrent_profile_meta <- jsonlite::fromJSON(file.path(
-    concurrent_profile_dir,
-    "run_meta.json"
-  ))
+  cat("[TEST 6] 同一署名・同一出力 root の並行実行排他ロック検証 (.run_lock)\n")
+  out6_dir <- file.path(td, "out6_lock")
+  dir.create(out6_dir, recursive = TRUE)
 
-  residual_config <- file.path(td, "render_residual_only.json")
-  always_config <- file.path(td, "render_always.json")
-  jsonlite::write_json(
-    list(plot_mode = "residual_only"),
-    residual_config,
-    auto_unbox = TRUE,
-    pretty = TRUE
-  )
-  jsonlite::write_json(
-    list(plot_mode = "always"),
-    always_config,
-    auto_unbox = TRUE,
-    pretty = TRUE
-  )
+  # 同一の cfg_a_path と同一の --label lock_test を同時に起動
+  job1 <- parallel::mcparallel({
+    system2("Rscript", c(analysis_script, "--config", cfg_a_path, "--out", out6_dir, "--label", "lock_test"))
+  }, silent = TRUE)
+  job2 <- parallel::mcparallel({
+    system2("Rscript", c(analysis_script, "--config", cfg_a_path, "--out", out6_dir, "--label", "lock_test"))
+  }, silent = TRUE)
 
-  launch_render <- function(config_path, tag) {
-    parallel::mcparallel({
-      output <- suppressWarnings(system2(
-        "Rscript",
-        c(
-          "--vanilla",
-          analysis,
-          "--render",
-          "--config", config_path,
-          "--out", td,
-          "--run-id", concurrent_run_id
-        ),
-        stdout = TRUE,
-        stderr = TRUE
-      ))
-      status <- attr(output, "status")
-      if (is.null(status)) status <- 0L
-      list(tag = tag, status = as.integer(status), output = output)
-    }, silent = TRUE, mc.set.seed = FALSE)
+  res_lock <- parallel::mccollect(list(job1, job2))
+  st1 <- if (inherits(res_lock[[1]], "try-error")) 1L else as.integer(res_lock[[1]])
+  st2 <- if (inherits(res_lock[[2]], "try-error")) 1L else as.integer(res_lock[[2]])
+
+  statuses <- c(st1, st2)
+  cat(sprintf("  並行プロセス exit statuses: %d, %d\n", st1, st2))
+
+  assert(any(statuses == 0L), "少なくとも1つのプロセスが正常完了 (status == 0) する")
+
+  run_dirs6 <- list.dirs(out6_dir, recursive = FALSE)
+  run_dirs6 <- run_dirs6[grepl("^run_[0-9a-f]{16}$", basename(run_dirs6))]
+  assert(length(run_dirs6) == 1L, "同一署名のため生成された run ディレクトリは1つのみ")
+
+  if (length(run_dirs6) == 1L) {
+    assert(!dir.exists(file.path(run_dirs6[1], ".run_lock")), ".run_lock が終了後に確実に解除・削除されている")
+    res_f <- file.path(run_dirs6[1], "categorical_results.json")
+    assert(file.exists(res_f), "正常完了プロセスの成果物 categorical_results.json が破損なく存在する")
   }
 
-  render_jobs <- list(
-    launch_render(residual_config, "residual_only"),
-    launch_render(always_config, "always")
-  )
-  render_results <- parallel::mccollect(render_jobs)
-  stopifnot(all(vapply(render_results, function(result) {
-    !inherits(result, "try-error") && identical(result$status, 0L)
-  }, logical(1))))
-
-  render_paths <- vapply(render_results, function(result) {
-    run_line <- grep(
-      "^\\[INFO\\] run 出力先: ",
-      result$output,
-      value = TRUE
-    )
-    stopifnot(length(run_line) == 1L)
-    sub("^\\[INFO\\] run 出力先: ", "", run_line)
-  }, character(1))
-  render_tags <- vapply(render_results, `[[`, character(1), "tag")
-  render_path_by_tag <- stats::setNames(render_paths, render_tags)
-
-  stopifnot(length(unique(render_paths)) == 2L)
-  stopifnot(identical(
-    sort(basename(render_paths)),
-    c("run_exclusive_render", "run_exclusive_render_2")
-  ))
-  stopifnot(file.exists(file.path(
-    concurrent_profile_dir,
-    "data_profile.json"
-  )))
-  stopifnot(!file.exists(file.path(
-    td,
-    "run_exclusive_render_2",
-    "data_profile.json"
-  )))
-
-  for (render_path in render_paths) {
-    stopifnot(file.exists(file.path(
-      render_path,
-      "data_profile_post.json"
-    )))
-    stopifnot(file.exists(file.path(
-      render_path,
-      "categorical_results.json"
-    )))
-    render_meta <- jsonlite::fromJSON(file.path(
-      render_path,
-      "run_meta.json"
-    ))
-    stopifnot(identical(render_meta$run_state, "render_complete"))
-    stopifnot(identical(
-      render_meta$requested_run_id,
-      concurrent_run_id
-    ))
-    stopifnot(identical(
-      render_meta$analysis_signature,
-      concurrent_profile_meta$analysis_signature
-    ))
-    stopifnot(identical(
-      normalizePath(render_meta$run_output_dir, mustWork = TRUE),
-      normalizePath(render_path, mustWork = TRUE)
-    ))
+  if (any(statuses != 0L)) {
+    root_state_p <- file.path(out6_dir, "run_state.json")
+    assert(file.exists(root_state_p), "排他遮断時に出力root直下に run_state.json が記録される")
+    if (file.exists(root_state_p)) {
+      rst <- jsonlite::fromJSON(root_state_p)
+      assert(identical(rst$status, "failed"), "排他遮断プロセスの status == 'failed'")
+      assert(identical(rst$error_code, "CONCURRENT_RUN_IN_PROGRESS"), "error_code == 'CONCURRENT_RUN_IN_PROGRESS'")
+    }
   }
 
-  stopifnot(length(list.files(
-    render_path_by_tag[["residual_only"]],
-    pattern = "\\.png$"
-  )) == 0L)
-  stopifnot(length(list.files(
-    render_path_by_tag[["always"]],
-    pattern = "\\.png$"
-  )) > 0L)
+  # 先行ロック存在時の確実な遮断検証
+  if (length(run_dirs6) == 1L) {
+    dir.create(file.path(run_dirs6[1], ".run_lock"))
+    cmd_lock_blocked <- sprintf("Rscript %s --config %s --out %s --label lock_test", analysis_script, cfg_a_path, out6_dir)
+    out_blocked <- suppressWarnings(system(cmd_lock_blocked, intern = TRUE, ignore.stderr = FALSE))
+    st_blocked <- attr(out_blocked, "status")
+    assert(!is.null(st_blocked) && st_blocked != 0, "先行ロック存在時に実行が非ゼロで終了する")
+
+    root_state_blocked <- file.path(out6_dir, "run_state.json")
+    assert(file.exists(root_state_blocked), "ロック失敗時に root run_state.json が記録される")
+    if (file.exists(root_state_blocked)) {
+      rst_b <- jsonlite::fromJSON(root_state_blocked)
+      assert(identical(rst_b$error_code, "CONCURRENT_RUN_IN_PROGRESS"),
+             "先行ロック存在時に error_code == 'CONCURRENT_RUN_IN_PROGRESS' で即時遮断される")
+    }
+    unlink(file.path(run_dirs6[1], ".run_lock"), recursive = TRUE)
+  }
 } else {
-  message("SKIP: exclusive render claim concurrency test requires Unix fork support")
+  cat("[TEST 6] SKIP: Windows環境のため並行ロックテストをスキップ\n")
 }
 
-run_profile(c("--run-id", "stale_claim"))
-stale_claim_profile_dir <- file.path(td, "run_stale_claim")
-stale_claim_meta_path <- file.path(
-  stale_claim_profile_dir,
-  "run_meta.json"
-)
-stale_claim_meta_before <- jsonlite::fromJSON(stale_claim_meta_path)
-stale_claim_dir <- file.path(stale_claim_profile_dir, ".render_claim")
-stopifnot(dir.create(stale_claim_dir, recursive = FALSE))
+cat("\n============================================================\n")
+cat(sprintf("結果: %d PASS / %d FAIL\n", PASS, FAIL))
+cat("============================================================\n")
 
-run_render(c("--run-id", "stale_claim"))
-
-stale_claim_meta_after <- jsonlite::fromJSON(stale_claim_meta_path)
-stopifnot(identical(
-  stale_claim_meta_after$run_state,
-  "profile_complete"
-))
-stopifnot(identical(
-  stale_claim_meta_after$updated_at,
-  stale_claim_meta_before$updated_at
-))
-stopifnot(dir.exists(stale_claim_dir))
-stopifnot(!file.exists(file.path(
-  stale_claim_profile_dir,
-  "categorical_results.json"
-)))
-stale_claim_render_dir <- file.path(td, "run_stale_claim_2")
-stopifnot(file.exists(file.path(
-  stale_claim_render_dir,
-  "categorical_results.json"
-)))
-stale_claim_render_meta <- jsonlite::fromJSON(file.path(
-  stale_claim_render_dir,
-  "run_meta.json"
-))
-stopifnot(identical(
-  stale_claim_render_meta$run_state,
-  "render_complete"
-))
-
-run_profile(c("--run-id", "requested_case"))
-run_profile(c("--run-id", "requested_case"))
-ambiguous_profile_dir <- file.path(td, "run_requested_case_2")
-ambiguous_profile_meta <- jsonlite::fromJSON(
-  file.path(ambiguous_profile_dir, "run_meta.json")
-)
-stopifnot(identical(ambiguous_profile_meta$run_id, "requested_case_2"))
-stopifnot(identical(ambiguous_profile_meta$requested_run_id, "requested_case"))
-
-run_render(c("--run-id", "requested_case_2"))
-stopifnot(!file.exists(file.path(ambiguous_profile_dir, "categorical_results.json")))
-distinct_requested_dir <- file.path(td, "run_requested_case_2_2")
-stopifnot(file.exists(file.path(distinct_requested_dir, "categorical_results.json")))
-distinct_requested_meta <- jsonlite::fromJSON(
-  file.path(distinct_requested_dir, "run_meta.json")
-)
-stopifnot(identical(distinct_requested_meta$run_id, "requested_case_2_2"))
-stopifnot(identical(distinct_requested_meta$requested_run_id, "requested_case_2"))
-
-data_a <- file.path(td, "identity_a.csv")
-data_b <- file.path(td, "identity_b.csv")
-utils::write.csv(
-  data.frame(
-    row = c("a", "a", "b", "b"),
-    col = c("x", "y", "x", "y"),
-    Freq = c(10, 20, 30, 40),
-    Count = c(40, 30, 20, 10)
-  ),
-  data_a,
-  row.names = FALSE
-)
-utils::write.csv(
-  data.frame(
-    row = c("a", "a", "b", "b"),
-    col = c("x", "y", "x", "y"),
-    Freq = c(11, 20, 30, 40),
-    Count = c(40, 30, 20, 10)
-  ),
-  data_b,
-  row.names = FALSE
-)
-
-run_profile(c(
-  "--run-id", "input_identity",
-  "--data", data_a,
-  "--vars", "row,col",
-  "--freq", "Freq"
-))
-input_profile_dir <- file.path(td, "run_input_identity")
-input_profile_meta <- jsonlite::fromJSON(file.path(input_profile_dir, "run_meta.json"))
-run_render(c(
-  "--run-id", "input_identity",
-  "--data", data_b,
-  "--vars", "row,col",
-  "--freq", "Freq"
-))
-stopifnot(!file.exists(file.path(input_profile_dir, "categorical_results.json")))
-input_render_dir <- file.path(td, "run_input_identity_2")
-stopifnot(file.exists(file.path(input_render_dir, "categorical_results.json")))
-input_render_meta <- jsonlite::fromJSON(file.path(input_render_dir, "run_meta.json"))
-stopifnot(!identical(
-  input_profile_meta$analysis_signature,
-  input_render_meta$analysis_signature
-))
-
-run_profile(c(
-  "--run-id", "vars_identity",
-  "--data", data_a,
-  "--vars", "row,col",
-  "--freq", "Freq"
-))
-vars_profile_dir <- file.path(td, "run_vars_identity")
-vars_profile_meta <- jsonlite::fromJSON(file.path(vars_profile_dir, "run_meta.json"))
-run_render(c(
-  "--run-id", "vars_identity",
-  "--data", data_a,
-  "--vars", "col,row",
-  "--freq", "Freq"
-))
-stopifnot(!file.exists(file.path(vars_profile_dir, "categorical_results.json")))
-vars_render_dir <- file.path(td, "run_vars_identity_2")
-stopifnot(file.exists(file.path(vars_render_dir, "categorical_results.json")))
-vars_render_meta <- jsonlite::fromJSON(file.path(vars_render_dir, "run_meta.json"))
-stopifnot(!identical(
-  vars_profile_meta$analysis_signature,
-  vars_render_meta$analysis_signature
-))
-
-run_profile(c(
-  "--run-id", "freq_identity",
-  "--data", data_a,
-  "--vars", "row,col",
-  "--freq", "Freq"
-))
-freq_profile_dir <- file.path(td, "run_freq_identity")
-freq_profile_meta <- jsonlite::fromJSON(file.path(freq_profile_dir, "run_meta.json"))
-run_render(c(
-  "--run-id", "freq_identity",
-  "--data", data_a,
-  "--vars", "row,col",
-  "--freq", "Count"
-))
-stopifnot(!file.exists(file.path(freq_profile_dir, "categorical_results.json")))
-freq_render_dir <- file.path(td, "run_freq_identity_2")
-stopifnot(file.exists(file.path(freq_render_dir, "categorical_results.json")))
-freq_render_meta <- jsonlite::fromJSON(file.path(freq_render_dir, "run_meta.json"))
-stopifnot(!identical(
-  freq_profile_meta$analysis_signature,
-  freq_render_meta$analysis_signature
-))
-
-run_profile(c(
-  "--run-id", "legacy_identity",
-  "--data", data_a,
-  "--vars", "row,col",
-  "--freq", "Freq"
-))
-legacy_profile_dir <- file.path(td, "run_legacy_identity")
-legacy_meta_path <- file.path(legacy_profile_dir, "run_meta.json")
-legacy_meta <- jsonlite::fromJSON(legacy_meta_path)
-legacy_meta$requested_run_id <- NULL
-legacy_meta$analysis_signature <- NULL
-jsonlite::write_json(
-  legacy_meta,
-  legacy_meta_path,
-  auto_unbox = TRUE,
-  pretty = TRUE,
-  null = "null"
-)
-run_render(c(
-  "--run-id", "legacy_identity",
-  "--data", data_a,
-  "--vars", "row,col",
-  "--freq", "Freq"
-))
-stopifnot(!file.exists(file.path(legacy_profile_dir, "categorical_results.json")))
-stopifnot(file.exists(file.path(
-  td,
-  "run_legacy_identity_2",
-  "categorical_results.json"
-)))
-
-run_profile(c("--run-id", "missing_state"))
-missing_state_dir <- file.path(td, "run_missing_state")
-missing_state_meta_path <- file.path(missing_state_dir, "run_meta.json")
-missing_state_meta <- jsonlite::fromJSON(missing_state_meta_path)
-missing_state_meta$run_state <- NULL
-jsonlite::write_json(
-  missing_state_meta,
-  missing_state_meta_path,
-  auto_unbox = TRUE,
-  pretty = TRUE,
-  null = "null"
-)
-run_render(c("--run-id", "missing_state"))
-stopifnot(!file.exists(file.path(
-  missing_state_dir,
-  "categorical_results.json"
-)))
-missing_state_render_dir <- file.path(td, "run_missing_state_2")
-stopifnot(file.exists(file.path(
-  missing_state_render_dir,
-  "categorical_results.json"
-)))
-missing_state_render_meta <- jsonlite::fromJSON(
-  file.path(missing_state_render_dir, "run_meta.json")
-)
-stopifnot(identical(
-  missing_state_render_meta$run_state,
-  "render_complete"
-))
-
-run_profile(c("--run-id", "unknown_state"))
-unknown_state_dir <- file.path(td, "run_unknown_state")
-unknown_state_meta_path <- file.path(unknown_state_dir, "run_meta.json")
-unknown_state_meta <- jsonlite::fromJSON(unknown_state_meta_path)
-unknown_state_meta$run_state <- "unexpected_state"
-jsonlite::write_json(
-  unknown_state_meta,
-  unknown_state_meta_path,
-  auto_unbox = TRUE,
-  pretty = TRUE,
-  null = "null"
-)
-run_render(c("--run-id", "unknown_state"))
-stopifnot(!file.exists(file.path(
-  unknown_state_dir,
-  "categorical_results.json"
-)))
-unknown_state_render_dir <- file.path(td, "run_unknown_state_2")
-stopifnot(file.exists(file.path(
-  unknown_state_render_dir,
-  "categorical_results.json"
-)))
-
-run_profile(c("--run-id", "partial_render"))
-interrupted_dir <- file.path(td, "run_partial_render")
-interrupted_meta_path <- file.path(interrupted_dir, "run_meta.json")
-interrupted_meta <- jsonlite::fromJSON(interrupted_meta_path)
-interrupted_meta$run_state <- "render_in_progress"
-jsonlite::write_json(
-  interrupted_meta,
-  interrupted_meta_path,
-  auto_unbox = TRUE,
-  pretty = TRUE,
-  null = "null"
-)
-partial_marker <- "partial output from interrupted render"
-writeLines(
-  partial_marker,
-  file.path(interrupted_dir, "data_profile_post.json")
-)
-changed_render_config <- file.path(td, "changed_render_config.json")
-jsonlite::write_json(
-  list(plot_mode = "residual_only"),
-  changed_render_config,
-  auto_unbox = TRUE,
-  pretty = TRUE
-)
-run_render(c(
-  "--run-id", "partial_render",
-  "--config", changed_render_config
-))
-stopifnot(identical(
-  readLines(file.path(interrupted_dir, "data_profile_post.json")),
-  partial_marker
-))
-stopifnot(!file.exists(file.path(
-  interrupted_dir,
-  "categorical_results.json"
-)))
-interrupted_retry_dir <- file.path(td, "run_partial_render_2")
-stopifnot(file.exists(file.path(
-  interrupted_retry_dir,
-  "categorical_results.json"
-)))
-interrupted_retry_meta <- jsonlite::fromJSON(
-  file.path(interrupted_retry_dir, "run_meta.json")
-)
-stopifnot(identical(
-  interrupted_retry_meta$run_state,
-  "render_complete"
-))
-
-run_profile(c("--run-id", "two_pass_case"))
-continuation_dir <- file.path(td, "run_two_pass_case")
-stopifnot(file.exists(file.path(continuation_dir, "data_profile.json")))
-continuation_profile_meta <- jsonlite::fromJSON(
-  file.path(continuation_dir, "run_meta.json")
-)
-stopifnot(identical(
-  continuation_profile_meta$run_state,
-  "profile_complete"
-))
-
-run_render(c("--run-id", "two_pass_case"))
-
-continuation_runs <- list.dirs(td, recursive = FALSE, full.names = FALSE)
-continuation_runs <- continuation_runs[grepl("^run_two_pass_case(_[0-9]+)?$", continuation_runs)]
-stopifnot(identical(continuation_runs, "run_two_pass_case"))
-stopifnot(file.exists(file.path(continuation_dir, "data_profile.json")))
-stopifnot(file.exists(file.path(continuation_dir, "data_profile_post.json")))
-stopifnot(file.exists(file.path(continuation_dir, "categorical_results.json")))
-continuation_meta <- jsonlite::fromJSON(file.path(continuation_dir, "run_meta.json"))
-stopifnot(identical(continuation_meta$run_id, "two_pass_case"))
-stopifnot(identical(continuation_meta$run_state, "render_complete"))
-stopifnot(identical(
-  normalizePath(continuation_meta$run_output_dir, mustWork = TRUE),
-  normalizePath(continuation_dir, mustWork = TRUE)
-))
-
-run_render(c("--run-id", "two_pass_case"))
-rerun_dir <- file.path(td, "run_two_pass_case_2")
-stopifnot(dir.exists(rerun_dir))
-stopifnot(file.exists(file.path(rerun_dir, "categorical_results.json")))
-rerun_meta <- jsonlite::fromJSON(file.path(rerun_dir, "run_meta.json"))
-stopifnot(identical(rerun_meta$run_id, "two_pass_case_2"))
-stopifnot(identical(rerun_meta$run_state, "render_complete"))
-
-message("OK: categorical runs preserve profile-to-render continuity and collision isolation")
+if (FAIL > 0L) {
+  stop(sprintf("[FAILED] %d 件のテストが失敗しました。", FAIL), call. = FALSE)
+}

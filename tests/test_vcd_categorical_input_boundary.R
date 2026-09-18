@@ -282,13 +282,24 @@ e2e_data_csv <- file.path(tmp_dir, "e2e_data.csv")
 write.csv(valid_agg_df, e2e_data_csv, row.names = FALSE)
 e2e_data_sha <- pass0_sha256_file(e2e_data_csv)
 
+e2e_canonical_sha <- compute_canonical_config_sha256(
+  vars = c("Treatment", "Response"),
+  freq = "Freq",
+  input_mode = "aggregated",
+  prior_alpha = 1.0,
+  practical_delta = NULL
+)
+
 inspection_path_e2e <- file.path(tmp_dir, "inspection_results_e2e.json")
 inspection_data_e2e <- list(
   contract_version = "1.0",
   inspection_status = "ready",
   input_sha256 = e2e_data_sha,
   candidate_variables = list("Treatment", "Response"),
-  detected_freq = "Freq"
+  detected_freq = "Freq",
+  approved_config = list(
+    canonical_config_sha256 = e2e_canonical_sha
+  )
 )
 writeLines(jsonlite::toJSON(inspection_data_e2e, auto_unbox = TRUE, pretty = TRUE), inspection_path_e2e)
 inspection_sha_e2e <- pass0_sha256_file(inspection_path_e2e)
@@ -317,20 +328,22 @@ status_no_mode <- suppressWarnings(system(cmd_no_mode, ignore.stdout = TRUE, ign
 
 assert(status_no_mode != 0L, "input_mode 欠損設定で analysis.R は非ゼロ終了する")
 
-# run ディレクトリの run_state.json を探索
+# 出力root直下の run_state.json を検証 (署名・ディレクトリ作成前の早期遮断)
 run_subdirs_1 <- list.dirs(e2e_out_1, recursive = FALSE)
-assert(length(run_subdirs_1) >= 1L, "E2E 実行ディレクトリが作成された")
-if (length(run_subdirs_1) >= 1L) {
-  run_state_file <- file.path(run_subdirs_1[1], "run_state.json")
-  assert(file.exists(run_state_file), "run_state.json が生成されている")
-  if (file.exists(run_state_file)) {
-    rs <- jsonlite::read_json(run_state_file)
-    assert(identical(rs$status, "failed"), "run_state.json の status == 'failed'")
-    assert(identical(rs$error_code, "INVALID_INPUT_MODE"), "run_state.json の error_code == 'INVALID_INPUT_MODE'")
-  }
-  assert(!file.exists(file.path(run_subdirs_1[1], "categorical_results.json")), "解析成果物 categorical_results.json は未生成である")
-  assert(!file.exists(file.path(run_subdirs_1[1], "evidence_profile.json")), "解析成果物 evidence_profile.json は未生成である")
+run_dirs_1 <- run_subdirs_1[grepl("^run_", basename(run_subdirs_1))]
+assert(length(run_dirs_1) == 0L, "署名前早期停止のため run_<signature> ディレクトリは作成されない")
+
+root_state_file_1 <- file.path(e2e_out_1, "run_state.json")
+assert(file.exists(root_state_file_1), "出力root直下に run_state.json が生成されている")
+if (file.exists(root_state_file_1)) {
+  rs <- jsonlite::read_json(root_state_file_1)
+  assert(identical(rs$status, "failed"), "run_state.json の status == 'failed'")
+  assert(identical(rs$error_code, "INVALID_INPUT_MODE"), "run_state.json の error_code == 'INVALID_INPUT_MODE'")
+  assert(is.null(rs$run_id), "run_state.json の run_id は null である")
+  assert(is.null(rs$analysis_signature), "run_state.json の analysis_signature は null である")
 }
+assert(!file.exists(file.path(e2e_out_1, "categorical_results.json")), "解析成果物 categorical_results.json は未生成である")
+assert(!file.exists(file.path(e2e_out_1, "evidence_profile.json")), "解析成果物 evidence_profile.json は未生成である")
 
 # ============================================================
 # Test 15: analysis.R 実起動による E2E 遮断テスト (未知の input_mode: 'invalid_mode')
@@ -347,14 +360,17 @@ status_bad_mode <- suppressWarnings(system(cmd_bad_mode, ignore.stdout = TRUE, i
 
 assert(status_bad_mode != 0L, "未知 input_mode 設定で analysis.R は非ゼロ終了する")
 run_subdirs_2 <- list.dirs(e2e_out_2, recursive = FALSE)
-assert(length(run_subdirs_2) >= 1L, "未知 input_mode 実行ディレクトリが作成された")
-if (length(run_subdirs_2) >= 1L) {
-  rs_file2 <- file.path(run_subdirs_2[1], "run_state.json")
-  if (file.exists(rs_file2)) {
-    rs2 <- jsonlite::read_json(rs_file2)
-    assert(identical(rs2$status, "failed"), "未知 input_mode 時の run_state.json status == 'failed'")
-    assert(identical(rs2$error_code, "INVALID_INPUT_MODE"), "未知 input_mode 時の run_state.json error_code == 'INVALID_INPUT_MODE'")
-  }
+run_dirs_2 <- run_subdirs_2[grepl("^run_", basename(run_subdirs_2))]
+assert(length(run_dirs_2) == 0L, "未知 input_mode 時も run_<signature> ディレクトリは作成されない")
+
+root_state_file_2 <- file.path(e2e_out_2, "run_state.json")
+assert(file.exists(root_state_file_2), "出力root直下に run_state.json が生成されている")
+if (file.exists(root_state_file_2)) {
+  rs2 <- jsonlite::read_json(root_state_file_2)
+  assert(identical(rs2$status, "failed"), "未知 input_mode 時の run_state.json status == 'failed'")
+  assert(identical(rs2$error_code, "INVALID_INPUT_MODE"), "未知 input_mode 時の run_state.json error_code == 'INVALID_INPUT_MODE'")
+  assert(is.null(rs2$run_id), "未知 input_mode 時の run_state.json run_id は null である")
+  assert(is.null(rs2$analysis_signature), "未知 input_mode 時の run_state.json analysis_signature は null である")
 }
 
 # ============================================================
@@ -363,6 +379,13 @@ if (length(run_subdirs_2) >= 1L) {
 cat("[TEST 16] analysis.R E2E 遮断検証: 不変量違反注入 (SCHEMA_INVARIANT_VIOLATION)\n")
 config_valid <- config_no_mode
 config_valid$input_mode <- "aggregated"
+config_valid$pass0_provenance$canonical_config_sha256 <- compute_canonical_config_sha256(
+  vars = config_valid$vars,
+  freq = config_valid$freq,
+  input_mode = config_valid$input_mode,
+  prior_alpha = 1.0,
+  practical_delta = NULL
+)
 config_valid_path <- file.path(tmp_dir, "config_valid_for_invariant_test.json")
 writeLines(jsonlite::toJSON(config_valid, auto_unbox = TRUE, pretty = TRUE), config_valid_path)
 

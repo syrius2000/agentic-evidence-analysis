@@ -28,6 +28,8 @@ out_root <- read_opt("--output-dir", required = TRUE)
 run_id <- read_opt("--run-id", required = TRUE)
 vars_raw <- read_opt("--vars")
 freq <- read_opt("--freq")
+input_mode <- read_opt("--input-mode", default = "aggregated")
+practical_delta <- read_opt("--practical-delta")
 response_var <- read_opt("--response-var")
 question_config <- read_opt("--question-config")
 
@@ -57,14 +59,43 @@ repo_relative_maybe <- function(path) {
   if (startsWith(absolute, paste0(root, "/"))) substring(absolute, nchar(root) + 2L) else absolute
 }
 
+vars_parsed <- if (!is.null(vars_raw)) trimws(strsplit(vars_raw, ",", fixed = TRUE)[[1L]]) else NULL
+practical_delta_val <- if (!is.null(practical_delta)) as.numeric(practical_delta) else NULL
+
+canonical_config_sha <- if (skill == "vcd-categorical-analysis") {
+  compute_canonical_config_sha256(
+    vars = vars_parsed,
+    freq = freq,
+    input_mode = input_mode,
+    prior_alpha = 1.0,
+    practical_delta = practical_delta_val
+  )
+} else NULL
+
+if (!is.null(canonical_config_sha) && file.exists(inspection_path)) {
+  insp_obj <- jsonlite::read_json(inspection_path, simplifyVector = FALSE)
+  insp_obj$approved_config <- list(canonical_config_sha256 = canonical_config_sha)
+  jsonlite::write_json(insp_obj, inspection_path, auto_unbox = TRUE, pretty = TRUE, null = "null")
+}
+
 config <- list(
   input = repo_relative(input_path),
   output_dir = repo_relative_maybe(out_root),
   run_id = run_id,
-  pass0_provenance = build_pass0_provenance(inspection_path, input_path, skill, scope_path = scope_path, repo_root = repo_root)
+  pass0_provenance = build_pass0_provenance(
+    inspection_path,
+    input_path,
+    skill,
+    scope_path = scope_path,
+    canonical_config_sha256 = canonical_config_sha,
+    repo_root = repo_root
+  )
 )
-if (!is.null(vars_raw)) config$vars <- trimws(strsplit(vars_raw, ",", fixed = TRUE)[[1L]])
+
+if (!is.null(vars_parsed)) config$vars <- vars_parsed
 if (!is.null(freq)) config$freq <- freq
+if (skill == "vcd-categorical-analysis") config$input_mode <- input_mode
+if (!is.null(practical_delta_val)) config$practical_delta <- practical_delta_val
 if (!is.null(response_var)) config$response_var <- response_var
 if (!is.null(question_config)) config$question_config <- repo_relative(question_config)
 
