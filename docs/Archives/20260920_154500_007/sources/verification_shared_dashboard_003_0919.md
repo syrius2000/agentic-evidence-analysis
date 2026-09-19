@@ -8,7 +8,7 @@ author: Codex (GPT-6)
 
 対象は `shared-dashboard-theme-assets`、レビュー時HEADは `61225bd6153de0492ddcc8c0392f80850cefc88e`。大学統計講座と一般製薬社員の利用を想定する。共有資産と主事前移行の主要実装は確認できたが、大N・希少事象の結果保存に再現可能な問題があり、完成判定は修正後に再確認する。CRITICAL 1件、WARNING 2件、任意改善1件。ブラウザ操作は未検証であり、別途証拠を要する。
 
-基準は [Change仕様](../../openspec/changes/shared-dashboard-theme-assets/specs/shared-dashboard-presentation/spec.md)、[design](../../openspec/changes/shared-dashboard-theme-assets/design.md)、[tasks](../../openspec/changes/shared-dashboard-theme-assets/tasks.md)、[計画008](implementation_plan_008_0919.md)。関連する正本の [条件付き割合](../../openspec/specs/conditional-rate-view/spec.md)、[3次元表示](../../openspec/specs/three-way-dashboard-reporting/spec.md)、[2次元分析](../../openspec/specs/two-way-evidence-analysis/spec.md) も参照した。
+基準は [Change仕様](../../../../openspec/changes/shared-dashboard-theme-assets/specs/shared-dashboard-presentation/spec.md)、[design](../../../../openspec/changes/shared-dashboard-theme-assets/design.md)、[tasks](../../../../openspec/changes/shared-dashboard-theme-assets/tasks.md)、[計画008](implementation_plan_008_0919.md)。関連する正本の [条件付き割合](../../../../openspec/specs/conditional-rate-view/spec.md)、[3次元表示](../../../../openspec/specs/three-way-dashboard-reporting/spec.md)、[2次元分析](../../../../openspec/specs/two-way-evidence-analysis/spec.md) も参照した。
 
 規制提出用システム認証、臨床意思決定システムとしての保証、新たな解析手法、モバイル対応、別テーマ追加は受入条件に追加しない。正本仕様の対象幅はデスクトップである。仕様上の要求と、教育・非専門家向けの任意改善を区別する。
 
@@ -22,7 +22,7 @@ author: Codex (GPT-6)
 
 ## F1 — CRITICAL / P1：大N・希少事象の事後分布が保存時にゼロへ潰れる
 
-対象: [pass1_compute.R](../../.agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R) の592–596行と、その値から感度差を計算する箇所。
+対象: [pass1_compute.R](../../../../.agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R) の592–596行と、その値から感度差を計算する箇所。
 
 `post_mean`、`post_median`、`ci_lower`、`ci_upper` を小数4桁へ丸めて保存するため、正の小さい確率と区間が0になる。これはプロットの見た目だけではなくJSON値の情報損失である。
 
@@ -38,13 +38,13 @@ author: Codex (GPT-6)
 
 根拠は計画008の「大Nかつ希少事象」「Beta解析式による平均・分位点照合」、タスク4.4、Changeの「複数カテゴリをまとめた確率を解釈する」シナリオ、正本の「事後平均・指定水準の事後信用区間を保存」。小数4桁丸めは旧実装からの継承だが、今回明示的に受け入れる範囲の問題なので指摘対象とする。
 
-現在の [数学テスト](../../tests/test_shared_dashboard_math.R) 83–97行は `rbeta()` とBeta平均を比較するだけで、`compute_conditional_rate_view()` を呼んでいない。このテストだけでは実装の集約・丸め・分位点を検証できない。以前の状況報告で数学テストの網羅範囲を広く説明した点を訂正する。
+現在の [数学テスト](../../../../tests/test_shared_dashboard_math.R) 83–97行は `rbeta()` とBeta平均を比較するだけで、`compute_conditional_rate_view()` を呼んでいない。このテストだけでは実装の集約・丸め・分位点を検証できない。以前の状況報告で数学テストの網羅範囲を広く説明した点を訂正する。
 
 最小修正は、結果保存と感度差計算に必要な精度を保持し、表示で適切に整形すること。JSON桁数契約への影響を同じChangeに明記する。テストは実関数の主／感度平均と区間を `qbeta()` 等へ直接照合し、ゼロ観測・希少・大N希少・全ゼロ層・複数カテゴリ集約を区別する。許容誤差はMC誤差と丸め誤差に基づくものとする。
 
 ## F2 — WARNING / P2：設定水準にかかわらず数値表が95%CIとなる
 
-対象: [3D dashboard.Rmd](../../.agents/skills/vcd-bayesian-evidence-analysis/templates/dashboard.Rmd) 538–550行。
+対象: [3D dashboard.Rmd](../../../../.agents/skills/vcd-bayesian-evidence-analysis/templates/dashboard.Rmd) 538–550行。
 
 見出しと図タイトルは `config_echo.interval_level` を反映するが、表の列名と整形対象列は `95%CI下限`・`95%CI上限` に固定されている。例えば0.90設定では90% ETIの値に95%CIというラベルが付く。現行UCBの0.95設定では水準の誤表示は顕在化しない。
 
@@ -54,7 +54,7 @@ author: Codex (GPT-6)
 
 ## F3 — WARNING / P2：用語集冒頭でEvidenceのN比例を無条件に一般化している
 
-対象: [dashboard_glossary.R](../../.agents/shared/dashboard_glossary.R) 91行。
+対象: [dashboard_glossary.R](../../../../.agents/shared/dashboard_glossary.R) 91行。
 
 開いた直後の「3大利用原則」に「標本数比例の証拠強度と標本数不変の乖離倍率」とある。本文は同じ構成比でc倍して同じモデルを再適合するという条件を正しく述べるが、常時見える要約ではその条件が落ちている。一般の追加標本でもEvidenceがN比例すると受け取れる。
 
@@ -64,7 +64,7 @@ author: Codex (GPT-6)
 
 ## S1 — SUGGESTION：感度区間の比較へ辿れる小さな表を設ける
 
-[3D dashboard.Rmd](../../.agents/skills/vcd-bayesian-evidence-analysis/templates/dashboard.Rmd) 459–466行は主／感度の平均・中央値の最大差だけを表示する。JSONには各層の主／感度区間と `eti_width_difference` があるが、表示では数値を一覧できない。
+[3D dashboard.Rmd](../../../../.agents/skills/vcd-bayesian-evidence-analysis/templates/dashboard.Rmd) 459–466行は主／感度の平均・中央値の最大差だけを表示する。JSONには各層の主／感度区間と `eti_width_difference` があるが、表示では数値を一覧できない。
 
 Changeは確率・区間の差を明示することを求めるが、その保存先を必ずHTMLとする規定は明確ではない。JSONには存在するため、これを独立した必須違反とは判定しない。利用者像に基づく任意改善として、折りたたみの小表で主／感度の平均・ETI・幅差を比較できるとよい。モデル誤りの自動判定や新しい閾値は導入しない。
 

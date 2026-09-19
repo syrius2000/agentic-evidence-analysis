@@ -16,7 +16,7 @@ author: Codex (GPT-6)
 | 構文検証 | `openspec validate shared-dashboard-theme-assets --strict --json`: valid、0 issues |
 | 実行検証 | 2次元15 PASS / 0 FAIL。3次元9テストブロック・53成功アサーション / 0 FAIL |
 
-対象Change: [shared-dashboard-theme-assets](../../openspec/changes/shared-dashboard-theme-assets/proposal.md)。ローカルOpenSpecを使用し、別storeは指定されていない。
+対象Change: [shared-dashboard-theme-assets](../../../../openspec/changes/shared-dashboard-theme-assets/proposal.md)。ローカルOpenSpecを使用し、別storeは指定されていない。
 
 ## CRITICAL：完了前に解消する項目
 
@@ -38,12 +38,12 @@ author: Codex (GPT-6)
 
 ### C12：3次元の事前分布表示と計算が異なる
 
-- 証拠: [3次元テンプレート](../../.agents/skills/vcd-bayesian-evidence-analysis/templates/dashboard.Rmd) 1356、1470–1482行ではα=0.5／Jeffreysと表示するが、[計算実装](../../.agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R) 601行は `alpha_post <- y + 1.0`。
-- 対応: 3次元はDirichlet(1,…,1)として説明する。2次元の主事前α=0.5と区別する。用語共通化を理由に計算エンジンの事前を変更しない。
+- 証拠: [3次元テンプレート](../../../../.agents/skills/vcd-bayesian-evidence-analysis/templates/dashboard.Rmd) 1356、1470–1482行ではα=0.5／Jeffreysと表示するが、[計算実装](../../../../.agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R) 601行は `alpha_post <- y + 1.0`。
+- 本質: 単なる表示不一致ではない。事前分布名と計算値の矛盾であり、外部提出・監査で重大指摘となる。
 
-### C13：2次元レバレッジの用語集に積項の係数誤り
+### C13：2次元レバレッジの共分散項が誤記
 
-- 証拠: [2次元テンプレート](../../.agents/skills/vcd-categorical-analysis/templates/dashboard.Rmd) 1189行は `p_i+ + p_+j − 2 p_i+ p_+j`。正しい式は積項の係数が−1で、[計算実装](../../.agents/skills/vcd-categorical-analysis/R/residual_diagnostics.R) 80行も−1。
+- 証拠: [2次元テンプレート](../../../../.agents/skills/vcd-categorical-analysis/templates/dashboard.Rmd) 1189行は `p_i+ + p_+j − 2 p_i+ p_+j`。正しい式は積項の係数が−1で、[計算実装](../../../../.agents/skills/vcd-categorical-analysis/R/residual_diagnostics.R) 80行も−1。
 - 対応: 用語の式を計算と一致させる。3次元にはこの閉形式を使わず、基準モデルの重み付きハット行列として説明する。
 - 数値確認: 度数(40,20,10,30)の2×2表をPoisson GLMで適合し、閉形式と `hatvalues()` の最大差2.033×10⁻¹⁰を確認した。既定収束設定では1e−10という過度に厳しい許容差を満たさなかったため、収束精度を明示し許容差1e−8で確認した。
 
@@ -58,7 +58,7 @@ author: Codex (GPT-6)
 1. **事後要約と予測を区別する。** 2次元テンプレート719、1233行とテスト187行は「中央値の和は数学的に1にはならない」と断定している。正しくは「一般には1に制約されない」。Beta(2,3)と補数Beta(3,2)の中央値和は1となることをRで確認した。同一条件・支持集合の次の1観測の予測確率は対応するqの事後平均であり、中央値ではない。条件付けを因果方向と呼ばない。
 2. **ゼロセルと候補判定を共通の固定文にしない。** 3次元計算446–448行ではO=0にlog(0.5/E)を用いるが、用語集1381行では−Infと記載。3次元計算473–474行はN閾値を候補条件に含めず、用語集1415行のN>2000限定と一致しない。2次元はN≥2000条件を持つ。表示訂正と計算側の今後の変更検討を分ける。
 3. **Jeffreys、ETI、漸近性の過剰表現を除く。** Jeffreysはsqrt(det I)であり、単なる行列式や「局所ハール」とは記載しない。総事前濃度Kαを踏まえ、平滑化の影響がないと保証しない。ETIを「真の範囲」と呼ばず、データ・モデル・事前に依存する区間とする。log(O/E)不変・T_score比例は、構成比を保った度数倍率変更の条件付き性質として説明する。
-4. **現在のテスト成功の限界を補う。** [3次元テスト](../../tests/test_three_way_dashboard_html.R) 15、26–32、45行以降では一部検査が保存済みfixtureを使い、子プロセス終了コードも検証していない。新規生成のband/card両方を検査し、レンダリング失敗時に古いHTMLで成功しないようにする。祖先探索しか行わない `find_agent_repo()` はリポジトリ外cwdから必ずrootを発見できるわけではない。
+4. **現在のテスト成功の限界を補う。** [3次元テスト](../../../../tests/test_three_way_dashboard_html.R) 15、26–32、45行以降では一部検査が保存済みfixtureを使い、子プロセス終了コードも検証していない。新規生成のband/card両方を検査し、レンダリング失敗時に古いHTMLで成功しないようにする。祖先探索しか行わない `find_agent_repo()` はリポジトリ外cwdから必ずrootを発見できるわけではない。
 
 ## SUGGESTION：文献表示の整備
 
@@ -77,10 +77,10 @@ author: Codex (GPT-6)
 
 ## 今回整備した文書
 
-- [proposal.md](../../openspec/changes/shared-dashboard-theme-assets/proposal.md): 辞書パスを統一し、共通用語と次元固有説明の区別、計算不変と説明訂正の範囲を明記。
-- [design.md](../../openspec/changes/shared-dashboard-theme-assets/design.md): 利用側コンテキストと数学的訂正表、テスト限界・root解決条件を追加。
-- [spec.md](../../openspec/changes/shared-dashboard-theme-assets/specs/shared-dashboard-presentation/spec.md): 用語集・数学的正確性・新規生成物検証の3要件7シナリオを追加。
-- [tasks.md](../../openspec/changes/shared-dashboard-theme-assets/tasks.md): 用語抽出・接続・意味検証・DOM等の4タスクを追加。0/11の未完了状態を維持。
+- [proposal.md](../../../../openspec/changes/shared-dashboard-theme-assets/proposal.md): 辞書パスを統一し、共通用語と次元固有説明の区別、計算不変と説明訂正の範囲を明記。
+- [design.md](../../../../openspec/changes/shared-dashboard-theme-assets/design.md): 利用側コンテキストと数学的訂正表、テスト限界・root解決条件を追加。
+- [spec.md](../../../../openspec/changes/shared-dashboard-theme-assets/specs/shared-dashboard-presentation/spec.md): 用語集・数学的正確性・新規生成物検証の3要件7シナリオを追加。
+- [tasks.md](../../../../openspec/changes/shared-dashboard-theme-assets/tasks.md): 用語抽出・接続・意味検証・DOM等の4タスクを追加。0/11の未完了状態を維持。
 
 Change文書群は作業開始時から未追跡だったため、`git diff`だけでは内容差を表示できない。今回の変更は上記4文書と本報告書に限定した。既存のアーカイブ台帳・scratch等は保持した。commit、push、archiveは実施していない。
 

@@ -1,0 +1,64 @@
+{
+  "batch_id": "20260920_154500_007",
+  "created_at": "2026-09-20T15:45:00+09:00",
+  "author": "Antigravity",
+  "source_count": 8,
+  "sources": [
+    {
+      "original_path": "docs/Artifacts/implementation_plan_007_0918.md",
+      "archive_path": "docs/Archives/20260920_154500_007/sources/implementation_plan_007_0918.md",
+      "sha256": "54b453d91fc00bf4a1e11bdd73515b7506e15561fd0cccc29d30cbb2a2d2d8f7",
+      "role": "plan",
+      "title": "vcd-categorical ダッシュボードの臨床・学術標準テーマ実装計画"
+    },
+    {
+      "original_path": "docs/Artifacts/section12_refresh_proposal_001_0918.md",
+      "archive_path": "docs/Archives/20260920_154500_007/sources/section12_refresh_proposal_001_0918.md",
+      "sha256": "b115029882fcf2c52a2ea64806e38f12cd1cb24d1570550c36a530250a852241",
+      "role": "proposal",
+      "title": "Section 12 指標の読み方・数理モデル・学術リファレンス刷新計画"
+    },
+    {
+      "original_path": "docs/Artifacts/implementation_plan_008_0919.md",
+      "archive_path": "docs/Archives/20260920_154500_007/sources/implementation_plan_008_0919.md",
+      "sha256_initial": "e2b24dc73b98e7955f8221234356abd3291265baea4d83ef75f07dd6da0f8b38",
+      "role": "plan",
+      "title": "共有ダッシュボード整備と3次元Jeffreys主事前移行計画"
+    },
+    {
+      "original_path": "docs/Artifacts/change_record_shared_dashboard_001_0919.md",
+      "archive_path": "docs/Archives/20260920_154500_007/sources/change_record_shared_dashboard_001_0919.md",
+      "sha256_initial": "51015922743832b2d1fc409ea15556563e157b071e171ed1b5647a43262912e8",
+      "role": "change_record",
+      "title": "変更記録: shared-dashboard-theme-assets（共有資産・Jeffreys主事前・封印run）"
+    },
+    {
+      "original_path": "docs/Artifacts/verification_shared_dashboard_001_0919.md",
+      "archive_path": "docs/Archives/20260920_154500_007/sources/verification_shared_dashboard_001_0919.md",
+      "sha256_initial": "eca5827496feac4caa5e973a3fabe260e7ae982d7b953a2b22b741010dd284da",
+      "role": "verification",
+      "title": "shared-dashboard-theme-assets 検証結果と数学的記載整備"
+    },
+    {
+      "original_path": "docs/Artifacts/verification_shared_dashboard_002_0919.md",
+      "archive_path": "docs/Archives/20260920_154500_007/sources/verification_shared_dashboard_002_0919.md",
+      "sha256": "e10e34de215a7868c7b091815c979254d17c8733772e2f630de9fe27587da014",
+      "role": "verification",
+      "title": "共有ダッシュボード実装検証（theme-assets / Jeffreys移行）"
+    },
+    {
+      "original_path": "docs/Artifacts/verification_shared_dashboard_003_0919.md",
+      "archive_path": "docs/Archives/20260920_154500_007/sources/verification_shared_dashboard_003_0919.md",
+      "sha256_initial": "19aa3d745a97a06689760c1141009721114ad780bb67aeca770e45f807250946",
+      "role": "independent_review",
+      "title": "共有ダッシュボード・Jeffreys移行の独立レビュー"
+    },
+    {
+      "original_path": "docs/Artifacts/verification_shared_dashboard_004_0919.md",
+      "archive_path": "docs/Archives/20260920_154500_007/sources/verification_shared_dashboard_004_0919.md",
+      "sha256": "570d83ba0ab6069b9ecac6cf9c28205eef9acd386414687afe0d7180430439c1",
+      "role": "verification",
+      "title": "共有ダッシュボード独立レビューF1〜F3の修正結果"
+    }
+  ]
+}

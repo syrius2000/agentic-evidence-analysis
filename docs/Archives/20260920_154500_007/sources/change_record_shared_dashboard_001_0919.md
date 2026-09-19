@@ -6,7 +6,7 @@ author: Codex (Composer)
 
 ## 対象と位置付け
 
-本記録は、OpenSpec change [`shared-dashboard-theme-assets`](../../openspec/changes/shared-dashboard-theme-assets/proposal.md) を中心に、本セッションで実施した実装・検証・Pass 2封印・git操作の変更履歴である。計画の正本は [implementation_plan_008_0919.md](implementation_plan_008_0919.md)。工程別の検証は [verification_shared_dashboard_001_0919.md](verification_shared_dashboard_001_0919.md)〜[004](verification_shared_dashboard_004_0919.md) を参照する。
+本記録は、OpenSpec change [`shared-dashboard-theme-assets`](../../../../openspec/changes/shared-dashboard-theme-assets/proposal.md) を中心に、本セッションで実施した実装・検証・Pass 2封印・git操作の変更履歴である。計画の正本は [implementation_plan_008_0919.md](implementation_plan_008_0919.md)。工程別の検証は [verification_shared_dashboard_001_0919.md](verification_shared_dashboard_001_0919.md)〜[004](verification_shared_dashboard_004_0919.md) を参照する。
 
 新しい Change は作成していない。旧方針「3次元α=1.0維持」は計画008と更新済みChangeにより破棄し、主事前α=0.5・感度α=1.0へ移行した。
 
@@ -79,7 +79,7 @@ author: Codex (Composer)
 
 ## 封印済み再現run
 
-路径: [`scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091/`](../../scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091/)
+- 経路: [`scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091/`](../../../../scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091/)
 
 | 項目 | 値 |
 | --- | --- |

@@ -1,8 +1,9 @@
 {
   "archive_batch_id": "20260918_231346_006",
   "created_at": "2026-09-18 23:15:55 +0900",
+  "updated_at": "2026-09-20 15:52:00 +0900",
   "operation": "通常アーカイブ",
-  "source_count": 5,
+  "source_count": 4,
   "items": [
     {
       "source": "docs/Artifacts/Implementation-plan-vcd-categorical-analysis-v4.2.md",
@@ -31,13 +32,13 @@
       "operation": "move_with_relative_link_repair",
       "sha256": "303864d30e335d28b873b5366bec86a281347cb7bf30ca0fa1814bb0e47438a0",
       "status": "archived"
-    },
+    }
+  ],
+  "deleted_items": [
     {
-      "source": "docs/Artifacts/implementation_plan_006_0918.md",
-      "destination": "docs/Archives/20260918_231346_006/sources/implementation_plan_006_0918.md",
-      "operation": "move",
-      "sha256": "5c7d6d2ae4564ae60717bf6ae8006791950b7ca6c47b2337cb6892dfd6c78d88",
-      "status": "archived_with_incomplete_browser_acceptance_record"
+      "file": "implementation_plan_006_0918.md",
+      "deleted_at": "2026-09-20 15:52:00 +0900",
+      "reason": "Playwrightドライバ障害による一時チェックリストであり、後続の共有ダッシュボード契約テスト（Batch 007）にて完全代替・解決済みのためユーザー指示に基づき削除"
     }
   ]
 }
