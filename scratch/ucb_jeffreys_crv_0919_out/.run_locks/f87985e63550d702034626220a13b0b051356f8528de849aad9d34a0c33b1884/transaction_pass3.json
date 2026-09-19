@@ -1,0 +1,9 @@
+{
+  "run_dir": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091",
+  "stage": "pass3",
+  "source": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091/staging/dashboard.html",
+  "target": "/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis/scratch/ucb_jeffreys_crv_0919_out/run_ucb_jeffreys_091/dashboard.html",
+  "expected_results_manifest_sha256": "ccc3e9592b5b59a2aa1c749ac30e947b035a10821e70c49a281c1fcacc2db6dc",
+  "expected_narrative_sha256": "a54a600725cb1c80cc7183dda79f94a040c3eff805f861e79a4adb0f58500afb",
+  "sha256": "ea790aa335da11fe3d368d39c884dfec78089ca2705ca7a7b6696d715b0f4df1"
+}

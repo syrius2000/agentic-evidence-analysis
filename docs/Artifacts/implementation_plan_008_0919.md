@@ -1,10 +1,12 @@
 # 共有ダッシュボード整備と3次元Jeffreys主事前移行計画
 
 created: 2026-09-19 00:31 (JST)
-update: 2026-09-19 00:31 (JST)
+update: 2026-09-19 11:00 (JST)
 author: Codex (GPT-6)
 
 ## 方針
+
+2026-09-19追記：利用者からCodexによるF1〜F3の修正実施を承認された。レビュー003に基づき、同じChangeで計算結果保存精度・ETI列名・用語冒頭を修正する。条件付き割合・群間差・感度差は丸め前の倍精度値を保持し、JSON出力は `digits=NA` で追加丸めを避ける。他の解析指標の計算式と既存の明示丸めは変更しない。表示は百分率の有効桁を用い、非ゼロの希少確率を固定小数で0へ潰さない。実関数のBeta解析値照合とJSON往復、90%/95%生成HTMLを検証する。任意提案S1、commit、push、archive、旧run更新は対象外。ブラウザ操作の未検証は明記する。
 
 利用者指定により、3次元条件付き割合の多項Dirichlet主事前を各セルα=1.0から0.5へ移行する。既存Change [shared-dashboard-theme-assets](../../openspec/changes/shared-dashboard-theme-assets/proposal.md) を継続し、新しいChangeは作らない。詳細タスクは [tasks.md](../../openspec/changes/shared-dashboard-theme-assets/tasks.md) に一本化する。実装担当はGeminiとし、本作業は計画の改訂である。
 

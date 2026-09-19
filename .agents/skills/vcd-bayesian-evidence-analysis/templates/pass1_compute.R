@@ -589,11 +589,12 @@ summarize_conditional_rate_slices <- function(df, y, resp_var, comp_var, strat_v
           strat_var = strat_var, strat_level = s, comp_var = comp_var, comp_level = c,
           resp_var = resp_var, num_levels = num_levels, denom_levels = denom_levels,
           obs_numerator = obs_num, obs_denominator = obs_denom,
-          raw_rate = safe_round(raw_rate, 4),
-          post_mean = safe_round(mean(cond_d), 4),
-          post_median = safe_round(stats::median(cond_d), 4),
-          ci_lower = safe_round(ci_vals[1L], 4),
-          ci_upper = safe_round(ci_vals[2L], 4),
+          # 希少事象の確率・区間を保存時の固定小数丸めで失わない。
+          raw_rate = raw_rate,
+          post_mean = mean(cond_d),
+          post_median = stats::median(cond_d),
+          ci_lower = unname(ci_vals[1L]),
+          ci_upper = unname(ci_vals[2L]),
           status = "VALID",
           hold_reason = NULL
         )
@@ -614,10 +615,10 @@ summarize_conditional_rate_slices <- function(df, y, resp_var, comp_var, strat_v
             diff_key <- sprintf("%s__%s_minus_%s", s, ct, ref_level)
             differences_list[[diff_key]] <- list(
               strat_level = s, target_level = ct, reference_level = ref_level,
-              difference_mean = safe_round(mean(diff_d), 4),
-              ci_lower = safe_round(diff_ci[1L], 4),
-              ci_upper = safe_round(diff_ci[2L], 4),
-              prob_positive = safe_round(mean(diff_d > 0), 4)
+              difference_mean = mean(diff_d),
+              ci_lower = unname(diff_ci[1L]),
+              ci_upper = unname(diff_ci[2L]),
+              prob_positive = mean(diff_d > 0)
             )
           }
         }
@@ -730,13 +731,13 @@ compute_conditional_rate_view <- function(df, vars, freq_col, crv_spec, draws = 
       comp_level = p$comp_level,
       primary_mean = p$post_mean,
       sensitivity_mean = s$post_mean,
-      mean_shift = safe_round(abs(s$post_mean - p$post_mean), 4),
+      mean_shift = abs(s$post_mean - p$post_mean),
       primary_median = p$post_median,
       sensitivity_median = s$post_median,
-      median_shift = safe_round(abs(s$post_median - p$post_median), 4),
-      primary_eti_width = safe_round(p$ci_upper - p$ci_lower, 4),
-      sensitivity_eti_width = safe_round(s$ci_upper - s$ci_lower, 4),
-      eti_width_difference = safe_round((s$ci_upper - s$ci_lower) - (p$ci_upper - p$ci_lower), 4)
+      median_shift = abs(s$post_median - p$post_median),
+      primary_eti_width = p$ci_upper - p$ci_lower,
+      sensitivity_eti_width = s$ci_upper - s$ci_lower,
+      eti_width_difference = (s$ci_upper - s$ci_lower) - (p$ci_upper - p$ci_lower)
     )
   })
   cell_comparisons <- Filter(Negate(is.null), cell_comparisons)
@@ -782,9 +783,9 @@ compute_conditional_rate_view <- function(df, vars, freq_col, crv_spec, draws = 
     sensitivity_analysis = list(
       primary_alpha = primary_alpha,
       sensitivity_alpha = sensitivity_alpha,
-      max_absolute_mean_diff = if (length(mean_shifts)) safe_round(max(mean_shifts), 4) else NA_real_,
-      max_median_shift = if (length(median_shifts)) safe_round(max(median_shifts), 4) else NA_real_,
-      max_eti_width_diff = if (length(width_diffs)) safe_round(max(width_diffs), 4) else NA_real_,
+      max_absolute_mean_diff = if (length(mean_shifts)) max(mean_shifts) else NA_real_,
+      max_median_shift = if (length(median_shifts)) max(median_shifts) else NA_real_,
+      max_eti_width_diff = if (length(width_diffs)) max(width_diffs) else NA_real_,
       rates = sens_sum$rates,
       differences = sens_sum$differences,
       cell_comparisons = cell_comparisons

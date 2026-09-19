@@ -123,7 +123,7 @@ test_that("3.7: 汎用 conditional_rate_view の Dirichlet 事後割合および
   rate_a_male <- crv_res$rates[["A__Male"]]
   expect_equal(rate_a_male$obs_numerator, 512L)
   expect_equal(rate_a_male$obs_denominator, 825L)
-  expect_equal(rate_a_male$raw_rate, round(512/825, 4))
+  expect_equal(rate_a_male$raw_rate, 512/825)
   expect_true(rate_a_male$ci_lower < rate_a_male$post_mean && rate_a_male$post_mean < rate_a_male$ci_upper)
 
   # 割合差（Male - Female）

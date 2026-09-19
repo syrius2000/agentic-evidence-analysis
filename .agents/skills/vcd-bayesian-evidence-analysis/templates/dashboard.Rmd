@@ -503,7 +503,7 @@ if (!is.null(cond_rate_view) && identical(cond_rate_view$status %||% "", "VALID"
       geom_point(position = position_dodge(width = 0.5), size = 3) +
       geom_errorbarh(aes(xmin = ci_lower, xmax = ci_upper), position = position_dodge(width = 0.5), height = 0.25, size = 0.8) +
       scale_color_manual(values = c("#1f4d7a", "#9b2945", "#2e7d7a", "#d97706", "#5b21b6", "#475569")) +
-      scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+      scale_x_continuous(labels = function(x) sprintf("%.4g%%", 100 * x)) +
       labs(
         title = sprintf("層別条件付き割合の事後推論 (Dirichlet %s%% ETI)", round(as.numeric(cfg$interval_level %||% 0.95) * 100)),
         x = resp_label,
@@ -524,6 +524,10 @@ if (!is.null(cond_rate_view) && identical(cond_rate_view$status %||% "", "VALID"
 
 ```{r conditional-rate-table}
 if (!is.null(cond_rate_view) && identical(cond_rate_view$status %||% "", "VALID")) {
+  cfg <- cond_rate_view$config_echo %||% cond_rate_view$config %||% list()
+  interval_label <- format(100 * (cfg$interval_level %||% 0.95), trim = TRUE)
+  lower_label <- paste0(interval_label, "% ETI下限 (%)")
+  upper_label <- paste0(interval_label, "% ETI上限 (%)")
   rates_raw <- cond_rate_view$rates
   if (!is.null(rates_raw) && length(rates_raw) > 0L) {
     df_tbl <- dplyr::bind_rows(lapply(names(rates_raw), function(nm) {
@@ -533,21 +537,23 @@ if (!is.null(cond_rate_view) && identical(cond_rate_view$status %||% "", "VALID"
         "比較水準" = as.character(item$comp_level),
         "分子度数" = as.integer(item$obs_numerator),
         "分母度数" = as.integer(item$obs_denominator),
-        "生割合" = as.numeric(item$raw_rate),
-        "事後平均" = as.numeric(item$post_mean),
-        "95%CI下限" = as.numeric(item$ci_lower),
-        "95%CI上限" = as.numeric(item$ci_upper),
+        "生割合 (%)" = 100 * as.numeric(item$raw_rate),
+        "事後平均 (%)" = 100 * as.numeric(item$post_mean),
+        "ETI下限" = 100 * as.numeric(item$ci_lower),
+        "ETI上限" = 100 * as.numeric(item$ci_upper),
         check.names = FALSE,
         stringsAsFactors = FALSE
       )
     }))
 
+    names(df_tbl)[names(df_tbl) == "ETI下限"] <- lower_label
+    names(df_tbl)[names(df_tbl) == "ETI上限"] <- upper_label
     datatable(
       df_tbl,
       rownames = FALSE,
       options = list(dom = "t", paging = FALSE, language = dt_ja_lang)
     ) |>
-      formatPercentage(c("生割合", "事後平均", "95%CI下限", "95%CI上限"), digits = 1)
+      formatSignif(c("生割合 (%)", "事後平均 (%)", lower_label, upper_label), digits = 4)
   }
 }
 ```

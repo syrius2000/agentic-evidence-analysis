@@ -469,7 +469,8 @@ if (!is.null(crr_res)) {
 }
 
 json_path <- file.path(artifact_dir, "evidence_results.json")
-write_json(output_results, json_path, pretty = TRUE, auto_unbox = TRUE)
+# 条件付き割合の希少確率をJSON既定の小数4桁で再丸めしない。
+write_json(output_results, json_path, pretty = TRUE, auto_unbox = TRUE, digits = NA)
 message(paste("[INFO] JSON出力:", json_path))
 
 # マニフェスト出力 (results_manifest.json)

@@ -80,20 +80,56 @@ test_that("同一入力で α=1.0 の条件付き平均は旧実装と一致し�
   expect_equal(old$rates[["A__Male"]]$obs_numerator, 512)
 })
 
-test_that("集約率の Beta 解析平均は MC 要約と一致し、セルα=0.5を Beta(0.5,0.5) と同一視しない", {
-  y_num <- 2
-  y_den <- 20
-  m <- 2
-  d <- 5
-  alpha <- 0.5
-  a_post <- y_num + m * alpha
-  b_post <- (y_den - y_num) + (d - m) * alpha
-  analytic_mean <- a_post / (a_post + b_post)
-  set.seed(1)
-  draws <- rbeta(20000, a_post, b_post)
-  expect_lt(abs(mean(draws) - analytic_mean), 0.01)
-  beta_half_mean <- (y_num + 0.5) / (y_den + 1)
-  expect_gt(abs(analytic_mean - beta_half_mean), 0.01)
+test_that("実関数とJSON保存がゼロ・希少・大N希少・集約率のBeta平均と分位点を保持する", {
+  cases <- list(zero=c(0,0,3,4,5), rare=c(0,1,3,4,5),
+                large_rare=c(0,1,30000,40000,50000), aggregate=c(1,1,3,7,8))
+  spec <- list(response_var="A", compare_by="B", stratify_by="C",
+    numerator_levels=c("a1","a2"), denominator_levels=paste0("a",1:5), interval_level=.90)
+  draws <- 100000L
+  # 本番analysis.Rの書き出し式を評価し、JSON設定の退行も検出する。
+  expressions <- parse(file.path(repo_root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R"))
+  writes <- Filter(function(e) is.call(e) && identical(e[[1]], as.name("write_json")) &&
+    identical(e[[2]], as.name("output_results")), as.list(expressions))
+  expect_length(writes, 1)
+  for (case in names(cases)) {
+    y <- cases[[case]]
+    df <- data.frame(A=rep(paste0("a",1:5),2), B=rep(c("b","ref"),each=5), C="c", Freq=rep(y,2))
+    spec$reference_level <- "ref"
+    result <- compute_conditional_rate_view(df,c("A","B","C"),"Freq",spec,draws=draws,seed=77)
+    env <- new.env(parent=environment())
+    env$output_results <- list(conditional_rate_view=result)
+    env$json_path <- tempfile(fileext=".json")
+    eval(writes[[1]], env)
+    saved <- jsonlite::fromJSON(env$json_path,simplifyVector=FALSE)$conditional_rate_view
+    for (alpha in c(.5,1)) {
+      record <- if(alpha==.5) saved$rates[["c__b"]] else saved$sensitivity_analysis$rates[["c__b"]]
+      a <- sum(y[1:2])+2*alpha; b <- sum(y[3:5])+3*alpha
+      exact <- a/(a+b)
+      mcse <- sqrt(a*b/((a+b)^2*(a+b+1))/draws)
+      expect_lt(abs(record$post_mean-exact),6*mcse+1e-12)
+      expect_lt(abs(pbeta(record$post_median,a,b)-.5),6*sqrt(.25/draws))
+      expect_lt(abs(pbeta(record$ci_lower,a,b)-.05),6*sqrt(.05*.95/draws))
+      expect_lt(abs(pbeta(record$ci_upper,a,b)-.95),6*sqrt(.05*.95/draws))
+      expect_gt(record$ci_lower,0)
+      expect_gt(record$ci_upper,record$ci_lower)
+    }
+    p <- saved$rates[["c__b"]]; s <- saved$sensitivity_analysis$rates[["c__b"]]
+    comparison <- saved$sensitivity_analysis$cell_comparisons[[1]]
+    expect_equal(comparison$mean_shift,abs(s$post_mean-p$post_mean),tolerance=1e-12)
+    expect_equal(comparison$eti_width_difference,(s$ci_upper-s$ci_lower)-(p$ci_upper-p$ci_lower),tolerance=1e-12)
+    difference <- saved$differences[[1]]
+    expect_true(difference$ci_lower < 0 && difference$ci_upper > 0)
+    if(case=="large_rare") expect_gt(saved$sensitivity_analysis$max_absolute_mean_diff,0)
+  }
+})
+
+test_that("用語集冒頭は両次元でN比例を無条件に一般化しない", {
+  for (dimension in c(2L,3L)) {
+    html <- render_dashboard_glossary(list(dimension=dimension))
+    expect_false(grepl("標本数比例の証拠強度",html,fixed=TRUE))
+    expect_true(grepl("強い証拠が得られる場合があります",html,fixed=TRUE))
+    expect_true(grepl("同じ構成比で度数を c 倍",html,fixed=TRUE))
+  }
 })
 
 test_that("層内全ゼロは HOLD を維持し、Poisson 局所診断候補式は N 閾値を使わない", {

@@ -153,7 +153,7 @@ test_that("条件付き割合（conditional_rate_view）が点・区間図と数
 
   # 数値表（生割合、事後平均、95%CI）
   expect_true(grepl("事後平均", content))
-  expect_true(grepl("95%CI", content))
+  expect_true(grepl("95% ETI下限", content, fixed = TRUE))
 })
 
 test_that("旧 Evidence Score が監査専用として隔離表示されていること", {
@@ -193,6 +193,38 @@ test_that("共有用語集が旧α=1.0成果物をJeffreysと誤表示せず、D
 cat("\n==================================================\n")
 cat("すべての HTML 契約テストが定義されました。実行を開始します。\n")
 cat("==================================================\n\n")
+
+test_that("新規主事前の90/95%ETIと希少確率が設定通りHTMLへ渡る", {
+  source(file.path(repo_root,".agents/skills/vcd-bayesian-evidence-analysis/templates/pass1_compute.R"),local=TRUE)
+  data <- data.frame(A=paste0("a",1:5),B="b",C="c",Freq=c(0,1,30000,40000,50000))
+  spec <- list(response_var="A",compare_by="B",stratify_by="C",
+    numerator_levels=c("a1","a2"),denominator_levels=paste0("a",1:5))
+  original <- jsonlite::fromJSON(json_path,simplifyVector=FALSE)
+  for (level in c(.90,.95)) {
+    spec$interval_level <- level
+    modified <- original
+    modified$conditional_rate_view <- compute_conditional_rate_view(data,c("A","B","C"),"Freq",spec,draws=10000,seed=77)
+    jsonlite::write_json(modified,file.path(tmp_run_dir,"evidence_results.json"),auto_unbox=TRUE,digits=NA)
+    target <- paste0("review_",level*100,".html")
+    rendered <- system2("Rscript",c(render_script,"--run-dir",tmp_run_dir,"--preview","--output-file",target),stdout=TRUE,stderr=TRUE)
+    expect_true(is.null(attr(rendered,"status")) || attr(rendered,"status")==0L)
+    doc <- xml2::read_html(file.path(tmp_run_dir,target))
+    content <- paste(readLines(file.path(tmp_run_dir,target),warn=FALSE),collapse="\n")
+    expect_true(grepl(paste0(level*100,"% ETI下限 (%)"),content,fixed=TRUE))
+    expect_false(grepl("95%CI",content,fixed=TRUE))
+    expect_true(grepl(paste0(level*100,"% ETI)"),content,fixed=TRUE))
+    expect_true(grepl("formatSignif",content,fixed=TRUE))
+    widgets <- xml2::xml_text(xml2::xml_find_all(doc,"//script[@type='application/json'][@data-for]"))
+    tables <- lapply(widgets,function(x) jsonlite::fromJSON(x,simplifyVector=FALSE)$x)
+    rate_table <- Filter(function(x) !is.null(x$container) && grepl("ETI下限",x$container,fixed=TRUE),tables)
+    expect_length(rate_table,1)
+    expected <- modified$conditional_rate_view$rates[[1]]$post_mean*100
+    expect_equal(as.numeric(rate_table[[1]]$data[[6]][[1]]),expected,tolerance=1e-10)
+    expect_gt(as.numeric(rate_table[[1]]$data[[7]][[1]]),0)
+    expect_equal(length(xml2::xml_find_all(doc,"//*[@id='section-glossary']//details")),4L)
+    scan_offline(file.path(tmp_run_dir,target))
+  }
+})
 
 # 一時ディレクトリのクリーンアップ
 unlink(tmp_run_dir, recursive = TRUE)

@@ -88,7 +88,7 @@ glossary_common_header <- function(question_text) {
     '<div style="font-weight:700; color:#152238; font-size:15px; margin-bottom:4px;">統計的・科学的問い:</div>',
     '<div style="color:#1e293b; font-size:14px; line-height:1.65;">', question_text, '</div>',
     '<div style="margin-top:10px; font-size:13.5px; color:#475569; border-top:1px dashed #e2e8f0; padding-top:8px; line-height:1.6;">',
-    '<strong>3大利用原則:</strong> ① P値単独判定の排除（全体検定の有意差のみで実務的重要性や個別セルを判定しない） / ② 局所効果（Effect）と統計的証拠（Evidence）の厳格分離（標本数比例の証拠強度と標本数不変の乖離倍率を混同しない） / ③ 不確実性の明示（点推定ではなく等裾信用区間幅で精度を評価）',
+    '<strong>3大利用原則:</strong> ① P値単独判定の排除（全体検定の有意差のみで実務的重要性や個別セルを判定しない） / ② 局所効果（Effect）と統計的証拠（Evidence）を分けて読む（標本数が増えると、小さな差にも強い証拠が得られる場合があります） / ③ 不確実性の明示（点推定と等裾信用区間を併せて精度を評価）',
     '</div></div>',
     '<p style="font-size:14px; color:#475569; margin-bottom:18px;">',
     '※ 各項目をクリックして開閉できます。臨床・疫学およびリアルワールドデータ分析におけるエビデンス解釈の拠り所としてご活用ください。',
