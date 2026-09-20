@@ -180,9 +180,10 @@ if (render_res_verified && file.exists(html_output_verified)) {
 }
 
 # 7. Section 4 (Adjusted Residual Structure) の表示検証
-c1 <- grepl("調整残差構造 (Adjusted Residual Structure)", html_verified_content, fixed = TRUE)
-c2 <- grepl("効果の大きさ（効果量）そのものではありません", html_verified_content, fixed = TRUE)
-c3 <- grepl("名目 5% 境界", html_verified_content, fixed = TRUE)
+c1 <- grepl("調整標準化残差ヒートマップ", html_verified_content, fixed = TRUE) &&
+  grepl("Adjusted Standardized", html_verified_content, fixed = TRUE)
+c2 <- grepl("効果の大きさや実務的重要性そのものではありません", html_verified_content, fixed = TRUE)
+c3 <- grepl("名目上の探索目安", html_verified_content, fixed = TRUE)
 c4 <- grepl("独立モデル（行と列が無関連）を仮定したとき", html_verified_content, fixed = TRUE)
 
 if (c1 && c2 && c3 && c4) {

@@ -16,7 +16,7 @@ author: Codex (GPT-5)
 | :--- | :--- | :--- | :--- |
 | **Pass 0: 分析設計・事前相談** | `vcd-pass0-consultation` | データ検分（度数・水準・欠測）、次元削減・層別の提案、`analysis_config.json` 生成 | Pass 1 の統計計算実行そのもの |
 | **3次元集計表の探索・関連構造** | `vcd-bayesian-evidence-analysis` | 3次元正本（`three-way-results-v1`）、9階層対数線形モデル、新4軸セル診断、明示式BIC、多項Dirichlet事後推論、Dual-Filterスクリーニング、条件付きセル順位再現性（CRR）、HTMLダッシュボード | 2変数のみの単純解析、旧スコアによる自動判定、因果構造の断定 |
-| **2次元名義カテゴリの関連・残差** | `vcd-categorical-analysis` | 2次元分割表の全体効果量（Cramér's V、Bergsma 補正）、標準化残差、executive_summary、HTML 生成 | 3次元以上の交互作用モデル比較、セルベイズ因子 |
+| **2次元名義カテゴリの関連・残差** | `vcd-categorical-analysis` | 2次元分割表の全体効果量（Cramér's V、Bergsma 補正）、Haberman型調整標準化残差ヒートマップ、estimand・不確実性、executive_summary、HTML 生成 | 3次元以上の交互作用モデル比較、セルベイズ因子 |
 | **アンケート設問の量産・バッチ** | `questionnaire-batch-analysis` | 設定ファイルに基づく複数設問の自動バッチ実行、サマリー集約 | 設問ごとの統計的前提や因果構造の自動的正当化 |
 | **レガシー資産の再現・保守** | `vcd-categorical-reporting` | 過去のレガシーレポートテンプレートの再現・互換保守 | 新規分析の入口、現行 3 次元正本機能 |
 

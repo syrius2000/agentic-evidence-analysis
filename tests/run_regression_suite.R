@@ -36,6 +36,8 @@ official_tests <- c(
   "tests/test_vcd_interpretation_guide.R",
   "tests/test_vcd_residual_plot_order.R",
   "tests/test_vcd_categorical_template_assoc_shade.R",
+  "tests/test_vcd_routing_contract.R",
+  "tests/test_vcd_bayesian_dashboard_facet_residual.R",
   "tests/test_vcd_categorical_template_residual_layout.R",
   "tests/test_vcd_dashboard_layout_integration.R",
   "tests/test_vcd_bayesian_dashboard_html_asis.R",

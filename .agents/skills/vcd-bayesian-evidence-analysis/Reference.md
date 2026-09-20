@@ -41,6 +41,12 @@
 
 大標本環境（$N > 2,000$）では、**Effect（$|\log(O/E)| \ge 0.50$）** を第一スクリーニングとし、通過セルのみ **Evidence（$T_i^{\rm score} \ge 3.84$）** によるノイズ排除を行う **Dual-Filter 原則** を採用しています。
 
+### Dashboardの図の役割
+
+- **層別残差マトリクス**: 第三因子の水準ごとのモデル逸脱パターンを探索する。交互作用の確定や効果量の代用にはしない。
+- **条件付き割合ドット・区間図**: `P(response level | stratify level, comparison level)` を、明示した分母とDirichlet事後ETIで表示する。これはRD/RR/ORとは別のestimandである。
+- **サブグループForest plot**: 明示的なRD/RR/ORと区間が結果契約に含まれる場合に限り、比較対象・層別因子・分母を揃えて表示する。契約がない場合は条件付き割合や残差から合成しない。
+
 ---
 
 ## 3. 一次情報・参考文献（Primary Literature）

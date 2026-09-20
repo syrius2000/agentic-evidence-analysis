@@ -37,7 +37,8 @@ fit_rc <- gnm(Freq ~ Mult(1, A, B), family = poisson, data = df)
 
 | 条件 | 対応 |
 | :--- | :--- |
-| 名義×名義 (2-way / 3-way) | ✓ 完全対応 |
+| 名義×名義 (2-way) | ✓ 完全対応 |
+| 名義×名義 (3-way 以上) | ✗ `vcd-bayesian-evidence-analysis` へ委譲 |
 | 序数×名義（序数を名義として扱う） | △ 分析可能だが情報損失あり |
 | 純粋な序数×序数 | ✗ 非推奨（GNM 等を使用すること） |
 | 4-way 以上 | ✗ スコープ外 |

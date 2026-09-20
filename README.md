@@ -93,7 +93,7 @@ graph TD
 | :--- | :--- | :--- |
 | **vcd-pass0-consultation** | 事前相談 | データ検分、次元削減・層別解析の提案、`analysis_config.json` の作成 |
 | **vcd-bayesian-evidence-analysis** | 3次元正本 | 3次元集計表の 9 階層対数線形モデル、新 4 軸セル診断、明示式 BIC、Dirichlet 事後推論、HTML レポート生成 |
-| **vcd-categorical-analysis** | 2次元正本 | 名義 2 変数の全体効果量（Cramér's V、Bergsma 補正）、新 4 軸セル診断、多項 Jeffreys 事前推論、条件付き事後分布、11 セクション完全オフライン Scientific Dashboard 生成 |
+| **vcd-categorical-analysis** | 2次元正本 | 名義 2 変数の全体効果量（Cramér's V、Bergsma 補正）、調整標準化残差ヒートマップ、新 4 軸セル診断、多項 Jeffreys 事前推論、条件付き事後分布、11 セクション完全オフライン Scientific Dashboard 生成。3次元以上は `vcd-bayesian-evidence-analysis` へ委譲 |
 | **questionnaire-batch-analysis** | バッチ処理 | アンケート複数設問の設定ファイルに基づく自動一括集計とサマリー量産 |
 | **sas-proc-freq** | SAS 互換集計 | PROC FREQ 互換の度数・分割表、独立性検定、2×2効果量、Fisher 正確検定、Monte Carlo 推定 |
 | **sas-proc-means** | SAS 互換記述統計 | PROC MEANS 互換の記述統計、CLASS 群化、FREQ/WEIGHT、VARDEF、QNTLDEF 1〜5 |

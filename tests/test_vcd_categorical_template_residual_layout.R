@@ -41,7 +41,7 @@ for (p in paths) {
     stop("Residual layout chunk order is invalid in: ", p)
   }
 
-  if (!any(grepl("調整残差構造|Adjusted Residual Structure", lines))) {
+  if (!any(grepl("調整標準化残差ヒートマップ|Adjusted Standardized Residual Heatmap", lines))) {
     stop("Residual plot heading is missing in: ", p)
   }
 

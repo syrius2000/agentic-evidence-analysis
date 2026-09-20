@@ -152,24 +152,6 @@ generate_dt_table <- function(cells_df, vars, output_dir, data_label) {
   message("[DT] ", fname)
 }
 
-generate_plots <- function(agg_df, vars, output_dir, data_label) {
-  v1 <- vars[1]
-  v2 <- vars[2]
-  tab <- stats::xtabs(Freq ~ ., data = agg_df[, c(v1, v2, "Freq")])
-
-  png_mosaic <- file.path(output_dir, paste0("mosaic_", data_label, ".png"))
-  grDevices::png(png_mosaic, width = 1000, height = 800)
-  vcd::mosaic(tab, shade = TRUE, main = paste("Mosaic Plot:", v1, "x", v2))
-  grDevices::dev.off()
-
-  png_assoc <- file.path(output_dir, paste0("assoc_", data_label, ".png"))
-  grDevices::png(png_assoc, width = 1000, height = 800)
-  vcd::assoc(tab, residuals_type = "Pearson", shade = TRUE, main = paste("Association Plot:", v1, "x", v2))
-  grDevices::dev.off()
-
-  message("[PLOTS] PNG files written: ", png_mosaic, ", ", png_assoc)
-}
-
 # ============================================================
 # Core Execution Engine (2層分離: run_categorical_analysis_core)
 # ============================================================
@@ -475,7 +457,6 @@ run_categorical_analysis_core <- function(
 
   generate_gt_matrix(evid_res$cells_df, vars, freq_col, run_output_dir, data_label)
   generate_dt_table(evid_res$cells_df, vars, run_output_dir, data_label)
-  generate_plots(agg_df, vars, run_output_dir, data_label)
 
   artifacts_list <- c(
     "categorical_results.json",
@@ -483,9 +464,7 @@ run_categorical_analysis_core <- function(
     "residuals_table.csv",
     "quarantine_cells.csv",
     paste0("gt_residuals_", data_label, ".html"),
-    paste0("dt_residuals_", data_label, ".html"),
-    paste0("mosaic_", data_label, ".png"),
-    paste0("assoc_", data_label, ".png")
+    paste0("dt_residuals_", data_label, ".html")
   )
   completed_state <- list(
     status = "completed",

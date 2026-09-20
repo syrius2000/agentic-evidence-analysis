@@ -200,7 +200,8 @@ for (r_dir in run_dirs) {
     assert(!is.null(rs$config_file_sha256), "config_file_sha256 が記録されている")
     assert(identical(paste0("run_", substr(rs$analysis_signature, 1L, 16L)), basename(r_dir)),
            "run ディレクトリ名が analysis_signature の先頭16文字と完全一致する")
-    assert(length(rs$artifacts) >= 8L, "全成果物が artifacts 配列にリストされている")
+    assert(length(rs$artifacts) >= 6L, "現行の全成果物が artifacts 配列にリストされている")
+    assert(!any(grepl("^(mosaic|assoc)_", rs$artifacts)), "モザイク・association PNGをcanonical成果物に含めない")
   }
 
   res_p <- file.path(r_dir, "categorical_results.json")

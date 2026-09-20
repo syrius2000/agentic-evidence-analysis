@@ -23,7 +23,7 @@ flowchart TB
     ES[executive_summary.md 7ステップ考察]
   end
   subgraph step3 [Step3 Report]
-    DB[dashboard.Rmd → 完全オフライン dashboard.html]
+    DB[dashboard.Rmd → 残差・estimand・不確実性中心の完全オフライン dashboard.html]
   end
   step1 --> step2 --> step3
 ```

@@ -77,6 +77,14 @@ suppressPackageStartupMessages({
   library(ggplot2)
 })
 
+ggplot_jp_font <- switch(
+  Sys.info()[["sysname"]],
+  "Darwin" = "Hiragino Sans",
+  "Windows" = "Yu Gothic",
+  "Linux" = "Noto Sans CJK JP",
+  "sans-serif"
+)
+
 # run_dir の直接受け入れと二重探索バイパス
 output_dir <- if (!is.null(params$run_dir) && nzchar(trimws(params$run_dir))) {
   normalizePath(trimws(params$run_dir), winslash = "/", mustWork = TRUE)
@@ -445,6 +453,7 @@ if (!is.null(cond_rate_view)) {
       htmltools::htmlEscape(strat_v), htmltools::htmlEscape(comp_v),
       htmltools::htmlEscape(denom_lvs), int_pct
     ))
+    cat('<p style="margin:0 0 10px 0; font-size:12.5px; color:#475569;">本表示のestimandは条件付き割合です。RD・RR・ORは別のestimandであり、結果JSONに明示的な効果量契約がない限り、この割合や残差から代用して表示しません。</p>')
     prior_spec <- cond_rate_view$prior_specification
     if (is.list(prior_spec) && !is.null(prior_spec$alpha)) {
       cat(sprintf(
@@ -561,6 +570,49 @@ if (!is.null(cond_rate_view) && identical(cond_rate_view$status %||% "", "VALID"
 ```{r conditional-rate-close, results='asis'}
 if (!is.null(cond_rate_view) && !identical(cond_rate_view$status %||% "", "HOLD")) {
   cat("</div><!-- end topk-panel -->\n")
+}
+```
+
+```{r stratified-residual-matrix, results='asis', fig.width=10, fig.height=5.8}
+if (dimension >= 3L && length(base_model_keys) > 0L) {
+  primary_diag <- cells_by_base[[base_model_keys[1L]]]
+  facet_data <- primary_diag$full_data
+  if (is.list(facet_data) && !is.data.frame(facet_data)) {
+    facet_data <- dplyr::bind_rows(facet_data)
+  }
+  if (is.data.frame(facet_data) && nrow(facet_data) > 0L && "Residual" %in% names(facet_data)) {
+    facet_var <- dims[3L]
+    if (all(dims[1:3] %in% names(facet_data))) {
+      cat('<div class="section-title">&#128202; 層別残差マトリクス（Pearson残差、Facet）</div>')
+      cat('<div class="topk-panel" style="margin-bottom:24px;">')
+      cat(sprintf(
+        '<div class="notice-box notice-info" style="font-size:12.5px; margin-bottom:14px;"><strong>統計的・科学的問い:</strong> 第三因子（%s）の水準ごとに、基準モデル %s からのセル別乖離パターンはどのように変化するか？<br>Facetの残差は交互作用候補の探索表示であり、交互作用の有無・強さはモデル比較、逸脱度、BIC、効果量、安定性で別途評価します。</div>',
+        htmltools::htmlEscape(facet_var), htmltools::htmlEscape(base_model_keys[1L])
+      ))
+      facet_data[[dims[1L]]] <- factor(facet_data[[dims[1L]]])
+      facet_data[[dims[2L]]] <- factor(facet_data[[dims[2L]]])
+      facet_data[[facet_var]] <- factor(facet_data[[facet_var]])
+      mx <- max(abs(as.numeric(facet_data$Residual)), na.rm = TRUE)
+      if (!is.finite(mx) || mx <= 0) mx <- 1
+      p_facet <- ggplot2::ggplot(
+        facet_data,
+        ggplot2::aes(x = .data[[dims[2L]]], y = .data[[dims[1L]]], fill = .data$Residual)
+      ) +
+        ggplot2::geom_tile(color = "white", linewidth = 0.35) +
+        ggplot2::geom_text(ggplot2::aes(label = sprintf("%.2f", .data$Residual)), size = 3.1, color = "#111827") +
+        ggplot2::facet_wrap(stats::as.formula(paste("~", facet_var)), scales = "free") +
+        ggplot2::scale_fill_gradient2(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B", midpoint = 0, limits = c(-mx, mx), name = "Pearson残差") +
+        ggplot2::labs(
+          title = "層別残差マトリクス（Pearson残差）",
+          subtitle = "Pearson残差 | 正: 観測 > 期待 | 負: 観測 < 期待 | 層別パターンは交互作用候補の探索",
+          x = dims[2L], y = dims[1L]
+        ) +
+        ggplot2::theme_minimal(base_family = ggplot_jp_font) +
+        ggplot2::theme(panel.grid = ggplot2::element_blank(), legend.position = "right")
+      print(p_facet)
+      cat("</div>")
+    }
+  }
 }
 ```
 

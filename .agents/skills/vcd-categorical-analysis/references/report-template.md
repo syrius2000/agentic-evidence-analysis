@@ -16,9 +16,7 @@ Pass 2 実行後に `./skill_out/vcd_categorical/` に生成されるファイ�
 | `matrix_marginal_{label}.html` | 周辺2変数の残差マトリックス（gt） | HTML |
 | `matrix_{label}_{layer}.html` | 各層の残差マトリックス（gt、3-way 時） | HTML |
 | `dt_residuals_{label}.html` | インタラクティブ残差テーブル（DT） | HTML |
-| `mosaic_{label}.png` | モザイクプロット | PNG |
-| `assoc_{label}.png` | アソシエーションプロット（2-way のみ） | PNG |
-| `cotab_{label}.png` | 条件付きモザイクプロット（3-way のみ） | PNG |
+| `dashboard.html` | 調整標準化残差、estimand、不確実性を統合した現行Dashboard | HTML |
 
 ## `summary_*.json` の主要フィールド
 
@@ -56,5 +54,4 @@ Pass 2 実行後に `./skill_out/vcd_categorical/` に生成されるファイ�
 
 ## レガシー `report.Rmd` について
 
-`templates/report.Rmd` は v1.x の一気通貫テンプレートです。
-新規分析には使用せず、`analysis.R` の2パス方式を推奨します。
+`templates/report.Rmd` は v1.x の一気通貫テンプレートです。現行canonicalの主表示・必須成果物ではなく、モザイク図・3次元分岐を含むレガシー互換資産です。新規分析には使用せず、`analysis.R` と `dashboard.Rmd` の現行経路を使用してください。3次元解析は `vcd-bayesian-evidence-analysis` が正本です。

@@ -367,58 +367,31 @@ cat(knitr::knit(text = normalized_summary, quiet = TRUE))
 
 <!-- Section 4: 調整残差構造 (Adjusted Residual Structure) -->
 <div class="section-card">
-  <h2><span>4.</span> 調整残差構造 (Adjusted Residual Structure)</h2>
+  <h2><span>4.</span> 調整標準化残差ヒートマップ (Adjusted Standardized Residual Heatmap)</h2>
   <div style="background:#f8fafc; border-left:4px solid #1f4d7a; padding:10px 14px; border-radius:4px; margin-bottom:14px;">
 <strong>統計的・科学的問い:</strong> 独立モデル（行と列が無関連）を仮定したとき、各セルの観測度数は期待度数から統計的にどの程度逸脱しているか（標準化残差）？
   </div>
   <p style="font-size:0.9rem; color:#475569; margin-bottom:16px;">
-    ※ <strong>解釈上の注意:</strong> 調整残差（Haberman の調整残差 $z_{ij}$）は、独立帰無仮説からの乖離度を漸近標準正規分布 $N(0, 1)$ で測る検定統計量相当の指標であり（破線: 名目 5% 境界 $\pm 1.96$、点線: 名目 1% 境界 $\pm 2.58$）、<strong>効果の大きさ（効果量）そのものではありません</strong>。大標本では実質的に小さな差でも大きな残差が生じます。効果の大きさは Section 3 の局所対数効果比 $\log(O/E)$ や Section 2 の Cramér's $V$ を併せて評価してください。
+    ※ <strong>解釈上の注意:</strong> 調整標準化残差（Haberman の $z_{ij}$）は、独立モデルからの局所的な統計的乖離を示す探索指標であり、<strong>効果の大きさや実務的重要性そのものではありません</strong>。±1.96および±2.58は多重性を調整していない名目上の探索目安です。期待度数、Leverage、ゼロ観測、小期待度数、Quarantine状態、Section 3 の局所対数効果比 $\log(O/E)$ を併せて評価してください。
   </p>
   ```{r adjusted-residual-plot, fig.width=10, fig.height=5.8, results='asis'}
   res_sel <- select_top_n_cells(cells, metric_col = "adj_res", decreasing = TRUE, n = 25, abs_val = TRUE)
-  if (res_sel$mode == "table_only") {
-    cat("<p style='color:#64748b; font-style:italic;'>中規模表（31〜100セル）のため過密プロットを抑制しました。<a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>全件表（Section 5 セルエクスプローラー）</a>をご利用ください。</p>")
+  if (res_sel$mode != "all") {
+    cat(sprintf("<p style='color:#64748b; font-style:italic;'>セル数が%d件のため、全セルを比較するヒートマップは抑制しました。<a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>全件表（Section 5 セルエクスプローラー）</a>または上位セル表示をご利用ください。</p>", res_sel$k))
   } else {
-    if (res_sel$mode == "top_n") {
-      cat(sprintf("<p style='font-size:0.85rem; color:#475569; margin-bottom:8px;'><strong>大規模表縮約表示:</strong> 上位 25 セル / 全 %d セル（非表示: %d セル）。全セルの完全な数値は <a href='#section-cell-explorer' style='color:#2563eb; text-decoration:underline;'>Section 5 セルエクスプローラー</a> を参照してください。</p>\n", res_sel$k, res_sel$n_hidden))
-    }
-    adj_df <- res_sel$data
-    adj_df$cell_label <- paste(adj_df$row_level, adj_df$col_level, sep = " : ")
-    if (res_sel$mode == "top_n") {
-      adj_df$cell_label <- factor(adj_df$cell_label, levels = rev(adj_df$cell_label))
-      p_title <- sprintf("調整残差構造 (絶対値上位 25 セル / 全 %d セル | 非表示: %d セル)", res_sel$k, res_sel$n_hidden)
-    } else {
-      adj_df <- adj_df[order(adj_df$adj_res, decreasing = TRUE), ]
-      adj_df$cell_label <- factor(adj_df$cell_label, levels = rev(adj_df$cell_label))
-      p_title <- "調整残差構造 (全セル表示: 0 中心正負表現)"
-    }
-
-    adj_df$fill_cat <- ifelse(
-      adj_df$quarantine_status == "QUARANTINED", "隔離セル (不安定)",
-      ifelse(adj_df$dual_filter_candidate, "Dual-Filter注目候補",
-             ifelse(adj_df$adj_res >= 0, "正の残差 (観測 > 期待)", "負の残差 (観測 < 期待)"))
-    )
-    adj_df$fill_cat <- factor(adj_df$fill_cat, levels = c("Dual-Filter注目候補", "正の残差 (観測 > 期待)", "負の残差 (観測 < 期待)", "隔離セル (不安定)"))
-
-    p_adj <- ggplot(adj_df, aes(x = adj_res, y = cell_label, fill = fill_cat)) +
-      geom_col(width = 0.68) +
-      geom_vline(xintercept = 0, color = THEME_TOKENS$text_primary, linewidth = 0.8) +
-      geom_vline(xintercept = c(-1.96, 1.96), color = THEME_TOKENS$ref_line, linetype = "dashed", linewidth = 0.6) +
-      geom_vline(xintercept = c(-2.58, 2.58), color = THEME_TOKENS$ref_line, linetype = "dotted", linewidth = 0.6) +
-      scale_fill_manual(
-        values = c(
-          "Dual-Filter注目候補" = THEME_TOKENS$dual_filter,
-          "正の残差 (観測 > 期待)" = THEME_TOKENS$residual_pos,
-          "負の残差 (観測 < 期待)" = THEME_TOKENS$residual_neg,
-          "隔離セル (不安定)" = THEME_TOKENS$quarantined
-        )
-      ) +
+    adj_df <- cells
+    p_title <- "調整標準化残差ヒートマップ (全セル表示)"
+    max_abs_adj <- max(abs(adj_df$adj_res), na.rm = TRUE)
+    if (!is.finite(max_abs_adj) || max_abs_adj <= 0) max_abs_adj <- 1
+    p_adj <- ggplot(adj_df, aes(x = .data$col_level, y = .data$row_level, fill = .data$adj_res)) +
+      geom_tile(color = "white", linewidth = 0.4) +
+      geom_text(aes(label = sprintf("%.2f", .data$adj_res)), size = 3.2, color = "#111827") +
+      scale_fill_gradient2(low = "#2166AC", mid = "#F7F7F7", high = "#B2182B", midpoint = 0, limits = c(-max_abs_adj, max_abs_adj), name = "調整残差") +
       labs(
         title = p_title,
-        subtitle = "破線: 名目 5% 境界 (±1.96) | 点線: 名目 1% 境界 (±2.58)",
-        x = "調整残差 z_ij",
-        y = "セル (行 : 列)",
-        fill = "状態区分"
+        subtitle = "正の残差: 観測 > 期待 | 負の残差: 観測 < 期待 | 閾値は多重性未調整の探索目安",
+        x = "列カテゴリ",
+        y = "行カテゴリ"
       ) +
       theme_minimal(base_family = ggplot_jp_font) +
       theme(
@@ -426,11 +399,9 @@ cat(knitr::knit(text = normalized_summary, quiet = TRUE))
         plot.subtitle = element_text(size = 9.5, color = THEME_TOKENS$text_secondary, margin = margin(b = 10)),
         axis.title.x = element_text(size = 10.5, color = THEME_TOKENS$text_primary, margin = margin(t = 8)),
         axis.title.y = element_text(size = 10.5, color = THEME_TOKENS$text_primary, margin = margin(r = 10)),
-        axis.text.y = element_text(size = 9, color = THEME_TOKENS$text_primary),
-        legend.position = "bottom",
-        panel.grid.minor = element_blank(),
-        panel.grid.major.y = element_blank(),
-        panel.grid.major.x = element_line(color = "#e2e8f0")
+        axis.text = element_text(size = 9, color = THEME_TOKENS$text_primary),
+        legend.position = "right",
+        panel.grid = element_blank()
       )
     print(p_adj)
   }

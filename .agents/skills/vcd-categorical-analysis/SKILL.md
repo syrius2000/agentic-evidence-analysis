@@ -31,7 +31,7 @@ metadata:
 1. **Pass 0（Consultation）**: `vcd-pass0-consultation`で入力品質、変数、度数列、構造的ゼロ、標本単位、実務上の問いを確認し、承認済みの`analysis_config.json`を確定する。
 2. **Step 1（Canonical R）**: 確定設定から`categorical_results.json`（Interface 3.0）、`residuals_table.csv`、`quarantine_cells.csv`を生成する。
 3. **Step 2（AI Review）**: JSONを読み、7ステップ考察契約に従って日本語の`executive_summary.md`を作成する。
-4. **Step 3（Report）**: 完全オフライン`dashboard.Rmd`をレンダリングし、外部リソースゼロの`dashboard.html`を生成・確認する。
+4. **Step 3（Report）**: 完全オフライン`dashboard.Rmd`をレンダリングし、調整標準化残差、条件付きestimand、効果量、不確実性を中心とした外部リソースゼロの`dashboard.html`を生成・確認する。モザイク図は現行canonicalの主表示・必須成果物ではない。
 
 ---
 
