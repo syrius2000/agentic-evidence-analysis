@@ -6,6 +6,7 @@
 > 過去のプロトタイプで用いられた `Evidence Score = r² − k \log(N)` は、度数を 100 倍にした大標本環境においてほぼ全セルが正値化（エビデンス飽和）してフィルタ機能を喪失すること、および局所尤度比改善量（LRT）と数学的に乖離することが判明したため、現行システムでは**監査専用列（audit-only）**として隔離されています。
 >
 > 新規の 3 次元カテゴリカル分析および正規の統計解釈においては、必ず以下の現行正本を参照してください：
+>
 > - [現行スキル契約 (SKILL.md)](SKILL.md)
 > - [3次元分析契約 (three_way_contract.md)](references/three_way_contract.md)
 > - [3次元カテゴリカル探索の数理](../../../docs/reference/three_way_models.md)
@@ -25,6 +26,7 @@
 - $k \cdot \log(N)$: サンプルサイズ対数に基づく簡易ペナルティ（$k=1$ または $k=2$）
 
 ### 【数学的破綻と現行での扱い】
+
 度数を 100 倍（$N \to 100N$）にするシミュレーション実験において、シグナル項 $r^2$ が 100 倍に膨張するのに対し、ペナルティ項は $\log(100N) = \log N + 4.61$ と線形にしか増加せず、全セルの 90% 以上が正値化（エビデンス飽和）してスクリーニング機能を喪失しました。
 そのため、現行ツールキットでは本指標を真の信号判定やセル合否判定から完全撤廃し、過去ログ照合用の**監査専用列**としてのみ保持しています。
 
@@ -51,7 +53,7 @@
 
 ## 3. 一次情報・参考文献（Primary Literature）
 
-1. **Rao, C. R. (1948)**. "Large sample tests of statistical hypotheses concerning several parameters with applications to problems of estimation." *Proceedings of the Cambridge Philosophical Society*, 44(1), 50–57. [DOI:10.1017/S0305004100024038](https://doi.org/10.1017/S0305004100024038)
-2. **Pregibon, D. (1981)**. "Logistic regression diagnostics." *The Annals of Statistics*, 9(4), 705–724. [DOI:10.1214/aos/1176345513](https://doi.org/10.1214/aos/1176345513)
-3. **Agresti, A. (2013)**. *Categorical Data Analysis* (3rd ed.). John Wiley & Sons.
-4. **Schwarz, G. (1978)**. "Estimating the dimension of a model." *The Annals of Statistics*, 6(2), 461–464. [DOI:10.1214/aos/1176344136](https://doi.org/10.1214/aos/1176344136)
+1. **Rao, C. R. (1948)**. "Large sample tests of statistical hypotheses concerning several parameters with applications to problems of estimation." _Proceedings of the Cambridge Philosophical Society_, 44(1), 50–57. [DOI:10.1017/S0305004100024038](https://doi.org/10.1017/S0305004100024038)
+2. **Pregibon, D. (1981)**. "Logistic regression diagnostics." _The Annals of Statistics_, 9(4), 705–724. [DOI:10.1214/aos/1176345513](https://doi.org/10.1214/aos/1176345513)
+3. **Agresti, A. (2013)**. _Categorical Data Analysis_ (3rd ed.). John Wiley & Sons.
+4. **Schwarz, G. (1978)**. "Estimating the dimension of a model." _The Annals of Statistics_, 6(2), 461–464. [DOI:10.1214/aos/1176344136](https://doi.org/10.1214/aos/1176344136)

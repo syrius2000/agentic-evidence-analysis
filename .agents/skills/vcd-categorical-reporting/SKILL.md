@@ -24,6 +24,7 @@ metadata:
 ## 手順
 
 ### Pass 0: 分析の設計と文脈の把握
+
 1. `analysis_config.json` が存在するか確認し、読み取る。
    - `input`: 元データのパス
    - `vars`: 分析の軸となった変数
@@ -31,7 +32,9 @@ metadata:
 2. これらの情報を元に、単なる統計計算以上の「文脈に沿った考察」を準備する。
 
 ### Pass 1: データプロファイルの確認
+
 ...
+
 1. `data_profile.json` を読み取る。
 2. 次元数・水準数・疎密度を確認し、`render_config.json` を生成して `vcd-categorical-analysis` の Pass 2 を実行させる。
    - 水準数が多い場合（合計セル数 > 200）: `collapse_below_n` や `max_levels_per_var` の調整を検討

@@ -8,6 +8,7 @@
 > 新規分析・仕様設計においては、必ず [現行スキル (SKILL.md)](../SKILL.md) および [3次元分析契約 (three_way_contract.md)](three_way_contract.md) に従ってください。
 
 ---
+
 name: vcd-bayesian-evidence-analysis
 description: Use when analyzing large-sample two-way or three-way categorical tables with Poisson GLM, Bayes Factors, Evidence Scores, and effect sizes through the evidence JSON, expert narrative, and dashboard workflow.
 license: MIT
@@ -186,6 +187,7 @@ Pass 1 が生成した `evidence_results.json` を読み込み、以下の **日
 - 時間順序や介入情報がない結果から因果を断定すること
 
 #### 大規模データモード（N > 1,000 の場合）
+
 `large_sample_mode` が `true` の場合、以下を必ず考察に含めること：
 
 - Cramér's V の値と Cohen 基準による評価を冒頭に明示
