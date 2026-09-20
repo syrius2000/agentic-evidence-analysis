@@ -1,10 +1,10 @@
 # 分析スキルの責務境界とアーキテクチャ
 
 created: 2026-09-07 00:08 (JST)
-update: 2026-09-12 21:48 (JST)
-author: Codex (GPT-5) / Antigravity
+update: 2026-09-21 00:35 (JST)
+author: Codex (GPT-5)
 
-この文書は、本リポジトリで提供される各種分析スキルの役割分担、適用範囲、およびインターフェース契約を定義する正本リファレンスです。
+この文書は、本リポジトリで提供される各種分析スキルの役割分担と適用範囲を説明する派生リファレンスです。規範的挙動は`openspec/specs/`を正本とし、archiveは履歴として扱います。
 
 ---
 
@@ -15,7 +15,7 @@ author: Codex (GPT-5) / Antigravity
 | 分析のフェーズ・目的 | 主担当スキル | 扱う範囲・提供機能 | 扱わない範囲（境界外） |
 | :--- | :--- | :--- | :--- |
 | **Pass 0: 分析設計・事前相談** | `vcd-pass0-consultation` | データ検分（度数・水準・欠測）、次元削減・層別の提案、`analysis_config.json` 生成 | Pass 1 の統計計算実行そのもの |
-| **3次元集計表の探索・因果構造** | `vcd-bayesian-evidence-analysis` | 3次元正本（`three-way-results-v1`）、9 階層対数線形モデル、新 4 軸セル診断、明示式 BIC、多項 Dirichlet 事後推論、Dual-Filter スクリーニング、条件付きセル順位再現性（CRR）、HTML ダッシュボード | 2変数のみの単純解析、旧スコアによる自動判定 |
+| **3次元集計表の探索・関連構造** | `vcd-bayesian-evidence-analysis` | 3次元正本（`three-way-results-v1`）、9階層対数線形モデル、新4軸セル診断、明示式BIC、多項Dirichlet事後推論、Dual-Filterスクリーニング、条件付きセル順位再現性（CRR）、HTMLダッシュボード | 2変数のみの単純解析、旧スコアによる自動判定、因果構造の断定 |
 | **2次元名義カテゴリの関連・残差** | `vcd-categorical-analysis` | 2次元分割表の全体効果量（Cramér's V、Bergsma 補正）、標準化残差、executive_summary、HTML 生成 | 3次元以上の交互作用モデル比較、セルベイズ因子 |
 | **アンケート設問の量産・バッチ** | `questionnaire-batch-analysis` | 設定ファイルに基づく複数設問の自動バッチ実行、サマリー集約 | 設問ごとの統計的前提や因果構造の自動的正当化 |
 | **レガシー資産の再現・保守** | `vcd-categorical-reporting` | 過去のレガシーレポートテンプレートの再現・互換保守 | 新規分析の入口、現行 3 次元正本機能 |
@@ -24,14 +24,14 @@ author: Codex (GPT-5) / Antigravity
 
 ## 2. 現行 3 次元経路の基本原則
 
-1. **Pass 0 必須の鉄則**:
-   いかなる分析も、Pass 0（`vcd-pass0-consultation`）による事前検分と `analysis_config.json` の生成を経ずに Pass 1 計算を開始してはならない。
+1. **Pass 0 の適用境界**:
+   `vcd-categorical-analysis`と`vcd-bayesian-evidence-analysis`の新規分析ではPass 0を必須とする。`questionnaire-batch-analysis`では文脈に応じて推奨し、SAS互換スキル、単体・回帰テスト、コード・文書保守では要求しない。
 2. **モデル比較の厳格性**:
    全主効果を含む 9 階層モデル（M1〜M9）を適合し、総度数 $N$ 基準のポアソン明示式 $\mathrm{BIC}_{\mathrm{explicit}} = -2\ln L + p\ln N$ により全体構造を評価する。
 3. **新 4 軸セル診断の徹底**:
    セル単位の偏りは、単一のスコアに押し込めず、**Effect（効果量: $\log(O/E)$, $e_i^{(\mathrm{global})}$, $d_i$）**、**Evidence（証拠強度: $T_i^{\rm score}$, $\ln P$）**、**Influence（影響度: Leverage $h_{ii}$）**、**Stability（数値安定性: QUARANTINED 判定）** の 4 軸を明確に分離して報告する。
-4. **大標本 Dual-Filter 原則（$N > 2,000$）**:
-   大標本下では、Effect（$|\log(O/E)| \ge 0.50$ 等）による第一スクリーニングを通過したセルに対してのみ、自由度 1 のカイ二乗上側 5% 点に相当する Evidence（$T_i^{\rm score} \ge 3.84$）による探索的フィルタを適用する。これは表全体の FWER/FDR を調整・保証しない未調整のスクリーニングであり、通過は実務的重要性、因果性、外部妥当性、再現性を保証するものではない。
+4. **探索的Dual-Filterの次元別境界**:
+   2次元では$N \ge 2,000$、REGULAR、Effect（$|\log(O/E)| \ge 0.50$）、Evidence（$T_i^{\rm score} \ge 3.84$）を候補条件とする。3次元の現行候補条件はREGULAR、Effect、Evidenceであり、Nカットオフを含めない。いずれもFWER/FDR、実務的重要性、因果性、外部妥当性、再現性を保証しない探索的条件である。
 5. **不確実性の誠実な報告**:
    多項 Dirichlet 共役事後推論により、条件付き割合や層間リスク差の点ごとの 95% 等裾信用区間（ETI）および Freeman-Tukey 事後予測チェック（PPP-value）を算出し、過分散や推定保留を明記する。
 6. **条件付きセル順位再現性（CRR）の条件付け開示**:
@@ -41,4 +41,4 @@ author: Codex (GPT-5) / Antigravity
 
 ## 3. 旧指標の位置づけ（監査専用列）
 
-旧エビデンススコア（$r^2 - k\ln N$）は、大標本下でのエビデンス飽和現象（全セル正値化）によりフィルタ機能を喪失するため、現行システムでは**監査専用列（audit-only）**としてのみ保持します。新規分析において、真の信号判定、セル合否判定、セルベイズ因子として用いることは厳格に禁止されています。
+旧Evidence Score（$r^2-k\ln N$）は監査専用列であり、新規分析の信号判定、セル合否、セルBayes factorとして使わない。これは、明示したセル追加モデルの局所尤度比、局所BIC改善量、Rao scoreを否定するものではない。これらは基準モデル、比較方向、尤度、パラメータ差、漸近近似、探索後解釈を識別して扱う。

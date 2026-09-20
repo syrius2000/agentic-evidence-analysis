@@ -44,9 +44,10 @@
 
 - スキルツリーは `.agents/skills` のみを管理対象とする（`.cursor/skills` は作成・復元しない）。
 - 共通R基盤は `.agents/shared`、統計数理と責務の正本は `docs/reference` とする。
+- `agentic-evidence-analysis` は、同名5スキル、統計schema、統計品質契約、Rテンプレート、統計回帰テストの唯一の正本である。
 - エコシステム境界:
-  - 一般コード・SQL 理解: `Productivity-Skill`
-  - RWD/DB 実行ハブ: `rwd-mysql-skill-toolkit`
+  - 一般コード・SQLコード理解: `Productivity-Skill`
+  - RWD/DB実行・統合ハブ: `rwd-mysql-skill-toolkit`
   - 統計仕様・数理実装の変更は、すべて本リポジトリ（正本）に集約する。
 
 ### 鉄則 6: 完全自己完結型オフライン成果物（Zero-External-Asset 原則）

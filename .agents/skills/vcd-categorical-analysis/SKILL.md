@@ -4,7 +4,7 @@ description: "Use when performing nominal two-way categorical analysis through t
 license: MIT
 metadata:
   author: vcd-categorical-analysis-skill
-  version: "4.0"
+  version: "4.1"
 ---
 
 名義カテゴリカル変数の **完全2次元分割表（Arity=2）専用**の独立性検定（Poisson GLM）、局所診断（Haberman 調整残差・Rao スコア）、大標本 Dual-Filter、多項 Dirichlet 事後推論、および完全オフライン Scientific Dashboard の生成を行う。
@@ -22,43 +22,37 @@ metadata:
 | **次元数（Arity）** | 厳密に2（$I \ge 2, J \ge 2$） | `INVALID_INPUT_ARITY` でフェイルファスト停止し、3-way正本スキルへ委譲案内 |
 | **度数** | 有限非負整数（$N > 0$） | 欠測・負値・非整数重みは即時停止（`NON_INTEGER_COUNTS` 等） |
 | **構造的ゼロ** | **入力禁止**（サンプリングゼロのみ許容） | `STRUCTURAL_ZERO_NOT_SUPPORTED` で即時停止し準独立モデル案内 |
-| **出力先** | `./skill_out/vcd_categorical/run_<first16>[_N]/` | 衝突時は自動サフィックス分離 |
+| **出力先** | `<out>/run_<first16>[_N]/` | 衝突時は自動サフィックス分離 |
 
 ---
 
-## 2. 必須ワークフロー（エージェント3ステップ + R 2パス）
+## 2. 必須ワークフロー（Pass 0 + エージェント3ステップ）
 
-1. **Step 1（Data）**: R **2パス**を実行し、`data_profile.json`、`categorical_results.json`（Interface 3.0）、`residuals_table.csv`、`quarantine_cells.csv` を生成する。
-2. **Step 2（AI Review）**: JSON を読み、7ステップ考察契約に従って日本語の **`executive_summary.md`** を作成する。
-3. **Step 3（Report）**: **完全オフライン `dashboard.Rmd`** をレンダリングし、外部リソースゼロの `dashboard.html` を生成・確認する。
+1. **Pass 0（Consultation）**: `vcd-pass0-consultation`で入力品質、変数、度数列、構造的ゼロ、標本単位、実務上の問いを確認し、承認済みの`analysis_config.json`を確定する。
+2. **Step 1（Canonical R）**: 確定設定から`categorical_results.json`（Interface 3.0）、`residuals_table.csv`、`quarantine_cells.csv`を生成する。
+3. **Step 2（AI Review）**: JSONを読み、7ステップ考察契約に従って日本語の`executive_summary.md`を作成する。
+4. **Step 3（Report）**: 完全オフライン`dashboard.Rmd`をレンダリングし、外部リソースゼロの`dashboard.html`を生成・確認する。
 
 ---
 
 ## 3. R エンジンの実行方法
 
-### Pass 1: 入力検証とプロファイリング
+### Canonical実行
 
 ```bash
 Rscript .agents/skills/vcd-categorical-analysis/templates/analysis.R \
-  --profile \
-  --data your_data.csv \
-  --vars "Treatment,Outcome" \
-  --freq "Freq" \
+  --config path/to/analysis_config.json \
   --out ./skill_out/vcd_categorical/ \
-  --run-id datasetA_20260915
+  --label datasetA
 ```
 
-### Pass 2: 本生成（GLM・Dirichlet推論・Interface 3.0）
+`--config`、`--out`、`--label`、`--help`以外の引数はcanonical経路では使いません。`--data`、`--vars`、`--freq`、`--input-mode`、`--prior-alpha`、`--practical-delta`などで解析条件を上書きすると、`CANONICAL_CONFIG_OVERRIDE_FORBIDDEN`で停止します。
 
-```bash
-Rscript .agents/skills/vcd-categorical-analysis/templates/analysis.R \
-  --render \
-  --data your_data.csv \
-  --vars "Treatment,Outcome" \
-  --freq "Freq" \
-  --out ./skill_out/vcd_categorical/ \
-  --run-id datasetA_20260915
-```
+開発・テスト用の非canonical経路は成果物を生成せず、運用上のcanonical実行例として使用しません。
+
+### 実行同一性と再開
+
+canonical実行は `requested_run_id`、`analysis_signature`、`run_state` を記録し、出力先を `<out>/run_<first16>[_N]/` として予約します。予約は atomic reservation で行い、状態は順に `allocated`、`profile_complete`、`render_in_progress`、`render_complete` と遷移します。再開時にも設定と署名を再照合します。存在しない `--data` を含む個別上書き引数はcanonical経路で受け付けません。
 
 ---
 
@@ -80,3 +74,7 @@ Rscript .agents/skills/vcd-categorical-analysis/templates/analysis.R \
 - 観測ゼロセルの対数比0扱い（$-\infty$ 隔離セルとして扱うこと）
 - 英語本文（数式・記号除く）
 - 残差符号の未確認解釈
+
+### Pass 2.5: 品質確認
+
+Pass 2の後、同じrun出力に`quality_check.md`を作成し、P値偏重、効果量とEvidenceの混同、隔離セルの過大解釈、図表と本文の不整合、未解決の解釈保留を確認します。重大な未解決事項があれば、完成扱いにせず理由を明記します。

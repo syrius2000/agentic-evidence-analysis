@@ -62,7 +62,7 @@ graph TD
 | :---: | :--- | :--- | :--- |
 | **1** | **全体構造の階層比較**<br>(Global Model Hierarchy) | 9 階層対数線形モデル（M1〜M9）<br>総度数 $N$ 基準の明示式 BIC | $\mathrm{BIC}_{\mathrm{explicit}} = -2 \ln L + p \ln N$<br>ポアソン完全対数尤度に基づき、過大・過小ペナルティを排した決定論的モデル選択 |
 | **2** | **新 4 軸セル診断フレームワーク**<br>(Four-Axis Cell Diagnostics) | ・Effect（効果量）<br>・Evidence（証拠強度）<br>・Influence（影響度）<br>・Stability（数値安定性） | ・Effect: 標本倍率不変 $\log(O/E)$、標準化差 $e_i^{(\mathrm{global})}$、率差 $d_i$<br>・Evidence: 標本数比例 Rao Score $T_i^{\mathrm{score}}$、対数 P 値 $\ln(P)$<br>・Influence: ハット行列 Leverage $h_{ii}$（Pregibon 1981）<br>・Stability: $O_i=0$、$E_i<5.0$、$h_{ii} \ge 0.80$ の論理和判定（`QUARANTINED` 隔離） |
-| **3** | **大標本 Dual-Filter 原則**<br>($N > 2,000$) | 2 段階スクリーニング | ・Step 1 (Effect): $\lvert\log(O/E)\rvert \ge 0.50$ で実質的乖離をスクリーニング<br>・Step 2 (Evidence): $T_i^{\mathrm{score}} \ge 3.84$（未調整の探索的足切り［FWER/FDR未保証］）で標本誤差・不確実セルを除外 |
+| **3** | **探索的 Dual-Filter 原則**<br>（2次元: $N \ge 2,000$ / 3次元: $N$ 閾値なし） | 2 段階スクリーニング | ・Step 1 (Effect): $\lvert\log(O/E)\rvert \ge 0.50$ で実質的乖離をスクリーニング<br>・Step 2 (Evidence): $T_i^{\mathrm{score}} \ge 3.84$（未調整の探索的足切り［FWER/FDR未保証］）で標本誤差・不確実セルを除外<br>※ 3次元現行候補式には $N$ 閾値を含めず、探索的着目セル選定であり実務的重要性や多重性調整（FWER/FDR）を保証しない |
 | **4** | **多項 Dirichlet 事後推論と不確実性評価** | 多項 Jeffreys 事前（$\alpha = 0.5$）<br>Laplace 事前感度分析（$\alpha = 1.0$）<br>条件付き事後予測確率・事後予測チェック | ・フィッシャー情報行列に整合し小標本・疎セルで安定する多項 Jeffreys 事前 $\alpha=0.5$ を主事前として採用<br>・行条件付き $P(B \mid A)$ および列条件付き $P(A \mid B)$ の事後中央値・95% 等裾信用区間（ETI）による予測確率評価<br>・独立性からの事後対数乖離 $\log D_{ij}$、事後信用区間幅ランキング<br>・全セル同時事後標本による層間差 $\Delta \theta$ の推論と Freeman-Tukey 統計量による事後予測チェック（PPP-value） |
 | **5** | **標本変動下における条件付き順位再現性**<br>(Conditional Rank Reproducibility: CRR) | 多項再標本化と各反復でのモデル再適合（M1/M5）<br>運用品質ゲート（有効反復率 $\ge 0.95$） | ・元データ `REGULAR` 適格セル集合 $\mathcal{C}_{\mathrm{reg}}$ に限定した条件付き Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$ と MCSE<br>・固定期待度数の誤謬を排除した反復閉形式 MLE 推定<br>・階数落ち・特異分割表に対する安全な解釈保留（HOLD）契約 |
 
@@ -81,7 +81,7 @@ graph TD
 | **順位の再現性（安定度）** | 条件付きセル順位再現性（CRR）、Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$、MCSE | 標本変動（多項再標本化）および反復モデル再適合下での優先セル順位の頑健性 |
 
 > [!NOTE]
-> 旧プロトタイプの「旧エビデンススコア（$r^2 - k\ln N$）」は大標本下で全セルが正値化（エビデンス飽和）してフィルタ機能を喪失するため、現行システムでは**監査専用列（audit-only）**としてのみ保持し、真の信号判定や合否判定には一切使用しません。
+> 旧プロトタイプの「旧エビデンススコア（$r^2-k\ln N$）」は、セル追加モデルを再適合した局所BICでもベイズ因子でもありません。固定された非ゼロ乖離では標本サイズの増加とともに正値化し得ますが、全セルが必ず正値になるわけではありません。符号を候補選定に使わず、現行システムでは**監査専用列（audit-only）**としてのみ保持します。
 
 ---
 
@@ -136,14 +136,22 @@ install.packages(c(
 
 Agent Skills 対応ツール（Antigravity, Cursor, Gemini CLI 等）から本スキルを呼び出します：
 
+```bash
+npx skills add syrius2000/agentic-evidence-analysis
+```
+
+このリポジトリは、同名5スキル、統計schema、統計品質契約、Rテンプレート、統計回帰テストの唯一の正本です。一般コード・SQLコード理解は `Productivity-Skill`、RWD/DB実行・統合ハブは `rwd-mysql-skill-toolkit` が担当します。
+
 > 「`examples/titanic.csv` を Class × Sex × Survived で分析したい。まずは `vcd-pass0-consultation` スキルでデータの性質を検分して、分析設定を作って。」
 
 ### 2. R コマンドラインから実行する
 
+2次元 `vcd-categorical-analysis` のcanonical成果物は `<out>/run_<first16>[_N]/` に分離されます。
+
 ```bash
 # Pass 0: データの事前検分
 Rscript .agents/shared/inspect_data.R examples/titanic.csv \
-  --out-dir output/titanic/run_01/
+  --out-dir output/<project>/run_<id>/
 
 # Pass 1: 3次元統計計算（Pass 0 で作成した設定を指定）
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
@@ -153,6 +161,8 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R \
   output/titanic/run_01/run_<run_idの先頭16文字>/
 ```
+
+`--out-dir` に空のout-dirを指定しても、各実行は run 識別子で分離し、既存成果物を無言で上書きしません。
 
 ---
 

@@ -1,4 +1,4 @@
-# dashboard.Rmd のモザイク描画が shade = TRUE になっていることを検証（vcd 不要）
+# 現行2次元DashboardのEffect×Evidenceと調整残差の描画契約を検証（vcd 不要）
 # Run: Rscript tests/test_vcd_categorical_template_assoc_shade.R
 
 ca <- commandArgs(trailingOnly = FALSE)
@@ -14,10 +14,14 @@ paths <- c(
 for (p in paths) {
   stopifnot(file.exists(p))
   lines <- readLines(p, warn = FALSE)
-  mosaic_lines <- grep("^[[:space:]]*.*mosaic\\(", lines, value = TRUE)
-  stopifnot(length(mosaic_lines) >= 1L)
-  if (!any(grepl("shade\\s*=\\s*TRUE", mosaic_lines))) {
-    stop("mosaic() must use shade = TRUE in: ", p)
+  if (!any(grepl("```\\{r effect-evidence-plot[,}]", lines))) {
+    stop("effect-evidence-plot chunk is missing in: ", p)
+  }
+  if (!any(grepl("```\\{r adjusted-residual-plot[,}]", lines))) {
+    stop("adjusted-residual-plot chunk is missing in: ", p)
+  }
+  if (!any(grepl("scale_color_manual\\(values = master_row_palette", lines, fixed = FALSE))) {
+    stop("row-category master palette is missing in: ", p)
   }
 }
-message("OK: mosaic shade = TRUE present in both dashboard.Rmd templates.")
+message("OK: current Effect×Evidence and adjusted-residual plot contracts are present.")

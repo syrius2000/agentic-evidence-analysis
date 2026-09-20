@@ -19,9 +19,9 @@ test_that("ダッシュボード全体が 1 カラム構成として統合され
   rmd_content <- paste(readLines(test_rmd_path, encoding = "UTF-8"), collapse = "\n")
   
   # コンテナの開始と終了が Rmd ファイル内にコードとして含まれているか
-  expect_true(grepl("cat\\('<div class=\"dashboard-main-content\">'\\)", rmd_content), 
+  expect_true(grepl("cat\\((['\"])<div class=\"dashboard-main-content\">\\1\\)", rmd_content),
               info = "dashboard-main-content の開始タグを cat する R コードが見つかりません")
-  expect_true(grepl("cat\\('</div><!-- End \\.dashboard-main-content -->'\\)", rmd_content),
+  expect_true(grepl("cat\\((['\"])</div><!-- End \\.dashboard-main-content -->\\1\\)", rmd_content),
               info = "dashboard-main-content の終了タグを cat する R コードが見つかりません")
   
   # 余計な gap や flex 指定が主要要素に干渉していないか

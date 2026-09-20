@@ -22,6 +22,8 @@
 - `first16`: 要求 run ID の先頭16文字
 - `_N`: 既存 run との衝突回避サフィックス
 
+`requested_run_id`、`analysis_signature`、`run_state` を `run_meta.json` に記録する。出力ディレクトリの確保は atomic reservation とし、`run_state` は `allocated`、`profile_complete`、`render_in_progress`、`render_complete` の順に遷移する。canonical経路では、存在しない `--data` を含む個別入力上書き引数を受け付けない。
+
 ---
 
 ## 3. 主要出力成果物

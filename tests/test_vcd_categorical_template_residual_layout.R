@@ -20,17 +20,17 @@ for (p in paths) {
 
   chunk_names <- c(
     "setup",
-    "header-banner",
-    "stats-cards",
+    "embed-shared-theme",
     "ai-summary",
-    "residual-plot",
+    "effect-evidence-plot",
+    "adjusted-residual-plot",
     "dt-table",
-    "mosaic-plot"
+    "glossary-render"
   )
   chunk_pos <- vapply(
     chunk_names,
     function(name) {
-      idx <- grep(sprintf("^```\\{r %s([,}])", name), lines)
+      idx <- grep(sprintf("```\\{r %s([,}])", name), lines)
       if (length(idx) != 1L) stop("Chunk not found exactly once: ", name, " in ", p)
       idx
     },
@@ -41,12 +41,12 @@ for (p in paths) {
     stop("Residual layout chunk order is invalid in: ", p)
   }
 
-  if (!any(grepl("残差プロット|Residual plot", lines))) {
+  if (!any(grepl("調整残差構造|Adjusted Residual Structure", lines))) {
     stop("Residual plot heading is missing in: ", p)
   }
 
-  if (!any(grepl("order\\s*=.*abs_pearson_res", lines))) {
-    stop("DT table sort by abs_pearson_res is missing in: ", p)
+  if (!any(grepl("select_top_n_cells\\(cells, metric_col = \"adj_res\"", lines))) {
+    stop("DT/residual selection by adj_res is missing in: ", p)
   }
 
   if (!any(grepl("theme_minimal\\(.*base_family", lines))) {

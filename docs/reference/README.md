@@ -16,7 +16,7 @@ author: Codex (GPT-5) / Antigravity
 | :---: | :--- | :--- | :--- |
 | **1** | **全体構造の階層比較**<br>(Global Model Hierarchy) | 9 階層対数線形モデル（M1〜M9）<br>総度数 $N$ 基準の明示式 BIC | $\mathrm{BIC}_{\mathrm{explicit}} = -2 \ln L + p \ln N$<br>ポアソン完全対数尤度に基づき、過大・過小ペナルティを排した決定論的モデル選択 |
 | **2** | **新 4 軸セル診断フレームワーク**<br>(Four-Axis Cell Diagnostics) | ・Effect（効果量）<br>・Evidence（証拠強度）<br>・Influence（影響度）<br>・Stability（数値安定性） | ・Effect: 標本倍率不変 $\log(O/E)$、標準化差 $e_i^{(\mathrm{global})}$、率差 $d_i$<br>・Evidence: 標本数比例 Rao Score $T_i^{\mathrm{score}}$、対数 P 値 $\ln(P)$<br>・Influence: ハット行列 Leverage $h_{ii}$（Pregibon 1981）<br>・Stability: $O_i=0$、$E_i<5.0$、$h_{ii} \ge 0.80$ の論理和判定（`QUARANTINED` 隔離） |
-| **3** | **大標本 Dual-Filter 原則**<br>($N > 2,000$) | 2 段階スクリーニング | ・Step 1 (Effect): $|\log(O/E)| \ge 0.50$ で実質的乖離をスクリーニング<br>・Step 2 (Evidence): $T_i^{\mathrm{score}} \ge 3.84$（未調整の探索的足切り［FWER/FDR未保証］）で標本誤差・不確実セルを除外 |
+| **3** | **探索的Dual-Filter原則** | 次元別の2段階スクリーニング | ・2次元: $N \ge 2,000$、REGULAR、$|\log(O/E)| \ge 0.50$、$T_i^{\mathrm{score}} \ge 3.84$<br>・3次元: REGULAR、Effect、Evidence（Nカットオフなし）<br>・いずれもFWER/FDR、実務的重要性、因果性を保証しない |
 | **4** | **多項 Dirichlet 事後推論と不確実性評価** | 共役事前分布による事後標本化<br>事後予測チェック（PPC） | ・部分集合分子・分母による条件付き割合と 95% 等裾信用区間（ETI）<br>・全セル同時事後標本による層間差 $\Delta \theta$ の事後推論<br>・Freeman-Tukey 統計量による事後予測 P 値（PPP-value） |
 | **5** | **標本変動下における条件付き順位再現性**<br>(Conditional Rank Reproducibility: CRR) | 多項再標本化と各反復でのモデル再適合（M1/M5）<br>運用品質ゲート（有効反復率 $\ge 0.95$） | ・元データ `REGULAR` 適格セル集合 $\mathcal{C}_{\mathrm{reg}}$ に限定した条件付き Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$ と MCSE<br>・固定期待度数の誤謬を排除した反復閉形式 MLE 推定<br>・階数落ち・特異分割表に対する安全な解釈保留（HOLD）契約 |
 
@@ -38,7 +38,7 @@ author: Codex (GPT-5) / Antigravity
 
 ## 3. 旧指標の位置づけ（監査専用列）
 
-過去のプロトタイプで用いられた旧エビデンススコア（$r^2 - k\ln N$）は、サンプルサイズ $N$ が大規模（数万〜数十万）になると全セルが正値化（エビデンス飽和）してスクリーニング機能を失います。また、局所尤度比改善量（$\Delta G_i^2$）とも数学的に乖離します。
+過去のプロトタイプで用いられた旧Evidence Score（$r^2-k\ln N$）は、再適合した局所尤度比改善量（$\Delta G_i^2$）、局所BIC差、Rao scoreとは異なる式です。固定した非ゼロ乖離では大標本ほど正値になりやすいため候補判定に使わず、監査専用列として扱います。セル追加モデルの正当な局所比較は、基準モデル、追加項、尤度、パラメータ差、探索上の限界を明示して別に扱います。
 このため、現行ツールキットでは旧スコアを**監査専用列（audit-only）**として隔離し、真の信号判定や合否判定には一切使用しません。
 
 ---
