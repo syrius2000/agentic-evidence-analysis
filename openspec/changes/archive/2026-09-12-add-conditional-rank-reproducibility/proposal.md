@@ -23,9 +23,11 @@
 ## Capabilities
 
 ### New Capabilities
+
 - `conditional-rank-reproducibility`: 指定モデル（M1/M5）および局所効果比（`abs_log_oe`）に基づき、元データ由来の適格セル集合内で観測度数条件付きのセル順位選択頻度を再適合多項再標本化により評価・監査する能力。
 
 ### Modified Capabilities
+
 （なし）
 
 ## Impact

@@ -31,8 +31,20 @@ post <- compute_dirichlet_posterior(diag, alpha = 0.5, n_draws = 1000L, analysis
 tmp_dir <- tempfile(pattern = "dash_test_")
 dir.create(tmp_dir)
 
-# executive_summary.md の作成
-writeLines(c("# サマリー", "テスト実行によるAI Narrative要約です。"), file.path(tmp_dir, "executive_summary.md"))
+# executive_summary.md の作成 (2個以上の番号付きH2を含むリアルなサマリーfixture)
+summary_content <- c(
+  "# エグゼクティブ・サマリー: テスト分析",
+  "",
+  "## 1. 全体関連構造（Global Association）",
+  "全体関連構造の要約テキストです。",
+  "",
+  "## 2. 効果の大きさ（Effect Size）",
+  "効果量の要約テキストです。",
+  "",
+  "## 3. 局所診断と安定性（Quarantine Diagnostics）",
+  "局所診断の要約テキストです。"
+)
+writeLines(summary_content, file.path(tmp_dir, "executive_summary.md"))
 serialize_interface_v3(
   evid, post,
   out_dir = tmp_dir,
@@ -238,8 +250,9 @@ if (s1 && s2 && s3 && s4 && s5) {
   test_fail <- test_fail + 1L
 }
 
-# 12. Section 12 (Glossary & Scientific References) の表示・アコーディオン検証
-g1 <- grepl("12.</span> 統計用語集・方法論解説・学術リファレンス", html_verified_content, fixed = TRUE)
+# 12. Appendix (Glossary & Scientific References) の表示・アコーディオン検証
+g1 <- grepl("Appendix — 統計用語集・方法論解説・学術リファレンス", html_verified_content, fixed = TRUE)
+g1_no_12 <- !grepl("<span>12.</span> 統計用語集", html_verified_content, fixed = TRUE)
 g2 <- grepl("details class=\"glossary-accordion\"", html_verified_content, fixed = TRUE)
 g3 <- grepl("全体連関・効果量 (Global Association &", html_verified_content, fixed = TRUE)
 g4 <- grepl("局所セル診断と 4 軸フレームワーク", html_verified_content, fixed = TRUE)
@@ -248,7 +261,7 @@ g6 <- grepl("学術リファレンス・参考文献", html_verified_content, fi
 g7 <- grepl("Haberman, S. J. (1973)", html_verified_content, fixed = TRUE)
 g8 <- grepl("Bergsma, W. (2013)", html_verified_content, fixed = TRUE)
 
-# Section 12 内のコードブロックエスケープ（pre/code）崩れ防止検証
+# Glossary 内のコードブロックエスケープ（pre/code）崩れ防止検証
 sec12_pos <- regexpr("id=\"section-glossary\"", html_verified_content)
 sec12_html <- if (sec12_pos > 0) substr(html_verified_content, sec12_pos, nchar(html_verified_content)) else ""
 no_pre_code <- !grepl("<pre>", sec12_html, fixed = TRUE) && !grepl("<code>", sec12_html, fixed = TRUE)
@@ -257,12 +270,43 @@ no_pre_code <- !grepl("<pre>", sec12_html, fixed = TRUE) && !grepl("<code>", sec
 theme_c1 <- grepl("#1f4d7a", html_verified_content, fixed = TRUE)
 theme_c2 <- grepl("#f6f8fb", html_verified_content, fixed = TRUE)
 
-if (g1 && g2 && g3 && g4 && g5 && g6 && g7 && g8 && theme_c1 && theme_c2 && no_pre_code) {
-  cat("[PASS] Section 12 Glossary & References rendered with 4 accordions, academic citations, Nature/NEJM theme tokens, and clean HTML (no pre/code escaping).\n")
+if (g1 && g1_no_12 && g2 && g3 && g4 && g5 && g6 && g7 && g8 && theme_c1 && theme_c2 && no_pre_code) {
+  cat("[PASS] Appendix Glossary & References rendered with 4 accordions, academic citations, Nature/NEJM theme tokens, clean HTML (no pre/code escaping), and unnumbered appendix.\n")
   test_pass <- test_pass + 1L
 } else {
-  cat(sprintf("[FAIL] Section 12 Glossary check failed (g1:%s, g2:%s, g3:%s, g4:%s, g5:%s, g6:%s, g7:%s, g8:%s, t1:%s, t2:%s, no_pre_code:%s)\n",
-              g1, g2, g3, g4, g5, g6, g7, g8, theme_c1, theme_c2, no_pre_code))
+  cat(sprintf("[FAIL] Appendix Glossary check failed (g1:%s, g1_no_12:%s, g2:%s, g3:%s, g4:%s, g5:%s, g6:%s, g7:%s, g8:%s, t1:%s, t2:%s, no_pre_code:%s)\n",
+              g1, g1_no_12, g2, g3, g4, g5, g6, g7, g8, theme_c1, theme_c2, no_pre_code))
+  test_fail <- test_fail + 1L
+}
+
+# 12.5. Section 1 Executive Summary 見出しの重複排除およびアウトライン整合性検証 (F-03 対応)
+h2_matches <- regmatches(html_verified_content, gregexpr("<h2[^>]*>([\\s\\S]*?)</h2>", html_verified_content, perl = TRUE))[[1]]
+h2_clean <- gsub("<[^>]+>", "", h2_matches)
+h2_clean <- trimws(gsub("[[:space:]]+", " ", h2_clean))
+
+# 期待される H2 の総数は 12 個 (Section 1〜11 + Appendix) であること
+n_h2 <- length(h2_clean)
+expected_n_h2 <- 12L
+
+# サマリー由来の旧番号付き H2 ("1. 全体関連構造", "2. 効果の大きさ" 等) が <h2> として存在しないこと
+leak_h2_1 <- any(grepl("^1\\.[[:space:]]*全体関連構造", h2_clean))
+leak_h2_2 <- any(grepl("^2\\.[[:space:]]*効果の大きさ", h2_clean))
+leak_h2_3 <- any(grepl("^3\\.[[:space:]]*局所診断", h2_clean))
+
+# サマリー内の見出しが H3 かつ番号なしで正常にレンダリングされていること
+has_h3_1 <- grepl("<h3[^>]*>全体関連構造（Global Association）</h3>", html_verified_content)
+has_h3_2 <- grepl("<h3[^>]*>効果の大きさ（Effect Size）</h3>", html_verified_content)
+has_h3_3 <- grepl("<h3[^>]*>局所診断と安定性（Quarantine Diagnostics）</h3>", html_verified_content)
+
+# すべての H2 が Section 1〜11 または Appendix のみで構成されていること
+all_h2_valid <- all(grepl("^[1-9][0-9]?\\.[[:space:]]|Appendix", h2_clean))
+
+if (n_h2 == expected_n_h2 && !leak_h2_1 && !leak_h2_2 && !leak_h2_3 && has_h3_1 && has_h3_2 && has_h3_3 && all_h2_valid) {
+  cat("[PASS] Section 1 Executive Summary outline deduplicated: exactly 12 H2 headings (Section 1-11 + Appendix), summary headings demoted to unnumbered H3.\n")
+  test_pass <- test_pass + 1L
+} else {
+  cat(sprintf("[FAIL] Section 1 Executive Summary outline check failed (n_h2:%d vs %d, leak1:%s, leak2:%s, leak3:%s, h3_1:%s, h3_2:%s, h3_3:%s, all_valid:%s)\n",
+              n_h2, expected_n_h2, leak_h2_1, leak_h2_2, leak_h2_3, has_h3_1, has_h3_2, has_h3_3, all_h2_valid))
   test_fail <- test_fail + 1L
 }
 

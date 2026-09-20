@@ -116,8 +116,8 @@ $$\log \hat{BF}_{10} \approx \frac{1}{2} \Delta\text{BIC} = \frac{1}{2}(\text{BI
 
 ## 関連ドキュメント（相対リンク）
 
-- [共通統計リファレンス: カテゴリカルデータ分析](../reference/stats_categorical.md)
-- [ベイズ的アプローチとエビデンススコア](../reference/stats_bayesian.md)
-- [高度な分析手法と実用的ワークフロー](../reference/advanced_analysis.md)
-- [分析品質契約](../../.agents/shared/analysis_quality_contract.md)
-- [プロジェクト全体ガイドライン](../../AGENTS.md)
+- [共通統計リファレンス: カテゴリカルデータ分析](../../reference/stats_categorical.md)
+- [ベイズ的アプローチとエビデンススコア](../../reference/stats_bayesian.md)
+- [高度な分析手法と実用的ワークフロー](../../reference/advanced_analysis.md)
+- [分析品質契約](../../../.agents/shared/analysis_quality_contract.md)
+- [プロジェクト全体ガイドライン](../../../AGENTS.md)

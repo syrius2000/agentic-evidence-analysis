@@ -7,6 +7,7 @@
 ## Goals / Non-Goals
 
 **Goals:**
+
 - **実行時自動インストールの根絶**: 本番解析スクリプト、共有ランタイム、テストコードの全経路から `install.packages()` および `pacman::p_load()` を完全に排除する。
 - **共有 Fail-Fast 機構の導入**: 共通モジュール `.agents/shared/dependency_check.R` を新設し、実行目的（Pass 0/1 計算、Pass 3 レポート、テスト等）に応じた事前依存チェックと、親切な手動導入案内（日本語）を提供する。
 - **実行経路ごとの依存分離**: 統計計算（Pass 1）とレポート・ダッシュボード生成（Pass 3）の依存関係を分離し、可視化系パッケージの不足が統計計算の妨げにならないようにする。
@@ -14,6 +15,7 @@
 - **決定論的再現性の確立**: 依存パッケージ一覧およびオフライン動作確認の基準を文書化・整備する。
 
 **Non-Goals:**
+
 - 統計解析コア（`vcd`, `effectsize`, `rmarkdown`, `DT` 等）の全面的な Base R 書き換え（統計量の定義・区間推定・既存回帰テストの一貫性を維持するため、現フェーズでは急がない）。
 - CRAN へのパッケージ公開。
 - 実行時の自動更新や動的パッケージマネジメント。
@@ -21,28 +23,34 @@
 ## Decisions
 
 ### 1. 共有依存検査モジュール `.agents/shared/dependency_check.R` の新設
+
 各スクリプトに重複してチェック処理を記述するのではなく、リポジトリ共通の依存検査モジュールを新設する。
 
 - **関数仕様**:
+
   ```r
   check_r_dependencies <- function(required, context = "実行")
   ```
+
   `requireNamespace(pkg, quietly = TRUE)` で判定し、未導入パッケージが存在する場合は、即座に手動インストール用コマンド（`install.packages(c(...))`）を案内して `stop(..., call. = FALSE)` で Fail-Fast 停止する。
 - **代替案**:
   - *各ファイルへの関数コピー*: コード重複と保守性の悪化を招くため却下。
   - *`library()` のみの使用*: パッケージ不足時に標準の不親切なエラー（`there is no package called 'xxx'`）で落ち、ネットワーク遮断理由や対処コマンドが利用者に伝わらないため却下。
 
 ### 2. `.agents/shared/run_scope.R` およびテストコードの安全化
+
 - `run_scope.R` 内の `install.packages("digest")` / `install.packages("jsonlite")` を削除し、`check_r_dependencies(c("jsonlite", "digest"), "Run隔離管理")` に置換する。
 - `tests/` 配下のテストスクリプト（`test_narrative_claims_gate.R`, `test_three_way_computation_engine.R` 等）に残存する `pacman` インストール処理を削除し、オフラインサンドボックスで安全に完結させる。
 
 ### 3. 実行経路（Pass 0/1, Pass 2, Pass 3）に応じた依存の疎結合化
+
 - **Pass 0 / Pass 1（計算系）**: `jsonlite`, `digest`, `dplyr`, `tidyr`（および必要に応じた `effectsize`）のみを必須とし、重い UI / レポート依存を要求しない。
 - **Pass 2（ナラティブ・品質系）**: `jsonlite`（およびハッシュ計算用 `digest`）のみ。
 - **Pass 3（ダッシュボード・HTML系）**: `rmarkdown`, `knitr`, `DT`, `htmltools`, `htmlwidgets`, `katex`, `ggplot2`。
 - **効果**: ヘッドレスな計算環境や CI において、Pandoc や HTML レンダラーがない状態でも統計計算（Pass 1）と成果物 JSON 出力を正常に完了できる。
 
 ### 4. Base R 化の優先順位付け
+
 - **直ちに実施**: CSV 読み込みや基礎集計における不要な tidyverse 依存の削減（例: `utils::read.csv` の活用）。
 - **段階的維持**: `effectsize::cramers_v` や `vcd` によるモザイク図、`DT` による動的テーブル等のドメイン・表示コアは、安易に自作置換せずパッケージ依存として明示管理する。
 

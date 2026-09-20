@@ -7,6 +7,7 @@
 ## Goals / Non-Goals
 
 **Goals:**
+
 - `.agents/skills/sas-proc-freq` の独立スキルディレクトリ構造（`SKILL.md`, `schemas/`, `templates/`）の確立。
 - 非負整数度数列を持つ集計表を入力とする厳密な入力バリデーションおよび水準順序・表の向きの固定。
 - 1元表、2元表、層別2元表における度数・割合集計および3つの欠損モード（`exclude`, `missprint`, `include`）の制御（table request ごとの独立適用）。
@@ -24,6 +25,7 @@
   - Stage 2: SAS実機fixture提供時のParity受入（許容誤差基準による検証）。
 
 **Non-Goals:**
+
 - PROC MEANS 統計量、分位数、VARDEF計算（別Change `add-sas-proc-means-skill` で実施）。
 - SASの全構文、全ODS出力、任意FORMAT、特殊欠損（.A〜.Z）の全再現。
 - SAS `WEIGHT` 文における `ZEROS` オプション（度数0の未観測セルを自動生成する機能。初回は度数0行は集計セルから除外するSAS既定挙動に準拠）。
@@ -35,8 +37,10 @@
 ## Decisions
 
 ### 1. 設定管理とインターフェース
+
 - 単一の `analysis_config.json` を設定正本とし、`schema_version: "sas-summary-config-v1"` および `analysis_kind: "sas_proc_freq"` を定義する。
 - 表定義オブジェクト（`tables`）に水準順序、イベント水準、比較方向、資源上限、フォールバック設定を完全規定する：
+
   ```json
   {
     "schema_version": "sas-summary-config-v1",
@@ -73,6 +77,7 @@
   ```
 
 ### 2. 水準順序・表の向き・ゼロの厳密処理
+
 - **水準解決**: `levels_order` が指定されている場合はその順序を絶対保持する。未指定時はデータの出現順とし、Rの暗黙の文字列昇順ソート（ロケール依存）による変形を禁止する。
 - **2×2表の向き**: 行1=暴露群（分子群）、行2=対照群（分母群）、列1=イベント、列2=非イベントとして配置し、結果JSONに明示記録する。
 - **ゼロ度数行（count = 0）**: SAS既定動作に従い、度数0の行は集計セル生成時に除外する。未観測組み合わせを自動生成するSASの `ZEROS` オプションは Non-Goal とする。
@@ -83,16 +88,19 @@
 - **構造的ゼロ**: 入力で構造的ゼロが指定された場合は、通常の独立性検定への投入を拒否し `STRUCTURAL_ZERO_PRESENT` を返す。
 
 ### 3. 数値計算エンジンと独立性検定
+
 - base R および stats パッケージを主軸とし、不要な外部依存を避ける。
 - カイ二乗連続性補正は R の `chisq.test(..., correct=TRUE)` に依存せず、SAS定義の数式 $Q_C = \sum [\max(0, |O-E|-0.5)]^2/E$ を明示的に直接計算する。
 - 尤度比 $G^2 = 2\sum O \log(O/E)$ は $O=0$ の寄与を厳密に 0 としてベクトル演算する。
 
 ### 4. Fisher正確検定と両側定義の分離
+
 - **2×2表の exact**: 超幾何分布に基づき、観測表の確率以下の全表確率和 $\sum_{P(t) \le P_{obs}} P(t)$ を計算する。片側2倍方式や mid-p は採用しない。
 - **一般 $R \times C$ 表の exact**: Mehta & Patel (1983) のネットワーク法（同一周辺度数を持つ全可能表の多変量超幾何確率のうち、観測表の確率以下の確率を持つ表の確率総和）を採用する。
 - Rの `fisher.test()` を利用するが、2×2と一般表の計算法・両側定義の差異を内部で区別して扱う。
 
 ### 5. 資源保護と子プロセス監視アーキテクチャ
+
 - 大標本・大分割表での `fisher.test(..., simulate.p.value=FALSE)` は計算時間膨大化やCルーチン内の作業領域超過のリスクがある。
 - **制限単位と R API 換算規則**:
   - `max_memory_mb`: OSプロセス全体の最大RSS（常駐物理メモリ）上限（MB単位）。Unix `ps` コマンド（`ps -o rss= -p <pid>`）による子プロセスの定期ポーリング監視を行い、超過を検知した場合は子プロセスを停止する。
@@ -125,6 +133,7 @@
   - `fisher.fallback_to_mc: true` が明示設定されている場合のみ、停止後に Monte Carlo 推定へ移行し、`requested_method: "exact"`, `executed_method: "monte_carlo"`, `fallback_reason: "RESOURCE_LIMIT_EXCEEDED"` を結果に記録する（既定は `stop`）。
 
 ### 6. SAS仕様Monte Carlo要約とアルゴリズム固定
+
 - **標本化アルゴリズムの固定（`mc_sampling_algorithm`）**:
   - 設定項目 `mc_sampling_algorithm` を必須項目とし、`"patefield"` または `"awb"` を定義する。
   - **v1 実装範囲**: `"patefield"` のみ実装（base R の `r2dtable` / Patefield (1981) アルゴリズムに準拠し、決定論的再現性と実行速度を確保）。
@@ -140,6 +149,7 @@
 - R既定の $(M+1)/(B+1)$ は主値とせず、監査列 `p_mc_plus_one` にのみ記録する。
 
 ### 7. 出力層アーキテクチャ、可逆複合キー、および個別列併記
+
 - 出力は完全隔離された `<output_dir>/run_<first16_run_id>/` 配下に配置する。
 - **① 構造化JSON (`freq_results.json`)**:
   - 表ごとの観測度数、有効度数、除外欠損数、行・列水準順、表の向き、全統計量、状態理由コード。
@@ -160,6 +170,7 @@
   - `manifest.json`（入出力SHA-256、JSTタイムスタンプ、R環境情報、使用した `mc_sampling_algorithm`）
 
 ### 8. 2段階受入ゲート（Acceptance Gates）
+
 - **Stage 1: 基礎受入（Foundation Acceptance）[本Changeのスコア]**
   - SAS公式仕様書（SAS 9.4 PROC FREQ Documentation等）に基づく数式単体テスト、手計算値照合、境界値テスト（ゼロセル、退化表、欠損3モード、資源タイムアウト停止）の全件合格を必須条件とする。
   - SAS実機アクセスが未提供の場合でも、成果物メタデータに `sas_parity: "unverified"`, `parity_basis: "formula_and_hand_calculation"` を記録することで本Changeの実装完了条件を満たす。

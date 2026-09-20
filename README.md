@@ -106,6 +106,7 @@ graph TD
 ## クイックスタート
 
 ### 動作環境要件
+
 - **R**: >= 4.0
 - **Pandoc**: HTML ダッシュボードおよび R Markdown レポートのレンダリングに必要
 
@@ -120,6 +121,7 @@ graph TD
 | **レポート・描画**<br>(Pass 2 / Pass 3) | `rmarkdown`, `knitr`, `DT`, `htmltools`, `htmlwidgets`, `ggplot2`, `gt`, `katex` | `render_dashboard.R`、各スキルの HTML ダッシュボードおよび個別レポート生成 |
 
 #### 事前一括インストール用 R コマンド
+
 R コンソールまたは `Rscript -e` で以下を実行してください：
 
 ```r
@@ -131,6 +133,7 @@ install.packages(c(
 ```
 
 ### 1. AI エージェントで使う（推奨）
+
 Agent Skills 対応ツール（Antigravity, Cursor, Gemini CLI 等）から本スキルを呼び出します：
 
 > 「`examples/titanic.csv` を Class × Sex × Survived で分析したい。まずは `vcd-pass0-consultation` スキルでデータの性質を検分して、分析設定を作って。」

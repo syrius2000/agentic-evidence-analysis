@@ -6,6 +6,7 @@
 ## Goals / Non-Goals
 
 **Goals:**
+
 - `.agents/skills/sas-proc-means` の独立スキルディレクトリ構造（`SKILL.md`, `schemas/`, `templates/`）の確立。
 - 数値分析変数、CLASS変数、FREQ変数、WEIGHT変数を扱う入力前処理および除外ロジックの実装。
 - 基本記述統計量（N, NMISS, SUM, SUMWGT, MEAN, MIN, MAX, RANGE, CSS, USS, VAR, STD, CV）の計算。
@@ -22,6 +23,7 @@
 - 数値パリティ検証テストスイートの整備。
 
 **Non-Goals:**
+
 - QMETHOD=P2（近似分位数アルゴリズム）。
 - 特殊欠損値（.A〜.Z）や SAS FORMAT 群化の全再現。
 - 重み付き分散分析プロシジャとしての拡張や IPW 頑健分散推定。
@@ -33,28 +35,34 @@
 ## Decisions
 
 ### 1. 設定管理とインターフェース
+
 - 単一の `analysis_config.json` を設定正本とし、`schema_version: "sas-summary-config-v1"` および `analysis_kind: "sas_proc_means"` を定義する。
 - 分析変数群（`analysis_variables`）、CLASS変数群（`class_variables`）、FREQ/WEIGHT変数名、VARDEF、QNTLDEF 等を明確に指定可能とする。
 
 ### 2. FREQ と WEIGHT の数理・除外処理
+
 - FREQ は行頻度であり、小数部は切り捨て（floor）、1未満およびNA行は計算から除外する。
 - WEIGHT は観測重みであり、小数を許容する。既定では負値を 0 として扱い、欠損重みを除外し、0 重み行は観測度数 $N$ に算入する。`exclnpwgt: true` の場合は非正重み行を観測度数 $N$ からも除外する。
 - メモリ保護のため、巨大な個票展開配列は作成せず、重み付き・頻度付きの累積集計アルゴリズムを採用する。
 
 ### 3. モーメント・分散・平均区間の数理計算
+
 - 有効観測集合において $n = \sum f_i$、$W = \sum f_i w_i$、加重平均 $\bar{x} = \sum f_i w_i x_i / W$、修正平方和 $CSS = \sum f_i w_i (x_i - \bar{x})^2$ を算出する。
 - 分散分母 $d$ を VARDEF に応じて分岐（DF: $n-1$、N: $n$、WDF: $W-1$、WEIGHT: $W$）し、$VAR = CSS/d$, $STD = \sqrt{VAR}$ とする。
 - VARDEF=DF の場合のみ $STDERR = STD/\sqrt{W}$ および $t$ 信頼区間 $\bar{x} \pm t_{1-\alpha/2, n-1} STDERR$ を算出し、それ以外の VARDEF では null（`status_reason: "undefined_for_vardef"`）とする。
 
 ### 4. 形状統計量の制約
+
 - WEIGHT変数が指定された場合は、重み付き歪度・尖度を算出せず null（`status_reason: "not_available_with_weight"`）とする。
 - WEIGHT未指定時は、VARDEF=DF（標本不偏推定量）および VARDEF=N（母集団モーメント）の定義に従い、$n \ge 3$（歪度）、$n \ge 4$（尖度）をチェックして計算する。
 
 ### 5. 分位数（QNTLDEF 1〜5）の実装
+
 - 重みなしデータでは、R の `stats::quantile()` の type パラメータとの照合関係（QNTLDEF 1=type 4, 2=type 3, 3=type 1, 4=type 6, 5=type 2）を利用する。
 - WEIGHT指定データでは、累積重み $W_j = \sum_{i=1}^j w_{(i)}$ に基づく専用の累積重みステップ関数分位数ロジックを実装し、QNTLDEF 1〜5 いずれの指定時にも累積重み経路を適用する（定義5相当の境界平均化、他定義でも安全に有限値を算出）。
 
 ### 6. 出力層アーキテクチャ（3点セット成果物とRun隔離）
+
 - 出力は完全隔離された `<output_dir>/run_<first16_run_id>/` 配下に配置する。
 - **① 構造化JSON (`means_results.json`)**:
   - メタデータ（`analysis_kind`, `timestamp_jst`, `input_hash`, `vardef`, `qntldef`）
@@ -71,6 +79,7 @@
   - `manifest.json`（入出力ハッシュ、タイムスタンプJST、Rバージョン情報）
 
 ### 7. 数値パリティ検証と許容誤差契約
+
 - **参照SAS環境**: 照合先SAS環境として SAS 9.4 on Linux/Windows を明示的基準とする。
 - **統計量クラス別の許容誤差方針**:
   - **度数・完全一致クラス**: 観測度数 $N$、欠損数 NMISS、分位数（QNTLDEF 1〜5）、中央値 MEDIAN は、整数一致または離散順序統計量として完全一致（差分 0）を要求する。

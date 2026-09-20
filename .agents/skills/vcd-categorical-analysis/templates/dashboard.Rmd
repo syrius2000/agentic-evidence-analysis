@@ -246,6 +246,22 @@ cat("\n</style>\n")
 ```{r ai-summary, results='asis'}
 # Plain TeX \rm を LaTeX \mathrm に安全に置換して Pandoc MathML 変換エラーを防止
 normalized_summary <- gsub("\\\\rm\\b", "\\\\mathrm", ai_summary_text)
+
+# Section 1 アウトライン整合: 外枠の Section 1〜11 と競合する重複 H2 および不要なタイトル H1 を正規化
+s_lines <- strsplit(normalized_summary, "\n", fixed = TRUE)[[1]]
+
+# 1. 最上位 H1 タイトル行は外枠「1. エグゼクティブ要約」と重複するため除去
+s_lines <- gsub("^#[[:space:]]+.*", "", s_lines)
+
+# 2. H3/H2 見出しのデモートと番号除去（例: "## 1. 全体関連構造" -> "### 全体関連構造"）
+# H3+ を先に H4+ にシフト
+s_lines <- gsub("^###([#]*)[[:space:]]+(.*)", "####\\1 \\2", s_lines)
+# 番号付き H2 を番号なし H3 に変換
+s_lines <- gsub("^##[[:space:]]+[0-9]+[.:、\\s]+(.*)", "### \\1", s_lines)
+# 番号なし H2 も H3 にデモート
+s_lines <- gsub("^##[[:space:]]+(.*)", "### \\1", s_lines)
+
+normalized_summary <- paste(s_lines, collapse = "\n")
 cat(knitr::knit(text = normalized_summary, quiet = TRUE))
 ```
   </div>
@@ -965,6 +981,8 @@ cat(render_dashboard_glossary(list(
   zero_cell_convention = "nonfinite",
   candidate_rule = "N ≥ 2000 かつ |log(O/E)| ≥ 0.50 かつ T_score ≥ 3.84 かつ非隔離",
   support_k = k_cells,
+  section_global = "Section 2（全体連関構造と効果量）",
+  section_global_summary = "Section 2",
   section_effect = "Section 3（横軸: Effect）、Section 9（事後乖離）",
   section_evidence = "Section 3（縦軸: Evidence）",
   section_influence = "Section 5（Cell Explorer 表）",

@@ -40,7 +40,11 @@ official_tests <- c(
   "tests/test_vcd_dashboard_layout_integration.R",
   "tests/test_vcd_bayesian_dashboard_html_asis.R",
   "tests/test_vcd_bayesian_dt_filter_factor.R",
-  "tests/test_vcd_bayesian_pass2_stub.R"
+  "tests/test_vcd_bayesian_pass2_stub.R",
+  "tests/test_three_way_analysis_config_schema.R",
+  "tests/test_shared_dashboard_math.R",
+  "tests/test_three_way_dashboard_html.R",
+  "tests/test_vcd_categorical_dashboard_v4.R"
 )
 
 cat("========================================================\n")

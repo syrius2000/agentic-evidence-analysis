@@ -10,14 +10,17 @@ change_name: add-conditional-rank-reproducibility
 ## 1. 背景・目的・基本合意事項
 
 ### 1.1 背景
+
 現行の 3 次元カテゴリカルデータ分析パイプライン（`vcd-bayesian-evidence-analysis`）では、新 4 軸セル診断（Effect, Evidence, Influence, Stability）およびポアソン GLM（M1〜M9）により、各セルの局所対数効果比 $\log(O_i/E_i)$ や Rao スコア検定統計量 $T_i^{\rm score}$ を決定論的に計算し、大標本 Dual-Filter スクリーニングを実施しています。
 
 しかし、有限標本における「セル順位（Rank）」は、推定値の微小なサンプリング揺らぎによって容易に順位逆転（Ranking Instability / Winner's Curse）を起こします。ハット行列対角成分 Leverage $h_{ii}$ はデータ点の影響度を示しますが、再標本化に対する「順位自体の再現性」を直接保証するものではありません。
 
 ### 1.2 目的とスコープ（Phase 1 の厳格な絞り込み）
+
 本計画は、集計度数表が与えられた際に、指定モデル（M1 または M5）および局所対数効果比（`abs_log_oe`）に基づく **「観測度数条件付きセル順位再現性（Conditional Cell-Rank Reproducibility）」** を定量評価する機能を、正本計算エンジン（`pass1_compute.R`）に組み込むことを目的とします。
 
 大学院・専門家レベルでの批判に耐えうる数理的厳密性と監査性を最優先とし、Phase 1 では以下のスコープに厳格に限定します：
+
 - **対象基準モデル**: `"M1"` または `"M5"` のみ
 - **対象指標**: `"abs_log_oe"`（$|\log(O/E)|$）のみ（※ `score_stat` は反復内 Leverage 再計算・非有限値処理の複雑化を避けるため Phase 1 では対象外）
 - **対象セル母集合**: 元データにおいて当該基準モデルに対して `REGULAR` と判定された適格セル集合（$\mathcal{C}_{\mathrm{reg}}$）に固定
@@ -29,6 +32,7 @@ change_name: add-conditional-rank-reproducibility
 ## 2. 統計数理契約（6つの基本原則とゼロセル処理）
 
 ### 原則 1: 再標本化モデルと標本抽出過程の前提（独立性仮定の明示）
+
 - 集計度数表からの多項再標本化（$\boldsymbol{O}^{(b)} \sim \mathrm{Multinomial}(N, \hat{\boldsymbol{p}})$）は、「各セルへ分類された元の観測単位（individual observations）が独立かつ同一のカテゴリ確率ベクトルから抽出された」という強い仮定に基づきます。
 - RWD や臨床データに存在する「同一患者の反復レコード」「施設・医師・地域クラスター」「時系列相関」は集計表からは復元できません。
 - **契約**:
@@ -38,6 +42,7 @@ change_name: add-conditional-rank-reproducibility
   - 警告文（`warning_ja`）: `"本指標はセルに分類された各観測単位を独立と扱った条件付き評価であり、患者・施設・時系列クラスタリングに対する頑健性を示しません。"` を必須出力とする。
 
 ### 原則 2: Estimand の厳格な限定（「観測度数条件付き順位選択頻度」）
+
 - 本機能が評価する Estimand は、母集団での真の効果量や因果的・臨床的重要性ではなく、**「観測された経験分布の下で、指定モデル・指定指標に基づく Top-$K$ 順位がどの程度選択されるか（モンテカルロ選択頻度）」** に限定します。
 - **数理定義**:
   $$\widehat{\pi}_i^{(K)} = \frac{1}{B_{\mathrm{valid}}} \sum_{b=1}^{B_{\mathrm{valid}}} \mathbb{I}\left\{ R_i^{(b)} \le K \right\}$$
@@ -47,6 +52,7 @@ change_name: add-conditional-rank-reproducibility
   - 推定値 `estimate` とともに、モンテカルロ標準誤差 $\mathrm{MCSE} = \sqrt{\frac{\hat{\pi}(1-\hat{\pi})}{B_{\mathrm{valid}}}}$ を常に対として出力。
 
 ### 原則 3: 反復ごとのモデル再適合と期待度数再推定
+
 - 元データの期待度数 $E_i^{(0)}$ を固定して $O_i^{(b)}/E_i^{(0)}$ を計算する誤り（モデル推定値の変動無視）を完全に排除します。
 - **数理手順**:
   各反復 $b \in \{1, \dots, B\}$ において：
@@ -60,6 +66,7 @@ change_name: add-conditional-rank-reproducibility
   ※ 周辺度数（M5 における $n_{i++}^{(b)}$ 等）が 0 になる場合は、モデル推定不能（特異反復）として無効反復にカウントします。
 
 ### 原則 4: 元データ由来の適格セル（`REGULAR`）集合への条件付けと反復中観測ゼロの連続性補正
+
 - **適格セル集合への条件付け（Estimand の明確化）**:
   「REGULAR 固定」は選択バイアスを排除するものではなく、**「元データにおいて当該基準モデルに対し安定評価可能と判定された適格セル集合（$\mathcal{C}_{\mathrm{reg}} = \{i \mid \text{stability\_status}_i^{(0)} == \text{"REGULAR"}\}$）に条件付けた順位付け」** を行う契約です。全セルに対する無条件の順位付けとは Estimand が異なることをメタデータに明記します。
 - **反復中観測ゼロ ($O_i^{(b)} = 0$) の連続性補正（現行実装契約との整合）**:
@@ -68,6 +75,7 @@ change_name: add-conditional-rank-reproducibility
   反復中に適格セルが局所的にゼロとなったこと自体を理由に反復全体を無効化せず、$\mathcal{C}_{\mathrm{reg}}$ 内での決定論的順位付けを維持します。
 
 ### 原則 5: 無効反復の監査と運用上の計算品質ゲート
+
 - 反復標本において周辺度数消失や特異性が発生した場合、隠蔽せずに内訳を記録します。
 - **品質ゲート（Operational Computation Quality Gate）**:
   - 有効反復率 $\text{valid\_rate} = B_{\mathrm{valid}} / B_{\mathrm{requested}}$ を算出。
@@ -75,6 +83,7 @@ change_name: add-conditional-rank-reproducibility
   - これは普遍的統計閾値ではなく「計算品質ゲート」であることをメタデータに明記します。
 
 ### 原則 6: 正準セル同定子・順位母集合・丸めの分離
+
 - **水準順序の Single Source of Truth**: 入力の完全セル格子から正準順序を導出するにあたり、Pass 0 の `analysis_config.json` に明示保存された `factor_levels_order`（各因子の水準順序ベクトル）を唯一の正準順序とする。CSV の出現順や環境依存の文字列ソートには依存しない。
 - 入力の完全セル格子から、因子の `vars` 順および `factor_levels_order` の直積順（Row-Major）に `canonical_cell_index`（1から始まる連番）と一意な `cell_id` を一度だけ生成する。この正準順序は元データ診断、適格セル抽出、全反復のタイブレーク、JSON 出力で共通に用いる。
 - **衝突のない `cell_id` 形式**: 水準名に `:` や `_` や空白が含まれる場合でも曖昧化しないよう、内部照合には `canonical_cell_index` および構造化 `factor_levels` を正とし、文字列 `cell_id` は `Dept=A/Gender=Female/Admit=Admitted` のキー付き構造化形式とする。
@@ -87,6 +96,7 @@ change_name: add-conditional-rank-reproducibility
 ## 3. 入出力仕様とスキーマ契約
 
 ### 3.1 入力設定 (`analysis_config.json`) の拡張仕様
+
 正本スキーマ [`.agents/skills/vcd-bayesian-evidence-analysis/references/analysis_config.schema.json`](../../../../.agents/skills/vcd-bayesian-evidence-analysis/references/analysis_config.schema.json) および R 側検証 [`.agents/skills/vcd-bayesian-evidence-analysis/templates/config_validation.R`](../../../../.agents/skills/vcd-bayesian-evidence-analysis/templates/config_validation.R) に以下を追加：
 
 ```json
@@ -123,6 +133,7 @@ change_name: add-conditional-rank-reproducibility
 2. **元データ診断後の実行可能性検証**: `eligible_cell_count == 0` なら `status = "NO_ELIGIBLE_CELLS"`、`cells = null` として HOLD する。`top_k > eligible_cell_count` なら設定と Estimand が両立しないため、明確な実行エラーで停止する。要求された Top-$K$ を `min()` により黙って変更してはならない。
 
 ### 3.2 出力結果 (`evidence_results.json`) のスキーマ契約
+
 `evidence_results.json` 内に `conditional_rank_reproducibility` オブジェクトを新設：
 *(※ UCB Admissions の実測値: 全24セル中、M5基準では REGULAR=13、QUARANTINED=11)*
 
@@ -213,6 +224,7 @@ change_name: add-conditional-rank-reproducibility
 ## 4. OpenSpec 変更仕様 (`openspec-ff-change` 向け詳細)
 
 ### 4.1 Proposal (`proposal.md`)
+
 - **Title**: Add Conditional Cell-Rank Reproducibility Evaluation
 - **Why**: 局所セル効果量の点推定に基づく順位付けは、サンプリング揺らぎによる順位逆転リスク（Winner's Curse）を伴う。集計度数表において、モデル再適合を伴う多項再標本化により、観測度数条件付きの順位選択頻度を定量化する。
 - **What**:
@@ -221,6 +233,7 @@ change_name: add-conditional-rank-reproducibility
   - 監査メタデータおよび品質ゲート付きで `evidence_results.json` に構造化出力。
 
 ### 4.2 Delta Specs (`specs/conditional-rank-reproducibility/spec.md`)
+
 - **Requirement 1: モデル再適合を伴う多項再標本化**
   - **Scenario 1-1 (Normal M5 evaluation)**:
     - *Given*: 観測総度数 $N$, 経験割合 $\hat{\boldsymbol{p}}$, 基準モデル M5, $B=1000$。
@@ -262,6 +275,7 @@ change_name: add-conditional-rank-reproducibility
     - *Then*: `top_k` を暗黙に縮小せず、設定不整合を示す明確な実行エラーで停止すること。
 
 ### 4.3 Design (`design.md`)
+
 - **計算サブルーチン**:
   `pass1_compute.R` に `compute_conditional_rank_reproducibility(df, vars, freq_col, fitted_models, base_model_id, config)` を新設。
 - **アルゴリズム詳細**:
@@ -274,6 +288,7 @@ change_name: add-conditional-rank-reproducibility
   7. $B_{\mathrm{valid}} / B < 0.95$ なら `cells <- NULL` として返却する。
 
 ### 4.4 Tasks (`tasks.md`)
+
 1. **Task 1: スキーマ定義とバリデーション実装**
    - `.agents/skills/vcd-bayesian-evidence-analysis/references/analysis_config.schema.json` に `conditional_rank_reproducibility` 定義を追加。
    - `.agents/skills/vcd-bayesian-evidence-analysis/templates/config_validation.R` に一次入力境界チェック（モデルID, metric, top_k, iterations, seed, 3変数, 完全セル格子, 度数）を追加し、元データ診断後の `top_k` 上限検証は計算サブルーチンへ分離。

@@ -175,24 +175,25 @@ glossary_axis_items <- function(ctx) {
   items
 }
 
-glossary_global_2d_items <- function() {
+glossary_global_2d_items <- function(ctx = list()) {
+  sec_global <- ctx$section_global %||% "Section 2（全体連関構造と効果量）"
   list(
     gl_item(
       "Pearson X² 独立性検定統計量",
       "行変数と列変数の相互独立帰無仮説 (H0: π<sub>ij</sub> = π<sub>i+</sub> π<sub>+j</sub>) のもとで算出される漸近カイ二乗統計量 X<sup>2</sup> = Σ (O<sub>ij</sub> − E<sub>ij</sub>)<sup>2</sup> / E<sub>ij</sub>（自由度 (I−1)(J−1)）。",
-      "Section 1（全体連関サマリー）、Section 2（クロス集計表）",
+      sec_global,
       "大標本下では微小な差異でも X<sup>2</sup> が極大化し P 値が飽和するため、臨床的・実務的効果の大きさを測る指標としては用いません。"
     ),
     gl_item(
       "Cramér's V",
       "分割表全体の連関度合いを 0〜1 で標準化した効果量指標 V = √((X<sup>2</sup> / N) / min(I−1, J−1))。",
-      "Section 1（全体効果量）",
+      sec_global,
       "標本サイズ N が有限のとき上方にバイアス（過大評価傾向）を持ちます。"
     ),
     gl_item(
       "偏り補正 Cramér's Ṽ (Bergsma 2013)",
       "有限標本における自由度と標本サイズに基づく漸近バイアス低減量。",
-      "Section 1（95% CI と併記）",
+      paste0(sec_global, "（95% CI と併記）"),
       "有限標本バイアスの低減量であり、厳密な意味での最小分散「不偏推定量」ではありません。"
     )
   )
@@ -387,7 +388,7 @@ render_dashboard_glossary <- function(ctx) {
   }
   section_id <- ctx$section_id %||% "section-glossary"
   heading <- if (identical(dim, 2L)) {
-    '<h2><span>12.</span> 統計用語集・方法論解説・学術リファレンス (Glossary &amp; Scientific References)</h2>'
+    '<h2>Appendix — 統計用語集・方法論解説・学術リファレンス (Glossary &amp; Scientific References)</h2>'
   } else {
     '<div class="section-title">統計用語集・方法論解説・学術リファレンス (Glossary &amp; Scientific References)</div>'
   }
@@ -401,8 +402,8 @@ render_dashboard_glossary <- function(ctx) {
   n <- 1L
   if (identical(dim, 2L)) {
     parts <- c(parts, gl_accordion(
-      sprintf('<span>%d.</span> 全体連関・効果量 (Global Association &amp; Effect Size) ── [対応: Sections 1–2]', n),
-      glossary_global_2d_items()
+      sprintf('<span>%d.</span> 全体連関・効果量 (Global Association &amp; Effect Size) ── [対応: %s]', n, ctx$section_global_summary %||% "Section 2"),
+      glossary_global_2d_items(ctx)
     ))
     n <- n + 1L
   }

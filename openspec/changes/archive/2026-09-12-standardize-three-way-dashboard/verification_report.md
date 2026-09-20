@@ -5,8 +5,9 @@ branch: `codex/dashboard-unification`
 target_head: `6d07077c7e45ee9b2c82f6304b82735c1cd9df09`
 base_commit: `dfc851beb7030e8fd4cb07a0f8384bc98f275977`
 commit_chain:
-  - `e1d1343`: feat(vcd-3way): 3次元ダッシュボードの標準化と数理・オフライン基盤の実装
-  - `6d07077`: test(fixtures): UCB 3-Way 正本 fixture の追加と不変性回帰テストの導入
+
+- `e1d1343`: feat(vcd-3way): 3次元ダッシュボードの標準化と数理・オフライン基盤の実装
+- `6d07077`: test(fixtures): UCB 3-Way 正本 fixture の追加と不変性回帰テストの導入
 worktree: `/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-dashboard`
 
 ---
@@ -85,6 +86,7 @@ Chrome headless（1280px デスクトップ幅）により撮影された画像�
    - 特徴: 白背景の独立カード枠で、左側にモデル解釈、右側にグレーのメトリクスボックスを配置。情報ブロックが明確に境界付けられている。
 
 ### 裁定結果（改善提案 IP-001 の確定）
+
 Owner（統括者）のレビューにより、縦スペースを圧迫せず情報集約度と AI サマリーへの視線誘導に優れた **【案 A: 横長コンパクト要約帯 (`band`)】** が正本レイアウトとして正式採用・決定されました。正本 `dashboard.html` および正本 fixture は案 A で固定・確定されています。
 
 ---

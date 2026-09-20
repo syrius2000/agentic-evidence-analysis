@@ -35,7 +35,7 @@ v4.1 の主目的は新規統計手法の追加ではない。
 
 ## 2.1 P0 — 2-way only 契約と実行コードが矛盾している
 
-v4 specification は **Arity=2 のみを受理し、3-way 以上は計算せず fail-fast する**ことを MUST としている。`workflow.md` でも3次元以上を `INVALID_INPUT_ARITY` で停止し、`vcd-bayesian-evidence-analysis` へ委譲する契約になっている。 
+v4 specification は **Arity=2 のみを受理し、3-way 以上は計算せず fail-fast する**ことを MUST としている。`workflow.md` でも3次元以上を `INVALID_INPUT_ARITY` で停止し、`vcd-bayesian-evidence-analysis` へ委譲する契約になっている。
 
 しかし現在の `analysis.R` は、
 
@@ -44,7 +44,7 @@ v4 specification は **Arity=2 のみを受理し、3-way 以上は計算せず 
 - Main / 2-way / saturated model の legacy log-linear 分析
 - 3-way以上の場合の legacy `categorical_results.json` fallback
 
-を依然として保持している。   
+を依然として保持している。
 
 これは後方互換というより、v4.0 の canonical contract と競合する第二の実行系になっている。
 
@@ -378,7 +378,7 @@ SHA256(
 
 # 9. P1 — Posterior contract mismatch
 
-`compute_dirichlet_posterior()` 自体のdefaultは10,000 drawsだが、canonical entrypointからは `n_draws=5000L` と明示的に上書きされている。 
+`compute_dirichlet_posterior()` 自体のdefaultは10,000 drawsだが、canonical entrypointからは `n_draws=5000L` と明示的に上書きされている。
 
 一方OpenSpecは既定10,000 drawsを要求する。
 
@@ -404,7 +404,7 @@ test_mode
 
 # 10. P1 — practical delta contract violation
 
-v4計画では `practical delta = NULL` を固定する方針があり、恣意的な practical-effect threshold の自動判定はnon-goalである。 
+v4計画では `practical delta = NULL` を固定する方針があり、恣意的な practical-effect threshold の自動判定はnon-goalである。
 
 しかし `compute_dirichlet_posterior()` は、
 
@@ -662,7 +662,7 @@ v4.1では以下を追加する。
 
 が併存する。
 
-さらに `update_run_state()` のallowed stateには `failed` がない一方、input specificationは `status: failed` を要求する。 
+さらに `update_run_state()` のallowed stateには `failed` がない一方、input specificationは `status: failed` を要求する。
 
 ## Canonical lifecycle
 
@@ -703,7 +703,7 @@ OpenSpec taskは residual heatmap、uncertainty matrix、independence departure�
 5. Dirichlet Posterior
 6. Quality & Provenance
 
-である。 
+である。
 
 したがって、現時点で「Dashboard Phase completed」と扱うべきではない。
 

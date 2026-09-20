@@ -263,11 +263,16 @@ validate_analysis_config <- function(config_data, config_path = NULL, repo_root 
       if (length(extra_dp) > 0L) {
         errors <- c(errors, paste0("dirichlet_prior に未知キーがあります: ", paste(extra_dp, collapse = ", ")))
       }
-      for (ak in c("primary_alpha", "sensitivity_alpha")) {
-        if (ak %in% names(dp) && !is.null(dp[[ak]])) {
-          if (!is_finite_number(dp[[ak]]) || dp[[ak]] <= 0) {
-            errors <- c(errors, paste0("dirichlet_prior$", ak, " は正の有限数値である必要があります。"))
-          }
+      if ("primary_alpha" %in% names(dp) && !is.null(dp[["primary_alpha"]])) {
+        pa <- dp[["primary_alpha"]]
+        if (!is_finite_number(pa) || pa != 0.5) {
+          errors <- c(errors, paste0("dirichlet_prior$primary_alpha は 0.5（Jeffreys事前）に固定されています（指定値: ", as.character(pa), "）。"))
+        }
+      }
+      if ("sensitivity_alpha" %in% names(dp) && !is.null(dp[["sensitivity_alpha"]])) {
+        sa <- dp[["sensitivity_alpha"]]
+        if (!is_finite_number(sa) || sa != 1.0) {
+          errors <- c(errors, paste0("dirichlet_prior$sensitivity_alpha は 1.0（一様事前）に固定されています（指定値: ", as.character(sa), "）。"))
         }
       }
     }

@@ -1007,7 +1007,6 @@ G14 CLI override attack
 - [x] T0.5 Interface 3.0 additive extension 方針を確定（Change 2）
 - [x] T0.6 3 Change 間の依存順序（Change 1 $\to$ Change 2 $\to$ Change 3）と受入マトリクスを確定
 
-
 ---
 
 ## Phase 1 — Provenance Boundary Hardening

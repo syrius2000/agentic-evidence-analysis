@@ -1,0 +1,43 @@
+{
+  "archive_batch_id": "20260906_164000_001",
+  "created_at": "2026-09-06 16:40:00 (JST)",
+  "period": {
+    "start": "2026-06-20 00:00 (JST)",
+    "end": "2026-09-06 16:40 (JST)"
+  },
+  "source_count": 5,
+  "summary_file": "docs/Archives/archived_summary_001_0906.md",
+  "note": "Initial commit artifact consolidation (re-structured to match 001-008 standard)",
+  "items": [
+    {
+      "source": "docs/Artifacts/Large_Categorical_Data_Analysis_Report.md",
+      "destination": "docs/Archives/20260906_164000_001/archived_summary_001_0906.md#第1部",
+      "action": "consolidated_summary",
+      "status": "archived_in_summary"
+    },
+    {
+      "source": "docs/Artifacts/Bayesian_Dimensionality_Selection.md",
+      "destination": "docs/Archives/20260906_164000_001/archived_summary_001_0906.md#第2部",
+      "action": "consolidated_summary",
+      "status": "archived_in_summary"
+    },
+    {
+      "source": "docs/Artifacts/skill_ownership_inventory_001_0724.md",
+      "destination": "docs/Archives/20260906_164000_001/archived_summary_001_0906.md#第3部",
+      "action": "consolidated_summary",
+      "status": "archived_in_summary"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_003_0620.md",
+      "destination": "docs/Archives/20260906_164000_001/archived_summary_001_0906.md#41-plan-003-2026-06-20",
+      "action": "consolidated_summary",
+      "status": "archived_in_summary"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_004_0906.md",
+      "destination": "docs/Archives/20260906_164000_001/archived_summary_001_0906.md#42-plan-004-2026-09-06",
+      "action": "consolidated_summary",
+      "status": "archived_in_summary"
+    }
+  ]
+}

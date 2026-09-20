@@ -44,6 +44,9 @@ Thumbs.db
 __pycache__/
 *.pyc
 
+# Node.js dependencies (recreated from package-lock.json)
+node_modules/
+
 # OpenSpec (tool-managed / external)
 .agents/skills/openspec-*
 .agent/skills/openspec-*

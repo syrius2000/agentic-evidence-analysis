@@ -1,0 +1,54 @@
+{
+  "archive_batch_id": "20260920_173500_008",
+  "created_at": "2026-09-20 18:48:00 (JST)",
+  "period": {
+    "start": "2026-09-20 15:45 (JST)",
+    "end": "2026-09-20 17:35 (JST)"
+  },
+  "source_count": 6,
+  "summary_file": "docs/Archives/archived_summary_008_0920.md",
+  "items": [
+    {
+      "source": "docs/plans/implementation_plan_009_0920_shared_dashboard_repair.md",
+      "destination": "docs/Archives/20260920_173500_008/sources/implementation_plan_009_0920_shared_dashboard_repair.md",
+      "action": "move",
+      "sha256": "5ed54987736dc445cc2eeedbdb62941d66c6a2fc9afa11e87e3fa54761241659",
+      "status": "moved"
+    },
+    {
+      "source": "docs/plans/test_plan_005_0920_shared_dashboard_final_qa.md",
+      "destination": "docs/Archives/20260920_173500_008/sources/test_plan_005_0920_shared_dashboard_final_qa.md",
+      "action": "move",
+      "sha256": "8c81de30bf2b8a858aaa36f9e3435bfc8e9fbd4a1bfa08a109a107f7d72d1890",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_020_0920.md",
+      "destination": "docs/Archives/20260920_173500_008/sources/implementation_plan_020_0920.md",
+      "action": "move",
+      "sha256": "bfb7a3259bf13412b1e8bb9713e165111bc3f30aad31d0d9ef8d31e2ead712df",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/verification_shared_dashboard_005_0920.md",
+      "destination": "docs/Archives/20260920_173500_008/sources/verification_shared_dashboard_005_0920.md",
+      "action": "move",
+      "sha256": "32be5bf455a77af7ba0537c4f83584252a5fb89db40ea637c8c00fe79d2e95a1",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/verification_shared_dashboard_006_0920.md",
+      "destination": "docs/Archives/20260920_173500_008/sources/verification_shared_dashboard_006_0920.md",
+      "action": "move",
+      "sha256": "e1cadc6cba40b13316682dc60a68b6766bd64cc3e97a05edbe2e0a097b76c167",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/verification_shared_dashboard_007_0920.md",
+      "destination": "docs/Archives/20260920_173500_008/sources/verification_shared_dashboard_007_0920.md",
+      "action": "move",
+      "sha256": "602d183bd01ad7a236a4c5179cc4b894563faf380d5bc4a32a4d97da718700bd",
+      "status": "moved"
+    }
+  ]
+}

@@ -29,6 +29,7 @@
 ## Capabilities
 
 ### New Capabilities
+
 - `sas-proc-means`: SAS PROC MEANS 対象限定互換スキルの入力契約、欠損処理、基本要約統計量、VARDEF 4分岐、FREQ/WEIGHT処理、歪度・尖度制約、分位数（QNTLDEF 1〜5）、および3点セット（JSON/CSV/Markdownレポート）の出力仕様を規定する。
 
 ### Modified Capabilities
