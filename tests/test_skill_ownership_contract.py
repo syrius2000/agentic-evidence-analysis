@@ -103,7 +103,7 @@ def test_categorical_canonical_docs_forbid_legacy_runs_layout():
 
 
 def test_pass0_examples_require_run_scoped_output_directory():
-    out_dir_contract = "--out-dir output/<project>/run_<id>/"
+    out_dir_contract = "--out-dir evidence_runs/inspections/<project>/run_<id>/"
 
     for path in (
         "README.md",

@@ -56,12 +56,12 @@ Rscript .agents/skills/questionnaire-batch-analysis/templates/batch_runner.R \
 
 ※ `--config` を使用する場合、JSON 内の `input` が `--data` に、`question_config` が `--question-config` に自動的に割り当てられます。
 
-- **`--run-id`**: 既定値 `run` のときは従来どおり `--out` 直下に出力。`run_001` や `auto`（JSTタイムスタンプ）など **`run` 以外**を指定すると、成果物は `--out/runs/<id>/` に隔離され、`summary.csv` の上書き衝突を避けられます。
+- **`--run-id`**: 実行識別子。指定時（または未指定時のauto）は `--out/run_<id>/` に隔離され、`summary.csv` の上書き衝突を避けます（`run_001` 等の `run_` プレフィックス付き入力も正規化されて `run_001` に格納されます）。
 
 ## 出力
 
-- `--out`（既定: `./skill_out/questionnaire/`）配下（`--run-id` が `run` 以外のときは `runs/<id>/` サブフォルダ）
-  - `summary.csv`（`run_id` 列は **`--run-id` 解決後**の値。`auto` ならタイムスタンプ、`runs/<id>/` の `<id>` と一致）
+- `--out`（既定: `./evidence_runs/questionnaire/`）配下の `run_<id>/` 隔離ディレクトリ
+  - `summary.csv`（`run_id` 列は **`--run-id` 解決後**の値。`auto` ならJSTタイムスタンプ）
   - `{output_slug}/report.html`
   - `{output_slug}/figures/residual_plot.png`
   - `cross_question_summary.md`（複数設問の横断総括。設問別成果物を置き換えず、上位索引として追加）

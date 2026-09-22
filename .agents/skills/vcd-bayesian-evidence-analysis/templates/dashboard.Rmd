@@ -9,7 +9,7 @@ output:
     self_contained: true
     mathjax: null
 params:
-  output_dir: "./skill_out/vcd_bayesian"
+  output_dir: "./evidence_runs/vcd_bayesian"
   run_dir: NULL
   preview_mode: false
   require_pass2: true

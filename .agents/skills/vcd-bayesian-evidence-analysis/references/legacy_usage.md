@@ -95,7 +95,7 @@ $$\log \mathrm{BF}_{10} \approx \tfrac{1}{2}\bigl(\mathrm{EBIC}_{\mathrm{indep}}
 ```bash
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
   --input your_data.csv \
-  --output_dir ./skill_out/vcd_bayesian/ \
+  --output_dir ./evidence_runs/vcd_bayesian/ \
   --run-id datasetA_20260417 \
   --dataset_name mydata \
   --response_var outcome_col \
@@ -216,14 +216,14 @@ Pass 2 の後、必要に応じて `quality_check.md` を `executive_summary.md`
 
 ```bash
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R \
-  --output_dir ./skill_out/vcd_bayesian/
+  --output_dir ./evidence_runs/vcd_bayesian/
 ```
 
 プレビュー専用（Pass 2 省略）:
 
 ```bash
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R \
-  --output_dir ./skill_out/vcd_bayesian/ \
+  --output_dir ./evidence_runs/vcd_bayesian/ \
   --no-require-pass2
 ```
 

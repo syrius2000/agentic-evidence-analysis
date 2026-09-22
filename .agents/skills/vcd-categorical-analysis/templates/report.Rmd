@@ -7,7 +7,7 @@ params:
   data_path: ""
   builtin_dataset: "Titanic"
   vars: ["Class", "Survived"]
-  output_dir: "./skill_out/vcd_categorical/"
+  output_dir: "./evidence_runs/vcd_categorical/"
   residual_table_pkg: "gt"
   alpha: 0.05
   plot_mode: "auto"

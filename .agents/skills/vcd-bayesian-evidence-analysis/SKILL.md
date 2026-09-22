@@ -33,7 +33,7 @@ metadata:
 `vcd-pass0-consultation`で目的、3変数、目的変数の有無、集約軸、標本単位・重複・独立性、欠測・ゼロ、分母、水準順、抽出、実用上意味のある差を確認する。既に合意した事項は再質問しない。最大512セルは初期版の運用上限であり、3変数なら無条件に解釈可能とはしない。
 
 ```bash
-Rscript .agents/shared/inspect_data.R examples/titanic.csv --out-dir output/my_inspection
+Rscript .agents/shared/inspect_data.R examples/titanic.csv --out-dir evidence_runs/inspections/my_inspection
 ```
 
 検分JSONは列・水準・行数・欠測数・入力SHA-256を持つ。`input_sha256`が正式キーであり、`file_sha256`は旧成果物との移行互換用aliasである。両方がある場合は同値でなければならず、欠損・形式不正・不一致は検証エラーになる。行数は総度数と異なる。度数集約の補足検分は次のvalidate-onlyで確認する。設定は [設定例](templates/config_example.json) に基づいて実データに合わせて作成する。入力・検分・出力の相対パスはリポジトリルート基準。`pass0_provenance`に検分ファイルパスと入力SHA-256を記録する。
@@ -67,7 +67,7 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R --con
 `quality_check.md` に計算状態、校正、数値主張、P値単独判定の排除、解釈保留・限界の説明を記録する。`narrative_claims.json` に結果ファイルのSHA-256、`status: "REVIEWED"`、数値主張の `pointer` と `value` を配列 `claims` として保存する。pointerはJSON Pointer（配列は0始まり）。例: `/models/M8/deviance`。参照数値を説明文から切り離さず、本文にも対象と参照箇所を記載する。
 
 ```bash
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/claims_gate.R --run-dir output/my_analysis/run_my_run
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/claims_gate.R --run-dir evidence_runs/vcd_bayesian/run_my_run
 ```
 
 この自動照合は登録した数値の一致だけを確認する。考察全文の統計的な正しさ・未登録の数値・妥当な因果解釈まで機械的に保証しない。実際に全文を確認してからREVIEWEDとする。
@@ -75,7 +75,7 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/claims_gate.R --
 ## Pass 3：HTMLと図表を確認する
 
 ```bash
-Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R output/my_analysis/run_my_run
+Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R evidence_runs/vcd_bayesian/run_my_run
 ```
 
 必要なPass 2/2.5成果がない場合、数値・結果ハッシュが違う場合は生成を停止する。`dashboard.html`にはモデル比較、3番目の変数で層別した残差マトリクス、全セル表、条件付き割合と区間、利用可能な場合のみ明示的なサブグループ効果量、事前感度、考察と限界を表示する。列名・水準・日本語・色尺度・保留が読めることを確認する。レポート内に旧Scoreの自動判定を戻さない。

@@ -31,7 +31,10 @@
     "output_dir": {
       "type": "string",
       "minLength": 1,
-      "description": "Output root directory. Runner isolates output into run_<first 16 chars of run_id>/."
+      "description": "Output root directory. Runner isolates output into run_<first 16 chars of run_id>/.",
+      "examples": [
+        "evidence_runs/sas_proc_means"
+      ]
     },
     "run_id": {
       "type": "string",

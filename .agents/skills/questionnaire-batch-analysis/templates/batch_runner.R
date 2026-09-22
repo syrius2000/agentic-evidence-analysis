@@ -38,8 +38,8 @@ option_list <- list(
   optparse::make_option("--data", type = "character"),
   optparse::make_option("--config", type = "character", help = "Path to analysis_config.json (Pass 0)"),
   optparse::make_option("--question-config", type = "character", help = "Path to question config CSV"),
-  optparse::make_option("--out", type = "character", default = "./skill_out/questionnaire"),
-  optparse::make_option("--run-id", type = "character", default = "run")
+  optparse::make_option("--out", type = "character", default = "./evidence_runs/questionnaire"),
+  optparse::make_option("--run-id", type = "character", default = "auto")
 )
 opt <- optparse::parse_args(optparse::OptionParser(option_list = option_list))
 
@@ -59,18 +59,16 @@ stopifnot(!is.null(opt$`question-config`), file.exists(opt$`question-config`))
 base_out <- opt$out
 
 rid <- trimws(as.character(opt$`run-id`))
-if (tolower(rid) == "auto") {
+if (!nzchar(rid) || tolower(rid) %in% c("auto", "run")) {
   rid <- format(Sys.time(), "%Y%m%d_%H%M%S", tz = "Asia/Tokyo")
 } else {
   rid <- gsub("[/\\\\]", "_", rid)
   rid <- gsub("^\\.+|\\.+$", "", rid)
+  rid <- sub("^run_", "", rid)
 }
-# summary.csv の run_id は out_dir の runs/<id>/ と一致させる（auto やサニタイズ後の値）
+# summary.csv の run_id は out_dir の run_<id>/ と一致させる（auto やサニタイズ後の値）
 run_id_record <- rid
-out_dir <- base_out
-if (nzchar(rid) && rid != "run") {
-  out_dir <- file.path(base_out, "runs", rid)
-}
+out_dir <- file.path(base_out, paste0("run_", rid))
 
 detect_jp_font <- function() {
   os <- Sys.info()[["sysname"]]

@@ -34,7 +34,7 @@ flowchart TB
 sequenceDiagram
     participant AI as AI Agent
     participant R as analysis.R
-    participant Out as skill_out/
+    participant Out as evidence_runs/
 
     Note over AI,R: Pass 1 入力検証 & プロファイリング
     AI->>R: --profile

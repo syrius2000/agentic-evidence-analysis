@@ -146,23 +146,23 @@ npx skills add syrius2000/agentic-evidence-analysis
 
 ### 2. R コマンドラインから実行する
 
-2次元 `vcd-categorical-analysis` のcanonical成果物は `<out>/run_<first16>[_N]/` に分離されます。
+2次元 `vcd-categorical-analysis` のcanonical成果物は `<out>/run_<first16>[_N]/`（推奨: `evidence_runs/vcd_categorical/`）に分離されます。
 
 ```bash
 # Pass 0: データの事前検分
 Rscript .agents/shared/inspect_data.R examples/titanic.csv \
-  --out-dir output/<project>/run_<id>/
+  --out-dir evidence_runs/inspections/<project>/run_<id>/
 
 # Pass 1: 3次元統計計算（Pass 0 で作成した設定を指定）
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
-  --config output/titanic/run_01/analysis_config.json
+  --config evidence_runs/vcd_bayesian/run_01/analysis_config.json
 
 # Pass 3: ダッシュボード生成
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R \
-  output/titanic/run_01/run_<run_idの先頭16文字>/
+  evidence_runs/vcd_bayesian/run_01/
 ```
 
-`--out-dir` に空のout-dirを指定しても、各実行は run 識別子で分離し、既存成果物を無言で上書きしません。
+`--out` や `--out-dir` に空のout-dirを指定しても、各実行は run 識別子で分離し、既存成果物を無言で上書きしません。
 
 ---
 

@@ -42,7 +42,7 @@ metadata:
 ```bash
 Rscript .agents/skills/vcd-categorical-analysis/templates/analysis.R \
   --config path/to/analysis_config.json \
-  --out ./skill_out/vcd_categorical/ \
+  --out ./evidence_runs/vcd_categorical/ \
   --label datasetA
 ```
 

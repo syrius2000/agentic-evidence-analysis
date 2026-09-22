@@ -26,7 +26,7 @@ Pass 0は、新規の`vcd-categorical-analysis`および`vcd-bayesian-evidence-a
 
 ```bash
 Rscript .agents/shared/inspect_data.R <path_to_your_data.csv> \
-  --out-dir output/<project>/run_<id>/
+  --out-dir evidence_runs/inspections/<project>/run_<id>/
 ```
 
 `<project>` と `<id>` は実際の識別子へ置き換え、実行ごとに新しい run directory を指定します。既存 run へ無言で上書きしてはなりません。

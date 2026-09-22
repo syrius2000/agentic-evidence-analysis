@@ -5,7 +5,7 @@ output:
     theme: flatly
     mathjax: "default"
 params:
-  output_dir: "./skill_out/questionnaire"
+  output_dir: "./evidence_runs/questionnaire"
 ---
 
 ```{r setup, include=FALSE}

@@ -8,7 +8,7 @@ output:
     highlight: null
     pandoc_args: ["--mathml"]
 params:
-  output_dir: "./skill_out/vcd_categorical/"
+  output_dir: "./evidence_runs/vcd_categorical/"
   repo_root: NULL
 ---
 

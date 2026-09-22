@@ -419,21 +419,18 @@ reserve_run_output_dir <- function(out_root, skill, run_id = NULL, max_attempts 
     dir.create(norm_root, recursive = TRUE, showWarnings = FALSE)
   }
 
-  is_questionnaire <- (skill == "questionnaire-batch-analysis")
-  base_dir <- if (is_questionnaire) file.path(norm_root, "runs") else norm_root
-  if (!dir.exists(base_dir)) {
-    dir.create(base_dir, recursive = TRUE, showWarnings = FALSE)
-  }
+  base_dir <- norm_root
 
-  # JST 日時または run_id からスラッグ決定
-  slug <- if (!is.null(run_id) && nzchar(trimws(run_id))) {
-    run_id_short16(run_id)
+  # JST 日時または run_id からスラッグ決定（run_ プレフィックス二重化を防止）
+  slug <- if (!is.null(run_id) && nzchar(trimws(as.character(run_id)))) {
+    clean_id <- sub("^run_", "", trimws(as.character(run_id)))
+    if (nzchar(clean_id)) run_id_short16(clean_id) else format(Sys.time(), "%Y%m%d_%H%M%S", tz = "Asia/Tokyo")
   } else {
     format(Sys.time(), "%Y%m%d_%H%M%S", tz = "Asia/Tokyo")
   }
 
   if (!grepl("^[A-Za-z0-9_][A-Za-z0-9_.-]*$", slug)) stop("[ERROR] 不正なrun_id")
-  prefix_name <- if (is_questionnaire) slug else paste0("run_", slug)
+  prefix_name <- paste0("run_", slug)
 
   for (attempt in seq_len(max_attempts)) {
     candidate_name <- if (attempt == 1L) prefix_name else paste0(prefix_name, "_", attempt)
@@ -631,18 +628,22 @@ verify_run_lock_trust_boundary <- function(run_dir, run_meta) {
   skill <- run_meta$skill
 
   if (identical(skill, "questionnaire-batch-analysis")) {
-    # Questionnaire: dirname(dirname(run_dir)) == out_root かつ basename(dirname(run_dir)) == "runs"
     parent_dir <- dirname(norm_run)
     grandparent_dir <- dirname(parent_dir)
-    if (!identical(basename(parent_dir), "runs") || !identical(normalizePath(grandparent_dir, winslash = "/"), out_root)) {
+    # 新レイアウト: dirname(run_dir) == out_root
+    # 旧レイアウト（後方互換）: basename(dirname(run_dir)) == "runs" かつ dirname(dirname(run_dir)) == out_root
+    is_new_layout <- identical(normalizePath(parent_dir, winslash = "/", mustWork = FALSE), out_root)
+    is_legacy_layout <- identical(basename(parent_dir), "runs") &&
+      identical(normalizePath(grandparent_dir, winslash = "/", mustWork = FALSE), out_root)
+    if (!is_new_layout && !is_legacy_layout) {
       stop(
-        "[ERROR] 信頼境界違反: Questionnaire のディレクトリレイアウトが out_root/runs/<id> と一致しません。"
+        "[ERROR] 信頼境界違反: Questionnaire のディレクトリレイアウトが out_root/run_<id> または out_root/runs/<id> と一致しません。"
       )
     }
   } else {
-    # Bayesian / Categorical: dirname(run_dir) == out_root
+    # Bayesian / Categorical / SAS: dirname(run_dir) == out_root
     parent_dir <- dirname(norm_run)
-    if (!identical(normalizePath(parent_dir, winslash = "/"), out_root)) {
+    if (!identical(normalizePath(parent_dir, winslash = "/", mustWork = FALSE), out_root)) {
       stop(
         "[ERROR] 信頼境界違反: スキルレイアウトが out_root/run_<id> と一致しません。"
       )

@@ -52,7 +52,7 @@ source(file.path(repo_root, ".agents", "shared", "run_scope.R"))
 parse_args <- function(args) {
   result <- list(
     input = NULL,
-    output_dir = "./skill_out/vcd_bayesian",
+    output_dir = "./evidence_runs/vcd_bayesian",
     run_id = NULL,
     dataset_name = "dataset",
     vars = NULL,
@@ -64,6 +64,7 @@ parse_args <- function(args) {
     base_models = NULL,
     supersedes_run = NULL,
     supersede_reason = NULL,
+    config_path = NULL,
     show_help = FALSE,
     show_help_stats = FALSE,
     validate_only = FALSE
@@ -71,10 +72,22 @@ parse_args <- function(args) {
 
   i <- 1L
   while (i <= length(args)) {
-    switch(args[i],
+    switch(
+      args[i],
+      "--config" = {
+        i <- i + 1L
+        result$config_path <- args[i]
+      },
+      "--validate-only" = {
+        result$validate_only <- TRUE
+      },
       "--input" = {
         i <- i + 1L
         result$input <- args[i]
+      },
+      "--out" = {
+        i <- i + 1L
+        result$output_dir <- args[i]
       },
       "--output_dir" = {
         i <- i + 1L
@@ -164,8 +177,7 @@ if (cfg$show_help) {
   cat("Options:\n")
   cat("  --config <path>             Pass 0で確定したanalysis_config.json（必須）\n")
   cat("  --validate-only             設定ファイルの妥当性検証のみ実行して終了\n")
-  cat("  --input <file>              設定作成時のみ使用。Pass 1では--configの値を使用\n")
-  cat("  --output_dir <dir>          出力ディレクトリ（既定: ./skill_out/vcd_bayesian）\n")
+  cat("  --out <dir>, --output_dir   出力ディレクトリ（既定: ./evidence_runs/vcd_bayesian）\n")
   cat("  --run-id <slug>|auto        任意。指定時は <dir>/run_<slug先頭16文字>/ に隔離（auto=JST時刻）\n")
   cat("  --dataset_name <name>       データセット名（既定: dataset）\n")
   cat("  --vars <v1,v2,...>          分析変数（カンマ区切り、省略時: 全変数）\n")
@@ -258,7 +270,7 @@ rid <- if (is.null(cfg$run_id)) {
 }
 out_root <- cfg$output_dir
 assert_valid_out_root(out_root)
-artifact_dir <- reserve_run_output_dir(out_root, "vcd-bayesian-evidence-analysis", if (is.null(cfg$run_id)) NULL else rid$run_id)
+artifact_dir <- reserve_run_output_dir(out_root, "vcd-bayesian-evidence-analysis", rid$run_id)
 
 # 設定スナップショット保存
 config_payload <- if (!is.null(cfg$config_path) && nzchar(trimws(cfg$config_path))) cfg$config_path else cfg

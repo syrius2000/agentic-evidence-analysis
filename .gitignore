@@ -5,6 +5,8 @@
 .Renviron
 
 # Skill output (runtime-generated)
+evidence_runs/
+!evidence_runs/.gitkeep
 skill_out/
 skill_output/
 !skill_out/.gitkeep

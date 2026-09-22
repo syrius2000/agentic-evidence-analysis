@@ -30,10 +30,12 @@
 
 ### 鉄則 3: 出力先の完全分離とディレクトリ規約
 
-- 解析実行の出力先は、同一入力や実行間で衝突しないよう `run_id`（SHA-256 ハッシュまたは明示的 ID）を用いたディレクトリ構造に完全に分離する。
-  - `vcd-bayesian-evidence-analysis`: `<out>/run_<first16>/`（`.agents/shared/run_scope.R` 経由）
-  - `vcd-categorical-analysis`: `<out>/run_<first16>[_N]/`
-  - `questionnaire-batch-analysis`: `<out>/runs/<id>/`
+- 解析実行の出力先は、推奨出力ルート `evidence_runs/<skill_slug>/` を基本とし、同一入力や実行間で衝突しないよう `run_<canonical_id>[_N]/`（SHA-256 ハッシュまたは明示的 ID）を用いた物理ディレクトリに完全に分離する（出力ルート直下への書き込み禁止）。
+  - `vcd-bayesian-evidence-analysis`: `<out>/run_<first16>[_N]/`（推奨: `evidence_runs/vcd_bayesian/`、`.agents/shared/run_scope.R` 経由）
+  - `vcd-categorical-analysis`: `<out>/run_<first16>[_N]/`（推奨: `evidence_runs/vcd_categorical/`）
+  - `questionnaire-batch-analysis`: `<out>/run_<id>[_N]/`（推奨: `evidence_runs/questionnaire/`、旧形式 `runs/<id>/` は読取り専用互換）
+  - `sas-proc-freq`: `<output_dir>/run_<first16>[_N]/`（推奨: `evidence_runs/sas_proc_freq/`）
+  - `sas-proc-means`: `<output_dir>/run_<first16>[_N]/`（推奨: `evidence_runs/sas_proc_means/`）
 
 ### 鉄則 4: 言語・タイムゾーン契約
 

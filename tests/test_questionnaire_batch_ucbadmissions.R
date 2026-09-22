@@ -30,7 +30,7 @@ runner_path <- file.path(
 )
 
 run_test <- function() {
-  default_out_dir <- file.path(root, "skill_out", "questionnaire")
+  default_out_dir <- file.path(root, "evidence_runs", "questionnaire")
   tmp_dir <- file.path(tempdir(), "questionnaire_ucbadmissions")
   dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
 
@@ -92,6 +92,7 @@ summary_csv <- list.files(default_out_dir, pattern = "^summary\\.csv$", full.nam
 check("summary.csv exists in default output directory", length(summary_csv) == 1L && file.exists(summary_csv[1L]))
 summary_csv <- summary_csv[1L]
 run_root <- dirname(summary_csv)
+check("run_root starts with run_ prefix", grepl("^run_", basename(run_root)))
 
 if (file.exists(summary_csv)) {
   s <- read.csv(summary_csv, stringsAsFactors = FALSE, na.strings = "")

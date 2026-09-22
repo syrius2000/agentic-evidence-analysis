@@ -158,7 +158,7 @@ generate_dt_table <- function(cells_df, vars, output_dir, data_label) {
 run_categorical_analysis_core <- function(
   config_data,
   config_path = NULL,
-  out_root = "./skill_out/vcd_categorical",
+  out_root = "./evidence_runs/vcd_categorical",
   data_label = "two_way_analysis",
   execution_mode = "canonical"
 ) {
@@ -487,7 +487,7 @@ run_categorical_analysis_core <- function(
 # Main Execution Gateway (run_analysis)
 # ============================================================
 run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
-  out_root <- get_arg_val(args_vec, "--out", "./skill_out/vcd_categorical")
+  out_root <- get_arg_val(args_vec, "--out", "./evidence_runs/vcd_categorical")
   data_label <- get_arg_val(args_vec, "--label", "two_way_analysis")
 
   # 1. Canonical CLI ホワイトリスト検証
