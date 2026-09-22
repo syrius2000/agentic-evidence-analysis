@@ -6,6 +6,24 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
+find_agent_repo <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in seq_len(25L)) {
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
+      return(d)
+    }
+    parent <- dirname(d)
+    if (parent == d) break
+    d <- parent
+  }
+  getwd()
+}
+repo_root <- find_agent_repo()
+run_scope_path <- file.path(repo_root, ".agents", "shared", "run_scope.R")
+if (file.exists(run_scope_path)) {
+  source(run_scope_path)
+}
+
 # -----------------------------------------------------------------------------
 # 1. RFC 3986 Percent-Encoding & Decoding Helpers
 # -----------------------------------------------------------------------------
@@ -678,11 +696,14 @@ main <- function() {
   cfg_raw <- jsonlite::fromJSON(config_path, simplifyVector = FALSE)
   cfg <- validate_config(cfg_raw)
 
-  # Output Isolation: <output_dir>/run_<first 16 chars of run_id>/
+  # Output Isolation: <output_dir>/run_<first 16 chars of run_id>[_N]/
   run_slug <- substr(cfg$run_id, 1, 16)
-  run_dir <- file.path(cfg$output_dir, sprintf("run_%s", run_slug))
-  if (!dir.exists(run_dir)) {
-    dir.create(run_dir, recursive = TRUE)
+  run_dir <- if (exists("reserve_run_output_dir", mode = "function")) {
+    reserve_run_output_dir(cfg$output_dir, "sas-proc-freq", run_slug)
+  } else {
+    d <- file.path(cfg$output_dir, sprintf("run_%s", run_slug))
+    if (!dir.exists(d)) dir.create(d, recursive = TRUE)
+    d
   }
 
   # Read Input Data

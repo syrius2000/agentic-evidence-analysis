@@ -107,6 +107,179 @@ unlink(td_scope, recursive = TRUE)
 unlink(td, recursive = TRUE)
 unlink(c(a1, a2))
 
+# =============================================================================
+# End-to-End Runner Collision & run_meta Verification
+# =============================================================================
+
+# --- 8. Questionnaire batch runner double run collision avoidance & run_meta ---
+q_runner <- file.path(root, ".agents", "skills", "questionnaire-batch-analysis", "templates", "batch_runner.R")
+td_q <- tempfile("q_collision_")
+dir.create(td_q)
+
+q_data <- file.path(td_q, "data.csv")
+write.csv(data.frame(x = c("A", "B", "A", "B"), y = c("1", "1", "2", "2")), q_data, row.names = FALSE)
+q_cfg <- file.path(td_q, "qcfg.csv")
+writeLines(c(
+  "survey_id,question_id,analysis_type,var1,var2,var3,output_slug,question_label,subset_expr,na_policy,ordered_levels,reference_note",
+  "s1,q1,nominal_2way,x,y,,q01,Q1 Label,,drop,,note"
+), q_cfg)
+
+st_q1 <- system2("Rscript", c(q_runner, "--data", q_data, "--question-config", q_cfg, "--out", td_q, "--run-id", "collision_check"))
+st_q2 <- system2("Rscript", c(q_runner, "--data", q_data, "--question-config", q_cfg, "--out", td_q, "--run-id", "collision_check"))
+
+check("questionnaire run 1 exit 0", identical(as.integer(st_q1), 0L))
+check("questionnaire run 2 exit 0", identical(as.integer(st_q2), 0L))
+
+q_run1 <- file.path(td_q, "run_collision_check")
+q_run2 <- file.path(td_q, "run_collision_check_2")
+check("questionnaire run_collision_check created", dir.exists(q_run1))
+check("questionnaire run_collision_check_2 created (collision avoidance)", dir.exists(q_run2))
+
+meta_q1_file <- file.path(q_run1, "run_meta.json")
+meta_q2_file <- file.path(q_run2, "run_meta.json")
+check("questionnaire run 1 has run_meta.json", file.exists(meta_q1_file))
+check("questionnaire run 2 has run_meta.json", file.exists(meta_q2_file))
+
+if (file.exists(meta_q1_file)) {
+  m_q1 <- jsonlite::fromJSON(meta_q1_file)
+  check("questionnaire meta 1 has logical_run_id", identical(m_q1$logical_run_id, "collision_check"))
+  check("questionnaire meta 1 has path_schema_version 1.0", identical(m_q1$path_schema_version, "1.0"))
+}
+if (file.exists(meta_q2_file)) {
+  m_q2 <- jsonlite::fromJSON(meta_q2_file)
+  check("questionnaire meta 2 has logical_run_id", identical(m_q2$logical_run_id, "collision_check"))
+  check("questionnaire meta 2 run_id is collision_check_2", grepl("collision_check_2", m_q2$run_id))
+}
+
+check("questionnaire run 1 has results_manifest.json", file.exists(file.path(q_run1, "results_manifest.json")))
+check("questionnaire run 2 has results_manifest.json", file.exists(file.path(q_run2, "results_manifest.json")))
+
+unlink(td_q, recursive = TRUE)
+
+# --- 9. SAS PROC FREQ runner double run collision avoidance ---
+freq_runner <- file.path(root, ".agents", "skills", "sas-proc-freq", "templates", "run_freq.R")
+td_freq <- tempfile("freq_collision_")
+dir.create(td_freq)
+
+freq_data <- file.path(td_freq, "data.csv")
+write.csv(data.frame(gender = c("M", "F", "M", "F"), outcome = c("Y", "N", "N", "Y")), freq_data, row.names = FALSE)
+freq_cfg <- file.path(td_freq, "config.json")
+jsonlite::write_json(list(
+  schema_version = "sas-summary-config-v1",
+  analysis_kind = "sas_proc_freq",
+  run_id = "test_freq_run",
+  input = freq_data,
+  output_dir = td_freq,
+  tables = list(list(
+    table_id = "t1",
+    row_var = "gender",
+    col_var = "outcome",
+    chisq = TRUE
+  ))
+), freq_cfg, auto_unbox = TRUE, pretty = TRUE)
+
+st_f1 <- system2("Rscript", c(freq_runner, "--config", freq_cfg))
+st_f2 <- system2("Rscript", c(freq_runner, "--config", freq_cfg))
+
+check("sas-proc-freq run 1 exit 0", identical(as.integer(st_f1), 0L))
+check("sas-proc-freq run 2 exit 0", identical(as.integer(st_f2), 0L))
+
+f_run1 <- file.path(td_freq, "run_test_freq_run")
+f_run2 <- file.path(td_freq, "run_test_freq_run_2")
+check("sas-proc-freq run_test_freq_run created", dir.exists(f_run1))
+check("sas-proc-freq run_test_freq_run_2 created (collision avoidance)", dir.exists(f_run2))
+
+unlink(td_freq, recursive = TRUE)
+
+# --- 10. SAS PROC MEANS runner double run collision avoidance ---
+means_runner <- file.path(root, ".agents", "skills", "sas-proc-means", "templates", "run_means.R")
+td_means <- tempfile("means_collision_")
+dir.create(td_means)
+
+means_data <- file.path(td_means, "data.csv")
+write.csv(data.frame(group = c("A", "B", "A", "B"), val = c(10, 20, 30, 40)), means_data, row.names = FALSE)
+means_cfg <- file.path(td_means, "config.json")
+jsonlite::write_json(list(
+  schema_version = "sas-summary-config-v1",
+  analysis_kind = "sas_proc_means",
+  run_id = "test_means_run",
+  input = means_data,
+  output_dir = td_means,
+  analysis_variables = list("val"),
+  statistics = list("N", "MEAN", "STD")
+), means_cfg, auto_unbox = TRUE, pretty = TRUE)
+
+st_m1 <- system2("Rscript", c(means_runner, "--config", means_cfg))
+st_m2 <- system2("Rscript", c(means_runner, "--config", means_cfg))
+
+check("sas-proc-means run 1 exit 0", identical(as.integer(st_m1), 0L))
+check("sas-proc-means run 2 exit 0", identical(as.integer(st_m2), 0L))
+
+m_run1 <- file.path(td_means, "run_test_means_run")
+m_run2 <- file.path(td_means, "run_test_means_run_2")
+check("sas-proc-means run_test_means_run created", dir.exists(m_run1))
+check("sas-proc-means run_test_means_run_2 created (collision avoidance)", dir.exists(m_run2))
+
+unlink(td_means, recursive = TRUE)
+
+# --- 11. VCD Categorical Analysis double run collision avoidance ---
+cat_runner <- file.path(root, ".agents", "skills", "vcd-categorical-analysis", "templates", "analysis.R")
+td_cat <- tempfile("cat_collision_")
+dir.create(td_cat)
+
+source(file.path(root, ".agents", "shared", "pass0_contract.R"))
+cat_data <- file.path(td_cat, "data.csv")
+write.csv(data.frame(Treatment = c("T", "P", "T", "P"), Outcome = c("Good", "Good", "Poor", "Poor"), Count = c(10, 5, 2, 12)), cat_data, row.names = FALSE)
+data_sha <- digest::digest(cat_data, file = TRUE, algo = "sha256")
+
+canonical_sha <- compute_canonical_config_sha256(
+  vars = list("Treatment", "Outcome"),
+  freq = "Count",
+  input_mode = "aggregated",
+  prior_alpha = 0.5
+)
+
+cat_insp <- file.path(td_cat, "inspection_results.json")
+jsonlite::write_json(list(
+  inspection_contract_version = "2.0",
+  inspection_status = "ready",
+  input_sha256 = data_sha,
+  approved_config = list(canonical_config_sha256 = canonical_sha)
+), cat_insp, auto_unbox = TRUE, pretty = TRUE)
+insp_sha <- digest::digest(cat_insp, file = TRUE, algo = "sha256")
+
+cat_cfg <- file.path(td_cat, "analysis_config.json")
+jsonlite::write_json(list(
+  input = cat_data,
+  vars = list("Treatment", "Outcome"),
+  freq = "Count",
+  input_mode = "aggregated",
+  pass0_provenance = list(
+    contract_version = "1.0",
+    target_skill = "vcd-categorical-analysis",
+    finalized_at_jst = "2026-09-22T12:00:00+09:00",
+    inspection_results = cat_insp,
+    inspection_results_sha256 = insp_sha,
+    input_sha256 = data_sha,
+    canonical_config_sha256 = canonical_sha
+  )
+), cat_cfg, auto_unbox = TRUE, pretty = TRUE)
+
+st_c1 <- system2("Rscript", c(cat_runner, "--config", cat_cfg, "--out", td_cat))
+st_c2 <- system2("Rscript", c(cat_runner, "--config", cat_cfg, "--out", td_cat))
+
+check("vcd-categorical run 1 exit 0", identical(as.integer(st_c1), 0L))
+check("vcd-categorical run 2 exit 0", identical(as.integer(st_c2), 0L))
+
+cat_runs <- list.dirs(td_cat, recursive = FALSE, full.names = TRUE)
+cat_runs <- cat_runs[grepl("/run_[0-9a-f]{16}(_[0-9]+)?$", cat_runs)]
+check("vcd-categorical created 2 distinct run directories", length(cat_runs) == 2L)
+if (length(cat_runs) == 2L) {
+  check("vcd-categorical second run has collision suffix _2", any(grepl("_2$", cat_runs)))
+}
+
+unlink(td_cat, recursive = TRUE)
+
 cat(sprintf("\n--- Results: %d passed, %d failed ---\n", pass, fail))
 if (fail > 0L) {
   quit(status = 1L)

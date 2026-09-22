@@ -6,6 +6,24 @@ suppressPackageStartupMessages({
   library(jsonlite)
 })
 
+find_agent_repo <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in seq_len(25L)) {
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
+      return(d)
+    }
+    parent <- dirname(d)
+    if (parent == d) break
+    d <- parent
+  }
+  getwd()
+}
+repo_root <- find_agent_repo()
+run_scope_path <- file.path(repo_root, ".agents", "shared", "run_scope.R")
+if (file.exists(run_scope_path)) {
+  source(run_scope_path)
+}
+
 # -----------------------------------------------------------------------------
 # 1. Helper & Validation Functions
 # -----------------------------------------------------------------------------
@@ -442,9 +460,12 @@ main <- function() {
 
   # Run Isolation Output Directory
   prefix16 <- substr(cfg$run_id, 1, min(16, nchar(cfg$run_id)))
-  run_dir <- file.path(cfg$output_dir, paste0("run_", prefix16))
-  if (!dir.exists(run_dir)) {
-    dir.create(run_dir, recursive = TRUE)
+  run_dir <- if (exists("reserve_run_output_dir", mode = "function")) {
+    reserve_run_output_dir(cfg$output_dir, "sas-proc-means", prefix16)
+  } else {
+    d <- file.path(cfg$output_dir, paste0("run_", prefix16))
+    if (!dir.exists(d)) dir.create(d, recursive = TRUE)
+    d
   }
 
   # Grouping Logic

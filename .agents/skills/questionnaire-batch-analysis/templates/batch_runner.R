@@ -14,6 +14,7 @@ find_agent_repo <- function() {
 }
 repo_root <- find_agent_repo()
 source(file.path(repo_root, ".agents", "shared", "dependency_check.R"))
+source(file.path(repo_root, ".agents", "shared", "run_scope.R"))
 
 check_r_dependencies(
   c("optparse", "jsonlite", "ggplot2"),
@@ -66,9 +67,8 @@ if (!nzchar(rid) || tolower(rid) %in% c("auto", "run")) {
   rid <- gsub("^\\.+|\\.+$", "", rid)
   rid <- sub("^run_", "", rid)
 }
-# summary.csv の run_id は out_dir の run_<id>/ と一致させる（auto やサニタイズ後の値）
+# summary.csv の run_id 初期値（バリデーション後に reserve_run_output_dir で確定）
 run_id_record <- rid
-out_dir <- file.path(base_out, paste0("run_", rid))
 
 detect_jp_font <- function() {
   os <- Sys.info()[["sysname"]]
@@ -239,20 +239,24 @@ if (any(windows_reserved)) {
 }
 cfg$output_slug <- slugs
 
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+# 入力・設定のバリデーション完了後に初めてRunディレクトリを原子的予約
+out_dir <- reserve_run_output_dir(base_out, "questionnaire-batch-analysis", rid)
+run_id_record <- sub("^run_", "", basename(out_dir))
 if (nzchar(rid) && rid != "run") {
   message("[INFO] --run-id により出力先: ", out_dir)
 }
 
 # 単一成分でも、既存の同名symlinkがroot外を指す場合は書込み前に停止する。
-out_dir_real <- normalizePath(out_dir, mustWork = TRUE)
-out_dir_prefix <- paste0(out_dir_real, .Platform$file.sep)
+base_out_real <- normalizePath(base_out, mustWork = TRUE)
+base_out_prefix <- paste0(base_out_real, .Platform$file.sep)
 for (slug in slugs) {
-  slug_path <- file.path(out_dir, slug)
-  if (file.exists(slug_path) || dir.exists(slug_path)) {
-    slug_path_real <- normalizePath(slug_path, mustWork = TRUE)
-    if (!startsWith(slug_path_real, out_dir_prefix)) {
-      stop("output_slug の既存パスが出力root外を指しています: ", slug)
+  for (check_parent in unique(c(base_out, out_dir))) {
+    slug_path <- file.path(check_parent, slug)
+    if (file.exists(slug_path) || dir.exists(slug_path)) {
+      slug_path_real <- normalizePath(slug_path, mustWork = TRUE)
+      if (!startsWith(slug_path_real, base_out_prefix)) {
+        stop("output_slug の既存パスが出力root外を指しています: ", slug)
+      }
     }
   }
 }
@@ -479,4 +483,54 @@ for (i in seq_len(nrow(cfg))) {
 summary_df <- do.call(rbind, rows)
 summary_path <- file.path(out_dir, "summary.csv")
 utils::write.csv(summary_df, summary_path, row.names = FALSE, na = "")
+
+# 成果物マニフェスト (results_manifest.json) および run_meta.json の生成
+artifacts <- list()
+if (file.exists(summary_path)) {
+  artifacts[[length(artifacts) + 1L]] <- list(path = "summary.csv", role = "summary_table")
+}
+for (res_row in seq_len(nrow(summary_df))) {
+  q_slug <- cfg$output_slug[res_row]
+  q_id <- summary_df$question_id[res_row]
+  q_status <- summary_df$status[res_row]
+  if (isTRUE(identical(as.character(q_status), "success")) && !is.null(q_slug) && !is.na(q_slug) && nzchar(trimws(as.character(q_slug)))) {
+    q_json_rel <- file.path(as.character(q_slug), "questionnaire_results.json")
+    full_target <- file.path(out_dir, q_json_rel)
+    if (length(full_target) == 1L && !is.na(full_target) && file.exists(full_target)) {
+      artifacts[[length(artifacts) + 1L]] <- list(
+        path = chartr("\\", "/", q_json_rel),
+        role = "question_result",
+        question_id = as.character(q_id)
+      )
+    }
+  }
+}
+
+manifest_res <- tryCatch({
+  write_results_manifest(out_dir, "questionnaire-batch-analysis", artifacts)
+}, error = function(e) {
+  message("[WARN] results_manifest.json 作成スキップ: ", conditionMessage(e))
+  NULL
+})
+
+extra_meta <- list(
+  logical_run_id = opt$`run-id`,
+  requested_run_id = opt$`run-id`,
+  results_manifest_sha256 = if (!is.null(manifest_res)) manifest_res$manifest_sha256 else NULL,
+  pass_status = list(pass0 = "completed", pass1 = "completed", pass2 = "pending", pass3 = "pending")
+)
+
+tryCatch({
+  write_run_meta(
+    out_root = base_out,
+    run_output_dir = out_dir,
+    skill = "questionnaire-batch-analysis",
+    run_id = run_id_record,
+    input_data_path = opt$data,
+    extra = extra_meta
+  )
+}, error = function(e) {
+  message("[WARN] run_meta.json 作成スキップ: ", conditionMessage(e))
+})
+
 quit(status = 0L)

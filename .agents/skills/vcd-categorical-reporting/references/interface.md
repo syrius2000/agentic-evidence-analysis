@@ -4,7 +4,7 @@ interface_version: "2.1"
 
 ## 出力ディレクトリ
 
-分析側が生成した `<out>/run_<first16>[_N]/`。既定のout rootは `./skill_out/vcd_categorical/`。
+分析側が生成した `<out>/run_<first16>[_N]/`。現行推奨のout rootは `./evidence_runs/vcd_categorical/`（旧形式: `./skill_out/vcd_categorical/`）。
 
 ## Pass 1 出力: data_profile.json
 ## Pass 2 出力: data_profile_post.json

@@ -362,12 +362,8 @@ run_categorical_analysis_core <- function(
   )
   analysis_signature <- digest::digest(sig_payload, algo = "sha256")
   prefix16 <- substr(analysis_signature, 1L, 16L)
-  run_id <- paste0("run_", prefix16)
-  run_output_dir <- file.path(out_root, run_id)
-
-  if (!dir.exists(run_output_dir)) {
-    dir.create(run_output_dir, recursive = TRUE, showWarnings = FALSE)
-  }
+  run_output_dir <- reserve_run_output_dir(out_root, "vcd-categorical-analysis", prefix16)
+  run_id <- basename(run_output_dir)
 
   # 同一署名・同一出力 root の原子的排他ロック (Atomic Lock)
   lock_dir <- file.path(run_output_dir, ".run_lock")

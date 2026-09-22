@@ -96,7 +96,7 @@ if (!is.null(attr(out_proc, "status")) && attr(out_proc, "status") != 0) {
   stop("out_proc failed:\n", paste(out_proc, collapse = "\n"))
 }
 
-res_proc <- jsonlite::fromJSON(file.path(td, "run_run_proc_test", "means_results.json"))
+res_proc <- jsonlite::fromJSON(file.path(td, "run_proc_test", "means_results.json"))
 # grp A:
 # row 1: val=10, freq=floor(1.9)=1, wt=1.0 -> count=1, sum=10, w=1
 # row 2: val=20, freq=floor(2.1)=2, wt=0.0 (neg to 0) -> count=2, sum=0 (wt=0), w=0
@@ -117,7 +117,7 @@ cfg_proc$class_missing <- TRUE
 cfg_proc$run_id <- "run_proc_miss"
 jsonlite::write_json(cfg_proc, cfg_path_proc, auto_unbox = TRUE)
 run_engine(cfg_path_proc)
-res_miss <- jsonlite::fromJSON(file.path(td, "run_run_proc_miss", "means_results.json"))
+res_miss <- jsonlite::fromJSON(file.path(td, "run_proc_miss", "means_results.json"))
 stopifnot("(Missing)" %in% names(res_miss$groups))
 message("PASS: class_missing = TRUE で欠損水準が群として正常に保持されます。")
 
@@ -210,7 +210,7 @@ cfg_wt_path <- file.path(td, "cfg_wt.json")
 jsonlite::write_json(cfg_wt_skew, cfg_wt_path, auto_unbox = TRUE)
 run_engine(cfg_wt_path)
 
-res_wt <- jsonlite::fromJSON(file.path(td, "run_run_wt_skew", "means_results.json"))
+res_wt <- jsonlite::fromJSON(file.path(td, "run_wt_skew", "means_results.json"))
 st_wt <- res_wt$groups$ALL$variables$val
 stopifnot(is.null(st_wt$SKEWNESS))
 stopifnot(is.null(st_wt$KURTOSIS))
@@ -233,7 +233,7 @@ for (q in 1:5) {
   jsonlite::write_json(cfg_q, cfg_q_path, auto_unbox = TRUE)
   run_engine(cfg_q_path)
 
-  res_q <- jsonlite::fromJSON(file.path(td, paste0("run_run_qntldef_", q), "means_results.json"))
+  res_q <- jsonlite::fromJSON(file.path(td, paste0("run_qntldef_", q), "means_results.json"))
   st_q <- res_q$groups$ALL$variables$val
   # Check against R quantile types: 1->4, 2->3, 3->1, 4->6, 5->2
   r_type <- switch(as.character(q), "1" = 4L, "2" = 3L, "3" = 1L, "4" = 6L, "5" = 2L)

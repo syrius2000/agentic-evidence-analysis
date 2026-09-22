@@ -34,7 +34,7 @@
 > [!TIP]
 > AI は `[選択した層名]` の層が最も統計的に特筆すべき偏りを持つと判断し、以下のマトリックスを前面に配置しました。（理由：最大残差 X.XX, Cramer's V: Y.YY）
 
-（ここに選択した層の `gt` マトリックスへのリンクまたは埋め込みを配置）
+（ここに選択した層の `gt` マトリックスへのリンクまたは埋め込みを配置。※旧形式例: `./skill_out/...`、現行推奨: `./evidence_runs/...`）
 `./skill_out/vcd_categorical/matrix_data_layer.html`
 
 ---
@@ -49,14 +49,14 @@
 
 ### 全層別マトリックス
 
-（すべての層の `gt` マトリックスへのリンクをリスト化）
+（すべての層の `gt` マトリックスへのリンクをリスト化 ※旧形式例）
 - [層 A のマトリックス](./skill_out/vcd_categorical/matrix_data_A.html)
 - [層 B のマトリックス](./skill_out/vcd_categorical/matrix_data_B.html)
 ...
 
 ### モザイクプロット / Association プロット
 
-（PNG ファイルへのリンクを配置）
+（PNG ファイルへのリンクを配置 ※旧形式例）
 - [Mosaic Plot](./skill_out/vcd_categorical/mosaic_data.png)
 - [Association Plot](./skill_out/vcd_categorical/assoc_data.png)
 ```

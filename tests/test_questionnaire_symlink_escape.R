@@ -52,10 +52,7 @@ utils::write.csv(
 
 dir.create(output_root)
 dir.create(outside_target)
-run_id <- "escape_test"
-run_dir <- file.path(output_root, paste0("run_", run_id))
-dir.create(run_dir, recursive = TRUE)
-link_path <- file.path(run_dir, slug)
+link_path <- file.path(output_root, slug)
 symlink_created <- suppressWarnings(file.symlink(outside_target, link_path))
 if (!isTRUE(symlink_created)) {
   message("SKIP: filesystem does not support creating a directory symlink")
@@ -69,8 +66,7 @@ output <- suppressWarnings(system2(
     runner,
     "--data", data_path,
     "--question-config", config_path,
-    "--out", output_root,
-    "--run-id", run_id
+    "--out", output_root
   ),
   stdout = TRUE,
   stderr = TRUE

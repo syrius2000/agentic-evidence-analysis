@@ -18,7 +18,7 @@ metadata:
 
 ## 前提スキル
 
-- **先行**: `vcd-categorical-analysis` を先に実行し、成果物が存在すること（一般形は `<out>/run_<first16>[_N]/`。既定では `./skill_out/vcd_categorical/run_<first16>[_N]/` を参照）。
+- **先行**: `vcd-categorical-analysis` を先に実行し、成果物が存在すること（一般形は `<out>/run_<first16>[_N]/`。現行推奨: `./evidence_runs/vcd_categorical/run_<first16>[_N]/`、旧形式: `./skill_out/vcd_categorical/run_<first16>[_N]/`）。
 - **契約**: `references/interface.md` を参照。
 
 ## 手順
