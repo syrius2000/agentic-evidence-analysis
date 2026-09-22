@@ -698,13 +698,10 @@ main <- function() {
 
   # Output Isolation: <output_dir>/run_<first 16 chars of run_id>[_N]/
   run_slug <- substr(cfg$run_id, 1, 16)
-  run_dir <- if (exists("reserve_run_output_dir", mode = "function")) {
-    reserve_run_output_dir(cfg$output_dir, "sas-proc-freq", run_slug)
-  } else {
-    d <- file.path(cfg$output_dir, sprintf("run_%s", run_slug))
-    if (!dir.exists(d)) dir.create(d, recursive = TRUE)
-    d
+  if (!exists("reserve_run_output_dir", mode = "function")) {
+    stop("SHARED_RUN_SCOPE_UNAVAILABLE: reserve_run_output_dir function is required from .agents/shared/run_scope.R.")
   }
+  run_dir <- reserve_run_output_dir(cfg$output_dir, "sas-proc-freq", run_slug)
 
   # Read Input Data
   df_raw <- utils::read.csv(cfg$input, stringsAsFactors = FALSE, check.names = FALSE)
@@ -1273,6 +1270,40 @@ main <- function() {
   )
   manifest_path <- file.path(run_dir, "manifest.json")
   jsonlite::write_json(manifest, manifest_path, auto_unbox = TRUE, pretty = TRUE)
+
+  # Output 6: results_manifest.json and run_meta.json (unified evidence audit contract)
+  artifacts_to_manifest <- list(
+    list(path = "freq_results.json", role = "primary_results"),
+    list(path = "summary.csv", role = "summary_table"),
+    list(path = "summary_report.md", role = "summary_report"),
+    list(path = "analysis_config.json", role = "config")
+  )
+  manifest_res <- tryCatch({
+    write_results_manifest(run_dir, "sas-proc-freq", artifacts_to_manifest)
+  }, error = function(e) {
+    stop(sprintf("CRITICAL_METADATA_FAILURE: results_manifest.json could not be written: %s", conditionMessage(e)))
+  })
+
+  extra_meta <- list(
+    logical_run_id = cfg$run_id,
+    requested_run_id = cfg$run_id,
+    run_state = "completed",
+    results_manifest_sha256 = if (!is.null(manifest_res)) manifest_res$manifest_sha256 else NULL,
+    pass_status = list(pass0 = "bypassed", pass1 = "completed", pass2 = "bypassed", pass3 = "bypassed")
+  )
+
+  tryCatch({
+    write_run_meta(
+      out_root = cfg$output_dir,
+      run_output_dir = run_dir,
+      skill = "sas-proc-freq",
+      run_id = basename(run_dir),
+      input_data_path = cfg$input,
+      extra = extra_meta
+    )
+  }, error = function(e) {
+    stop(sprintf("CRITICAL_METADATA_FAILURE: run_meta.json could not be written: %s", conditionMessage(e)))
+  })
 
   message(sprintf("Analysis successfully completed. Run isolated in: %s", run_dir))
 }

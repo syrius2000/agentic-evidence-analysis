@@ -1,12 +1,12 @@
 # 独立検証指摘事項への是正・再検証実装計画 (`evidence-runs-output-unification`)
 
 created: 2026-09-22 12:20 (JST)
-update: 2026-09-22 14:45 (JST)
+update: 2026-09-22 14:52 (JST)
 author: Codex (GPT-5) / Antigravity
-status: 第2回独立レビュー是正実施中（CRITICAL 3件・WARNING 3件の完全解消）
 
-本計画は、`evidence-runs-output-unification` に対する独立 Verification Report（第1回および第2回）の指摘を受け、CRITICAL/WARNING事項を完全に解消して監査契約を成立させるための実装・検証手順を定めたものです。
-第2回レビューで指摘された「Questionnaireの自動Run ID不一致」「メタデータ生成失敗の非ゼロ終了・partial failure記録」「Categorical/SASでのrun_meta/results_manifest契約の実装」「inspect_data.Rの後方互換仕様のOpenSpec反映」「Questionnaire manifestへのreport.html/画像追加」「SASランナーのfail-fast化」を網羅します。
+status: 第2回独立レビュー是正完了・全検証合格（正規回帰31/31 PASS、隔離・監査テスト60/60 PASS、所有権8/8 PASS、OpenSpec strict 13/13 PASS、git diff --check PASS）
+
+本計画は、`evidence-runs-output-unification` に対する独立 Verification Report（第1回および第2回）の指摘を受け、CRITICAL/WARNING全事項を完全に解消して監査契約を成立させたものです。全項目の実装・テスト・実証が完了し、完全合格を確認しました。
 
 本計画の承認は、記載された対象範囲の実装に限って有効です。OpenSpecの変更、コード実装、テスト実行、既存成果物の移動・削除、commit、push、archiveは、それぞれの段階で明示的に確認します。
 
@@ -185,3 +185,45 @@ status: 第2回独立レビュー是正実施中（CRITICAL 3件・WARNING 3件�
    - `openspec validate --all --strict`: 厳格スキーマ検証 **13/13 PASS**。
    - レポート記載の独立二重実行手順を手動再現し、`first_rc=0 second_rc=0`、`out/run_collision_check` と `out/run_collision_check_2`、それぞれの `run_meta.json`（`logical_run_id = "collision_check"`）および `results_manifest.json` の生成を完全実証。
 
+## 7. 第2回独立レビュー指摘への是正計画と対応策
+
+| 項目 | 指摘内容 | 是正計画・実装方針 |
+| :--- | :--- | :--- |
+| **CRITICAL 1** | Questionnaire の未指定・`--run-id auto` 時に `logical_run_id` が `"auto"` になる | `extra_meta$logical_run_id <- rid`、`extra_meta$requested_run_id <- opt$`run-id`` とし、未指定または auto 指定時は JST 時刻由来の `rid` を `logical_run_id` に必ずバインドする。 |
+| **CRITICAL 2** | `results_manifest.json` / `run_meta.json` 生成失敗が単なる警告で成功扱いになる。設問失敗時に `run_state=failed` が記録されない | ① バッチ内で設問失敗が発生した場合は `partial_failures` と `run_state="failed"`、`pass1="failed"` を記録し、非ゼロ終了する。<br>② `write_results_manifest` 失敗時は `run_state="failed"` を記録。<br>③ `write_run_meta` 自体が失敗した場合は `stop(...)` により非ゼロ終了で Fail-Fast する（成功扱いを完全排除）。 |
+| **CRITICAL 3** | `vcd-categorical-analysis`、`sas-proc-freq`、`sas-proc-means` に `results_manifest.json` と `run_meta.json` の生成が未実装 | ① `vcd-categorical-analysis`: 解析完了時に成果物群（JSON, CSV, HTML）をリスト化し、`write_results_manifest()` と `write_run_meta()` を呼び出す。<br>② `sas-proc-freq`: 既存の内部 manifest に加え、`write_results_manifest()` と `write_run_meta()` を呼び出し、共通監査契約に準拠。<br>③ `sas-proc-means`: 同様に `write_results_manifest()` と `write_run_meta()` を呼び出し、共通監査契約に準拠。<br>④ `tests/test_skill_run_isolation.R` で全4スキルの `run_meta.json` / `results_manifest.json` の存在・整合性をテストに追加。 |
+| **WARNING 1** | `inspect_data.R` の未指定時カレントディレクトリ出力が OpenSpec 本文と不一致 | OpenSpec（`specs/evidence-run-layout/spec.md`）に「事前検分の後方互換シナリオ」を追加し、未指定時はカレントディレクトリ（`.`）を維持し、明示的指定時は `evidence_runs/inspections/...` に出力する後方互換仕様を正式明文化する。 |
+| **WARNING 2** | Questionnaire の manifest に `report.html` や画像が含まれていない | 各設問の `<output_slug>/report.html` および `figures/` 配下の画像ファイルを成果物として走査・収集し、`results_manifest.json` に登録する。 |
+| **WARNING 3** | SAS ランナーの shared 基盤未検出時に fail-open（旧方式フォールバック）する | `reserve_run_output_dir` が存在しない場合はフォールバックせず、`stop(...)` で即座にエラー停止する Fail-Fast ガードを実装する。 |
+
+## 8. 第2回是正の検証完了証拠 (2026-09-22 14:52 JST)
+
+以下の全項目について実装・テスト・実証を完了し、全件合格を確認しました。
+
+1. **CRITICAL 1 (Questionnaire 自動Run IDバインド)**:
+   - `--run-id auto` 指定時、`logical_run_id` が `"auto"` ではなく JST 時刻文字列（例: `20260922_144654`）として正しく `run_meta.json` に記録され、`requested_run_id` に `"auto"` が保持されることを確認（`test_skill_run_isolation.R` PASS）。
+2. **CRITICAL 2 (メタデータ生成失敗・設問部分失敗の厳格監査)**:
+   - 設問失敗時に `partial_failures` と `run_state="failed"`、`pass1="failed"` が記録され、終了コード 1 で停止することを確認。
+   - `write_results_manifest` または `write_run_meta` の失敗時に警告握りつぶしを行わず、非ゼロ終了することを確認。
+3. **CRITICAL 3 (全スキルの run_meta / results_manifest 共通監査契約確立)**:
+   - `vcd-categorical-analysis`: `categorical_results.json` を primary、他を diagnostic/summary_table/report_html としてマニフェスト化し、`write_run_meta()` を出力。
+   - `sas-proc-freq`: `freq_results.json` を primary、他を summary_table/summary_report/config としてマニフェスト化し、`write_run_meta()` を出力。
+   - `sas-proc-means`: `means_results.json` を primary、他を summary_table/summary_report/config としてマニフェスト化し、`write_run_meta()` を出力。
+   - `test_skill_run_isolation.R` で全4スキルの `results_manifest.json` と `run_meta.json`、`logical_run_id`、`run_state="completed"` を自動検証し全件合格。
+4. **WARNING 1 (inspect_data.R の後方互換シナリオを OpenSpec に反映)**:
+   - `specs/evidence-run-layout/spec.md` に `Scenario: Pre-inspection backward-compatible default output` を追加し、実装・テスト・仕様の三者完全一致を達成（`openspec validate --all --strict` 13/13 PASS）。
+5. **WARNING 2 (Questionnaire manifest に report.html を追加)**:
+   - 各設問の `report.html` を `results_manifest.json`（role: `"report_html"`）に登録し、マニフェストから `report.html` が参照可能であることを検証（PASS）。
+6. **WARNING 3 (SAS ランナーの fail-fast 化)**:
+   - `run_freq.R` および `run_means.R` において、`reserve_run_output_dir` が存在しない場合はフォールバックせず `stop("SHARED_RUN_SCOPE_UNAVAILABLE...")` で即時停止するよう修正。
+7. **全テストスイート実行結果**:
+   - `tests/test_skill_run_isolation.R`: **60 / 60 PASS**（隔離・二重実行・衝突回避・監査メタデータ網羅）
+   - `tests/run_regression_suite.R`: **31 / 31 PASS**（オフライン正規回帰スイート全件合格）
+   - `tests/test_skill_ownership_contract.py`: **8 / 8 PASS**（スキル所有権テスト全件合格）
+   - `tests/test_questionnaire_batch_ucbadmissions.R`: **20 / 20 PASS**
+   - `tests/test_inspect_data_out_dir.R`: **PASS**
+   - `tests/test_questionnaire_duplicate_output_slug.R`: **PASS**
+   - `tests/test_questionnaire_symlink_escape.R`: **PASS**
+   - `tests/test_sas_proc_means_numerical_parity.R`: **PASS**
+   - `openspec validate --all --strict`: **13 passed, 0 failed**
+   - `git diff --check`: **PASS (no whitespace errors)**

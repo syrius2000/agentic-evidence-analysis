@@ -1,8 +1,10 @@
+# evidence-run-layout Specification
+
 ## Purpose
 
 本仕様は、リポジトリ内の全統計解析スキルおよび事前検分において、エビデンスの不変性・再現性・監査証跡を担保するための標準出力ルート規約、Run単位の物理的完全隔離、識別子正規化、および後方互換探索規約を定義する。
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Canonical Recommended Output Root
 
@@ -22,6 +24,11 @@
 
 - **WHEN** 各スキルが実行される
 - **THEN** システムは各スキルの規定インターフェースを厳格に適用し（`sas-proc-*` は設定JSONのみ、`vcd-categorical` は許可引数 `--out`、`inspect_data.R` は `--out-dir`）、未定義なCLI上書きや不整合な引数投入を許容しない
+
+#### Scenario: Pre-inspection backward-compatible default output
+
+- **WHEN** 事前検分スクリプト（`inspect_data.R`）実行時に明示的な `--out-dir` または第2引数が指定されない
+- **THEN** システムは既存の呼び出し元および対話的ワークフローの後方互換性を維持するためカレントディレクトリ（`.`）への出力を許容し、明示的に `--out-dir` が渡された場合はその指定ディレクトリ配下（推奨: `evidence_runs/inspections/<project>/run_<id>/`）へ成果物を隔離出力する
 
 ### Requirement: Run Isolation and No Root Leakage
 

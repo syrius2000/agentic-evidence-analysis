@@ -70,6 +70,22 @@ record_run_failure <- function(target_dir, error_code, message, is_root = FALSE,
         writeLines(jsonlite::toJSON(payload, auto_unbox = TRUE, pretty = TRUE, null = "null"), state_file),
         error = function(e) {}
       )
+      if (!is_root && exists("write_run_meta", mode = "function")) {
+        tryCatch({
+          write_run_meta(
+            out_root = dirname(target_dir),
+            run_output_dir = target_dir,
+            skill = "vcd-categorical-analysis",
+            run_id = basename(target_dir),
+            extra = list(
+              logical_run_id = basename(target_dir),
+              run_state = "failed",
+              failure_reason = sprintf("[%s] %s", error_code, message),
+              pass_status = list(pass0 = "completed", pass1 = "failed", pass2 = "pending", pass3 = "pending")
+            )
+          )
+        }, error = function(e) {})
+      }
     }
   }
   stop(sprintf("[%s] %s", error_code, message), call. = FALSE)
@@ -462,6 +478,49 @@ run_categorical_analysis_core <- function(
     paste0("gt_residuals_", data_label, ".html"),
     paste0("dt_residuals_", data_label, ".html")
   )
+
+  artifacts_to_manifest <- list()
+  for (art in artifacts_list) {
+    if (file.exists(file.path(run_output_dir, art))) {
+      role <- if (identical(art, "categorical_results.json")) "primary_results"
+              else if (identical(art, "evidence_profile.json") || identical(art, "quarantine_cells.csv")) "diagnostic"
+              else if (grepl("\\.csv$", art)) "summary_table"
+              else if (grepl("\\.html$", art)) "report_html"
+              else "intermediate"
+      artifacts_to_manifest[[length(artifacts_to_manifest) + 1L]] <- list(
+        path = art,
+        role = role
+      )
+    }
+  }
+
+  manifest_res <- tryCatch({
+    write_results_manifest(run_output_dir, "vcd-categorical-analysis", artifacts_to_manifest)
+  }, error = function(e) {
+    stop(sprintf("CRITICAL_METADATA_FAILURE: results_manifest.json could not be written: %s", conditionMessage(e)))
+  })
+
+  extra_meta <- list(
+    logical_run_id = prefix16,
+    requested_run_id = prefix16,
+    run_state = "completed",
+    results_manifest_sha256 = if (!is.null(manifest_res)) manifest_res$manifest_sha256 else NULL,
+    pass_status = list(pass0 = "completed", pass1 = "completed", pass2 = "pending", pass3 = "pending")
+  )
+
+  tryCatch({
+    write_run_meta(
+      out_root = out_root,
+      run_output_dir = run_output_dir,
+      skill = "vcd-categorical-analysis",
+      run_id = run_id,
+      input_data_path = data_path,
+      extra = extra_meta
+    )
+  }, error = function(e) {
+    stop(sprintf("CRITICAL_METADATA_FAILURE: run_meta.json could not be written: %s", conditionMessage(e)))
+  })
+
   completed_state <- list(
     status = "completed",
     run_id = run_id,
@@ -472,6 +531,7 @@ run_categorical_analysis_core <- function(
     config_file_sha256 = config_file_sha256,
     canonical_config_sha256 = canonical_config_sha256,
     artifacts = artifacts_list,
+    results_manifest_sha256 = if (!is.null(manifest_res)) manifest_res$manifest_sha256 else NULL,
     timestamp_jst = format(Sys.time(), "%Y-%m-%dT%H:%M:%S+09:00")
   )
   writeLines(jsonlite::toJSON(completed_state, auto_unbox = TRUE, pretty = TRUE), state_file)

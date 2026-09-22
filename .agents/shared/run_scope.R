@@ -523,12 +523,14 @@ get_run_input_sha256 <- function(run_meta) {
   NULL
 }
 
-# --- Task 1.5: 3スキル共通結果マニフェスト (results_manifest.json) ---
+# --- Task 1.5: 全スキル共通結果マニフェスト (results_manifest.json) ---
 manifest_roles <- function(skill) {
   switch(skill,
-    "vcd-bayesian-evidence-analysis" = c("primary_results"),
-    "vcd-categorical-analysis" = c("primary_results", "diagnostic", "intermediate", "summary_table", "figure"),
-    "questionnaire-batch-analysis" = c("summary_table", "question_result", "canonical_result", "figure"),
+    "vcd-bayesian-evidence-analysis" = c("primary_results", "report_html", "figure"),
+    "vcd-categorical-analysis" = c("primary_results", "diagnostic", "intermediate", "summary_table", "figure", "report_html"),
+    "questionnaire-batch-analysis" = c("summary_table", "question_result", "canonical_result", "figure", "report_html"),
+    "sas-proc-freq" = c("primary_results", "summary_table", "summary_report", "config"),
+    "sas-proc-means" = c("primary_results", "summary_table", "summary_report", "config"),
     stop("[ERROR] 不明なmanifest skill"))
 }
 
@@ -561,10 +563,18 @@ validate_manifest_entries <- function(run_dir, skill, artifacts, writing = FALSE
     if (!is.null(art$question_id)) result$question_id <- as.character(art$question_id)
     result
   })
-  primary <- if (skill == "vcd-bayesian-evidence-analysis") "evidence_results.json" else "categorical_results.json"
+  primary <- switch(skill,
+    "vcd-bayesian-evidence-analysis" = "evidence_results.json",
+    "vcd-categorical-analysis" = "categorical_results.json",
+    "sas-proc-freq" = "freq_results.json",
+    "sas-proc-means" = "means_results.json",
+    NULL
+  )
   if (skill != "questionnaire-batch-analysis") {
-    entries <- Filter(function(x) x$role == "primary_results", validated)
-    if (length(entries) != 1L || entries[[1]]$path != primary) stop("[ERROR] 必須primary_resultsが不一致")
+    if (!is.null(primary)) {
+      entries <- Filter(function(x) x$role == "primary_results", validated)
+      if (length(entries) != 1L || entries[[1]]$path != primary) stop("[ERROR] 必須primary_resultsが不一致")
+    }
   } else {
     entries <- Filter(function(x) x$role == "summary_table", validated)
     if (length(entries) != 1L || entries[[1]]$path != "summary.csv") stop("[ERROR] summary.csvが必須です")

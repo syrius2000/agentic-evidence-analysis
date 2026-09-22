@@ -278,66 +278,57 @@ for (i in seq_len(nrow(cfg))) {
   subset_expr <- if (is.na(row$subset_expr)) "" else trimws(as.character(row$subset_expr))
   na_policy <- as.character(row$na_policy)
 
-  status <- "pending"
-  error_message <- NA_character_
-  skip_reason <- NA_character_
-
-  q_df <- df
-  if (isTRUE(nzchar(subset_expr))) {
-    keep <- tryCatch(with(q_df, eval(parse(text = subset_expr))), error = function(e) rep(TRUE, nrow(q_df)))
-    if (length(keep) == nrow(q_df) && is.logical(keep)) {
-      q_df <- q_df[!is.na(keep) & keep, , drop = FALSE]
-    }
-  }
-
-  vars <- c(var1, var2)
-  if (isTRUE(nzchar(var3))) vars <- c(vars, var3)
-
-  missing_vars <- setdiff(vars, names(q_df))
-  if (length(missing_vars) > 0L) {
-    stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
-  }
-
-  q_df <- q_df[, vars, drop = FALSE]
-  n_total <- nrow(q_df)
-  if (identical(na_policy, "drop")) {
-    q_df <- q_df[stats::complete.cases(q_df), , drop = FALSE]
-  }
-  n_used <- nrow(q_df)
-  n_missing <- n_total - n_used
-
-  q_out <- file.path(out_dir, output_slug)
-  fig_dir <- file.path(q_out, "figures")
-  dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
-
-  status <- "success"
-  skip_reason <- ""
-  error_message <- ""
-
-  statistic_value <- NA_real_
-  p_value <- NA_real_
-  effect_value <- NA_real_
-  cramer_v_marginal <- NA_real_
-  cramer_v_df_star <- NA_real_
-  cramer_v_effect_label <- NA_character_
-  cramer_v_strata_json <- NA_character_
-  cramer_v_strata_mean <- NA_real_
-  cramer_v_strata_max <- NA_real_
-  cramer_v_strata_max_level <- NA_character_
-  marginal_strata_signal <- "none"
-  marginal_strata_note <- ""
-  max_abs_pearson_res <- NA_real_
-  max_residual_cell_val <- NA_character_
-  mosaic_rendered <- FALSE
-  assoc_rendered <- FALSE
-  residual_plot_mode <- "dotplot"
-
-  report_path <- file.path(q_out, "report.html")
-  plot_path <- file.path(fig_dir, "residual_plot.png")
-
-  tryCatch(
+  q_res <- tryCatch(
     {
+      q_df <- df
+      if (isTRUE(nzchar(subset_expr))) {
+        keep <- tryCatch(with(q_df, eval(parse(text = subset_expr))), error = function(e) rep(TRUE, nrow(q_df)))
+        if (length(keep) == nrow(q_df) && is.logical(keep)) {
+          q_df <- q_df[!is.na(keep) & keep, , drop = FALSE]
+        }
+      }
+
+      vars <- c(var1, var2)
+      if (isTRUE(nzchar(var3))) vars <- c(vars, var3)
+
+      missing_vars <- setdiff(vars, names(q_df))
+      if (length(missing_vars) > 0L) {
+        stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
+      }
+
+      q_df <- q_df[, vars, drop = FALSE]
+      n_total <- nrow(q_df)
+      if (identical(na_policy, "drop")) {
+        q_df <- q_df[stats::complete.cases(q_df), , drop = FALSE]
+      }
+      n_used <- nrow(q_df)
+      n_missing <- n_total - n_used
+
+      q_out <- file.path(out_dir, output_slug)
+      fig_dir <- file.path(q_out, "figures")
+      dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
+
+      report_path <- file.path(q_out, "report.html")
+      plot_path <- file.path(fig_dir, "residual_plot.png")
+
       if (n_used <= 1L) stop("Not enough rows after filtering.")
+
+      statistic_value <- NA_real_
+      p_value <- NA_real_
+      effect_value <- NA_real_
+      cramer_v_marginal <- NA_real_
+      cramer_v_df_star <- NA_real_
+      cramer_v_effect_label <- NA_character_
+      cramer_v_strata_json <- NA_character_
+      cramer_v_strata_mean <- NA_real_
+      cramer_v_strata_max <- NA_real_
+      cramer_v_strata_max_level <- NA_character_
+      marginal_strata_signal <- "none"
+      marginal_strata_note <- ""
+      max_abs_pearson_res <- NA_real_
+      max_residual_cell_val <- NA_character_
+      mosaic_rendered <- FALSE
+      assoc_rendered <- FALSE
 
       if (analysis_type %in% c("nominal_2way", "likert_2way")) {
         tab <- table(q_df[[var1]], q_df[[var2]])
@@ -361,6 +352,7 @@ for (i in seq_len(nrow(cfg))) {
 
         make_residual_plot(as.numeric(ct$residuals), plot_path, jp_font)
       } else if (analysis_type == "nominal_3way") {
+        if (!nzchar(var3)) stop("var3 is required for nominal_3way.")
         tab3 <- table(q_df[[var1]], q_df[[var2]], q_df[[var3]])
         tab_m <- margin.table(tab3, c(1L, 2L))
         ct <- suppressWarnings(chisq.test(tab_m, correct = FALSE))
@@ -437,12 +429,59 @@ for (i in seq_len(nrow(cfg))) {
         "</body></html>"
       )
       writeLines(html, report_path, useBytes = TRUE)
-      status <- "success"
+
+      list(
+        status = "success",
+        error_message = "",
+        skip_reason = "",
+        n_total = n_total,
+        n_used = n_used,
+        n_missing = n_missing,
+        statistic_value = statistic_value,
+        p_value = p_value,
+        effect_value = effect_value,
+        cramer_v_marginal = cramer_v_marginal,
+        cramer_v_df_star = cramer_v_df_star,
+        cramer_v_effect_label = cramer_v_effect_label,
+        cramer_v_strata_json = cramer_v_strata_json,
+        cramer_v_strata_mean = cramer_v_strata_mean,
+        cramer_v_strata_max = cramer_v_strata_max,
+        cramer_v_strata_max_level = cramer_v_strata_max_level,
+        marginal_strata_signal = marginal_strata_signal,
+        marginal_strata_note = marginal_strata_note,
+        max_abs_pearson_res = max_abs_pearson_res,
+        max_residual_cell = max_residual_cell_val,
+        mosaic_rendered = mosaic_rendered,
+        assoc_rendered = assoc_rendered,
+        report_path = report_path
+      )
     },
     error = function(e) {
-      status <- "error"
-      error_message <- conditionMessage(e)
-      skip_reason <- conditionMessage(e)
+      list(
+        status = "error",
+        error_message = conditionMessage(e),
+        skip_reason = conditionMessage(e),
+        n_total = NA_integer_,
+        n_used = NA_integer_,
+        n_missing = NA_integer_,
+        statistic_value = NA_real_,
+        p_value = NA_real_,
+        effect_value = NA_real_,
+        cramer_v_marginal = NA_real_,
+        cramer_v_df_star = NA_real_,
+        cramer_v_effect_label = NA_character_,
+        cramer_v_strata_json = NA_character_,
+        cramer_v_strata_mean = NA_real_,
+        cramer_v_strata_max = NA_real_,
+        cramer_v_strata_max_level = NA_character_,
+        marginal_strata_signal = "none",
+        marginal_strata_note = "",
+        max_abs_pearson_res = NA_real_,
+        max_residual_cell = NA_character_,
+        mosaic_rendered = FALSE,
+        assoc_rendered = FALSE,
+        report_path = NA_character_
+      )
     }
   )
 
@@ -451,31 +490,31 @@ for (i in seq_len(nrow(cfg))) {
     survey_id = survey_id,
     question_id = question_id,
     analysis_type = analysis_type,
-    n_total = n_total,
-    n_used = n_used,
-    n_missing = n_missing,
+    n_total = q_res$n_total,
+    n_used = q_res$n_used,
+    n_missing = q_res$n_missing,
     model_name = "chisq",
-    statistic_value = statistic_value,
-    p_value = p_value,
-    effect_value = effect_value,
-    cramer_v_marginal = cramer_v_marginal,
-    cramer_v_df_star = cramer_v_df_star,
-    cramer_v_effect_label = cramer_v_effect_label,
-    cramer_v_strata_json = cramer_v_strata_json,
-    cramer_v_strata_mean = cramer_v_strata_mean,
-    cramer_v_strata_max = cramer_v_strata_max,
-    cramer_v_strata_max_level = cramer_v_strata_max_level,
-    marginal_strata_signal = marginal_strata_signal,
-    marginal_strata_note = marginal_strata_note,
-    max_abs_pearson_res = max_abs_pearson_res,
-    max_residual_cell = max_residual_cell_val,
-    mosaic_rendered = mosaic_rendered,
-    assoc_rendered = assoc_rendered,
-    skip_reason = skip_reason,
-    residual_plot_mode = residual_plot_mode,
-    report_path = report_path,
-    status = ifelse(status == "success", "success", "error"),
-    error_message = ifelse(status == "success", "", error_message),
+    statistic_value = q_res$statistic_value,
+    p_value = q_res$p_value,
+    effect_value = q_res$effect_value,
+    cramer_v_marginal = q_res$cramer_v_marginal,
+    cramer_v_df_star = q_res$cramer_v_df_star,
+    cramer_v_effect_label = q_res$cramer_v_effect_label,
+    cramer_v_strata_json = q_res$cramer_v_strata_json,
+    cramer_v_strata_mean = q_res$cramer_v_strata_mean,
+    cramer_v_strata_max = q_res$cramer_v_strata_max,
+    cramer_v_strata_max_level = q_res$cramer_v_strata_max_level,
+    marginal_strata_signal = q_res$marginal_strata_signal,
+    marginal_strata_note = q_res$marginal_strata_note,
+    max_abs_pearson_res = q_res$max_abs_pearson_res,
+    max_residual_cell = q_res$max_residual_cell,
+    mosaic_rendered = q_res$mosaic_rendered,
+    assoc_rendered = q_res$assoc_rendered,
+    skip_reason = q_res$skip_reason,
+    residual_plot_mode = "dotplot",
+    report_path = q_res$report_path,
+    status = ifelse(q_res$status == "success", "success", "error"),
+    error_message = ifelse(q_res$status == "success", "", q_res$error_message),
     stringsAsFactors = FALSE
   )
 }
@@ -494,30 +533,77 @@ for (res_row in seq_len(nrow(summary_df))) {
   q_id <- summary_df$question_id[res_row]
   q_status <- summary_df$status[res_row]
   if (isTRUE(identical(as.character(q_status), "success")) && !is.null(q_slug) && !is.na(q_slug) && nzchar(trimws(as.character(q_slug)))) {
-    q_json_rel <- file.path(as.character(q_slug), "questionnaire_results.json")
-    full_target <- file.path(out_dir, q_json_rel)
-    if (length(full_target) == 1L && !is.na(full_target) && file.exists(full_target)) {
+    q_dir_rel <- as.character(q_slug)
+    q_dir_abs <- file.path(out_dir, q_dir_rel)
+
+    # 1. questionnaire_results.json
+    q_json_rel <- file.path(q_dir_rel, "questionnaire_results.json")
+    if (file.exists(file.path(out_dir, q_json_rel))) {
       artifacts[[length(artifacts) + 1L]] <- list(
         path = chartr("\\", "/", q_json_rel),
         role = "question_result",
         question_id = as.character(q_id)
       )
     }
+
+    # 2. report.html
+    q_report_rel <- file.path(q_dir_rel, "report.html")
+    if (file.exists(file.path(out_dir, q_report_rel))) {
+      artifacts[[length(artifacts) + 1L]] <- list(
+        path = chartr("\\", "/", q_report_rel),
+        role = "report_html",
+        question_id = as.character(q_id)
+      )
+    }
+
+    # 3. figures 配下の画像ファイル
+    q_fig_dir <- file.path(q_dir_abs, "figures")
+    if (dir.exists(q_fig_dir)) {
+      fig_files <- list.files(q_fig_dir, pattern = "\\.(png|svg|jpg|jpeg)$", full.names = FALSE)
+      for (ff in fig_files) {
+        fig_rel <- file.path(q_dir_rel, "figures", ff)
+        artifacts[[length(artifacts) + 1L]] <- list(
+          path = chartr("\\", "/", fig_rel),
+          role = "figure",
+          question_id = as.character(q_id)
+        )
+      }
+    }
   }
 }
 
+failed_rows <- summary_df[as.character(summary_df$status) != "success", , drop = FALSE]
+has_failures <- nrow(failed_rows) > 0L
+run_state <- if (has_failures) "failed" else "completed"
+pass1_status <- if (has_failures) "failed" else "completed"
+
+manifest_error_msg <- NULL
 manifest_res <- tryCatch({
   write_results_manifest(out_dir, "questionnaire-batch-analysis", artifacts)
 }, error = function(e) {
-  message("[WARN] results_manifest.json 作成スキップ: ", conditionMessage(e))
+  manifest_error_msg <<- conditionMessage(e)
   NULL
 })
 
+if (!is.null(manifest_error_msg)) {
+  run_state <- "failed"
+  pass1_status <- "failed"
+}
+
 extra_meta <- list(
-  logical_run_id = opt$`run-id`,
+  logical_run_id = rid,
   requested_run_id = opt$`run-id`,
+  run_state = run_state,
   results_manifest_sha256 = if (!is.null(manifest_res)) manifest_res$manifest_sha256 else NULL,
-  pass_status = list(pass0 = "completed", pass1 = "completed", pass2 = "pending", pass3 = "pending")
+  partial_failures = if (has_failures) as.character(failed_rows$question_id) else NULL,
+  failure_reason = if (has_failures) {
+    sprintf("%d question(s) failed in batch.", nrow(failed_rows))
+  } else if (!is.null(manifest_error_msg)) {
+    sprintf("write_results_manifest failed: %s", manifest_error_msg)
+  } else {
+    NULL
+  },
+  pass_status = list(pass0 = "completed", pass1 = pass1_status, pass2 = "pending", pass3 = "pending")
 )
 
 tryCatch({
@@ -530,7 +616,12 @@ tryCatch({
     extra = extra_meta
   )
 }, error = function(e) {
-  message("[WARN] run_meta.json 作成スキップ: ", conditionMessage(e))
+  stop(sprintf("CRITICAL_METADATA_FAILURE: run_meta.json could not be written: %s", conditionMessage(e)))
 })
+
+if (has_failures || !is.null(manifest_error_msg)) {
+  message(sprintf("[FAIL] Questionnaire batch completed with failures (run_state=failed). Exiting with status 1."))
+  quit(status = 1L)
+}
 
 quit(status = 0L)
