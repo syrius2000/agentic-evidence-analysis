@@ -46,7 +46,14 @@ official_tests <- c(
   "tests/test_three_way_analysis_config_schema.R",
   "tests/test_shared_dashboard_math.R",
   "tests/test_three_way_dashboard_html.R",
-  "tests/test_vcd_categorical_dashboard_v4.R"
+  "tests/test_vcd_categorical_dashboard_v4.R",
+  "tests/test_pass0_routing.R",
+  "tests/test_comparative_schemas.R",
+  "tests/test_independent_beta_binomial.R",
+  "tests/test_safety_adapter.R",
+  "tests/test_domain_invariance.R",
+  "tests/test_practical_difference.R",
+  "tests/test_vcd_categorical_reporting.R"
 )
 
 cat("========================================================\n")

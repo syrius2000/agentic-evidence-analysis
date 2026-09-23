@@ -150,13 +150,13 @@ compute_comparative_contrasts <- function(
     # Invariant enforcement: q_T + q_N + q_R == 1.0 within tolerance
     sum_q <- q_T + q_N + q_R
     if (abs(sum_q - 1.0) > 1e-6) {
-      # normalize if slight floating point discrepancy
       q_T <- q_T / sum_q
       q_N <- q_N / sum_q
       q_R <- q_R / sum_q
     }
 
     practical_region_support <- list(
+      inferential_semantics = inferential_semantics,
       target_excess = q_T,
       practical_neutral = q_N,
       reference_excess = q_R,
@@ -164,6 +164,14 @@ compute_comparative_contrasts <- function(
     )
 
     C <- max(q_T, q_N, q_R)
+    if (q_T == C) {
+      dominant_region <- "target_excess"
+    } else if (q_R == C) {
+      dominant_region <- "reference_excess"
+    } else {
+      dominant_region <- "practical_neutral"
+    }
+
     if (C >= 0.95) {
       u_grade <- "U0"
       u_label <- "Very High Resolution (>= 95% in single region)"
@@ -181,6 +189,7 @@ compute_comparative_contrasts <- function(
     resolution_grade <- list(
       grade = u_grade,
       label = u_label,
+      dominant_region = dominant_region,
       max_region_probability = C
     )
   } else {
@@ -188,6 +197,7 @@ compute_comparative_contrasts <- function(
     resolution_grade <- list(
       grade = "NONE",
       label = "Practical difference evaluation disabled (primary_delta is null)",
+      dominant_region = "none",
       max_region_probability = NULL
     )
   }
@@ -261,7 +271,9 @@ compute_comparative_contrasts <- function(
     precision_metrics = list(
       rd_interval_width = rd_width,
       log_rr_interval_width = log_rr_width,
-      effective_sample_size = S
+      rr_interval_fold_range = NULL,
+      monte_carlo_draws = S,
+      effective_sample_size = NULL
     ),
     diagnostics = diagnostics
   )

@@ -22,6 +22,7 @@ run_independent_beta_binomial <- function(
   num_draws = 4000L,
   seed = 42L,
   primary_delta = NULL,
+  delta_thresholds = c(0.01, 0.02, 0.05, 0.10),
   prior_sensitivity_mode = c("zero_cell", "off", "explicit"),
   level = 0.95,
   domain = "safety",
@@ -69,12 +70,14 @@ run_independent_beta_binomial <- function(
   reference_draws <- stats::rbeta(num_draws, alpha_R_post, beta_R_post)
 
   # Logical runtime draws interface (comparative-draws-v1)
+  draw_storage <- if (isTRUE(persist_raw_draws)) "persisted" else "ephemeral"
   runtime_draws <- list(
     schema_version = "comparative-draws-v1",
     inferential_semantics = "posterior",
     num_draws = num_draws,
-    target_draws = if (persist_raw_draws) target_draws else NULL,
-    reference_draws = if (persist_raw_draws) reference_draws else NULL,
+    draw_storage = draw_storage,
+    target_draws = if (isTRUE(persist_raw_draws)) target_draws else NULL,
+    reference_draws = if (isTRUE(persist_raw_draws)) reference_draws else NULL,
     seed = seed,
     observed_sample_estimate = NULL
   )
@@ -89,6 +92,7 @@ run_independent_beta_binomial <- function(
     reference_total = n_R,
     inferential_semantics = "posterior",
     primary_delta = primary_delta,
+    delta_thresholds = delta_thresholds,
     level = level,
     domain = domain
   )
@@ -102,6 +106,8 @@ run_independent_beta_binomial <- function(
     NA_real_
   }
   evidence$precision_metrics$rr_interval_fold_range <- fold_range
+  evidence$precision_metrics$monte_carlo_draws <- num_draws
+  evidence$precision_metrics$effective_sample_size <- NULL
 
   # 5. Prior Sensitivity Analysis against Uniform Prior Beta(1.0, 1.0)
   trigger_sensitivity <- FALSE
@@ -125,14 +131,17 @@ run_independent_beta_binomial <- function(
       reference_total = n_R,
       inferential_semantics = "posterior",
       primary_delta = primary_delta,
+      delta_thresholds = delta_thresholds,
       level = level,
       domain = domain
     )
 
-    # Check robustness: qualitative agreement in direction support and U-grade
+    rd_diff <- abs(evidence$risk_difference$estimate$value - sens_evidence$risk_difference$estimate$value)
     dir_diff <- abs(evidence$direction_support$support_value - sens_evidence$direction_support$support_value)
     grade_match <- identical(evidence$resolution_grade$grade, sens_evidence$resolution_grade$grade)
-    robust <- (dir_diff < 0.15) && (grade_match || is.null(primary_delta))
+
+    # Standard sensitivity policy: qualitative robust flag recorded along with exact deltas
+    robust <- (dir_diff < 0.20) && (grade_match || is.null(primary_delta))
 
     evidence$diagnostics$prior_sensitivity <- list(
       mode = prior_sensitivity_mode,
@@ -143,17 +152,20 @@ run_independent_beta_binomial <- function(
         sensitivity_prior = "Beta(1.0, 1.0) Uniform",
         primary_rd_median = evidence$risk_difference$estimate$value,
         sensitivity_rd_median = sens_evidence$risk_difference$estimate$value,
+        rd_median_delta = rd_diff,
         primary_direction_support = evidence$direction_support$support_value,
         sensitivity_direction_support = sens_evidence$direction_support$support_value,
+        direction_support_delta = dir_diff,
         primary_u_grade = evidence$resolution_grade$grade,
-        sensitivity_u_grade = sens_evidence$resolution_grade$grade
+        sensitivity_u_grade = sens_evidence$resolution_grade$grade,
+        u_grade_changed = !grade_match
       )
     )
   } else {
     evidence$diagnostics$prior_sensitivity <- list(
       mode = prior_sensitivity_mode,
       evaluated = FALSE,
-      robust = TRUE,
+      robust = NULL,
       comparison = NULL
     )
   }

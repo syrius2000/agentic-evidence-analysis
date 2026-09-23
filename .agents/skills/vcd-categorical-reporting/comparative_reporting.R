@@ -3,6 +3,7 @@
 
 suppressPackageStartupMessages({
   library(jsonlite)
+  library(digest)
 })
 
 local({
@@ -13,11 +14,13 @@ local({
   shared_dir <- file.path(dirname(dirname(dir)), "shared")
   engine_path <- file.path(shared_dir, "independent_beta_binomial.R")
   contrasts_path <- file.path(shared_dir, "comparative_contrasts.R")
+  run_scope_path <- file.path(shared_dir, "run_scope.R")
   if (file.exists(engine_path)) source(engine_path, local = FALSE)
   if (file.exists(contrasts_path)) source(contrasts_path, local = FALSE)
+  if (file.exists(run_scope_path)) source(run_scope_path, local = FALSE)
 })
 
-# Ingest multi-theme tabular data and extract pairs
+# Ingest multi-theme tabular data and extract pairs conforming to evidence-run-layout
 generate_comparative_report <- function(
   df,
   target_arm = NULL,
@@ -30,11 +33,17 @@ generate_comparative_report <- function(
   primary_delta = NULL,
   level = 0.95,
   seed = 42L,
-  output_dir = ".",
+  out_root = "evidence_runs/vcd_categorical_reporting",
+  output_dir = NULL,
+  run_id = NULL,
+  input_data_path = NULL,
   domain = "safety",
   include_frequentist_compat = TRUE
 ) {
   contrast_mode <- match.arg(contrast_mode)
+  if (!is.null(output_dir)) {
+    out_root <- output_dir
+  }
 
   # 1. Determine contrast pairs
   all_groups <- sort(unique(df[[group_col]]))
@@ -61,7 +70,16 @@ generate_comparative_report <- function(
     }
   }
 
-  # 2. Iterate across themes and contrast pairs
+  # 2. Establish Canonical Run Scope & Directory Isolation
+  run_output_dir <- if (exists("reserve_run_output_dir", mode = "function")) {
+    reserve_run_output_dir(out_root = out_root, skill = "vcd-categorical-reporting", run_id = run_id)
+  } else {
+    target_dir <- file.path(out_root, if (!is.null(run_id)) paste0("run_", run_id) else "run_default")
+    dir.create(target_dir, recursive = TRUE, showWarnings = FALSE)
+    target_dir
+  }
+
+  # 3. Iterate across themes and contrast pairs
   all_themes <- sort(unique(df[[theme_col]]))
   evidence_list <- list()
   summary_rows <- list()
@@ -83,6 +101,14 @@ generate_comparative_report <- function(
       x_R <- row_r[[events_col]][[1L]]
       n_R <- row_r[[total_col]][[1L]]
 
+      pair_key <- sprintf("%s__%s_vs_%s", thm, t_grp, r_grp)
+
+      # M4: Generate contrast-specific independent deterministic seed from master seed and pair_key
+      sub_seed <- if (!is.null(seed)) {
+        h <- digest::digest(paste0(seed, "_", pair_key), algo = "crc32")
+        as.integer(strtoi(substr(h, 1, 7), 16L))
+      } else NULL
+
       # Run Bayesian inference
       res <- run_independent_beta_binomial(
         target_events = x_T,
@@ -90,13 +116,12 @@ generate_comparative_report <- function(
         reference_events = x_R,
         reference_total = n_R,
         primary_delta = primary_delta,
-        seed = seed,
+        seed = sub_seed,
         level = level,
         domain = domain
       )
 
       ev <- res$evidence
-      pair_key <- sprintf("%s__%s_vs_%s", thm, t_grp, r_grp)
       ev$contrast_id <- pair_key
       ev$theme <- thm
       evidence_list[[pair_key]] <- ev
@@ -117,6 +142,7 @@ generate_comparative_report <- function(
       rr_upp <- ev$relative_risk$interval$upper
       dir_sup <- ev$direction_support$support_value
       u_grd <- ev$resolution_grade$grade
+      dom_reg <- ev$resolution_grade$dominant_region %||% "none"
 
       summary_rows[[length(summary_rows) + 1L]] <- data.frame(
         theme = thm,
@@ -136,6 +162,7 @@ generate_comparative_report <- function(
         rr_eti_upper = if (is.null(rr_upp)) NA_real_ else rr_upp,
         p_rd_gt_zero = dir_sup,
         u_grade = u_grd,
+        dominant_region = dom_reg,
         fisher_p_value = p_fisher,
         badges = paste(ev$diagnostics$badges, collapse = ";"),
         stringsAsFactors = FALSE
@@ -145,26 +172,40 @@ generate_comparative_report <- function(
 
   summary_df <- do.call(rbind, summary_rows)
 
-  # 3. Write Deliverable Files
-  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  # 4. Write Deliverable Files inside Run Directory
+  # A. run_meta.json
+  if (exists("write_run_meta", mode = "function")) {
+    write_run_meta(
+      out_root = out_root,
+      run_output_dir = run_output_dir,
+      skill = "vcd-categorical-reporting",
+      run_id = if (!is.null(run_id)) run_id else basename(run_output_dir),
+      input_data_path = input_data_path
+    )
+  }
 
-  # A. comparative_evidence.json
-  json_path <- file.path(output_dir, "comparative_evidence.json")
+  # B. comparative_evidence.json (conforms to comparative-evidence-batch-v1)
+  json_path <- file.path(run_output_dir, "comparative_evidence.json")
   json_deliverable <- list(
-    schema_version = "comparative-evidence-v1",
+    schema_version = "comparative-evidence-batch-v1",
     run_timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
+    run_meta = list(
+      run_output_dir = basename(run_output_dir),
+      skill = "vcd-categorical-reporting",
+      seed = seed
+    ),
     domain = domain,
     primary_delta = primary_delta,
     contrasts = evidence_list
   )
   writeLines(jsonlite::toJSON(json_deliverable, auto_unbox = TRUE, pretty = TRUE), json_path)
 
-  # B. comparative_summary.csv
-  csv_path <- file.path(output_dir, "comparative_summary.csv")
+  # C. comparative_summary.csv
+  csv_path <- file.path(run_output_dir, "comparative_summary.csv")
   utils::write.csv(summary_df, csv_path, row.names = FALSE)
 
-  # C. comparative_report.md
-  md_path <- file.path(output_dir, "comparative_report.md")
+  # D. comparative_report.md
+  md_path <- file.path(run_output_dir, "comparative_report.md")
   md_lines <- c(
     "# 比較エビデンス解析レポート (Comparative Evidence Report)",
     "",
@@ -177,52 +218,67 @@ generate_comparative_report <- function(
     "",
     "## 2. 解析結果要約",
     "",
-    "| テーマ | 比較 | 標本サイズ (T / R) | イベント数 (T / R) | RD 中央値 [95% ETI] | RR 中央値 [95% ETI] | P(RD > 0) | U-Grade | 診断バッジ |",
-    "|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---|"
+    "| テーマ | 比較 | 標本サイズ (T / R) | イベント数 (T / R) | RD 中央値 [95% ETI] | RR 中央値 [95% ETI] | P(RD > 0) | U-Grade | 領域 | 診断バッジ |",
+    "|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|"
   )
 
   for (i in seq_len(nrow(summary_df))) {
     row <- summary_df[i, ]
     rr_str <- if (is.na(row$rr_posterior_median)) "N/A" else sprintf("%.2f [%.2f, %.2f]", row$rr_posterior_median, row$rr_eti_lower, row$rr_eti_upper)
     md_lines <- c(md_lines, sprintf(
-      "| %s | %s vs %s | %d / %d | %d / %d | %.3f [%.3f, %.3f] | %s | %.3f | %s | %s |",
+      "| %s | %s vs %s | %d / %d | %d / %d | %.3f [%.3f, %.3f] | %s | %.3f | %s | %s | %s |",
       row$theme, row$target_arm, row$reference_arm,
       row$target_total, row$reference_total,
       row$target_events, row$reference_events,
       row$rd_posterior_median, row$rd_eti_lower, row$rd_eti_upper,
-      rr_str, row$p_rd_gt_zero, row$u_grade, row$badges
+      rr_str, row$p_rd_gt_zero, row$u_grade, row$dominant_region, row$badges
     ))
   }
 
   writeLines(md_lines, md_path)
 
-  # D. dashboard.html (Zero-External-Asset standalone HTML)
-  html_path <- file.path(output_dir, "dashboard.html")
+  # E. dashboard.html (Zero-External-Asset standalone HTML with Hue x Intensity palette)
+  html_path <- file.path(run_output_dir, "dashboard.html")
 
-  # Generate table rows for HTML
   html_rows <- character(0)
   for (i in seq_len(nrow(summary_df))) {
     row <- summary_df[i, ]
     rr_str <- if (is.na(row$rr_posterior_median)) "N/A" else sprintf("%.2f [%.2f, %.2f]", row$rr_posterior_median, row$rr_eti_lower, row$rr_eti_upper)
 
-    # Style: Hue based on U-grade ONLY when primary_delta is set, NEVER posterior direction alone
+    # H5: Visual encoding: Hue = dominant practical region, Intensity = U-grade resolution
     row_bg <- "transparent"
     if (!is.null(primary_delta) && !is.na(primary_delta) && row$u_grade != "NONE") {
-      if (row$u_grade == "U0") row_bg = "rgba(46, 125, 50, 0.15)"
-      else if (row$u_grade == "U1") row_bg = "rgba(102, 187, 106, 0.12)"
-      else if (row$u_grade == "U2") row_bg = "rgba(255, 167, 38, 0.10)"
-      else if (row$u_grade == "U3") row_bg = "rgba(189, 189, 189, 0.15)" # Muted desaturated tone for U3
+      alpha_val <- switch(row$u_grade,
+        "U0" = "0.20",
+        "U1" = "0.14",
+        "U2" = "0.08",
+        "U3" = "0.04"
+      )
+
+      if (row$u_grade == "U3") {
+        # U3: Muted desaturated grey regardless of dominant region
+        row_bg <- "rgba(148, 163, 184, 0.12)"
+      } else if (row$dominant_region == "target_excess") {
+        # Hue: Red / Coral for target excess risk
+        row_bg <- sprintf("rgba(239, 68, 68, %s)", alpha_val)
+      } else if (row$dominant_region == "reference_excess") {
+        # Hue: Blue / Indigo for reference excess risk
+        row_bg <- sprintf("rgba(59, 130, 246, %s)", alpha_val)
+      } else if (row$dominant_region == "practical_neutral") {
+        # Hue: Emerald / Green for practical equivalence
+        row_bg <- sprintf("rgba(16, 185, 129, %s)", alpha_val)
+      }
     }
 
     badge_html <- if (nzchar(row$badges)) sprintf("<span class='badge'>%s</span>", row$badges) else ""
 
     html_rows <- c(html_rows, sprintf(
-      "<tr style='background-color: %s;'><td>%s</td><td>%s vs %s</td><td>%d / %d</td><td>%d / %d</td><td><strong>%.3f</strong> [%.3f, %.3f]</td><td>%s</td><td>%.3f</td><td><span class='ugrade'>%s</span></td><td>%s</td></tr>",
+      "<tr style='background-color: %s;'><td>%s</td><td>%s vs %s</td><td>%d / %d</td><td>%d / %d</td><td><strong>%.3f</strong> [%.3f, %.3f]</td><td>%s</td><td>%.3f</td><td><span class='ugrade'>%s</span></td><td>%s</td><td>%s</td></tr>",
       row_bg, row$theme, row$target_arm, row$reference_arm,
       row$target_total, row$reference_total,
       row$target_events, row$reference_events,
       row$rd_posterior_median, row$rd_eti_lower, row$rd_eti_upper,
-      rr_str, row$p_rd_gt_zero, row$u_grade, badge_html
+      rr_str, row$p_rd_gt_zero, row$u_grade, row$dominant_region, badge_html
     ))
   }
 
@@ -263,6 +319,7 @@ generate_comparative_report <- function(
         <th>RR 中央値 [95%% ETI]</th>
         <th>P(RD &gt; 0)</th>
         <th>U-Grade</th>
+        <th>実務領域</th>
         <th>診断バッジ</th>
       </tr>
     </thead>
@@ -276,6 +333,7 @@ generate_comparative_report <- function(
   writeLines(html_content, html_path)
 
   list(
+    run_output_dir = run_output_dir,
     json_path = json_path,
     csv_path = csv_path,
     md_path = md_path,

@@ -66,7 +66,7 @@ safety_df <- data.frame(
   arm = c(rep("Treated", 20), rep("Control", 8)),
   stringsAsFactors = FALSE
 )
-meddra_meta <- list(version = "26.1")
+meddra_meta <- list(version = "26.1", release_date = "2023-09-01")
 safety_denoms <- c("Treated" = 200, "Control" = 200)
 safety_agg <- aggregate_safety_data(safety_df, safety_denoms, "Treated", "Control", meddra_metadata = meddra_meta)
 safety_pt <- safety_agg$hierarchy$Neoplasms$pts$Malignancy

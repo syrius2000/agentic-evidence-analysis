@@ -6,9 +6,37 @@ suppressPackageStartupMessages({
   library(digest)
 })
 
+# Explicit canonical routing table mapping designs to engines and inferential semantics
+CANONICAL_ROUTING_TABLE <- list(
+  independent_binary = list(
+    target_engine_slug = "vcd-categorical-reporting",
+    engine_module = ".agents/shared/independent_beta_binomial.R",
+    inferential_semantics = "posterior"
+  ),
+  matched_pair = list(
+    target_engine_slug = "comparative-design-analysis",
+    engine_module = ".agents/shared/matched_pair_dirichlet.R",
+    inferential_semantics = "posterior"
+  ),
+  matched_set = list(
+    target_engine_slug = "comparative-design-analysis",
+    engine_module = ".agents/shared/matched_set_inference.R",
+    inferential_semantics = "bootstrap"
+  ),
+  iptw = list(
+    target_engine_slug = "comparative-design-analysis",
+    engine_module = ".agents/shared/iptw_inference.R",
+    inferential_semantics = "bootstrap"
+  ),
+  person_time = list(
+    target_engine_slug = "comparative-design-analysis",
+    engine_module = ".agents/shared/person_time_rate.R",
+    inferential_semantics = "posterior"
+  )
+)
+
 # Inspect tabular input data for integrity, non-integer counts, design columns, and subject duplicates
 inspect_tabular_input <- function(df, config = list()) {
-  issues <- list()
   diagnostics <- list()
   detected_columns <- list()
 
@@ -44,16 +72,31 @@ inspect_tabular_input <- function(df, config = list()) {
          "). Complex survey designs are currently not supported in comparative evidence engines.")
   }
 
-  # 3. Check count columns for non-integer or negative values
-  count_cols <- names(df)[vapply(df, is.numeric, logical(1L))]
-  # Exclude id and weight columns from integer count check
-  non_count_candidates <- c(weight_cols, survey_cols, matched_cols, cluster_cols, subject_cols, person_time_cols)
-  count_cols <- setdiff(count_cols, non_count_candidates)
+  # 3. Target count columns check (H2 fix: avoid treating age, BMI, lab, etc. as count columns)
+  numeric_cols <- names(df)[vapply(df, is.numeric, logical(1L))]
+  excluded_from_counts <- c(
+    weight_cols, survey_cols, matched_cols, cluster_cols, subject_cols, person_time_cols,
+    names(df)[col_names_lower %in% c("age", "bmi", "lab", "score", "dose", "year", "time", "duration", "creatinine", "alt", "ast", "sbp", "dbp")]
+  )
+
+  # If config explicitly declares count columns, restrict to those
+  declared_count_cols <- config$count_columns %||% config$events_col %||% NULL
+  if (!is.null(declared_count_cols)) {
+    target_count_cols <- intersect(names(df), declared_count_cols)
+  } else {
+    # Otherwise check numeric columns that are likely count columns
+    likely_counts <- names(df)[col_names_lower %in% c("events", "event", "total", "count", "counts", "n", "freq", "cases", "y")]
+    if (length(likely_counts) > 0L) {
+      target_count_cols <- likely_counts
+    } else {
+      target_count_cols <- setdiff(numeric_cols, excluded_from_counts)
+    }
+  }
 
   non_integer_detected <- FALSE
   non_integer_details <- list()
 
-  for (col in count_cols) {
+  for (col in target_count_cols) {
     vals <- df[[col]]
     vals_clean <- vals[!is.na(vals)]
     if (length(vals_clean) > 0L) {
@@ -73,6 +116,7 @@ inspect_tabular_input <- function(df, config = list()) {
 
   diagnostics$non_integer_counts <- list(
     detected = non_integer_detected,
+    target_count_columns_inspected = target_count_cols,
     details = non_integer_details
   )
 
@@ -90,14 +134,12 @@ inspect_tabular_input <- function(df, config = list()) {
 
     if (length(pt_cols) > 0L) {
       pt_col <- pt_cols[[1L]]
-      # duplicates within same subject + PT
       pt_dups <- sum(duplicated(df[c(sub_col, pt_col)]))
       duplicate_diagnostics$pt_duplicates <- pt_dups
     }
 
     if (length(soc_cols) > 0L) {
       soc_col <- soc_cols[[1L]]
-      # duplicates within same subject + SOC
       soc_dups <- sum(duplicated(df[c(sub_col, soc_col)]))
       duplicate_diagnostics$soc_duplicates <- soc_dups
     }
@@ -134,7 +176,6 @@ validate_pass0_config <- function(config) {
     stop("[ERROR] [INVALID_CONFIG] practical_difference must be an object with 'mode'.")
   }
   if (pd$mode == "none") {
-    # Valid non-blocking state, primary_delta may be null
     if (!is.null(pd$primary_delta) && !is.na(pd$primary_delta)) {
       warning("[WARNING] practical_difference.mode is 'none' but primary_delta is set. Ignoring primary_delta.")
     }
@@ -170,24 +211,22 @@ generate_routing_decision <- function(input_path, config, out_file = NULL) {
   validate_pass0_config(config)
 
   design <- config$design
+  if (!design %in% names(CANONICAL_ROUTING_TABLE)) {
+    stop("[ERROR] [UNKNOWN_DESIGN] Unknown study design: ", design)
+  }
+
+  route <- CANONICAL_ROUTING_TABLE[[design]]
+  target_engine_slug <- route$target_engine_slug
+  engine_module <- route$engine_module
+  inferential_semantics <- route$inferential_semantics
+
   has_floats <- isTRUE(inspection$diagnostics$non_integer_counts$detected)
   has_weights <- length(inspection$diagnostics$detected_columns$weight_columns) > 0L
 
-  # Fail-fast guards for independent Beta-Binomial engine
-  if (design == "independent_binary") {
-    if (has_weights || has_floats) {
-      stop("[ERROR] [UNSUPPORTED_WEIGHTED_INPUT] Weighted pseudo-counts or non-integer counts cannot enter ",
-           "the unweighted independent Beta-Binomial engine. Observational weighted cohorts must be routed to 'comparative-design-analysis'.")
-    }
-    target_engine_slug <- "vcd-categorical-reporting"
-    engine_module <- ".agents/shared/independent_beta_binomial.R"
-    inferential_semantics <- "posterior"
-  } else if (design %in% c("matched_pair", "matched_set", "iptw", "person_time")) {
-    target_engine_slug <- "comparative-design-analysis"
-    engine_module <- sprintf(".agents/shared/%s_engine.R", design)
-    inferential_semantics <- "bootstrap"
-  } else {
-    stop("[ERROR] [UNKNOWN_DESIGN] Unknown study design: ", design)
+  # Fail-fast guard for unweighted independent Beta-Binomial engine
+  if (design == "independent_binary" && (has_weights || has_floats)) {
+    stop("[ERROR] [UNSUPPORTED_WEIGHTED_INPUT] Weighted pseudo-counts or non-integer counts cannot enter ",
+         "the unweighted independent Beta-Binomial engine. Observational weighted cohorts must be routed to 'comparative-design-analysis'.")
   }
 
   routing_decision <- list(
