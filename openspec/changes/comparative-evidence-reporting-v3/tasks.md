@@ -24,17 +24,17 @@
 ## 2. Shared Schemas and Contrast Engine
 
 - [ ] 2.1 Implement logical runtime schema `comparative-draws-v1.json` supporting `inferential_semantics = "posterior" | "bootstrap"` with ephemeral in-memory management.
-- [ ] 2.2 Implement permanent deliverable schema `comparative-evidence-v1.json` with explicit interval object (`method = "posterior_eti" | "bootstrap_percentile"`).
+- [ ] 2.2 Implement permanent deliverable schema `comparative-evidence-v1.json` supporting explicit point estimate sources (`estimate.source = "posterior_median" | "observed_sample_estimate"`) and nested intervals (`interval: { method = "posterior_eti" | "bootstrap_percentile", ... }`).
 - [ ] 2.3 Implement shared contrast transformation engine in `.agents/shared/comparative_contrasts.R` and verify unit tests.
 - [ ] 2.4 Implement risk difference (RD) and incidence rate difference (IRD) draw transformations, verified by mathematical test cases.
 - [ ] 2.5 Implement relative risk (RR) and incidence rate ratio (IRR) draw transformations, verified by mathematical test cases.
 - [ ] 2.6 Implement excess per natural unit conversions with domain-aware field names (`additional_subjects_per_100_treated`, `additional_events_per_100_person_years`).
 - [ ] 2.7 Implement direction support metric, labeling Bayesian outputs as $P(RD > 0)$ and bootstrap outputs as `bootstrap_support_fraction_rd_gt_zero`.
 - [ ] 2.8 Implement configurable delta profile evaluations over user-specified or non-normative default threshold vectors, asserting monotonic properties.
-- [ ] 2.9 Implement $q_T, q_N, q_R$ practical region probabilities across canonical regions (`TARGET_EXCESS`, `PRACTICAL_NEUTRAL`, `REFERENCE_EXCESS`) when `primary_delta` exists, verifying $q_T + q_N + q_R = 1.0$ invariant.
-- [ ] 2.10 Implement Practical-Region Resolution Grade (U0–U3) from $C = \max(q_T, q_N, q_R)$, documenting that U-grade reflects region classification decisiveness rather than generic sampling precision.
+- [ ] 2.9 Implement practical region support values ($q_T, q_N, q_R$) under container `practical_region_support` across canonical regions (`target_excess`, `practical_neutral`, `reference_excess`), verifying $q_T + q_N + q_R = 1.0$ invariant.
+- [ ] 2.10 Implement Practical-Region Resolution Grade (U0–U3) from $C = \max(q_T, q_N, q_R)$, documenting that U-grade reflects region classification decisiveness of the active uncertainty distribution rather than generic sampling precision.
 - [ ] 2.11 Implement separate continuous precision metrics (`rd_interval_width`, `log_rr_interval_width`, effective sample size) and verify presence in JSON output.
-- [ ] 2.12 Enforce strict terminology separation: "credible interval (ETI)" for Bayesian posteriors vs "bootstrap percentile interval" for bootstrap replicates, verified by linting tests.
+- [ ] 2.12 Enforce strict terminology separation: "credible interval (ETI)" and "posterior probability" for Bayesian posteriors vs "bootstrap percentile interval" and "bootstrap support fraction" for bootstrap replicates, verified by linting tests.
 - [ ] 2.13 Implement zero and sparse count diagnostic badges (`ZERO_REFERENCE`, `ZERO_BOTH`, `SPARSE_EVENTS`) and continuous instability metrics (`log_rr_interval_width`).
 - [ ] 2.14 Add schema invariant test suite and verify `Rscript tests/test_comparative_schemas.R` passes.
 
@@ -45,12 +45,12 @@
 - [ ] 3.3 Validate $0 \le x_T \le n_T$ and $0 \le x_R \le n_R$ bounds, verified by unit assertions.
 - [ ] 3.4 Implement Jeffreys prior $\text{Beta}(0.5, 0.5)$ sampling, verified against theoretical posterior quantile benchmarks.
 - [ ] 3.5 Support deterministic pseudo-random seeds for exact uncertainty draw reproducibility, verified by seed equality tests.
-- [ ] 3.6 Generate target and reference posterior summaries (median, mean, 95% ETI), verified by numerical assertions.
+- [ ] 3.6 Generate target and reference posterior summaries (median, mean, 95% ETI), setting `estimate.source = "posterior_median"`, verified by numerical assertions.
 - [ ] 3.7 Output standardized uncertainty draws conforming to the logical `comparative-draws-v1` interface, verified by in-memory schema validator.
 - [ ] 3.8 Implement detection of zero-reference counts causing infinite theoretical expectation for $RR$, setting `mean = null` and `mean_is_finite = false`.
 - [ ] 3.9 Enforce safeguard preventing empirical Monte-Carlo mean of $RR$ from being reported when theoretical expectation diverges, verified by unit test.
 - [ ] 3.10 Add relative risk continuous instability diagnostics (`log_rr_interval_width`, `rr_interval_fold_range`), verified by test assertions.
-- [ ] 3.11 Implement optional prior sensitivity check against uniform Laplace prior $\text{Beta}(1.0, 1.0)$ for sparse/zero cells, recording robustness flag without modifying primary U-grade.
+- [ ] 3.11 Implement configurable prior sensitivity check against uniform prior $\text{Beta}(1.0, 1.0)$ governed by `prior_sensitivity.mode = "zero_cell" | "off" | "explicit"` (default `"zero_cell"`), recording robustness flag without modifying primary U-grade.
 - [ ] 3.12 Implement golden regression cases (`3/100 vs 0/100`, `0/100 vs 0/100`, `30/100 vs 20/100`, `3/30 vs 30/300`, `1/200 vs 0/1000`, `1/200 vs 2/1000`, `0/200 vs 2/1000`) and verify all outputs.
 - [ ] 3.13 Add tests asserting delta-profile monotonicity and $q_T + q_N + q_R = 1.0$ within floating point tolerance.
 - [ ] 3.14 Test that `primary_delta = null` disables practical classification categories and visual hue assignment, verified by unit test.
@@ -103,7 +103,7 @@
 - [ ] 7.5 Ensure delta profile matrix is computed and archived even when no primary delta is approved, verified by JSON schema validation.
 - [ ] 7.6 Implement simulation utility to evaluate candidate U0–U3 uncertainty thresholds under various sample sizes and base rates.
 - [ ] 7.7 Validate provisional U0–U3 cutoff parameters against synthetic sparse and imbalanced cohorts, documenting recommendations.
-- [ ] 7.8 Verify all generated documentation and report tooltips explicitly clarify that U-grade reflects region classification decisiveness, not sampling precision or clinical severity.
+- [ ] 7.8 Verify all generated documentation and report tooltips explicitly clarify that U-grade reflects region classification decisiveness of the active uncertainty distribution, not sampling precision or clinical severity.
 
 ## 8. Design-Aware Inference Engine: 1:1 Matched Pairs
 
@@ -112,26 +112,26 @@
 - [ ] 8.3 Implement multinomial Dirichlet sampler with prior $\boldsymbol{\alpha} = (0.5, 0.5, 0.5, 0.5)$ for cell probabilities, verified by test assertions.
 - [ ] 8.4 Derive marginal risk draws $p_T = p_{11} + p_{10}$ and $p_R = p_{11} + p_{01}$ across posterior samples, verified by unit test.
 - [ ] 8.5 Verify mathematical invariant $RD = p_{10} - p_{01}$ across draws in unit test.
-- [ ] 8.6 Generate standardized uncertainty draws object conforming to `comparative-draws-v1` with `inferential_semantics = "posterior"` and `interval_method = "posterior_eti"`.
+- [ ] 8.6 Generate standardized uncertainty draws object conforming to `comparative-draws-v1` with `inferential_semantics = "posterior"`, `estimate.source = "posterior_median"`, and `interval: { method = "posterior_eti" }`.
 - [ ] 8.7 Implement matched-pair golden test cases and verify numerical accuracy against analytical reference solutions.
 - [ ] 8.8 Record matched-pair sample size, concordant, and discordant pair counts in output metadata, verified by JSON output inspection.
 
 ## 9. Design-Aware Inference Engine: 1:k Matched Sets
 
 - [ ] 9.1 Implement cluster bootstrap sampler for 1:k matched sets in `.agents/shared/matched_set_inference.R` using atomic set resampling without matching replacement.
-- [ ] 9.2 Implement set-weighted marginal ATT estimator formulas $\hat{p}_T = \frac{1}{J}\sum_{j=1}^J Y_{Tj}$ and $\hat{p}_R = \frac{1}{J}\sum_{j=1}^J \left(\frac{1}{k_j}\sum_{\ell=1}^{k_j} Y_{Rj\ell}\right)$, verified by unit tests.
+- [ ] 9.2 Implement set-weighted marginal ATT estimator formulas $\hat{p}_T = \frac{1}{J}\sum_{j=1}^J Y_{Tj}$ and $\hat{p}_R = \frac{1}{J}\sum_{j=1}^J \left(\frac{1}{k_j}\sum_{\ell=1}^{k_j} Y_{Rj\ell}\right)$ computed on observed sample (`estimate.source = "observed_sample_estimate"`), verified by unit tests.
 - [ ] 9.3 Record matching ratio, caliper, with/without replacement status, and matched/discarded patient counts in metadata, verified by test.
 - [ ] 9.4 Compute and record post-match covariate balance metrics (standardized mean differences), verified by unit tests.
-- [ ] 9.5 Emit output draws with `inferential_semantics = "bootstrap"` and `interval_method = "bootstrap_percentile"`, verifying downstream narrative adaptation.
+- [ ] 9.5 Emit output draws with `inferential_semantics = "bootstrap"` and `interval: { method = "bootstrap_percentile" }`, verifying downstream narrative adaptation.
 - [ ] 9.6 Add bootstrap reproducibility and seed consistency tests, verified by regression test pass.
 
 ## 10. Design-Aware Inference Engine: IPTW
 
 - [ ] 10.1 Implement patient-level bootstrap resampling for IPTW in `.agents/shared/iptw_inference.R` using reproducible serial resampling.
 - [ ] 10.2 Refit the propensity score model inside *every* bootstrap replicate (`iptw_mode = "refit_ps"`), verified by simulation test.
-- [ ] 10.3 Implement exact weight formulas for unstabilized ATE ($w_i = A_i/e_i + (1-A_i)/(1-e_i)$), unstabilized ATT ($w_i = A_i + (1-A_i)e_i/(1-e_i)$), and stabilized variants.
-- [ ] 10.4 Implement configurable percentile weight truncation (e.g. 1st / 99th percentiles), verified by parameter configuration tests.
-- [ ] 10.5 Support explicit ATE and ATT estimand targets, verified by test cases.
+- [ ] 10.3 Implement exact weight formulas for unstabilized ATE ($w_i = A_i/e_i + (1-A_i)/(1-e_i)$), unstabilized ATT ($w_i = A_i + (1-A_i)e_i/(1-e_i)$), stabilized ATE, and scaled ATT (`att_weight_scaling.mode = "conventional" | "marginal_odds_scaled"`).
+- [ ] 10.4 Implement percentile weight truncation (e.g. 1st / 99th percentiles) applied to final computed weights separately by treatment arm, verified by parameter configuration tests.
+- [ ] 10.5 Support explicit ATE and ATT estimand targets with `estimate.source = "observed_sample_estimate"`, verified by test cases.
 - [ ] 10.6 Compute weighted marginal event proportions across bootstrap replicates, verified by test assertions.
 - [ ] 10.7 Compute and record effective sample size (ESS) for target and reference groups, verified by output validation.
 - [ ] 10.8 Record weight distribution quantiles and maximum weight, issuing warning if extreme weights occur, verified by test.
@@ -144,7 +144,7 @@
 ## 11. Person-Time Incidence Rate Engine
 
 - [ ] 11.1 Implement conjugate Gamma-Poisson rate model in `.agents/shared/person_time_rate.R` using shape-rate parameterization $\text{Gamma}(x_g + 0.5, T_g)$ under Jeffreys prior, verified by unit test.
-- [ ] 11.2 Generate target and reference Poisson incidence rate draws from posterior Gamma distributions with `inferential_semantics = "posterior"` and `interval_method = "posterior_eti"`.
+- [ ] 11.2 Generate target and reference Poisson incidence rate draws from posterior Gamma distributions with `inferential_semantics = "posterior"`, `estimate.source = "posterior_median"`, and `interval: { method = "posterior_eti" }`.
 - [ ] 11.3 Feed rate draws into shared contrast engine to derive incidence rate difference (IRD) and incidence rate ratio (IRR), verified by unit tests.
 - [ ] 11.4 Record exposure units (person-years, person-months), parameterization (`shape_rate`), and denominator metadata in output, verified by schema validation.
 - [ ] 11.5 Document limitations regarding constant hazard and lack of within-subject recurrent event clustering, verified by test output.
@@ -162,7 +162,7 @@
 - [ ] 13.1 Initialize `.agents/skills/evidence-decision-review/` skill complying with `evidence-run-layout`.
 - [ ] 13.2 Define evidence feature vector schema extracting decision-label-free statistical summaries, partitioning into mandatory core and optional delta-dependent attributes, verified by schema test.
 - [ ] 13.3 Verify assertion that clinical decision codes and regulatory labels are strictly excluded from clustering input features, verified by unit test.
-- [ ] 13.4 Implement Gower distance dissimilarity calculation for mixed numeric and categorical evidence features using versioned reference ranges (`frozen_reference_range`), verified by test assertions.
+- [ ] 13.4 Implement Gower distance dissimilarity calculation for mixed numeric and categorical evidence features using versioned reference ranges (`frozen_reference_range`), applying bounded clipping ($d_j = \min(1, |x_i-x_j|/R_j)$) and logging `GOWER_REFERENCE_RANGE_EXCEEDED` on range overflow.
 - [ ] 13.5 Implement hierarchical agglomerative clustering over Gower distance matrix, verified by clustering test.
 - [ ] 13.6 Implement optional standardized K-means clustering strictly restricted to continuous features with input scaling validation, verified by test suite.
 - [ ] 13.7 Bind historical precedent metadata to dictionary release version, delta policy version, and feature schema version, verified by unit test.
@@ -171,13 +171,13 @@
 - [ ] 13.10 Implement configurable discordance policy (neighborhood size $k$ or distance radius), presenting precedent distribution and flagging divergence as "QA Review Candidate", verified by test fixture.
 - [ ] 13.11 Enforce wording contract designating divergences as "QA Review Candidates" rather than system errors or invalid states, verified by string audit.
 - [ ] 13.12 Implement trajectory tracking capturing longitudinal changes in decisions across study phases or data cutoffs, verified by test script.
-- [ ] 13.13 Implement cluster stability assessment or emit explicit `NOT_ASSESSED` when cross-theme patient data are not jointly modeled, verified by test assertion.
+- [ ] 13.13 Implement cluster stability assessment via patient-level bootstrap co-clustering when individual rows are present, or emit explicit `stability_status = "NOT_ASSESSED"` with reason `CROSS_THEME_DEPENDENCE_UNAVAILABLE` when only term summaries are available.
 - [ ] 13.14 Add test demonstrating that cluster assignment alone never triggers automated regulatory actions or label modifications, verified by governance test.
 
 ## 14. Dashboard and Self-Contained Report QA
 
 - [ ] 14.1 Structure HTML report layout with dedicated, separated columns for Effect Size, Direction, Practical Difference, and Precision, verified by visual inspection.
-- [ ] 14.2 Enforce visual color palette using practical region hue (`TARGET_EXCESS`, `PRACTICAL_NEUTRAL`, `REFERENCE_EXCESS`) modulated by U-grade intensity only when primary delta is set, verified by CSS audit.
+- [ ] 14.2 Enforce visual color palette using practical region hue (`target_excess`, `practical_neutral`, `reference_excess`) modulated by U-grade intensity only when primary delta is set, verified by CSS audit.
 - [ ] 14.3 Verify that U3 category renders with muted, desaturated tones indicating indeterminate resolution rather than alarmist red hues, verified by visual test.
 - [ ] 14.4 Render zero and sparse event diagnostic badges separately from statistical estimates, verified by report layout test.
 - [ ] 14.5 Display prominent warning callout when relative risk point estimate or uncertainty interval displays numerical instability, verified by visual inspection.
@@ -203,7 +203,7 @@
 - [ ] 16.1 Conduct blind-first independent QA review reading OpenSpec and code/tests prior to implementer narrative review.
 - [ ] 16.2 Mathematically verify zero-cell behavior: median + quantile interval reported, `mean = null`, `mean_is_finite = false` when $x_R = 0$.
 - [ ] 16.3 Verify practical difference delta semantics: `primary_delta = null` disables classification and color cues.
-- [ ] 16.4 Verify that U-grade reflects practical region resolution decisiveness and is never presented as sampling precision or clinical severity.
+- [ ] 16.4 Verify that U-grade reflects practical region resolution decisiveness of active uncertainty distribution and is never presented as sampling precision or clinical severity.
 - [ ] 16.5 Verify strict separation of Bayesian posterior ETI vs bootstrap percentile interval terminology across schemas and reports.
 - [ ] 16.6 Verify that weighted pseudo-counts and complex survey weights are rejected by independent Beta-Binomial engine.
 - [ ] 16.7 Verify Safety hierarchy accounting invariants: subject deduplication and SOC count $\ne$ sum of PT counts.

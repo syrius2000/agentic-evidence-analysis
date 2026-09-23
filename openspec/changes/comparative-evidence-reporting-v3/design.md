@@ -14,7 +14,7 @@ This document formalizes the architecture for comparative statistical evidence a
 \ne & \\
 \text{Contrast Metrics} & \text{(RD, Excess per Natural Unit, RR, Direction Support, Delta Profile)} \\
 \ne & \\
-\text{Region Resolution} & \text{(Practical-Region Resolution Grade U0–U3)} \\
+\text{Region Resolution} & \text{(Practical-Region Resolution Grade U0–U3 across Active Uncertainty Distribution)} \\
 \ne & \\
 \text{Numerical Precision} & \text{(ETI Width, Bootstrap Percentile Width, ESS, Sample Sizes)} \\
 \ne & \\
@@ -33,11 +33,14 @@ This document formalizes the architecture for comparative statistical evidence a
    \[
    \text{Bayesian Credible Interval (ETI)} \ne \text{Bootstrap Percentile Interval}
    \]
-   The common runtime interface uses the neutral term **uncertainty draws**. All uncertainty intervals explicitly record `method = "posterior_eti"` or `method = "bootstrap_percentile"`.
+   \[
+   \text{Posterior Median} \ne \text{Observed Sample Estimate}
+   \]
+   The common runtime interface uses the neutral term **uncertainty draws**. Point estimates declare `estimate.source = "posterior_median" | "observed_sample_estimate"`. All uncertainty intervals explicitly record `interval: { method: "posterior_eti" | "bootstrap_percentile", ... }`.
 3. **Zero-Event Mathematical Integrity & Prior Sensitivity**:
    - Zero-event numerators are analyzable under proper Bayesian shrinkage. An empty denominator ($n=0$) is strictly unanalyzable.
    - When reference events $x_R = 0$, theoretical expectation $E(RR) = \infty$; the system reports median and 95% quantile interval, setting `mean = null` and `mean_is_finite = false`.
-   - Sparse analyses record an optional sensitivity check against the uniform prior $\text{Beta}(1.0, 1.0)$ without modifying the primary U-grade.
+   - Sensitivity checks against uniform prior $\text{Beta}(1.0, 1.0)$ are governed by `prior_sensitivity: { mode: "zero_cell" | "off" | "explicit" }` (defaulting to `"zero_cell"`), reporting robustness without altering primary U-grades.
 4. **Summary-First Ephemeral Draws**: To preserve scalability when screening thousands of terms, raw Monte-Carlo draws remain ephemeral by default (`persist_raw_draws: false`). Permanent deliverables consist of summary profiles and audit metadata.
 5. **Deterministic Offline Execution**: All analyses execute deterministically without runtime package installation, network dependencies, or local absolute file paths.
 
@@ -59,13 +62,22 @@ Posterior distribution:
 \[
 p_g \mid x_g, n_g \sim \text{Beta}(x_g + 0.5, \, n_g - x_g + 0.5)
 \]
-Optional sensitivity prior: $p_g \sim \text{Beta}(1.0, 1.0)$ evaluated to verify prior robustness.
+Optional sensitivity prior: $p_g \sim \text{Beta}(1.0, 1.0)$ evaluated when `prior_sensitivity.mode = "zero_cell"` and zero events are observed.
 Deterministic sampling generates $S$ uncertainty draws: $\{p_T^{(s)}, p_R^{(s)}\}_{s=1}^S$.
 
-### 2.2 Contrast Transformations and Interval Semantics
+### 2.2 Contrast Transformations, Estimate Sources, and Interval Semantics
 
 From joint uncertainty draws, contrast metrics are derived:
 
+- **Primary Estimate**:
+
+  ```yaml
+  estimate:
+    value: <float>
+    source: posterior_median | observed_sample_estimate
+  ```
+
+  Bayesian models use `posterior_median`. Bootstrap models use `observed_sample_estimate` computed directly from the original unresampled dataset.
 - **Risk Difference (RD)**: $RD^{(s)} = p_T^{(s)} - p_R^{(s)}$
 - **Excess per Natural Unit**:
   - Machine field: `excess_per_unit`
@@ -87,14 +99,20 @@ From joint uncertainty draws, contrast metrics are derived:
 
 ### 2.3 Practical Difference and Region Resolution Grade (U0–U3)
 
-Given an approved non-zero practical threshold $\delta > 0$:
+Given an approved non-zero practical threshold $\delta > 0$, the container `practical_region_support` records:
 
-- **Target Excess Region**: $q_T = P(RD > \delta)$
-- **Practical Neutral Region**: $q_N = P(|RD| \le \delta)$
-- **Reference Excess Region**: $q_R = P(RD < -\delta)$
-Invariant: $q_T + q_N + q_R = 1.0$.
+```yaml
+practical_region_support:
+  inferential_semantics: posterior | bootstrap
+  target_excess: <float>     # q_T
+  practical_neutral: <float> # q_N
+  reference_excess: <float>  # q_R
+```
 
-The **Practical-Region Resolution Grade** evaluates how decisively the uncertainty distribution falls into one of the three discrete practical regions:
+- Invariant: $q_T + q_N + q_R = 1.0$.
+- Semantics: For Bayes, these are **posterior probabilities**; for bootstrap, they are **bootstrap support fractions**.
+
+The **Practical-Region Resolution Grade** evaluates how decisively the active uncertainty distribution falls into one of the three discrete practical regions:
 \[
 C = \max(q_T, \, q_N, \, q_R)
 \]
@@ -118,6 +136,7 @@ From rate draws $\{\lambda_T^{(s)}, \lambda_R^{(s)}\}_{s=1}^S$:
 - **Incidence Rate Difference (IRD)**: $IRD^{(s)} = \lambda_T^{(s)} - \lambda_R^{(s)}$
 - **Incidence Rate Ratio (IRR)**: $IRR^{(s)} = \lambda_T^{(s)} / \lambda_R^{(s)}$
 - Domain rendering: `additional_events_per_100_person_years`.
+- Semantics: `estimate.source = "posterior_median"`, `interval.method = "posterior_eti"`.
 
 ---
 
@@ -136,30 +155,29 @@ Marginal risks and contrasts:
 \[
 p_T^{(s)} = p_{11}^{(s)} + p_{10}^{(s)}, \quad p_R^{(s)} = p_{11}^{(s)} + p_{01}^{(s)}, \quad RD^{(s)} = p_{10}^{(s)} - p_{01}^{(s)}
 \]
-Semantics: `inferential_semantics = "posterior"`, `interval_method = "posterior_eti"`.
+Semantics: `inferential_semantics = "posterior"`, `estimate.source = "posterior_median"`, `interval.method = "posterior_eti"`.
 
 ### 3.2 1:k Matched-Set Analysis (ATT-Weighted Estimator)
 
 - Structure: $J$ matched sets, each containing 1 treated subject ($Y_{Tj}$) and $k_j \ge 1$ controls ($Y_{Rj\ell}, \ell=1,\dots,k_j$) without matching replacement.
-- Resampling: Resamples entire matched sets atomically with replacement.
-- Replicate Estimator:
+- Point Estimate (Observed Sample):
   \[
-  \hat{p}_T = \frac{1}{J}\sum_{j=1}^J Y_{Tj}, \quad \hat{p}_R = \frac{1}{J}\sum_{j=1}^J \left(\frac{1}{k_j}\sum_{\ell=1}^{k_j} Y_{Rj\ell}\right)
+  \hat{p}_{T,obs} = \frac{1}{J}\sum_{j=1}^J Y_{Tj}, \quad \hat{p}_{R,obs} = \frac{1}{J}\sum_{j=1}^J \left(\frac{1}{k_j}\sum_{\ell=1}^{k_j} Y_{Rj\ell}\right)
   \]
-  This assigns equal weight to each treated matched set, aligning with the ATT estimand.
-- Semantics: `inferential_semantics = "bootstrap"`, `interval_method = "bootstrap_percentile"`.
+  Assigned to `estimate.value` with `estimate.source = "observed_sample_estimate"`.
+- Replicate Resampling: Atomic cluster bootstrap of entire matched sets with replacement to construct percentile intervals (`interval.method = "bootstrap_percentile"`) and bootstrap region support fractions.
 
-### 3.3 IPTW Propensity Score Analysis (Exact Formulas & Model Refitting)
+### 3.3 IPTW Propensity Score Analysis (Exact Formulas & Arm-Specific Truncation)
 
-- Executes patient-level bootstrap resampling with propensity score refitting inside _every_ replicate (`iptw_mode = "refit_ps"`).
+- Point Estimate: Computed from unresampled dataset using observed weights (`estimate.source = "observed_sample_estimate"`).
+- Replicate Resampling: Executes patient-level bootstrap resampling with propensity score refitting inside _every_ replicate (`iptw_mode = "refit_ps"`).
 - Weight Formulas:
   - **Unstabilized ATE**: $w_i^{ATE} = \frac{A_i}{e_i} + \frac{1-A_i}{1-e_i}$
   - **Unstabilized ATT**: $w_i^{ATT} = A_i + (1-A_i)\frac{e_i}{1-e_i}$
   - **Stabilized ATE**: $sw_i^{ATE} = A_i \frac{P(A=1)}{e_i} + (1-A_i)\frac{P(A=0)}{1-e_i}$
-  - **Stabilized ATT**: $sw_i^{ATT} = A_i + (1-A_i)\frac{e_i}{1-e_i}\frac{P(A=1)}{P(A=0)}$
-- Weight Truncation: Configurable percentile truncation (e.g. 1st / 99th percentiles).
-- Diagnostics: Effective sample size (ESS), maximum weight, and standardized mean difference (SMD).
-- Semantics: `inferential_semantics = "bootstrap"`, `interval_method = "bootstrap_percentile"`.
+  - **Scaled ATT**: $sw_i^{ATT} = A_i + (1-A_i)\frac{e_i}{1-e_i}\frac{P(A=1)}{P(A=0)}$ governed by `att_weight_scaling.mode = "conventional" | "marginal_odds_scaled"`
+- Weight Truncation: Percentile truncation (e.g. 1st / 99th percentiles) applied to the final computed weights separately by treatment arm.
+- Semantics: `inferential_semantics = "bootstrap"`, `interval.method = "bootstrap_percentile"`.
 
 ---
 
@@ -201,11 +219,11 @@ flowchart TD
 The `evidence-decision-review` engine audits concordance between statistical profiles and human expert decisions:
 
 1. **Decision-Label-Free Feature Vectors**: Feature vectors are extracted strictly from statistical summaries.
-2. **Exploratory Clustering**:
+2. **Exploratory Clustering & Stability**:
    - Primary: Gower distance with hierarchical agglomerative clustering.
    - Secondary: Standardized K-means restricted strictly to continuous numerical features.
-   - Cluster stability is evaluated or explicitly marked `stability_status = "NOT_ASSESSED"`.
-3. **Gower Distance with Frozen Ranges**: Calculates dissimilarity using frozen, versioned reference ranges (`frozen_reference_range`).
+   - Cluster stability is evaluated via patient-level bootstrap co-clustering when individual rows are available; otherwise explicitly reported as `stability_status = "NOT_ASSESSED"`, `reason = "CROSS_THEME_DEPENDENCE_UNAVAILABLE"`.
+3. **Gower Distance with Frozen Ranges & Clipping**: Calculates dissimilarity using frozen reference ranges (`frozen_reference_range`), applying bounded clipping ($d_j = \min(1, |x_i - x_j| / R_j)$) and logging `GOWER_REFERENCE_RANGE_EXCEEDED` if values overflow.
 4. **Append-Only Tamper-Evident Ledger**: Maintains an audit log linking previous record SHA-256 hashes, decision states, rationale markdown, and JST timestamps.
 5. **Discordance Advisory**: Flags divergence as a **QA Review Candidate** without imposing automated decisions.
 

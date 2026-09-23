@@ -1,6 +1,6 @@
 ## Purpose
 
-Define the specification for the Evidence-Decision Consistency review engine. This component measures concordance between decision-label-free statistical evidence profiles and human expert decisions across historical analyses, performs exploratory evidence clustering, retrieves relevant precedents via unsupervised Gower distance with frozen scaling ranges, presents precedent distributions without imposing automated regulatory decisions, and maintains an append-only, tamper-evident audit ledger.
+Define the specification for the Evidence-Decision Consistency review engine. This component measures concordance between decision-label-free statistical evidence profiles and human expert decisions across historical analyses, performs exploratory evidence clustering, retrieves relevant precedents via unsupervised Gower distance with frozen scaling ranges and explicit overflow clipping policies, evaluates cluster stability or emits unassessed status, presents precedent distributions without imposing automated regulatory decisions, and maintains an append-only, tamper-evident audit ledger.
 
 ## ADDED Requirements
 
@@ -13,23 +13,23 @@ The system SHALL construct standardized evidence feature vectors from statistica
 - **WHEN** a comparative analysis profile is processed for consistency auditing
 - **THEN** the system MUST extract purely statistical summary metrics (such as $RD$ median, $RD$ interval width, direction support, effective sample size, and quarantine flags) into a feature vector conforming to `evidence-feature-v1`, handling missing practical-region probabilities appropriately when `primary_delta` is `null`.
 
-### Requirement: Exploratory Evidence Clustering
+### Requirement: Exploratory Evidence Clustering and Stability Evaluation
 
-The system SHALL provide exploratory evidence clustering over historical analysis feature vectors using Gower distance and hierarchical agglomerative clustering as the primary method, with optional standardized K-means restricted strictly to continuous numerical features, while requiring cluster stability to be formally assessed or explicitly reported as `NOT_ASSESSED`.
+The system SHALL provide exploratory evidence clustering over historical analysis feature vectors using Gower distance and hierarchical agglomerative clustering as the primary method, with optional standardized K-means restricted strictly to continuous numerical features, evaluating cluster stability via joint patient-level resampling when individual data are present, or explicitly assigning `stability_status = "NOT_ASSESSED"` with reason `CROSS_THEME_DEPENDENCE_UNAVAILABLE` when only marginal term summaries are available.
 
-#### Scenario: Clustering historical evidence profiles
+#### Scenario: Clustering historical evidence profiles with stability check
 
 - **WHEN** historical evidence profiles without decision labels are clustered
-- **THEN** the system MUST compute pairwise Gower distances, generate hierarchical cluster trees, record cluster assignments as exploratory grouping aids (never as decision rules), and evaluate cluster stability or assign `stability_status = "NOT_ASSESSED"` when cross-theme patient data are not jointly modeled.
+- **THEN** the system MUST compute pairwise Gower distances, generate hierarchical cluster trees, record cluster assignments as exploratory grouping aids (never as decision rules), and evaluate co-clustering probability or record `stability_status = "NOT_ASSESSED"` when cross-theme patient rows are absent.
 
-### Requirement: Gower Distance Precedent Retrieval with Frozen Scaling Ranges
+### Requirement: Gower Distance Precedent Retrieval with Frozen Scaling Ranges and Overflow Policy
 
-The system SHALL calculate pairwise dissimilarities between the active evidence feature vector and historical case vectors using Gower distance with frozen, versioned feature reference ranges (`frozen_reference_range`), binding comparisons to historical metadata including dictionary release version, delta policy version, and feature schema version.
+The system SHALL calculate pairwise dissimilarities between the active evidence feature vector and historical case vectors using Gower distance with frozen, versioned feature reference ranges (`frozen_reference_range`), applying bounded clipping ($d_j = \min(1, |x_i - x_j| / R_j)$) and logging diagnostic warning `GOWER_REFERENCE_RANGE_EXCEEDED` when a new observation exceeds the frozen range boundaries.
 
-#### Scenario: Querying historical precedents with frozen scaling ranges
+#### Scenario: Querying historical precedents with frozen ranges and overflow handling
 
 - **WHEN** an evidence feature vector is submitted to the consistency engine
-- **THEN** the system MUST compute Gower distance using versioned reference ranges across available attributes against historical cases, expose version differences across cases, rank historical cases by proximity, and retrieve the nearest precedent cohort.
+- **THEN** the system MUST compute Gower distance using versioned reference ranges across available attributes against historical cases, clip values exceeding the reference range while emitting `GOWER_REFERENCE_RANGE_EXCEEDED`, expose version differences across cases, rank historical cases by proximity, and retrieve the nearest precedent cohort.
 
 ### Requirement: Precedent Distribution and Context Presentation
 
