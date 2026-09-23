@@ -12,11 +12,11 @@ This document formalizes the architecture for comparative statistical evidence a
 \ne & \\
 \text{Inference Model} & \text{(Beta-Binomial / Dirichlet / Gamma-Poisson / Bootstrap)} \\
 \ne & \\
-\text{Contrast Metrics} & \text{(RD, Excess/100, RR, Direction Support, Delta Profile)} \\
+\text{Contrast Metrics} & \text{(RD, Excess per Natural Unit, RR, Direction Support, Delta Profile)} \\
 \ne & \\
 \text{Region Resolution} & \text{(Practical-Region Resolution Grade U0–U3)} \\
 \ne & \\
-\text{Numerical Precision} & \text{(ETI Width, Effective Sample Size, Sample Sizes)} \\
+\text{Numerical Precision} & \text{(ETI Width, Bootstrap Percentile Width, ESS, Sample Sizes)} \\
 \ne & \\
 \text{Human Decision} & \text{(Clinical / Regulatory Review, Historical Precedent Audit)}
 \end{matrix}
@@ -24,9 +24,20 @@ This document formalizes the architecture for comparative statistical evidence a
 \]
 
 ### Core Principles
+
 1. **P-Value & Threshold Independence**: Avoid mechanical thresholding, unadjusted multiplicity acceptance, or single-metric truth scores.
-2. **Strict Semantic Decoupling**: Bayesian posterior probabilities and bootstrap resample frequencies SHALL NOT be conflated. The common runtime interface uses the term **uncertainty draws**.
-3. **Zero-Event Mathematical Integrity**: A zero-event numerator ($x=0$) is analyzable under proper Bayesian shrinkage. An empty denominator ($n=0$) is strictly unanalyzable. When reference events $x_R = 0$, theoretical expectation $E(RR) = \infty$; the system reports median and 95% ETI, setting `mean = null` and `mean_is_finite = false`.
+2. **Strict Inferential & Interval Decoupling**:
+   \[
+   \text{Bayesian Posterior Probability} \ne \text{Bootstrap Support Fraction}
+   \]
+   \[
+   \text{Bayesian Credible Interval (ETI)} \ne \text{Bootstrap Percentile Interval}
+   \]
+   The common runtime interface uses the neutral term **uncertainty draws**. All uncertainty intervals explicitly record `method = "posterior_eti"` or `method = "bootstrap_percentile"`.
+3. **Zero-Event Mathematical Integrity & Prior Sensitivity**:
+   - Zero-event numerators are analyzable under proper Bayesian shrinkage. An empty denominator ($n=0$) is strictly unanalyzable.
+   - When reference events $x_R = 0$, theoretical expectation $E(RR) = \infty$; the system reports median and 95% quantile interval, setting `mean = null` and `mean_is_finite = false`.
+   - Sparse analyses record an optional sensitivity check against the uniform prior $\text{Beta}(1.0, 1.0)$ without modifying the primary U-grade.
 4. **Summary-First Ephemeral Draws**: To preserve scalability when screening thousands of terms, raw Monte-Carlo draws remain ephemeral by default (`persist_raw_draws: false`). Permanent deliverables consist of summary profiles and audit metadata.
 5. **Deterministic Offline Execution**: All analyses execute deterministically without runtime package installation, network dependencies, or local absolute file paths.
 
@@ -35,42 +46,49 @@ This document formalizes the architecture for comparative statistical evidence a
 ## 2. Statistical Architecture and Mathematics
 
 ### 2.1 Independent Jeffreys Beta-Binomial Model
+
 For unadjusted binary comparisons across independent cohorts (Target $T$ and Reference $R$):
 \[
 x_g \sim \text{Binomial}(n_g, p_g), \quad g \in \{T, R\}
 \]
-Prior distribution:
+Primary Jeffreys prior:
 \[
-p_g \sim \text{Beta}(0.5, 0.5) \quad (\text{Jeffreys Objective Prior})
+p_g \sim \text{Beta}(0.5, 0.5)
 \]
 Posterior distribution:
 \[
 p_g \mid x_g, n_g \sim \text{Beta}(x_g + 0.5, \, n_g - x_g + 0.5)
 \]
-Deterministic Monte-Carlo sampling generates $S$ uncertainty draws: $\{p_T^{(s)}, p_R^{(s)}\}_{s=1}^S$.
+Optional sensitivity prior: $p_g \sim \text{Beta}(1.0, 1.0)$ evaluated to verify prior robustness.
+Deterministic sampling generates $S$ uncertainty draws: $\{p_T^{(s)}, p_R^{(s)}\}_{s=1}^S$.
 
-### 2.2 Contrast Transformations
+### 2.2 Contrast Transformations and Interval Semantics
+
 From joint uncertainty draws, contrast metrics are derived:
-- **Risk Difference (RD)**:
-  \[
-  RD^{(s)} = p_T^{(s)} - p_R^{(s)}
-  \]
-- **Excess Events per Natural Unit**:
-  \[
-  \text{Excess}_{100}^{(s)} = RD^{(s)} \times 100, \quad \text{Excess}_{1000}^{(s)} = RD^{(s)} \times 1000
-  \]
-- **Relative Risk (RR)**:
-  \[
-  RR^{(s)} = \frac{p_T^{(s)}}{p_R^{(s)}}
-  \]
+
+- **Risk Difference (RD)**: $RD^{(s)} = p_T^{(s)} - p_R^{(s)}$
+- **Excess per Natural Unit**:
+  - Machine field: `excess_per_unit`
+  - Domain rendering: Safety subject risk renders as `additional_subjects_per_100_treated` ($RD \times 100$).
+- **Relative Risk (RR)**: $RR^{(s)} = p_T^{(s)} / p_R^{(s)}$
 - **Direction Support**:
-  \[
-  P(RD > 0) = \frac{1}{S} \sum_{s=1}^S \mathbb{I}(RD^{(s)} > 0)
-  \]
-  *(For bootstrap models, reported strictly as `bootstrap_support_fraction_rd_gt_zero`)*.
+  - Posterior: $P(RD > 0)$
+  - Bootstrap: `bootstrap_support_fraction_rd_gt_zero`
+- **Interval Representation**:
+
+  ```yaml
+  interval:
+    lower: <float>
+    upper: <float>
+    level: 0.95
+    method: posterior_eti | bootstrap_percentile
+    inferential_semantics: posterior | bootstrap
+  ```
 
 ### 2.3 Practical Difference and Region Resolution Grade (U0–U3)
+
 Given an approved non-zero practical threshold $\delta > 0$:
+
 - **Target Excess Region**: $q_T = P(RD > \delta)$
 - **Practical Neutral Region**: $q_N = P(|RD| \le \delta)$
 - **Reference Excess Region**: $q_R = P(RD < -\delta)$
@@ -80,36 +98,26 @@ The **Practical-Region Resolution Grade** evaluates how decisively the uncertain
 \[
 C = \max(q_T, \, q_N, \, q_R)
 \]
-Mapping:
-- **U0 (Decisive Resolution)**: $C \ge 0.95$
-- **U1 (Substantial Resolution)**: $0.80 \le C < 0.95$
-- **U2 (Moderate Resolution)**: $0.60 \le C < 0.80$
-- **U3 (Indeterminate Resolution)**: $C < 0.60$
+Mapping: U0 ($C \ge 0.95$), U1 ($0.80 \le C < 0.95$), U2 ($0.60 \le C < 0.80$), U3 ($C < 0.60$).
+Continuous precision is reported separately via `rd_interval_width`, `log_rr_interval_width`, and ESS.
 
-> [!IMPORTANT]
-> U-grade measures posterior resolution among prespecified practical-difference regions. It is **not** a generic measure of sampling precision, clinical severity, or data quality.
-
-Continuous numerical precision is reported separately via:
-- `rd_eti_width`: $q_{0.975}(RD) - q_{0.025}(RD)$
-- `log_rr_eti_width`: $q_{0.975}(\log RR) - q_{0.025}(\log RR)$
-- `effective_sample_size`: Design-specific ESS.
-
-When `primary_delta` is `null` (`mode: "none"`), practical region classification and associated cell hues are disabled. The system still reports direction support and an informative, configurable **Delta Profile Matrix** over candidate thresholds.
+When `primary_delta` is `null` (`mode: "none"`), practical region classification and associated cell hues are disabled. The system still reports direction support and an informative, configurable **Delta Profile Matrix**.
 
 ### 2.4 Person-Time Incidence Rate Model
+
 For exposure data with event count $x_g$ and person-time $T_g$:
 \[
 X_g \sim \text{Poisson}(\lambda_g T_g)
 \]
-Under the Jeffreys rate prior $\pi(\lambda_g) \propto \lambda_g^{-1/2}$, the exact posterior under the **shape-rate** parameterization is:
+Under Jeffreys rate prior $\pi(\lambda_g) \propto \lambda_g^{-1/2}$, the exact posterior under **shape-rate** parameterization is:
 \[
 \lambda_g \mid x_g, T_g \sim \text{Gamma}\left(x_g + 0.5, \, T_g\right)
 \]
 From rate draws $\{\lambda_T^{(s)}, \lambda_R^{(s)}\}_{s=1}^S$:
+
 - **Incidence Rate Difference (IRD)**: $IRD^{(s)} = \lambda_T^{(s)} - \lambda_R^{(s)}$
 - **Incidence Rate Ratio (IRR)**: $IRR^{(s)} = \lambda_T^{(s)} / \lambda_R^{(s)}$
-
-*Limitation*: Simple Poisson rate inference assumes constant hazard and conditionally independent events. Within-subject recurrent event clustering or overdispersion is not resolved by this conjugate model.
+- Domain rendering: `additional_events_per_100_person_years`.
 
 ---
 
@@ -118,10 +126,8 @@ From rate draws $\{\lambda_T^{(s)}, \lambda_R^{(s)}\}_{s=1}^S$:
 The design-aware engine encapsulates complex observational designs into the logical `comparative-draws-v1` interface:
 
 ### 3.1 1:1 Matched-Pair Analysis
-Matched pairs with binary outcomes yield a $2 \times 2$ paired contingency table:
-\[
-\mathbf{n} = (n_{11}, n_{10}, n_{01}, n_{00})
-\]
+
+Matched pairs with binary outcomes yield a $2 \times 2$ paired contingency table $\mathbf{n} = (n_{11}, n_{10}, n_{01}, n_{00})$.
 Cell probabilities follow a Dirichlet posterior under Jeffreys-type prior $\boldsymbol{\alpha} = (0.5, 0.5, 0.5, 0.5)$:
 \[
 \mathbf{p} \mid \mathbf{n} \sim \text{Dirichlet}\left(n_{11} + 0.5, \, n_{10} + 0.5, \, n_{01} + 0.5, \, n_{00} + 0.5\right)
@@ -130,22 +136,30 @@ Marginal risks and contrasts:
 \[
 p_T^{(s)} = p_{11}^{(s)} + p_{10}^{(s)}, \quad p_R^{(s)} = p_{11}^{(s)} + p_{01}^{(s)}, \quad RD^{(s)} = p_{10}^{(s)} - p_{01}^{(s)}
 \]
-Semantics: `inferential_semantics = "posterior"`.
+Semantics: `inferential_semantics = "posterior"`, `interval_method = "posterior_eti"`.
 
-### 3.2 1:k Matched-Set Analysis
-- Resamples entire matched sets atomically with replacement.
-- Target estimand is ATT-like (treatment group reference).
-- Computes stratum-weighted event proportions per bootstrap replicate.
-- Evaluates post-match balance (standardized mean differences, SMD).
-- Semantics: `inferential_semantics = "bootstrap"`.
+### 3.2 1:k Matched-Set Analysis (ATT-Weighted Estimator)
 
-### 3.3 IPTW Propensity Score Analysis
-- Executes patient-level bootstrap resampling.
-- **PS Model Refitting**: Refits the propensity score model inside *every* bootstrap replicate (`iptw_mode = "refit_ps"`).
-- Supported Estimands: Average Treatment Effect (ATE) and Average Treatment Effect on the Treated (ATT).
-- Computes stabilized weights $w_i$ and records effective sample size (ESS), maximum weight, and balance diagnostics.
-- Issues warning if balance exceeds operational thresholds (e.g. SMD > 0.1) or if replicate failure exceeds configured limits.
-- Semantics: `inferential_semantics = "bootstrap"`.
+- Structure: $J$ matched sets, each containing 1 treated subject ($Y_{Tj}$) and $k_j \ge 1$ controls ($Y_{Rj\ell}, \ell=1,\dots,k_j$) without matching replacement.
+- Resampling: Resamples entire matched sets atomically with replacement.
+- Replicate Estimator:
+  \[
+  \hat{p}_T = \frac{1}{J}\sum_{j=1}^J Y_{Tj}, \quad \hat{p}_R = \frac{1}{J}\sum_{j=1}^J \left(\frac{1}{k_j}\sum_{\ell=1}^{k_j} Y_{Rj\ell}\right)
+  \]
+  This assigns equal weight to each treated matched set, aligning with the ATT estimand.
+- Semantics: `inferential_semantics = "bootstrap"`, `interval_method = "bootstrap_percentile"`.
+
+### 3.3 IPTW Propensity Score Analysis (Exact Formulas & Model Refitting)
+
+- Executes patient-level bootstrap resampling with propensity score refitting inside _every_ replicate (`iptw_mode = "refit_ps"`).
+- Weight Formulas:
+  - **Unstabilized ATE**: $w_i^{ATE} = \frac{A_i}{e_i} + \frac{1-A_i}{1-e_i}$
+  - **Unstabilized ATT**: $w_i^{ATT} = A_i + (1-A_i)\frac{e_i}{1-e_i}$
+  - **Stabilized ATE**: $sw_i^{ATE} = A_i \frac{P(A=1)}{e_i} + (1-A_i)\frac{P(A=0)}{1-e_i}$
+  - **Stabilized ATT**: $sw_i^{ATT} = A_i + (1-A_i)\frac{e_i}{1-e_i}\frac{P(A=1)}{P(A=0)}$
+- Weight Truncation: Configurable percentile truncation (e.g. 1st / 99th percentiles).
+- Diagnostics: Effective sample size (ESS), maximum weight, and standardized mean difference (SMD).
+- Semantics: `inferential_semantics = "bootstrap"`, `interval_method = "bootstrap_percentile"`.
 
 ---
 
@@ -168,40 +182,39 @@ flowchart TD
     chk_design -- "2-Way Contingency Association" --> r_legacy["vcd-categorical-analysis (Pass 1)"]
 ```
 
-### Routing Invariants & Guards
-1. **Survey Weight Guard**: Complex survey sample weights trigger `UNSUPPORTED_SURVEY_DESIGN` and fail fast.
-2. **Duplicate Subject Guard**: Pass 0 inspects and quantifies duplicate subject occurrences within PT and SOC. It does not silently deduplicate data; it proposes an approved counting rule (`at_least_one_qualifying_event_per_subject`) and requires user confirmation.
-3. **Explicit Delta State**: Pass 0 supports `practical_difference: { mode: "none", primary_delta: null }` as a valid, non-blocking state.
-
 ---
 
 ## 5. Clinical Safety & Domain Adapters
 
 ### 5.1 Clinical Safety (MedDRA) Adapter
-- **Primary Reporting Hierarchy**: Primary SOC $\rightarrow$ PT.
-- **Deduplication Invariant**: Subjects experiencing multiple distinct PTs under a single SOC are counted exactly once for that SOC. SOC event counts SHALL NOT equal the sum of child PT event counts.
-- **Study-Specific vs Pooled**: Study-specific inference is canonical. Pooled aggregations across trials are designated as `descriptive_pooled`, explicitly documenting that trial-level heterogeneity is not modeled.
-- **Multiplicity Warning**: Batch screening across hundreds of PTs includes a mandatory narrative disclaimer stating that posterior direction probabilities do not provide automatic familywise error control.
 
-### 5.2 RWD & Prescription Adapters
-- Generic parent-child theme mapping (`parent_theme -> item_theme`).
-- Domain decorators map statistical fields to domain terminology without altering canonical numerical metrics.
+- **Primary Reporting Hierarchy**: Primary SOC $\rightarrow$ PT.
+- **Deduplication Invariant**: Subjects experiencing multiple distinct PTs under a single SOC are counted exactly once for that SOC.
+- **Domain Label**: `additional_subjects_per_100_treated`.
+- **Descriptive Pooling**: Multi-study summaries are designated as `descriptive_pooled`.
+- **Cross-Theme Dependency**: Each PT analysis is a valid marginal subject-level analysis. Cross-PT dependence is not jointly modeled; batch screening disclaimer is mandatory.
 
 ---
 
 ## 6. Evidence-Decision Review Engine
 
 The `evidence-decision-review` engine audits concordance between statistical profiles and human expert decisions:
-1. **Decision-Label-Free Feature Vectors**: Feature vectors are extracted strictly from objective statistical summaries (`rd_median`, `rd_eti_width`, `direction_support`, sample size, ESS). Clinical verdict codes and decision labels are strictly excluded.
-2. **Gower Distance Precedent Retrieval**: Calculates dissimilarity across mixed continuous and ordinal features. When `primary_delta` is `null`, missing practical-region probabilities are safely handled by Gower weighting.
-3. **Audit Ledger**: Maintains an `append-only, tamper-evident decision ledger` recording previous state, new state, rationale, JST timestamp, and evidence checksum.
-4. **Discordance Notification**: If a provisional decision diverges from historical precedent consensus, the engine emits an advisory flagging the case as a **QA Review Candidate**. It SHALL NOT classify the divergence as an error or automate regulatory actions.
+
+1. **Decision-Label-Free Feature Vectors**: Feature vectors are extracted strictly from statistical summaries.
+2. **Exploratory Clustering**:
+   - Primary: Gower distance with hierarchical agglomerative clustering.
+   - Secondary: Standardized K-means restricted strictly to continuous numerical features.
+   - Cluster stability is evaluated or explicitly marked `stability_status = "NOT_ASSESSED"`.
+3. **Gower Distance with Frozen Ranges**: Calculates dissimilarity using frozen, versioned reference ranges (`frozen_reference_range`).
+4. **Append-Only Tamper-Evident Ledger**: Maintains an audit log linking previous record SHA-256 hashes, decision states, rationale markdown, and JST timestamps.
+5. **Discordance Advisory**: Flags divergence as a **QA Review Candidate** without imposing automated decisions.
 
 ---
 
 ## 7. Artifact Layout and Persistence Contract
 
 All skills comply with `evidence-run-layout`:
+
 ```text
 evidence_runs/<skill_slug>/run_<canonical_id>[_N]/
   ├── run_meta.json                  # Canonical execution metadata
@@ -211,4 +224,5 @@ evidence_runs/<skill_slug>/run_<canonical_id>[_N]/
   ├── report.html                    # Self-contained offline dashboard
   └── report.md                      # Human/LLM readable narrative
 ```
+
 - **Raw Draw Persistence**: `persist_raw_draws` defaults to `false`. Raw draws are held in memory during execution and discarded after contrast derivation, eliminating multi-megabyte JSON bloat.
