@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComparativeDrawsV1",
+  "description": "Logical runtime schema for uncertainty draws across target and reference cohorts (ephemeral in-memory contract)",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "inferential_semantics",
+    "num_draws",
+    "target_draws",
+    "reference_draws"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["comparative-draws-v1"]
+    },
+    "inferential_semantics": {
+      "type": "string",
+      "enum": ["posterior", "bootstrap"]
+    },
+    "num_draws": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "target_draws": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "reference_draws": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "seed": {
+      "type": ["integer", "null"]
+    },
+    "observed_sample_estimate": {
+      "type": ["object", "null"],
+      "properties": {
+        "rd": { "type": "number" },
+        "rr": { "type": ["number", "null"] },
+        "p_target": { "type": "number" },
+        "p_reference": { "type": "number" }
+      }
+    }
+  }
+}

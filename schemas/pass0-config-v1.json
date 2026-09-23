@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pass0AnalysisConfigV1",
+  "description": "Schema for Pass 0 consultation, input verification, and analysis configuration in comparative-evidence-reporting-v3",
+  "type": "object",
+  "required": [
+    "domain",
+    "estimand",
+    "analysis_unit",
+    "target",
+    "reference",
+    "design",
+    "practical_difference",
+    "reporting_purpose"
+  ],
+  "properties": {
+    "domain": {
+      "type": "string",
+      "enum": ["safety", "rwd", "prescription", "general"],
+      "description": "Clinical or analytical domain context"
+    },
+    "estimand": {
+      "type": "string",
+      "enum": ["RD", "RR", "ATE", "ATT", "marginal_OR", "discordant_OR", "IRD", "IRR"],
+      "description": "Primary statistical or causal estimand"
+    },
+    "analysis_unit": {
+      "type": "string",
+      "enum": ["subject", "person_time", "event", "cell"],
+      "description": "Fundamental unit of observation or counting"
+    },
+    "target": {
+      "type": "string",
+      "description": "Label or identifier of the active/treatment arm"
+    },
+    "reference": {
+      "type": "string",
+      "description": "Label or identifier of the control/reference arm"
+    },
+    "design": {
+      "type": "string",
+      "enum": ["independent_binary", "matched_pair", "matched_set", "iptw", "person_time"],
+      "description": "Study design determining the appropriate estimation engine"
+    },
+    "practical_difference": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["none", "fixed_delta"]
+        },
+        "primary_delta": {
+          "type": ["number", "null"]
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["per_100", "per_1000", "proportion"]
+        }
+      }
+    },
+    "hierarchy": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "parent_var": { "type": "string" },
+        "child_var": { "type": "string" },
+        "primary_soc": { "type": "string" },
+        "pt": { "type": "string" }
+      }
+    },
+    "reporting_purpose": {
+      "type": "string",
+      "enum": ["exploratory_screening", "confirmatory_evaluation", "internal_safety_review", "academic_publication"],
+      "description": "Intended reporting context for multiplicity warnings and visual presentation"
+    },
+    "decision_review_flag": {
+      "type": "boolean",
+      "default": false,
+      "description": "Flag indicating human/clinical reviewer sign-off requirement"
+    }
+  }
+}

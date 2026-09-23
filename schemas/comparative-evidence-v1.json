@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComparativeEvidenceV1",
+  "description": "Permanent deliverable schema for comparative evidence reporting in comparative-evidence-reporting-v3",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "inferential_semantics",
+    "target_cohort",
+    "reference_cohort",
+    "risk_difference",
+    "relative_risk",
+    "direction_support",
+    "resolution_grade",
+    "precision_metrics",
+    "diagnostics"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["comparative-evidence-v1"]
+    },
+    "inferential_semantics": {
+      "type": "string",
+      "enum": ["posterior", "bootstrap"]
+    },
+    "target_cohort": {
+      "type": "object",
+      "required": ["label", "events", "total"],
+      "properties": {
+        "label": { "type": "string" },
+        "events": { "type": "number" },
+        "total": { "type": "number" },
+        "incidence_proportion": { "type": "number" },
+        "estimate": {
+          "type": "object",
+          "required": ["value", "source"],
+          "properties": {
+            "value": { "type": "number" },
+            "source": { "type": "string", "enum": ["posterior_median", "observed_sample_estimate"] }
+          }
+        },
+        "interval": {
+          "type": "object",
+          "required": ["lower", "upper", "level", "method"],
+          "properties": {
+            "lower": { "type": "number" },
+            "upper": { "type": "number" },
+            "level": { "type": "number" },
+            "method": { "type": "string", "enum": ["posterior_eti", "bootstrap_percentile"] }
+          }
+        }
+      }
+    },
+    "reference_cohort": {
+      "type": "object",
+      "required": ["label", "events", "total"],
+      "properties": {
+        "label": { "type": "string" },
+        "events": { "type": "number" },
+        "total": { "type": "number" },
+        "incidence_proportion": { "type": "number" },
+        "estimate": {
+          "type": "object",
+          "required": ["value", "source"],
+          "properties": {
+            "value": { "type": "number" },
+            "source": { "type": "string", "enum": ["posterior_median", "observed_sample_estimate"] }
+          }
+        },
+        "interval": {
+          "type": "object",
+          "required": ["lower", "upper", "level", "method"],
+          "properties": {
+            "lower": { "type": "number" },
+            "upper": { "type": "number" },
+            "level": { "type": "number" },
+            "method": { "type": "string", "enum": ["posterior_eti", "bootstrap_percentile"] }
+          }
+        }
+      }
+    },
+    "risk_difference": {
+      "type": "object",
+      "required": ["estimate", "interval"],
+      "properties": {
+        "estimate": {
+          "type": "object",
+          "required": ["value", "source"],
+          "properties": {
+            "value": { "type": "number" },
+            "source": { "type": "string", "enum": ["posterior_median", "observed_sample_estimate"] }
+          }
+        },
+        "interval": {
+          "type": "object",
+          "required": ["lower", "upper", "level", "method"],
+          "properties": {
+            "lower": { "type": "number" },
+            "upper": { "type": "number" },
+            "level": { "type": "number" },
+            "method": { "type": "string", "enum": ["posterior_eti", "bootstrap_percentile"] }
+          }
+        },
+        "excess_per_100": { "type": "number" },
+        "additional_subjects_per_100_treated": { "type": "number" }
+      }
+    },
+    "relative_risk": {
+      "type": "object",
+      "required": ["estimate", "interval", "mean_is_finite"],
+      "properties": {
+        "estimate": {
+          "type": "object",
+          "required": ["value", "source"],
+          "properties": {
+            "value": { "type": ["number", "null"] },
+            "source": { "type": "string", "enum": ["posterior_median", "observed_sample_estimate"] }
+          }
+        },
+        "interval": {
+          "type": "object",
+          "required": ["lower", "upper", "level", "method"],
+          "properties": {
+            "lower": { "type": ["number", "null"] },
+            "upper": { "type": ["number", "null"] },
+            "level": { "type": "number" },
+            "method": { "type": "string", "enum": ["posterior_eti", "bootstrap_percentile"] }
+          }
+        },
+        "mean": { "type": ["number", "null"] },
+        "mean_is_finite": { "type": "boolean" }
+      }
+    },
+    "direction_support": {
+      "type": "object",
+      "properties": {
+        "metric_name": { "type": "string" },
+        "support_value": { "type": "number" },
+        "label": { "type": "string" }
+      }
+    },
+    "practical_region_support": {
+      "type": ["object", "null"],
+      "properties": {
+        "target_excess": { "type": "number" },
+        "practical_neutral": { "type": "number" },
+        "reference_excess": { "type": "number" },
+        "primary_delta": { "type": ["number", "null"] }
+      }
+    },
+    "resolution_grade": {
+      "type": "object",
+      "required": ["grade", "label"],
+      "properties": {
+        "grade": { "type": "string", "enum": ["U0", "U1", "U2", "U3", "NONE"] },
+        "label": { "type": "string" },
+        "max_region_probability": { "type": ["number", "null"] }
+      }
+    },
+    "delta_profile": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "properties": {
+          "delta": { "type": "number" },
+          "p_rd_gt_delta": { "type": "number" },
+          "p_rd_lt_minus_delta": { "type": "number" },
+          "p_neutral": { "type": "number" }
+        }
+      }
+    },
+    "precision_metrics": {
+      "type": "object",
+      "required": ["rd_interval_width"],
+      "properties": {
+        "rd_interval_width": { "type": "number" },
+        "log_rr_interval_width": { "type": ["number", "null"] },
+        "effective_sample_size": { "type": ["number", "null"] }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "required": ["badges"],
+      "properties": {
+        "badges": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "prior_sensitivity": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string" },
+            "robust": { "type": "boolean" },
+            "comparison": { "type": "object" }
+          }
+        }
+      }
+    }
+  }
+}

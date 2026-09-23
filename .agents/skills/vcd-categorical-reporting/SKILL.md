@@ -1,74 +1,61 @@
 ---
 name: vcd-categorical-reporting
-description: "Use when maintaining legacy categorical reporting templates or interpreting historical vcd-categorical-reporting references; use vcd-categorical-analysis for new analyses."
+description: "Use when reporting comparative evidence across study groups, multi-theme screening batches, clinical safety (SOC/PT), RWD, and prescription cohorts using independent Jeffreys Beta-Binomial models and standalone offline HTML/Markdown reports."
 license: MIT
 metadata:
   author: vcd-categorical-reporting-skill
-  version: "2.1"
-  deprecated: true
-  superseded_by: vcd-categorical-analysis
+  version: "3.0"
+  deprecated: false
 ---
 
-> [!WARNING]
-> **非推奨**: 本スキルを単独の必須後続として使わない。`vcd-categorical-analysis` の Step 2 で `executive_summary.md`（必要なら `vcd_analysis_report.md`）を生成すること。以下は **report-template / evaluation-criteria 参照用** の履歴ドキュメント。
+# VCD Categorical Reporting: Comparative Evidence Reporting (v3)
 
-**IRON LAW**: `summary_*.json` と `data_profile_post.json` を読まずに、印象ベースで結論を書かない。必ず数値根拠（残差、有意セル数、層別指標）を併記する。
+独立 2 群（または対照群 vs 各群）のカテゴリカル頻度データ、臨床安全性（Safety: SOC/PT）、リアルワールドデータ（RWD: 傷病名/処置）、処方集（Prescription）データを対象とし、Jeffreys 事前分布に基づく多項/二値ベイズ推論またはブートストラップ推論を用いて、**比較エビデンス報告（Comparative Evidence Reporting）**を自己完結型 HTML / Markdown ダッシュボードとして生成する。
 
-`vcd-categorical-analysis` が生成した統計成果物を AI が読み取り、**判断ファースト**形式のレポートを構成する。
+---
 
-## 前提スキル
+## 鉄則（Iron Laws）
 
-- **先行**: `vcd-categorical-analysis` を先に実行し、成果物が存在すること（一般形は `<out>/run_<first16>[_N]/`。現行推奨: `./evidence_runs/vcd_categorical/run_<first16>[_N]/`、旧形式: `./skill_out/vcd_categorical/run_<first16>[_N]/`）。
-- **契約**: `references/interface.md` を参照。
+1. **推定値・区間の厳格分離**:
+   - ベイズ推論では点推定値 `source: "posterior_median"`、区間 `method: "posterior_eti"`（等裾信用区間）を出力する。
+   - ブートストラップ推論では `source: "observed_sample_estimate"`、`method: "bootstrap_percentile"` を出力する。
+2. **解釈・ナラティブガード**:
+   - **同等の誤認禁止**: 「統計的非有意（信頼区間・信用区間が 0 を跨ぐ）であることは、治療群間の同等性・非劣性を意味しない」旨を明記し、同等と断定してはならない。
+   - **方向確率の因果過大解釈禁止**: 事後確率 $P(RD > 0)$ またはブートストラップ支持比率が 0.95 を超えても、未調整観察データにおいて因果的優越性を主張してはならない。
+   - **探索的スクリーニング免責**: 多テーマ一括スクリーニング時は、家族ワイズ第1種過誤率（FWER）が制御されていない探索的スクリーニングである旨の免責事項を必須記載する。
+3. **視覚エンコーディング契約**:
+   - セルや行の背景色は、方向確率 $P(RD > 0)$ 単独で決定してはならない。実務領域（`target_excess`, `practical_neutral`, `reference_excess`）と U-grade（U0〜U3）の組み合わせによってのみ色調を付与する（`primary_delta` が設定されていない場合は色調ハイライトを無効化する）。
+4. **完全自己完結型成果物（Zero-External-Asset 原則）**:
+   - 生成される HTML は、外部 CDN（Google Fonts, DataTables CDN 等）やローカルの OS 絶対パス（`/Users/` 等）を一切含まない完全オフライン仕様とする。
+5. **出力ディレクトリ規約**:
+   - 出力先は `<out>/run_<first16>[_N]/`（推奨: `evidence_runs/vcd_categorical_reporting/run_<canonical_id>[_N]/`）とし、run ディレクトリ直下に完全隔離する。
 
-## 手順
+---
 
-### Pass 0: 分析の設計と文脈の把握
+## ワークフロー
 
-1. `analysis_config.json` が存在するか確認し、読み取る。
-   - `input`: 元データのパス
-   - `vars`: 分析の軸となった変数
-   - `data_analysis_scope.md`: 分析の背景と意図
-2. これらの情報を元に、単なる統計計算以上の「文脈に沿った考察」を準備する。
+```mermaid
+flowchart TD
+  p0["Pass 0: 事前検分・ルーティング (routing_decision.json)"] --> p1["Pass 1: 独立 Jeffreys 推論 (Beta-Binomial)"]
+  p1 --> p2["Pass 2: 成果物生成 (comparative_evidence.json / summary.csv)"]
+  p2 --> p3["Pass 3: 自己完結型 HTML / Markdown Dashboard 生成"]
+```
 
-### Pass 1: データプロファイルの確認
+### 1. 入力データと Pass 0 ルーティング
 
-...
+入力データは、Pass 0（`vcd-pass0-consultation`）により検証され、非整数カウントの排除、被験者重複診断、MedDRA バージョン確認を経た後にルーティング決定（`routing_decision.json`）を受け取ります。
 
-1. `data_profile.json` を読み取る。
-2. 次元数・水準数・疎密度を確認し、`render_config.json` を生成して `vcd-categorical-analysis` の Pass 2 を実行させる。
-   - 水準数が多い場合（合計セル数 > 200）: `collapse_below_n` や `max_levels_per_var` の調整を検討
-   - 3-way の場合: `strata_to_render` で注目すべき層を選択（全層を生成する場合は空配列）
+### 2. コントラスト算出と出力成果物
 
-### Pass 2 成果物の読み取りと判断
+本スキルは、以下の標準成果物を隔離 run ディレクトリ内に生成します：
 
-1. `summary_*.json` を読み取り、以下の2段階で思考すること：
-   - **第1段階（全体構造の俯瞰）**: 主効果モデルの残差から、変数間の自明かつ強力な関連性を指摘
-   - **第2段階（局所交互作用の洞察）**: 2-way モデルの残差から、単純な相関では説明できない特異な偏りを言語化
-2. `strata_summary` を読み取り、**どの層の gt マトリックスを第2章に前面配置するか**を決定する。`max_abs_res_per_stratum` と `cramers_v_per_stratum` の値から統計的に最も注目すべき層を選ぶ。
-3. `n_significant_cells_5pct` と `n_significant_cells_1pct` の比率を確認し、有意セルが多すぎる場合は注釈を付与する。
+- `comparative_evidence.json`: 構造化 JSON エビデンス
+- `comparative_summary.csv`: 主要要約指標一覧 CSV
+- `comparative_report.md`: 日本語エビデンス Markdown レポート
+- `dashboard.html`: 自己完結型完全オフライン HTML ダッシュボード
 
-### レポート構成
+---
 
-`vcd_analysis_report.md` を以下の3章構成で Artifact として作成すること：
+## レガシー互換性
 
-- **第1章：結論と所見** — サマリー文（1-2文）→ 箇条書き所見 → 推奨アクション（1-2文）
-- **第2章：判断根拠** — モデル比較表、AI が選択した gt マトリックス、有意セル数
-- **第3章：詳細データ** — DT テーブルへのリンク、全層別マトリックス、Mosaic/Assoc プロット
-
-## 確認ゲート
-
-- 章構成や口調を変更する前に、既定テンプレート（3章構成）を維持するか確認する。
-- 先行スキル成果物が不足している場合、推測で補完せず不足ファイルを明示して再実行確認を取る。
-
-> [!IMPORTANT]
-> デザインは Mermaid シーケンス図による概況、`> [!NOTE]` / `> [!TIP]` バッジを活用し、ビジネスエグゼクティブにそのまま提示できる品質とすること。
-
-## リソース
-
-| パス | 役割 |
-| :--- | :--- |
-| `references/interface.md` | 共有契約（JSON/CSVスキーマ、命名規則） |
-| `references/workflow.md` | 2パスシーケンス図 |
-| `references/report-template.md` | 3章構成テンプレート |
-| `references/evaluation-criteria.md` | AI判断基準（残差閾値、層別選択ロジック） |
+以前の 2 段階レガシーレポートテンプレート（`vcd_analysis_report.md` 等）は、`references/legacy_report_template.md` として保全されています。

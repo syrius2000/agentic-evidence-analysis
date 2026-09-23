@@ -1,109 +1,109 @@
 ## 0. Specification and Ownership Gate
 
-- [ ] 0.1 Create `docs/Artifacts/implementation_plan_NNN_0923.md` from the approved plan and verify file existence.
-- [ ] 0.2 Initialize active OpenSpec change directory `openspec/changes/comparative-evidence-reporting-v3/` and verify structure.
-- [ ] 0.3 Populate `proposal.md`, `design.md`, delta specs, and `tasks.md` conforming to OpenSpec schema.
-- [ ] 0.4 Declare and verify capabilities: `pass0-analysis-routing`, `comparative-evidence-reporting`, `comparative-design-inference`, and `evidence-decision-consistency`.
-- [ ] 0.5 Confirm `two-way-evidence-analysis` spec remains intact for contingency-table association/residual analysis without modifications.
-- [ ] 0.6 Verify delta spec `specs/deterministic-r-dependencies/spec.md` references `tests/run_regression_suite.R` as the dynamic canonical registry.
-- [ ] 0.7 Verify integration contract with `evidence-run-layout` ensuring all new skills use `evidence_runs/<skill_slug>/run_<canonical_id>[_N]/`.
-- [ ] 0.8 Run `openspec validate comparative-evidence-reporting-v3 --strict --json` and verify 0 validation errors.
-- [ ] 0.9 Obtain explicit Owner approval before transitioning to implementation phase.
+- [x] 0.1 Create `docs/Artifacts/implementation_plan_NNN_0923.md` from the approved plan and verify file existence.
+- [x] 0.2 Initialize active OpenSpec change directory `openspec/changes/comparative-evidence-reporting-v3/` and verify structure.
+- [x] 0.3 Populate `proposal.md`, `design.md`, delta specs, and `tasks.md` conforming to OpenSpec schema.
+- [x] 0.4 Declare and verify capabilities: `pass0-analysis-routing`, `comparative-evidence-reporting`, `comparative-design-inference`, and `evidence-decision-consistency`.
+- [x] 0.5 Confirm `two-way-evidence-analysis` spec remains intact for contingency-table association/residual analysis without modifications.
+- [x] 0.6 Verify delta spec `specs/deterministic-r-dependencies/spec.md` references `tests/run_regression_suite.R` as the dynamic canonical registry.
+- [x] 0.7 Verify integration contract with `evidence-run-layout` ensuring all new skills use `evidence_runs/<skill_slug>/run_<canonical_id>[_N]/`.
+- [x] 0.8 Run `openspec validate comparative-evidence-reporting-v3 --strict --json` and verify 0 validation errors.
+- [x] 0.9 Obtain explicit Owner approval before transitioning to implementation phase.
 
 ## 1. Pass 0 Consultation Gateway
 
-- [ ] 1.1 Extend Pass 0 schema with domain, estimand, analysis unit, target/reference, design, practical-difference mode, hierarchy, reporting purpose, and decision-review flag, verifying against schema test.
-- [ ] 1.2 Implement inspection for non-integer counts, verifying warning/error emission on float inputs.
-- [ ] 1.3 Add duplicate subject diagnostic checks within PT and SOC, reporting duplication counts and proposing standard counting rules without silent data transformation.
-- [ ] 1.4 Detect optional column patterns (weight, matched-set, cluster, person-time, SOC/PT, study) and verify detection in summary output.
-- [ ] 1.5 Implement deterministic routing logic outputting `routing_decision.json` with input hashes, configuration hashes, target engine slug, and inferential semantics.
-- [ ] 1.6 Support explicit `practical_difference.mode = "none"` with `primary_delta = null` as a valid non-blocking state, while requiring explicit confirmation for ambiguous causal estimands (ATE vs ATT).
-- [ ] 1.7 Enforce fail-fast guard intercepting complex survey sampling weights with code `UNSUPPORTED_SURVEY_DESIGN` and preventing weighted pseudo-counts from entering the independent Beta-Binomial engine.
-- [ ] 1.8 Add comprehensive Pass 0 test suite and verify `Rscript tests/test_pass0_routing.R` passes.
+- [x] 1.1 Extend Pass 0 schema with domain, estimand, analysis unit, target/reference, design, practical-difference mode, hierarchy, reporting purpose, and decision-review flag, verifying against schema test.
+- [x] 1.2 Implement inspection for non-integer counts, verifying warning/error emission on float inputs.
+- [x] 1.3 Add duplicate subject diagnostic checks within PT and SOC, reporting duplication counts and proposing standard counting rules without silent data transformation.
+- [x] 1.4 Detect optional column patterns (weight, matched-set, cluster, person-time, SOC/PT, study) and verify detection in summary output.
+- [x] 1.5 Implement deterministic routing logic outputting `routing_decision.json` with input hashes, configuration hashes, target engine slug, and inferential semantics.
+- [x] 1.6 Support explicit `practical_difference.mode = "none"` with `primary_delta = null` as a valid non-blocking state, while requiring explicit confirmation for ambiguous causal estimands (ATE vs ATT).
+- [x] 1.7 Enforce fail-fast guard intercepting complex survey sampling weights with code `UNSUPPORTED_SURVEY_DESIGN` and preventing weighted pseudo-counts from entering the independent Beta-Binomial engine.
+- [x] 1.8 Add comprehensive Pass 0 test suite and verify `Rscript tests/test_pass0_routing.R` passes.
 
 ## 2. Shared Schemas and Contrast Engine
 
-- [ ] 2.1 Implement logical runtime schema `comparative-draws-v1.json` supporting `inferential_semantics = "posterior" | "bootstrap"` with ephemeral in-memory management.
-- [ ] 2.2 Implement permanent deliverable schema `comparative-evidence-v1.json` supporting explicit point estimate sources (`estimate.source = "posterior_median" | "observed_sample_estimate"`) and nested intervals (`interval: { method = "posterior_eti" | "bootstrap_percentile", ... }`).
-- [ ] 2.3 Implement shared contrast transformation engine in `.agents/shared/comparative_contrasts.R` and verify unit tests.
-- [ ] 2.4 Implement risk difference (RD) and incidence rate difference (IRD) draw transformations, verified by mathematical test cases.
-- [ ] 2.5 Implement relative risk (RR) and incidence rate ratio (IRR) draw transformations, verified by mathematical test cases.
-- [ ] 2.6 Implement excess per natural unit conversions with domain-aware field names (`additional_subjects_per_100_treated`, `additional_events_per_100_person_years`).
-- [ ] 2.7 Implement direction support metric, labeling Bayesian outputs as $P(RD > 0)$ and bootstrap outputs as `bootstrap_support_fraction_rd_gt_zero`.
-- [ ] 2.8 Implement configurable delta profile evaluations over user-specified or non-normative default threshold vectors, asserting monotonic properties.
-- [ ] 2.9 Implement practical region support values ($q_T, q_N, q_R$) under container `practical_region_support` across canonical regions (`target_excess`, `practical_neutral`, `reference_excess`), verifying $q_T + q_N + q_R = 1.0$ invariant.
-- [ ] 2.10 Implement Practical-Region Resolution Grade (U0–U3) from $C = \max(q_T, q_N, q_R)$, documenting that U-grade reflects region classification decisiveness of the active uncertainty distribution rather than generic sampling precision.
-- [ ] 2.11 Implement separate continuous precision metrics (`rd_interval_width`, `log_rr_interval_width`, effective sample size) and verify presence in JSON output.
-- [ ] 2.12 Enforce strict terminology separation: "credible interval (ETI)" and "posterior probability" for Bayesian posteriors vs "bootstrap percentile interval" and "bootstrap support fraction" for bootstrap replicates, verified by linting tests.
-- [ ] 2.13 Implement zero and sparse count diagnostic badges (`ZERO_REFERENCE`, `ZERO_BOTH`, `SPARSE_EVENTS`) and continuous instability metrics (`log_rr_interval_width`).
-- [ ] 2.14 Add schema invariant test suite and verify `Rscript tests/test_comparative_schemas.R` passes.
+- [x] 2.1 Implement logical runtime schema `comparative-draws-v1.json` supporting `inferential_semantics = "posterior" | "bootstrap"` with ephemeral in-memory management.
+- [x] 2.2 Implement permanent deliverable schema `comparative-evidence-v1.json` supporting explicit point estimate sources (`estimate.source = "posterior_median" | "observed_sample_estimate"`) and nested intervals (`interval: { method = "posterior_eti" | "bootstrap_percentile", ... }`).
+- [x] 2.3 Implement shared contrast transformation engine in `.agents/shared/comparative_contrasts.R` and verify unit tests.
+- [x] 2.4 Implement risk difference (RD) and incidence rate difference (IRD) draw transformations, verified by mathematical test cases.
+- [x] 2.5 Implement relative risk (RR) and incidence rate ratio (IRR) draw transformations, verified by mathematical test cases.
+- [x] 2.6 Implement excess per natural unit conversions with domain-aware field names (`additional_subjects_per_100_treated`, `additional_events_per_100_person_years`).
+- [x] 2.7 Implement direction support metric, labeling Bayesian outputs as $P(RD > 0)$ and bootstrap outputs as `bootstrap_support_fraction_rd_gt_zero`.
+- [x] 2.8 Implement configurable delta profile evaluations over user-specified or non-normative default threshold vectors, asserting monotonic properties.
+- [x] 2.9 Implement practical region support values ($q_T, q_N, q_R$) under container `practical_region_support` across canonical regions (`target_excess`, `practical_neutral`, `reference_excess`), verifying $q_T + q_N + q_R = 1.0$ invariant.
+- [x] 2.10 Implement Practical-Region Resolution Grade (U0–U3) from $C = \max(q_T, q_N, q_R)$, documenting that U-grade reflects region classification decisiveness of the active uncertainty distribution rather than generic sampling precision.
+- [x] 2.11 Implement separate continuous precision metrics (`rd_interval_width`, `log_rr_interval_width`, effective sample size) and verify presence in JSON output.
+- [x] 2.12 Enforce strict terminology separation: "credible interval (ETI)" and "posterior probability" for Bayesian posteriors vs "bootstrap percentile interval" and "bootstrap support fraction" for bootstrap replicates, verified by linting tests.
+- [x] 2.13 Implement zero and sparse count diagnostic badges (`ZERO_REFERENCE`, `ZERO_BOTH`, `SPARSE_EVENTS`) and continuous instability metrics (`log_rr_interval_width`).
+- [x] 2.14 Add schema invariant test suite and verify `Rscript tests/test_comparative_schemas.R` passes.
 
 ## 3. Independent Jeffreys Binary Engine
 
-- [ ] 3.1 Implement `.agents/shared/independent_beta_binomial.R` and verify file creation.
-- [ ] 3.2 Add assertion enforcing strictly non-negative integer counts for events and positive totals ($n > 0$), rejecting $n=0$ cohorts.
-- [ ] 3.3 Validate $0 \le x_T \le n_T$ and $0 \le x_R \le n_R$ bounds, verified by unit assertions.
-- [ ] 3.4 Implement Jeffreys prior $\text{Beta}(0.5, 0.5)$ sampling, verified against theoretical posterior quantile benchmarks.
-- [ ] 3.5 Support deterministic pseudo-random seeds for exact uncertainty draw reproducibility, verified by seed equality tests.
-- [ ] 3.6 Generate target and reference posterior summaries (median, mean, 95% ETI), setting `estimate.source = "posterior_median"`, verified by numerical assertions.
-- [ ] 3.7 Output standardized uncertainty draws conforming to the logical `comparative-draws-v1` interface, verified by in-memory schema validator.
-- [ ] 3.8 Implement detection of zero-reference counts causing infinite theoretical expectation for $RR$, setting `mean = null` and `mean_is_finite = false`.
-- [ ] 3.9 Enforce safeguard preventing empirical Monte-Carlo mean of $RR$ from being reported when theoretical expectation diverges, verified by unit test.
-- [ ] 3.10 Add relative risk continuous instability diagnostics (`log_rr_interval_width`, `rr_interval_fold_range`), verified by test assertions.
-- [ ] 3.11 Implement configurable prior sensitivity check against uniform prior $\text{Beta}(1.0, 1.0)$ governed by `prior_sensitivity.mode = "zero_cell" | "off" | "explicit"` (default `"zero_cell"`), recording robustness flag without modifying primary U-grade.
-- [ ] 3.12 Implement golden regression cases (`3/100 vs 0/100`, `0/100 vs 0/100`, `30/100 vs 20/100`, `3/30 vs 30/300`, `1/200 vs 0/1000`, `1/200 vs 2/1000`, `0/200 vs 2/1000`) and verify all outputs.
-- [ ] 3.13 Add tests asserting delta-profile monotonicity and $q_T + q_N + q_R = 1.0$ within floating point tolerance.
-- [ ] 3.14 Test that `primary_delta = null` disables practical classification categories and visual hue assignment, verified by unit test.
+- [x] 3.1 Implement `.agents/shared/independent_beta_binomial.R` and verify file creation.
+- [x] 3.2 Add assertion enforcing strictly non-negative integer counts for events and positive totals ($n > 0$), rejecting $n=0$ cohorts.
+- [x] 3.3 Validate $0 \le x_T \le n_T$ and $0 \le x_R \le n_R$ bounds, verified by unit assertions.
+- [x] 3.4 Implement Jeffreys prior $\text{Beta}(0.5, 0.5)$ sampling, verified against theoretical posterior quantile benchmarks.
+- [x] 3.5 Support deterministic pseudo-random seeds for exact uncertainty draw reproducibility, verified by seed equality tests.
+- [x] 3.6 Generate target and reference posterior summaries (median, mean, 95% ETI), setting `estimate.source = "posterior_median"`, verified by numerical assertions.
+- [x] 3.7 Output standardized uncertainty draws conforming to the logical `comparative-draws-v1` interface, verified by in-memory schema validator.
+- [x] 3.8 Implement detection of zero-reference counts causing infinite theoretical expectation for $RR$, setting `mean = null` and `mean_is_finite = false`.
+- [x] 3.9 Enforce safeguard preventing empirical Monte-Carlo mean of $RR$ from being reported when theoretical expectation diverges, verified by unit test.
+- [x] 3.10 Add relative risk continuous instability diagnostics (`log_rr_interval_width`, `rr_interval_fold_range`), verified by test assertions.
+- [x] 3.11 Implement configurable prior sensitivity check against uniform prior $\text{Beta}(1.0, 1.0)$ governed by `prior_sensitivity.mode = "zero_cell" | "off" | "explicit"` (default `"zero_cell"`), recording robustness flag without modifying primary U-grade.
+- [x] 3.12 Implement golden regression cases (`3/100 vs 0/100`, `0/100 vs 0/100`, `30/100 vs 20/100`, `3/30 vs 30/300`, `1/200 vs 0/1000`, `1/200 vs 2/1000`, `0/200 vs 2/1000`) and verify all outputs.
+- [x] 3.13 Add tests asserting delta-profile monotonicity and $q_T + q_N + q_R = 1.0$ within floating point tolerance.
+- [x] 3.14 Test that `primary_delta = null` disables practical classification categories and visual hue assignment, verified by unit test.
 
 ## 4. `vcd-categorical-reporting` Skill Revival
 
-- [ ] 4.1 Update skill manifest to transition `vcd-categorical-reporting` from deprecated to active comparative evidence skill.
-- [ ] 4.2 Rewrite `.agents/skills/vcd-categorical-reporting/SKILL.md` to specify comparative evidence reporting workflow and verify docs.
-- [ ] 4.3 Preserve historical reporting templates under explicit legacy compatibility namespaces and verify legacy tests continue passing.
-- [ ] 4.4 Add multi-theme long-format dataset ingestion adapter and verify tabular parsing tests.
-- [ ] 4.5 Add support for explicit pairwise contrast specifications across multiple study groups, verified by unit tests.
-- [ ] 4.6 Implement contrast generation for $>2$ groups defaulting to reference-vs-all and requiring explicit request for all-pairs, verified by unit test.
-- [ ] 4.7 Generate canonical output artifacts `comparative_evidence.json` and `comparative_summary.csv`, verified by schema validation.
-- [ ] 4.8 Implement self-contained offline Markdown and HTML summary reports complying with zero-external-asset rules and verify browser rendering.
-- [ ] 4.9 Retain raw event counts ($x/n$), sample sizes, and optional SAS PROC FREQ / Fisher exact test compatibility columns in output.
-- [ ] 4.10 Implement narrative guard in AI reporting template prohibiting claims that "non-significance implies equivalence", verified by template test.
-- [ ] 4.11 Implement narrative guard prohibiting claims that posterior direction implies causal superiority, verified by template test.
-- [ ] 4.12 Enforce visual encoding rule: cell background hue SHALL NOT be determined by posterior direction alone, verified by CSS/HTML audit.
-- [ ] 4.13 Add mandatory exploratory screening disclaimer in multi-theme batch reports stating posterior probabilities do not guarantee familywise error rate control.
+- [x] 4.1 Update skill manifest to transition `vcd-categorical-reporting` from deprecated to active comparative evidence skill.
+- [x] 4.2 Rewrite `.agents/skills/vcd-categorical-reporting/SKILL.md` to specify comparative evidence reporting workflow and verify docs.
+- [x] 4.3 Preserve historical reporting templates under explicit legacy compatibility namespaces and verify legacy tests continue passing.
+- [x] 4.4 Add multi-theme long-format dataset ingestion adapter and verify tabular parsing tests.
+- [x] 4.5 Add support for explicit pairwise contrast specifications across multiple study groups, verified by unit tests.
+- [x] 4.6 Implement contrast generation for $>2$ groups defaulting to reference-vs-all and requiring explicit request for all-pairs, verified by unit test.
+- [x] 4.7 Generate canonical output artifacts `comparative_evidence.json` and `comparative_summary.csv`, verified by schema validation.
+- [x] 4.8 Implement self-contained offline Markdown and HTML summary reports complying with zero-external-asset rules and verify browser rendering.
+- [x] 4.9 Retain raw event counts ($x/n$), sample sizes, and optional SAS PROC FREQ / Fisher exact test compatibility columns in output.
+- [x] 4.10 Implement narrative guard in AI reporting template prohibiting claims that "non-significance implies equivalence", verified by template test.
+- [x] 4.11 Implement narrative guard prohibiting claims that posterior direction implies causal superiority, verified by template test.
+- [x] 4.12 Enforce visual encoding rule: cell background hue SHALL NOT be determined by posterior direction alone, verified by CSS/HTML audit.
+- [x] 4.13 Add mandatory exploratory screening disclaimer in multi-theme batch reports stating posterior probabilities do not guarantee familywise error rate control.
 
 ## 5. Clinical Safety Adapter
 
-- [ ] 5.1 Define canonical Safety reporting hierarchy as Primary SOC $\rightarrow$ PT in `.agents/shared/safety_adapter.R`, keeping HLGT and HLT as optional secondary drill-downs.
-- [ ] 5.2 Require MedDRA version provenance and dictionary release metadata in input analysis configuration, verified by validation test.
-- [ ] 5.3 Enforce Primary SOC mapping as the standard aggregation level, verified by hierarchy test fixtures.
-- [ ] 5.4 Deduplicate subjects within PT so that an individual with multiple occurrences of the same PT is counted once, verified by test assertion.
-- [ ] 5.5 Deduplicate subjects within SOC so that an individual experiencing multiple distinct PTs within the same SOC is counted once in that SOC, verified by test fixture.
-- [ ] 5.6 Assert that unique subject count in a SOC never exceeds the group denominator, verified by automated assertion.
-- [ ] 5.7 Assert and verify that SOC incidence count is never calculated by summing child PT incident counts, verified by unit test.
-- [ ] 5.8 Support study-specific output stratification as canonical, designating multi-study pooled aggregations as `descriptive_pooled` without asserting unmodeled between-study homogeneity.
-- [ ] 5.9 Implement clinical safety domain labels (`additional_subjects_per_100_treated`, SOC, PT, Incidence Proportion, RR, U-grade) in reports.
-- [ ] 5.10 Manage reciprocal-RD (NNH) rendering using `reciprocal_status` (`STABLE_DIRECTION`, `SIGN_AMBIGUOUS`, `RD_NEAR_ZERO`, `NOT_INTERPRETABLE`), suppressing naive intervals when the RD interval crosses zero.
-- [ ] 5.11 Add Safety regression test fixture featuring recurrent adverse events across multiple PTs within a single SOC, verified by test script.
-- [ ] 5.12 Add Safety zero-cell adverse event test fixture and verify safe report rendering.
+- [x] 5.1 Define canonical Safety reporting hierarchy as Primary SOC $\rightarrow$ PT in `.agents/shared/safety_adapter.R`, keeping HLGT and HLT as optional secondary drill-downs.
+- [x] 5.2 Require MedDRA version provenance and dictionary release metadata in input analysis configuration, verified by validation test.
+- [x] 5.3 Enforce Primary SOC mapping as the standard aggregation level, verified by hierarchy test fixtures.
+- [x] 5.4 Deduplicate subjects within PT so that an individual with multiple occurrences of the same PT is counted once, verified by test assertion.
+- [x] 5.5 Deduplicate subjects within SOC so that an individual experiencing multiple distinct PTs within the same SOC is counted once in that SOC, verified by test fixture.
+- [x] 5.6 Assert that unique subject count in a SOC never exceeds the group denominator, verified by automated assertion.
+- [x] 5.7 Assert and verify that SOC incidence count is never calculated by summing child PT incident counts, verified by unit test.
+- [x] 5.8 Support study-specific output stratification as canonical, designating multi-study pooled aggregations as `descriptive_pooled` without asserting unmodeled between-study homogeneity.
+- [x] 5.9 Implement clinical safety domain labels (`additional_subjects_per_100_treated`, SOC, PT, Incidence Proportion, RR, U-grade) in reports.
+- [x] 5.10 Manage reciprocal-RD (NNH) rendering using `reciprocal_status` (`STABLE_DIRECTION`, `SIGN_AMBIGUOUS`, `RD_NEAR_ZERO`, `NOT_INTERPRETABLE`), suppressing naive intervals when the RD interval crosses zero.
+- [x] 5.11 Add Safety regression test fixture featuring recurrent adverse events across multiple PTs within a single SOC, verified by test script.
+- [x] 5.12 Add Safety zero-cell adverse event test fixture and verify safe report rendering.
 
 ## 6. RWD and Prescription Adapters
 
-- [ ] 6.1 Implement generic hierarchical adapter supporting arbitrary parent-child theme structures (`parent_theme -> item_theme`), verified by unit test.
-- [ ] 6.2 Implement Real-World Data (RWD) clinical context extension mapping diagnoses and procedures, verified by test fixture.
-- [ ] 6.3 Implement Prescription/Formulary analysis context extension mapping drug classes to active ingredients, verified by test fixture.
-- [ ] 6.4 Implement domain-specific presentation decorators without altering underlying canonical statistical fields, verified by output validation.
-- [ ] 6.5 Add statistical invariance test asserting that identical counts passed through Safety, RWD, and Prescription adapters yield identical comparative evidence statistics, verified by `Rscript tests/test_domain_invariance.R`.
+- [x] 6.1 Implement generic hierarchical adapter supporting arbitrary parent-child theme structures (`parent_theme -> item_theme`), verified by unit test.
+- [x] 6.2 Implement Real-World Data (RWD) clinical context extension mapping diagnoses and procedures, verified by test fixture.
+- [x] 6.3 Implement Prescription/Formulary analysis context extension mapping drug classes to active ingredients, verified by test fixture.
+- [x] 6.4 Implement domain-specific presentation decorators without altering underlying canonical statistical fields, verified by output validation.
+- [x] 6.5 Add statistical invariance test asserting that identical counts passed through Safety, RWD, and Prescription adapters yield identical comparative evidence statistics, verified by `Rscript tests/test_domain_invariance.R`.
 
 ## 7. Practical Difference and Uncertainty Policy
 
-- [ ] 7.1 Implement default `primary_delta = null` (`mode: "none"`) configuration, verified by test assertion.
-- [ ] 7.2 Implement natural-unit conversions for delta specifications (`per_100`, `per_1000`, absolute probability), verified by unit tests.
-- [ ] 7.3 Implement explicit prespecified delta evaluation mode, verified by parameter configuration test.
-- [ ] 7.4 Implement versioned departmental policy mode for delta boundaries, verified by configuration loader.
-- [ ] 7.5 Ensure delta profile matrix is computed and archived even when no primary delta is approved, verified by JSON schema validation.
-- [ ] 7.6 Implement simulation utility to evaluate candidate U0–U3 uncertainty thresholds under various sample sizes and base rates.
-- [ ] 7.7 Validate provisional U0–U3 cutoff parameters against synthetic sparse and imbalanced cohorts, documenting recommendations.
-- [ ] 7.8 Verify all generated documentation and report tooltips explicitly clarify that U-grade reflects region classification decisiveness of the active uncertainty distribution, not sampling precision or clinical severity.
+- [x] 7.1 Implement default `primary_delta = null` (`mode: "none"`) configuration, verified by test assertion.
+- [x] 7.2 Implement natural-unit conversions for delta specifications (`per_100`, `per_1000`, absolute probability), verified by unit tests.
+- [x] 7.3 Implement explicit prespecified delta evaluation mode, verified by parameter configuration test.
+- [x] 7.4 Implement versioned departmental policy mode for delta boundaries, verified by configuration loader.
+- [x] 7.5 Ensure delta profile matrix is computed and archived even when no primary delta is approved, verified by JSON schema validation.
+- [x] 7.6 Implement simulation utility to evaluate candidate U0–U3 uncertainty thresholds under various sample sizes and base rates.
+- [x] 7.7 Validate provisional U0–U3 cutoff parameters against synthetic sparse and imbalanced cohorts, documenting recommendations.
+- [x] 7.8 Verify all generated documentation and report tooltips explicitly clarify that U-grade reflects region classification decisiveness of the active uncertainty distribution, not sampling precision or clinical severity.
 
 ## 8. Design-Aware Inference Engine: 1:1 Matched Pairs
 
