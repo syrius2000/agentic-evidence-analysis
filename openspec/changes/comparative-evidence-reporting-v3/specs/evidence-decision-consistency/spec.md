@@ -1,50 +1,45 @@
 ## Purpose
 
-Define the specification for the Evidence-Decision Consistency review engine. This component measures concordance between statistical evidence profiles and human expert decisions across historical analyses, retrieves relevant precedents via unsupervised feature distance, flags discordances as QA review candidates without overriding human judgment, and maintains an audit trajectory of decision rationale.
+Define the specification for the Evidence-Decision Consistency review engine. This component measures concordance between decision-label-free statistical evidence profiles and human expert decisions across historical analyses, retrieves relevant precedents via unsupervised Gower distance, presents precedent distributions without imposing automated regulatory decisions, and maintains an append-only, tamper-evident audit ledger.
 
 ## ADDED Requirements
 
-### Requirement: Unsupervised Evidence Feature Vector Construction
+### Requirement: Decision-Label-Free Evidence Feature Construction
 
-The system SHALL construct a standardized, multidimensional evidence feature vector from statistical analysis results without incorporating prior human decision labels or clinical verdict codes into the feature representation.
+The system SHALL construct standardized evidence feature vectors from statistical analysis summaries, strictly excluding human clinical verdict codes, regulatory outcome labels, and prior decision attributes from the feature representation, while partitioning features into mandatory core attributes and optional delta-dependent attributes.
 
 #### Scenario: Generating feature vectors from comparative analysis outputs
+- **WHEN** a comparative analysis profile is processed for consistency auditing
+- **THEN** the system MUST extract purely statistical summary metrics (such as $RD$ median, $RD$ interval width, direction support, effective sample size, and quarantine flags) into a feature vector conforming to `evidence-feature-v1`, handling missing practical-region probabilities appropriately when `primary_delta` is `null`.
 
-- **WHEN** a completed comparative analysis profile containing posterior probabilities, interval widths, sample sizes, and balance metrics is processed
-- **THEN** the system MUST extract purely objective statistical summary features (including $RD$ median, $P(RD > 0)$, $q_H$, $q_N$, $q_B$, uncertainty interval width, sample size, and quarantine status) into an unsupervised feature vector.
+### Requirement: Gower Distance Precedent Retrieval with Version Binding
 
-### Requirement: Gower Distance Precedent Retrieval
+The system SHALL calculate pairwise dissimilarities between the current evidence feature vector and historical case vectors using Gower distance, binding comparisons to historical metadata including dictionary release version, delta policy version, and feature schema version.
 
-The system SHALL calculate pairwise dissimilarities between the current evidence feature vector and historical case vectors using Gower distance, retrieving the most similar historical precedents and hierarchical clusters.
+#### Scenario: Querying historical precedents for an active case
+- **WHEN** an evidence feature vector is submitted to the consistency engine
+- **THEN** the system MUST compute Gower distance across available numeric and categorical attributes against historical cases, expose version differences across cases, rank historical cases by proximity, and retrieve the nearest precedent cohort.
 
-#### Scenario: Querying historical precedents for a new evidence profile
+### Requirement: Precedent Distribution and Context Presentation
 
-- **WHEN** a new evidence profile is submitted to the consistency engine
-- **THEN** the system MUST compute Gower distance across numerical and ordinal attributes against the historical repository, rank past analyses by similarity, and return the top matching cases along with their recorded context.
+The system SHALL present retrieved historical precedents along with their recorded decisions, supporting statistical evidence, documented reviewer rationales, and context metadata side-by-side with the active analysis case.
 
-### Requirement: Historical Context and Decision Narrative Display
+#### Scenario: Displaying precedent review profile
+- **WHEN** historical precedents are retrieved for an active review session
+- **THEN** the system MUST display the distribution of historical expert decisions, associated interval widths, sample sizes, and qualitative justification notes without presenting a singular prescriptive decision.
 
-The system SHALL present retrieved historical precedents along with their recorded decisions, supporting statistical evidence, and documented rationale to provide context for expert review.
+### Requirement: Configurable Discordance Advisory as QA Review Candidates
 
-#### Scenario: Displaying precedent review card
-
-- **WHEN** top historical precedents are retrieved for an active review session
-- **THEN** the system MUST format and display the past cases' evidence metrics, original expert decisions, and rationale notes side-by-side with the current evidence profile.
-
-### Requirement: Discordance Flagging as Quality Review Candidates
-
-The system SHALL flag instances where an assigned or provisional decision markedly diverges from the cluster consensus of historical precedents as a "QA Review Candidate", and MUST NOT classify or report such divergence as a fatal error, system defect, or automatic rejection.
+The system SHALL evaluate case decisions against precedent distributions using a configurable discordance policy (neighborhood size $k$ or distance radius), flagging divergence as an informational "QA Review Candidate" prompting expert rationale documentation, and SHALL NOT classify divergence as a fatal error, system defect, or automatic rejection.
 
 #### Scenario: Identifying discordant decision relative to precedent cluster
+- **WHEN** an expert's provisional decision diverges from the dominant pattern of its nearest precedent neighborhood under the active discordance policy
+- **THEN** the system MUST generate an advisory notification flagging the case as a "QA Review Candidate", prompting the reviewer to document their context-specific rationale, without halting workflow progression or labeling the state as an error.
 
-- **WHEN** the provisional decision on a case differs substantially from the decisions documented in 80% or more of its nearest precedent cluster
-- **THEN** the system MUST generate an informational advisory flagging the case as a "QA Review Candidate", prompting the reviewer to document their context-specific rationale, without blocking workflow progression or labeling the state as an error.
+### Requirement: Append-Only Tamper-Evident Decision Ledger
 
-### Requirement: Decision Trajectory and Rationale Audit Trail
+The system SHALL maintain an append-only, tamper-evident audit ledger recording every decision submission and modification, capturing record ID, previous record SHA-256 hash, evidence profile checksum, decision state, reviewer justification markdown, actor identifier, and JST timestamp.
 
-The system SHALL record an immutable audit trajectory for any decision change, capturing the timestamp, previous state, new state, user identity, and qualitative rationale.
-
-#### Scenario: Logging expert decision rationale upon update
-
-- **WHEN** a reviewer submits or modifies a decision for an analysis case
-- **THEN** the system MUST append an audit record to the case metadata containing the previous decision, updated decision, markdown justification, timestamp (JST), and evidence profile checksum.
+#### Scenario: Logging expert decision rationale
+- **WHEN** a reviewer submits or updates a decision for an analysis case
+- **THEN** the system MUST append a new tamper-evident audit record linking to the previous record hash, recording the complete rationale and timestamp, and verifying cryptographic chain integrity.

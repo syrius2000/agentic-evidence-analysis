@@ -1,61 +1,41 @@
 ## Purpose
 
-Provides a statistical consultation gateway that inspects input dataset integrity, validates study design and count constraints, resolves estimand and practical delta parameters, and generates deterministic analysis routing decisions.
+Define the specification for the Pass 0 consultation and analysis routing gateway. This capability inspects input data structure, validates study design and estimand specifications, verifies subject-level counting rules, and deterministically routes execution to the appropriate statistical engine while failing fast on invalid or unsupported configurations.
 
 ## ADDED Requirements
 
-### Requirement: Input Inspection and Count Validation
+### Requirement: Input Structure and Duplicate Inspection
 
-The system SHALL inspect tabular comparative inputs for count validity, non-negative integer counts, denominator boundaries, and subject duplication before any inferential computation.
+The system SHALL inspect tabular inputs for data integrity, distinguishing integer count summaries from non-integer weights, detecting optional design columns (weights, matched set IDs, cluster IDs, person-time exposure, MedDRA SOC/PT identifiers), and quantifying duplicate subject records within analysis groups.
 
-#### Scenario: Non-integer count rejection in binomial designs
+#### Scenario: Inspecting input columns and subject duplication
+- **WHEN** raw tabular input is submitted to Pass 0 consultation
+- **THEN** the system MUST verify whether cell counts are non-negative integers, detect presence of optional design columns, quantify duplicate subject occurrences within PT and SOC, and propose standard deduplication counting rules without silently modifying the raw data.
 
-- **WHEN** user inputs non-integer event or sample count values for an unweighted binary proportion analysis
-- **THEN** the system SHALL reject the execution with a fail-fast validation error and record the invalid input in the inspection summary
+### Requirement: Explicit Estimand and Delta State Specification
 
-#### Scenario: Zero denominator boundary detection
+The system SHALL require explicit specification of the primary estimand and practical difference mode, permitting `practical_difference.mode = "none"` with `primary_delta = null` as a valid non-blocking state, while requiring explicit confirmation for ambiguous causal estimands (ATE vs ATT).
 
-- **WHEN** input rows contain a zero denominator count (\(n_g = 0\))
-- **THEN** the system SHALL flag the row as unanalyzable for proportion estimation and prevent division-by-zero execution in downstream engines
-
-#### Scenario: Duplicate subject verification in safety data
-
-- **WHEN** safety adverse event data is supplied with repeated subject records under the same Preferred Term (PT)
-- **THEN** the system SHALL detect duplicate subjects, enforce subject-level deduplication rules, and report raw vs deduplicated counts in the inspection output
-
-### Requirement: Design and Estimand Specification
-
-The consultation gateway SHALL capture and validate the primary estimand, analysis unit, target and reference groups, design type, and practical-difference status from user configuration.
-
-#### Scenario: Complete specification resolution
-
-- **WHEN** user provides valid configuration specifying design (independent, matched, IPTW, rate), primary estimand (subject risk, marginal risk, incidence rate), and optional practical delta
-- **THEN** the system SHALL validate that all required parameters for the specified design are present and emit an approved configuration object
-
-#### Scenario: Material ambiguity consultation requirement
-
-- **WHEN** user submits ambiguous configuration lacking primary estimand or target/reference group orientation
-- **THEN** the system SHALL halt automated routing, list the material choices requiring resolution, and prompt for explicit user confirmation
+#### Scenario: Validating practical difference configuration
+- **WHEN** analysis configuration specifies `mode: "none"` and `primary_delta: null`
+- **THEN** the system MUST accept the configuration without triggering a fail-fast error, configuring downstream reporting to generate direction support and delta profile matrices without discrete practical-region classifications.
 
 ### Requirement: Deterministic Routing Decision Generation
 
-The system SHALL generate a structured `routing_decision.json` binding the input data hash, selected design engine, target skill, and execution parameters.
+The system SHALL generate a reproducible routing artifact `routing_decision.json` containing input checksums, configuration hashes, target execution engine slug, inferential semantics (`posterior` or `bootstrap`), and unresolved reviewer decisions.
 
-#### Scenario: Independent binary comparison routing
+#### Scenario: Routing independent binary cohort comparisons
+- **WHEN** independent two-group binary counts with integer values and no matching or weighting variables are inspected
+- **THEN** the system MUST emit `routing_decision.json` assigning the analysis to `vcd-categorical-reporting` using the independent Jeffreys Beta-Binomial engine with `inferential_semantics = "posterior"`.
 
-- **WHEN** input data represents unweighted independent two-group binary counts
-- **THEN** the system SHALL route the analysis to `vcd-categorical-reporting` and record target engine `independent_beta_binomial` in `routing_decision.json`
+### Requirement: Incompatible and Unsupported Design Fail-Fast Guards
 
-#### Scenario: Design-aware comparative routing
+The system SHALL fail fast with structured, actionable diagnostic codes when an analysis configuration violates engine assumptions, specifically preventing weighted or pseudo-count data from entering unweighted Beta-Binomial engines, and rejecting complex survey sampling weights with code `UNSUPPORTED_SURVEY_DESIGN`.
 
-- **WHEN** input data contains matching identifiers or propensity score weights
-- **THEN** the system SHALL route the analysis to `comparative-design-analysis` and record the appropriate design method (matched_set or iptw_bootstrap) in `routing_decision.json`
+#### Scenario: Rejecting survey weights
+- **WHEN** tabular data containing complex survey sampling weights (e.g. strata and cluster survey weights) are submitted
+- **THEN** the system MUST immediately halt execution with diagnostic code `UNSUPPORTED_SURVEY_DESIGN` and provide guidance on supported design capabilities.
 
-### Requirement: Incompatible Design Fail-Fast Guard
-
-The system SHALL immediately halt with an error if a design requiring complex adjustment (e.g. propensity score weights or clustered sampling) is targeted at the independent binomial engine.
-
-#### Scenario: Preventing weighted data from independent binomial inference
-
-- **WHEN** input data includes survey weights or IPTW weights but the user requests simple Beta-Binomial execution
-- **THEN** the system SHALL reject execution with error `INCOMPATIBLE_DESIGN_ROUTING` and require design-aware inference routing
+#### Scenario: Intercepting weighted pseudo-counts
+- **WHEN** non-integer weighted frequencies resulting from propensity score weighting are directed to the unweighted independent Beta-Binomial engine
+- **THEN** the system MUST fail fast, explaining that weighted observational cohorts must be routed to `comparative-design-analysis` (IPTW bootstrap engine).
