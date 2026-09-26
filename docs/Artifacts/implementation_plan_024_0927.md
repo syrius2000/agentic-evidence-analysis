@@ -125,7 +125,7 @@ Effect size
 ### 4.1 定義
 
 [
-E100 = 100 	imes RD
+E100 = 100  imes RD
 ]
 
 ### 4.2 表示
@@ -347,7 +347,7 @@ U-Grade セクションは維持し、主表に残ることと semantic alignmen
 理由:
 
 - E100 は RD の線形再表現であり重複情報。
-- reciprocal RD は (RD 	o 0) で発散する非線形・特異変換。
+- reciprocal RD は (RD  o 0) で発散する非線形・特異変換。
 - status / direction は表示補助メタデータ。
 
 ---
@@ -507,6 +507,7 @@ OpenSpec 実装完了の受入条件は以下。
 11 列から 12 列へ増えるため横スクロール量が増える。
 
 **対応**:
+
 - `table-container { overflow-x: auto; }` を維持。
 - E100 / NNT 列は compact typography とする。
 - 精度・診断を削除して帳尻を合わせない。
@@ -516,6 +517,7 @@ OpenSpec 実装完了の受入条件は以下。
 NNT/NNH は一般に因果的な名称として受け取られやすい。
 
 **対応**:
+
 - canonical 名は `reciprocal_absolute_rd` のまま。
 - Safety の安定方向のみ `NNT-like` / `NNH-like`。
 - 非 Safety は `1/|RD|`。
@@ -526,6 +528,7 @@ NNT/NNH は一般に因果的な名称として受け取られやすい。
 U-Grade は一般的標準統計量ではないため初見で誤解され得る。
 
 **対応**:
+
 - 主表には残す。
 - Guide で practical-region resolution と明示。
 - 効果量・精度・重症度とは別概念であることを維持。
