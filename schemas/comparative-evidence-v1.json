@@ -90,7 +90,15 @@
     },
     "risk_difference": {
       "type": "object",
-      "required": ["estimate", "interval"],
+      "required": [
+        "estimate",
+        "interval",
+        "excess_per_100",
+        "additional_subjects_per_100_treated",
+        "reciprocal_absolute_rd",
+        "reciprocal_status",
+        "reciprocal_direction"
+      ],
       "properties": {
         "estimate": {
           "type": "object",
@@ -111,7 +119,19 @@
           }
         },
         "excess_per_100": { "type": "number" },
-        "additional_subjects_per_100_treated": { "type": "number" }
+        "additional_subjects_per_100_treated": { "type": "number" },
+        "reciprocal_absolute_rd": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        },
+        "reciprocal_status": {
+          "type": "string",
+          "enum": ["STABLE_DIRECTION", "SIGN_AMBIGUOUS", "RD_NEAR_ZERO", "NOT_INTERPRETABLE"]
+        },
+        "reciprocal_direction": {
+          "type": "string",
+          "enum": ["target_excess", "reference_excess", "none"]
+        }
       }
     },
     "relative_risk": {
