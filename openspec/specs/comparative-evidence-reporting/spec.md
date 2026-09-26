@@ -16,12 +16,19 @@ The system SHALL evaluate independent two-group binary counts using primary obje
 
 ### Requirement: Contrast Derivations, Point Estimate Sources, and Ephemeral Draws
 
-The system SHALL derive contrast metrics including Risk Difference ($RD$), Excess per natural unit, Relative Risk ($RR$), and Direction Support from uncertainty draws, explicitly declaring the source of the primary point estimate (`estimate.source = "posterior_median"` for Bayesian models and `estimate.source = "observed_sample_estimate"` for bootstrap models), while managing raw draws as ephemeral in-memory objects by default (`persist_raw_draws = false`).
+The system SHALL derive contrast metrics including Risk Difference ($RD$), Excess per natural unit ($E100 = 100 RD$), reciprocal absolute RD ($1/|RD|$) as a secondary NNT/NNH-like translation, Relative Risk ($RR$), and Direction Support from uncertainty draws, explicitly declaring the source of the primary point estimate (`estimate.source = "posterior_median"` for Bayesian models and `estimate.source = "observed_sample_estimate"` for bootstrap models), while managing raw draws as ephemeral in-memory objects by default (`persist_raw_draws = false`). The reciprocal metric SHALL be defined from the canonical RD point estimate rather than as a posterior/bootstrap summary of transformed draws.
 
 #### Scenario: Deriving contrast metrics with explicit estimate source
 
 - **WHEN** uncertainty draws for comparative groups are processed
-- **THEN** the system MUST assign `estimate.value` based on `estimate.source` (posterior median for Bayes or observed sample estimate for bootstrap), compute nested interval bounds `interval: { lower, upper, level: 0.95, method: "posterior_eti" | "bootstrap_percentile" }`, persist summary metrics into `comparative_evidence.json`, and release raw Monte-Carlo draws from memory.
+- **THEN** the system MUST assign `estimate.value` based on `estimate.source` (posterior median for Bayes or observed sample estimate for bootstrap), compute nested interval bounds `interval: { lower, upper, level: 0.95, method: "posterior_eti" | "bootstrap_percentile" }`, compute `excess_per_100 = 100 * RD`, compute `reciprocal_absolute_rd = 1 / abs(RD)` when numerically defined, assign `reciprocal_status` and `reciprocal_direction`, persist summary metrics into `comparative_evidence.json`, and release raw Monte-Carlo draws from memory.
+
+#### Scenario: Rendering reciprocal RD under directional uncertainty
+
+- **WHEN** the RD uncertainty interval includes zero
+- **THEN** the system MUST set `reciprocal_status = "SIGN_AMBIGUOUS"`, retain the finite reciprocal point value when numerically defined, suppress an NNT/NNH-like directional display, and SHALL NOT construct a naive contiguous reciprocal interval across zero.
+- **AND WHEN** the canonical RD point estimate is numerically zero within machine-precision tolerance
+- **THEN** the system MUST set `reciprocal_status = "RD_NEAR_ZERO"`, `reciprocal_absolute_rd = null`, and `reciprocal_direction = "none"`.
 
 ### Requirement: Zero-Cell Reference Safeguard for Relative Risk
 
@@ -57,12 +64,12 @@ The system SHALL provide a fully self-contained client-side sortable comparative
 
 ### Requirement: Excel-Compatible Canonical Dashboard CSV Export
 
-The system SHALL provide client-side CSV export functionality for both all comparative records (`#btn-export-all`) and currently filtered/sorted records (`#btn-export-filtered`), exporting exactly 36 canonical summary fields matching `summary_df` (strictly excluding internal presentation keys such as `row_key`), formatted with UTF-8 BOM (`\uFEFF`), CRLF line terminators, RFC 4180 compliant quoting, and deterministic ordering reflecting the current table view without performing client-side statistical recomputations.
+The system SHALL provide client-side CSV export functionality for both all comparative records (`#btn-export-all`) and currently filtered/sorted records (`#btn-export-filtered`), exporting exactly 40 canonical summary fields matching `summary_df` (strictly excluding internal presentation keys such as `row_key`), formatted with UTF-8 BOM (`\uFEFF`), CRLF line terminators, RFC 4180 compliant quoting, and deterministic ordering reflecting the current table view without performing client-side statistical recomputations.
 
 #### Scenario: Exporting filtered and sorted dashboard data to CSV
 
 - **WHEN** a user triggers the filtered CSV export button after applying filters and sorting
-- **THEN** the system MUST generate and download a CSV containing the active filtered records in their displayed sort order, serialize all 36 canonical fields, prepend UTF-8 BOM (`\uFEFF`), terminate lines with CRLF, quote strings containing commas or quotes per RFC 4180, and exclude internal presentation keys.
+- **THEN** the system MUST generate and download a CSV containing the active filtered records in their displayed sort order, serialize all 40 canonical fields, prepend UTF-8 BOM (`\uFEFF`), terminate lines with CRLF, quote strings containing commas or quotes per RFC 4180, and exclude internal presentation keys.
 
 ### Requirement: Accessible Multi-Select Dashboard Filtering
 
@@ -93,7 +100,7 @@ The system SHALL support domain adapters for Clinical Safety (MedDRA), Real-Worl
 
 ### Requirement: Multiplicity Disclaimers and Presentation Safeguards
 
-The system SHALL enforce narrative and visual safeguards, prohibiting claims that "non-significance implies equivalence" or that "posterior direction implies causal superiority", providing an explicit exploratory multiplicity disclaimer when batch screening multiple terms, using "credible interval (ETI)" for Bayesian models and "bootstrap percentile interval" for bootstrap models, and restricting reciprocal-RD (NNH) rendering when directional uncertainty exists.
+The system SHALL enforce narrative and visual safeguards, prohibiting claims that "non-significance implies equivalence" or that "posterior direction implies causal superiority", providing an explicit exploratory multiplicity disclaimer when batch screening multiple terms, using "credible interval (ETI)" for Bayesian models and "bootstrap percentile interval" for bootstrap models, and restricting reciprocal-RD (NNT/NNH-like) rendering when directional uncertainty exists. Reciprocal RD SHALL remain a secondary interpretation metric and SHALL NOT be promoted to the primary estimand.
 
 #### Scenario: Rendering batch report narrative with correct interval terminology
 
