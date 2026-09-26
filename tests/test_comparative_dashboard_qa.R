@@ -650,9 +650,25 @@ assert_true(all(header_positions > 0L) && identical(order(header_positions), seq
             "Q1: HTML headers match canonical 12-column order")
 row_matches <- gregexpr("<tr data-row-key=\"[^\"]+\"[^>]*>.*?</tr>", html_std, perl = TRUE)[[1L]]
 assert_true(row_matches[1L] > 0L, "Q2: data rows exist")
-first_row <- substr(html_std, row_matches[1L], row_matches[1L] + attr(row_matches, "match.length")[1L] - 1L)
-td_count <- length(gregexpr("<td ", first_row, fixed = TRUE)[[1L]])
-assert_true(td_count == 12L, sprintf("Q2: first data row has 12 cells (got %d)", td_count))
+# Multi-row fixture to assert every generated row has 12 cells
+df_q2 <- data.frame(
+  theme = c("Q2a", "Q2a", "Q2b", "Q2b"),
+  arm = c("Active", "Control", "Active", "Control"),
+  events = c(25L, 10L, 5L, 20L),
+  total = c(100L, 100L, 100L, 100L),
+  stringsAsFactors = FALSE
+)
+res_q2 <- generate_comparative_report(df_q2, reference_arm = "Control", primary_delta = 0.05, output_dir = tempfile("qa_q2_"))
+html_q2 <- paste(readLines(res_q2$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+row_matches_q2 <- gregexpr("<tr data-row-key=\"[^\"]+\"[^>]*>.*?</tr>", html_q2, perl = TRUE)[[1L]]
+assert_true(length(row_matches_q2) >= 2L && row_matches_q2[1L] > 0L, "Q2: multi-row fixture produced >=2 data rows")
+row_td_counts <- vapply(seq_along(row_matches_q2), function(i) {
+  row_html <- substr(html_q2, row_matches_q2[i], row_matches_q2[i] + attr(row_matches_q2, "match.length")[i] - 1L)
+  length(gregexpr("<td ", row_html, fixed = TRUE)[[1L]])
+}, integer(1L))
+assert_true(all(row_td_counts == 12L),
+            sprintf("Q2: every data row has 12 cells (min=%d max=%d n=%d)",
+                    min(row_td_counts), max(row_td_counts), length(row_td_counts)))
 
 # Q3: Markdown header parity
 md_header_line <- md_std[grepl("^\\| テーマ \\|", md_std)][1L]
@@ -740,7 +756,64 @@ assert_true(any(res_near0$summary_df$reciprocal_status == "RD_NEAR_ZERO") &&
 assert_true(grepl("— (RD_NEAR_ZERO)", html_near0, fixed = TRUE),
             "Q7: RD_NEAR_ZERO suppression status is displayed")
 
-# Q8: non-Safety domain → 1/|RD| only
+# Q7b: NOT_INTERPRETABLE suppression (presentation override fixture)
+ni_override <- list(
+  theme = "NotInterp",
+  contrast_id = "NotInterp_Active_vs_Control",
+  inferential_semantics = "bootstrap",
+  iptw = list(
+    raw_patient_counts = list(target = 100L, target_events = 20L, reference = 100L, reference_events = 10L),
+    effective_sample_size = list(target = 100.0, reference = 100.0),
+    bootstrap_diagnostics = list(defined_rr_replicates = 1000L, undefined_rr_replicates = 0L)
+  ),
+  risk_difference = list(
+    estimate = list(value = 0.10, source = "observed_sample_estimate"),
+    interval = list(lower = -0.05, upper = 0.20, method = "bootstrap_percentile"),
+    excess_per_100 = 10,
+    reciprocal_absolute_rd = NULL,
+    reciprocal_status = "NOT_INTERPRETABLE",
+    reciprocal_direction = "none"
+  ),
+  relative_risk = list(
+    estimate = list(value = 2.0, source = "observed_sample_estimate"),
+    interval = list(lower = 1.1, upper = 3.5, method = "bootstrap_percentile"),
+    mean_is_finite = TRUE,
+    diagnostic = "WELL_BEHAVED"
+  ),
+  direction_support = list(support_value = 0.9),
+  resolution_grade = list(grade = "U2", dominant_region = "target_excess"),
+  precision_metrics = list(rd_interval_width = 0.25, log_rr_interval_width = 1.1, rr_interval_fold_range = 3.2),
+  diagnostics = list(badges = character(0))
+)
+df_ni <- data.frame(
+  theme = c("NotInterp", "NotInterp"),
+  arm = c("Active", "Control"),
+  events = c(20L, 10L),
+  total = c(100L, 100L),
+  stringsAsFactors = FALSE
+)
+res_ni <- generate_comparative_report(
+  df_ni,
+  reference_arm = "Control",
+  primary_delta = 0.05,
+  evidence_overrides = list("NotInterp__Active_vs_Control" = ni_override),
+  output_dir = tempfile("qa_ni_")
+)
+html_ni <- paste(readLines(res_ni$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+assert_true(identical(res_ni$summary_df$reciprocal_status[[1L]], "NOT_INTERPRETABLE") &&
+              identical(res_ni$summary_df$reciprocal_direction[[1L]], "none"),
+            "Q7b setup: NOT_INTERPRETABLE override applied")
+assert_true(grepl("— (NOT_INTERPRETABLE)", html_ni, fixed = TRUE) &&
+              !grepl("NNH-like ≈", html_ni, fixed = TRUE) &&
+              !grepl("NNT-like ≈", html_ni, fixed = TRUE),
+            "Q7b: NOT_INTERPRETABLE suppresses directional NNT/NNH-like labels")
+ni_row_matches <- gregexpr("<tr data-row-key=\"[^\"]+\"[^>]*>.*?</tr>", html_ni, perl = TRUE)[[1L]]
+ni_row_html <- substr(html_ni, ni_row_matches[1L], ni_row_matches[1L] + attr(ni_row_matches, "match.length")[1L] - 1L)
+ni_reciprocal_td <- regmatches(ni_row_html, regexpr("<td class='col-effect col-reciprocal' data-sort-value=\"[^\"]*\">", ni_row_html))
+assert_true(length(ni_reciprocal_td) == 1L && grepl('data-sort-value=\"\"', ni_reciprocal_td, fixed = TRUE),
+            "Q7b: NOT_INTERPRETABLE reciprocal sort key is empty/missing")
+
+# Q8: non-Safety domain → 1/|RD| only (HTML unescaped; Markdown pipe-escaped)
 res_rwd <- generate_comparative_report(
   df_standard,
   reference_arm = "Control",
@@ -749,10 +822,36 @@ res_rwd <- generate_comparative_report(
   output_dir = tempfile("qa_rwd_")
 )
 html_rwd <- paste(readLines(res_rwd$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+md_rwd_lines <- readLines(res_rwd$md_path, warn = FALSE, encoding = "UTF-8")
+md_rwd <- paste(md_rwd_lines, collapse = "\n")
 assert_true(grepl("1/|RD| ≈", html_rwd, fixed = TRUE) &&
               !grepl("NNH-like ≈", html_rwd, fixed = TRUE) &&
               !grepl("NNT-like ≈", html_rwd, fixed = TRUE),
-            "Q8: non-Safety stable reciprocal uses 1/|RD| only")
+            "Q8: non-Safety HTML stable reciprocal uses 1/|RD| only")
+assert_true(grepl("1/\\|RD\\| ≈", md_rwd, fixed = TRUE) &&
+              !grepl("NNH-like ≈", md_rwd, fixed = TRUE) &&
+              !grepl("NNT-like ≈", md_rwd, fixed = TRUE),
+            "Q8: non-Safety Markdown reciprocal uses escaped 1/\\|RD\\| only")
+count_md_table_cells <- function(line) {
+  neutralized <- gsub("\\|", "\uFFF0", line, fixed = TRUE)
+  parts <- strsplit(neutralized, "|", fixed = TRUE)[[1L]]
+  if (length(parts) && identical(parts[[1L]], "")) {
+    parts <- parts[-1L]
+  }
+  if (length(parts) && identical(parts[[length(parts)]], "")) {
+    parts <- parts[-length(parts)]
+  }
+  length(parts)
+}
+md_data_rows <- md_rwd_lines[
+  grepl("^\\| ", md_rwd_lines) &
+    !grepl("^\\|[-:| ]+$", md_rwd_lines) &
+    !grepl("^\\| テーマ \\|", md_rwd_lines)
+]
+md_cell_counts <- vapply(md_data_rows, count_md_table_cells, integer(1L))
+assert_true(length(md_data_rows) >= 1L && all(md_cell_counts == 12L),
+            sprintf("Q8: non-Safety Markdown data rows retain exactly 12 cells (counts=%s)",
+                    paste(md_cell_counts, collapse = ",")))
 
 # Q9 / Q10: provenance — displayed E100 / reciprocal match summary_df
 std_row <- res_std$summary_df[1L, ]

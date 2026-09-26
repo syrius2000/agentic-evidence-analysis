@@ -410,7 +410,8 @@ generate_comparative_report <- function(
     } else if (identical(domain, "safety") && row$reciprocal_direction == "reference_excess") {
       sprintf("NNT-like ≈ %.1f人", row$reciprocal_absolute_rd)
     } else {
-      sprintf("1/|RD| ≈ %.1f人", row$reciprocal_absolute_rd)
+      # Pipe characters must be escaped in Markdown table cells only.
+      sprintf("1/\\|RD\\| ≈ %.1f人", row$reciprocal_absolute_rd)
     }
     rr_str_md <- if (is.na(row$rr_estimate)) {
       "N/A"
