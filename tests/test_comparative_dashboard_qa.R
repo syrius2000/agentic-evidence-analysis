@@ -40,8 +40,12 @@ html_std <- paste(readLines(res_std$html_path, warn = FALSE, encoding = "UTF-8")
 # Check required header classes exist (with sortable extension for 14.10)
 assert_true(grepl("th scope=\"col\" class=\"col-id sortable\"", html_std, fixed = TRUE), "Header contains col-id")
 assert_true(grepl("th scope=\"col\" class=\"col-effect sortable\"", html_std, fixed = TRUE), "Header contains col-effect")
-assert_true(grepl("100人あたり差 / NNT・NNH-like", html_std, fixed = TRUE),
-            "Absolute translation header exposes E100 and reciprocal RD")
+assert_true(grepl("100人あたり差 (E100)", html_std, fixed = TRUE),
+            "E100 header is a dedicated column")
+assert_true(grepl(">NNT・NNH-like<", html_std, fixed = TRUE),
+            "NNT/NNH-like header is a dedicated column")
+assert_true(!grepl("100人あたり差 / NNT・NNH-like", html_std, fixed = TRUE),
+            "Combined absolute-translation header is removed")
 assert_true(grepl("th scope=\"col\" class=\"col-direction sortable\"", html_std, fixed = TRUE), "Header contains col-direction")
 assert_true(grepl("th scope=\"col\" class=\"col-practical sortable\"", html_std, fixed = TRUE), "Header contains col-practical")
 assert_true(grepl("th scope=\"col\" class=\"col-precision sortable\"", html_std, fixed = TRUE), "Header contains col-precision")
@@ -162,7 +166,7 @@ assert_true(
   "Dashboard summary carries natural-unit and reciprocal-RD fields"
 )
 assert_true(
-  grepl("/ 100", html_std, fixed = TRUE) &&
+  grepl("/ 100人", html_std, fixed = TRUE) &&
     grepl("NNH-like", html_std, fixed = TRUE),
   "Safety dashboard renders E100 and direction-aware NNH-like translation"
 )
@@ -401,11 +405,12 @@ assert_true(grepl("data-sort-value=\"3_", html_u3, fixed = TRUE),
 assert_true(grepl("td class='col-diagnostics' data-sort-value=", html_std, fixed = TRUE),
             "14.10: Diagnostics cell contains explicit data-sort-value attribute (14.10.R2)")
 
-# Verify exactly 11 data-sort-value attributes per row in standard output
-std_rows <- length(gregexpr("<tr><td class=", html_std)[[1L]])
-std_dsv <- length(gregexpr("data-sort-value=", html_std)[[1L]])
-assert_true(std_dsv == std_rows * 11L,
-            sprintf("14.10: Exactly 11 sort keys per row across all columns (%d / %d)", std_dsv, std_rows * 11L))
+# Verify exactly 12 data-sort-value attributes per data row in standard output
+std_data_rows <- length(gregexpr("<tr data-row-key=", html_std, fixed = TRUE)[[1L]])
+std_dsv <- length(gregexpr("data-sort-value=", html_std, fixed = TRUE)[[1L]])
+# subtract header sort keys (12 sortable th) if present in count — data-sort-value is td-only
+assert_true(std_dsv == std_data_rows * 12L,
+            sprintf("14.10: Exactly 12 sort keys per row across all columns (%d / %d)", std_dsv, std_data_rows * 12L))
 
 # 4. Verify inline sort script presence and contract
 assert_true(grepl("document.addEventListener(\"DOMContentLoaded\", function()", html_std, fixed = TRUE),
@@ -617,6 +622,222 @@ assert_true(grepl("Bootstrap 95% percentile interval", md_iptw_part, fixed = TRU
             "14.13.R2: Bootstrap Markdown report defines Bootstrap percentile interval")
 assert_true(grepl("observed_sample_estimate", md_iptw_part, fixed = TRUE),
             "14.13.R2: Bootstrap Markdown report specifies observed_sample_estimate")
+
+cat("\n=== Plan 024 Metric Hierarchy QA (Q1–Q24) ===\n")
+
+canonical_headers <- c(
+  "テーマ",
+  "比較",
+  "記述N (T / R)",
+  "記述イベント数 (T / R)",
+  "RD 推定値 [区間]",
+  "100人あたり差 (E100)",
+  "NNT・NNH-like",
+  "RR 推定値 [区間]",
+  "方向支持指標",
+  "実務領域・U-Grade",
+  "精度指標 (ESS / 区間幅)",
+  "診断バッジ"
+)
+
+# Q1 / Q2: twelve-column HTML order and cell count
+header_block <- regmatches(html_std, regexpr("<thead>.*?</thead>", html_std))
+assert_true(nzchar(header_block), "Q1: thead block exists")
+header_positions <- vapply(canonical_headers, function(h) {
+  regexpr(h, header_block, fixed = TRUE)[1L]
+}, integer(1L))
+assert_true(all(header_positions > 0L) && identical(order(header_positions), seq_along(canonical_headers)),
+            "Q1: HTML headers match canonical 12-column order")
+row_matches <- gregexpr("<tr data-row-key=\"[^\"]+\"[^>]*>.*?</tr>", html_std, perl = TRUE)[[1L]]
+assert_true(row_matches[1L] > 0L, "Q2: data rows exist")
+first_row <- substr(html_std, row_matches[1L], row_matches[1L] + attr(row_matches, "match.length")[1L] - 1L)
+td_count <- length(gregexpr("<td ", first_row, fixed = TRUE)[[1L]])
+assert_true(td_count == 12L, sprintf("Q2: first data row has 12 cells (got %d)", td_count))
+
+# Q3: Markdown header parity
+md_header_line <- md_std[grepl("^\\| テーマ \\|", md_std)][1L]
+assert_true(!is.na(md_header_line) && nzchar(md_header_line), "Q3: Markdown summary header exists")
+md_header_ok <- all(vapply(canonical_headers, function(h) grepl(h, md_header_line, fixed = TRUE), logical(1L)))
+assert_true(md_header_ok && grepl("100人あたり差 \\(E100\\)", md_header_line) &&
+              grepl("NNT・NNH-like", md_header_line, fixed = TRUE) &&
+              !grepl("100人あたり差 / NNT・NNH-like", md_header_line, fixed = TRUE),
+            "Q3: Markdown headers follow same semantic split/order as HTML")
+
+# Q4: Safety + target_excess → NNH-like
+assert_true(identical(res_std$summary_df$reciprocal_direction[[1L]], "target_excess") ||
+              any(res_std$summary_df$reciprocal_direction == "target_excess"),
+            "Q4 setup: standard Safety fixture includes target_excess direction")
+assert_true(grepl("NNH-like ≈", html_std, fixed = TRUE) && !grepl("NNT-like ≈", html_std, fixed = TRUE),
+            "Q4: Safety target_excess renders NNH-like and not NNT-like")
+
+# Q5: Safety + reference_excess → NNT-like
+assert_true(grepl("NNT-like ≈", html_re, fixed = TRUE) && !grepl("NNH-like ≈", html_re, fixed = TRUE),
+            "Q5: Safety reference_excess renders NNT-like and not NNH-like")
+
+# Q6: SIGN_AMBIGUOUS suppression (near-equal arms with non-null interval likely crossing 0)
+df_amb <- data.frame(
+  theme = c("Amb", "Amb"),
+  arm = c("Active", "Control"),
+  events = c(20L, 19L),
+  total = c(100L, 100L),
+  stringsAsFactors = FALSE
+)
+res_amb <- generate_comparative_report(df_amb, reference_arm = "Control", primary_delta = 0.05, output_dir = tempfile("qa_amb_"))
+html_amb <- paste(readLines(res_amb$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+assert_true(any(res_amb$summary_df$reciprocal_status == "SIGN_AMBIGUOUS"),
+            "Q6 setup: ambiguous fixture yields SIGN_AMBIGUOUS")
+assert_true(grepl("— (SIGN_AMBIGUOUS)", html_amb, fixed = TRUE) &&
+              !grepl("NNH-like ≈", html_amb, fixed = TRUE) &&
+              !grepl("NNT-like ≈", html_amb, fixed = TRUE),
+            "Q6: SIGN_AMBIGUOUS suppresses directional NNT/NNH-like labels")
+
+# Q7: RD near zero → RD_NEAR_ZERO / reciprocal null (presentation override fixture)
+near0_override <- list(
+  theme = "Near0",
+  contrast_id = "Near0_Active_vs_Control",
+  inferential_semantics = "bootstrap",
+  iptw = list(
+    raw_patient_counts = list(target = 100L, target_events = 10L, reference = 100L, reference_events = 10L),
+    effective_sample_size = list(target = 100.0, reference = 100.0),
+    bootstrap_diagnostics = list(defined_rr_replicates = 1000L, undefined_rr_replicates = 0L)
+  ),
+  risk_difference = list(
+    estimate = list(value = 0, source = "observed_sample_estimate"),
+    interval = list(lower = -0.02, upper = 0.02, method = "bootstrap_percentile"),
+    excess_per_100 = 0,
+    reciprocal_absolute_rd = NULL,
+    reciprocal_status = "RD_NEAR_ZERO",
+    reciprocal_direction = "none"
+  ),
+  relative_risk = list(
+    estimate = list(value = 1.0, source = "observed_sample_estimate"),
+    interval = list(lower = 0.8, upper = 1.2, method = "bootstrap_percentile"),
+    mean_is_finite = TRUE,
+    diagnostic = "WELL_BEHAVED"
+  ),
+  direction_support = list(support_value = 0.5),
+  resolution_grade = list(grade = "NONE", dominant_region = "none"),
+  precision_metrics = list(rd_interval_width = 0.04, log_rr_interval_width = 0.4, rr_interval_fold_range = 1.5),
+  diagnostics = list(badges = character(0))
+)
+df_near0 <- data.frame(
+  theme = c("Near0", "Near0"),
+  arm = c("Active", "Control"),
+  events = c(10L, 10L),
+  total = c(100L, 100L),
+  stringsAsFactors = FALSE
+)
+res_near0 <- generate_comparative_report(
+  df_near0,
+  reference_arm = "Control",
+  evidence_overrides = list("Near0__Active_vs_Control" = near0_override),
+  output_dir = tempfile("qa_near0_")
+)
+html_near0 <- paste(readLines(res_near0$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+assert_true(any(res_near0$summary_df$reciprocal_status == "RD_NEAR_ZERO") &&
+              any(is.na(res_near0$summary_df$reciprocal_absolute_rd)),
+            "Q7: RD near zero yields RD_NEAR_ZERO with null reciprocal")
+assert_true(grepl("— (RD_NEAR_ZERO)", html_near0, fixed = TRUE),
+            "Q7: RD_NEAR_ZERO suppression status is displayed")
+
+# Q8: non-Safety domain → 1/|RD| only
+res_rwd <- generate_comparative_report(
+  df_standard,
+  reference_arm = "Control",
+  primary_delta = 0.05,
+  domain = "rwd",
+  output_dir = tempfile("qa_rwd_")
+)
+html_rwd <- paste(readLines(res_rwd$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+assert_true(grepl("1/|RD| ≈", html_rwd, fixed = TRUE) &&
+              !grepl("NNH-like ≈", html_rwd, fixed = TRUE) &&
+              !grepl("NNT-like ≈", html_rwd, fixed = TRUE),
+            "Q8: non-Safety stable reciprocal uses 1/|RD| only")
+
+# Q9 / Q10: provenance — displayed E100 / reciprocal match summary_df
+std_row <- res_std$summary_df[1L, ]
+e100_disp <- sprintf("%+.2f / 100人", std_row$excess_per_100)
+assert_true(grepl(e100_disp, html_std, fixed = TRUE),
+            "Q9: E100 display matches summary_df$excess_per_100")
+if (identical(std_row$reciprocal_status, "STABLE_DIRECTION") && !is.na(std_row$reciprocal_absolute_rd)) {
+  recip_disp <- sprintf("NNH-like ≈ %.1f人", std_row$reciprocal_absolute_rd)
+  assert_true(grepl(recip_disp, html_std, fixed = TRUE),
+              "Q10: reciprocal display matches summary_df$reciprocal_absolute_rd")
+} else {
+  assert_true(FALSE, "Q10 setup: expected STABLE_DIRECTION reciprocal on standard fixture")
+}
+
+# Q11–Q13: U-Grade retention / muted U3 / null delta
+assert_true(grepl("実務領域・U-Grade", html_std, fixed = TRUE),
+            "Q11: Practical Region / U-Grade column retained")
+assert_true(any(res_u3$summary_df$u_grade == "U3") &&
+              grepl("rgba(148, 163, 184, 0.12)", html_u3, fixed = TRUE),
+            "Q12: U3 muted/achromatic contract retained")
+assert_true(all(res_null_delta$summary_df$u_grade == "NONE") &&
+              all(res_null_delta$summary_df$dominant_region == "none") &&
+              !grepl("background-color: rgba(", html_nd, fixed = TRUE),
+            "Q13: primary_delta=null → NONE / none / no practical-region hue")
+
+# Q14 / Q15: dedicated sort keys
+assert_true(grepl("col-e100", html_std, fixed = TRUE) &&
+              grepl(sprintf('data-sort-value=\"%.8f\"', std_row$excess_per_100), html_std, fixed = TRUE),
+            "Q14: E100 uses machine-readable excess_per_100 sort key")
+assert_true(
+  grepl("col-reciprocal", html_std, fixed = TRUE) &&
+    grepl(sprintf('data-sort-value=\"%.8f\"', std_row$reciprocal_absolute_rd), html_std, fixed = TRUE),
+  "Q15: stable reciprocal uses numeric reciprocal_absolute_rd sort key"
+)
+amb_row_matches <- gregexpr("<tr data-row-key=\"[^\"]+\"[^>]*>.*?</tr>", html_amb, perl = TRUE)[[1L]]
+assert_true(amb_row_matches[1L] > 0L, "Q15 setup: ambiguous data row exists")
+amb_row_html <- substr(html_amb, amb_row_matches[1L], amb_row_matches[1L] + attr(amb_row_matches, "match.length")[1L] - 1L)
+reciprocal_td <- regmatches(amb_row_html, regexpr("<td class='col-effect col-reciprocal' data-sort-value=\"[^\"]*\">", amb_row_html))
+assert_true(length(reciprocal_td) == 1L && grepl('data-sort-value=\"\"', reciprocal_td, fixed = TRUE),
+            "Q15: suppressed reciprocal uses empty (missing) sort key")
+
+# Q16–Q19: keyboard/aria-sort, CSV 40 fields, filtered export, Zero-External-Asset
+assert_true(grepl("keydown", html_std, fixed = TRUE) && grepl("aria-sort", html_std, fixed = TRUE),
+            "Q16: keyboard sorting and aria-sort remain present")
+assert_true(ncol(res_std$summary_df) == 40L,
+            sprintf("Q17: summary_df remains exactly 40 canonical fields (got %d)", ncol(res_std$summary_df)))
+assert_true(grepl("btn-export-filtered", html_std, fixed = TRUE) &&
+              grepl("style.display !== \"none\"", html_std, fixed = TRUE) &&
+              grepl("data-row-key", html_std, fixed = TRUE),
+            "Q18: filtered export walks currently visible DOM row order")
+scan_q19 <- scan_active_external_assets(html_std)
+assert_true(!any(unlist(scan_q19)),
+            "Q19: Zero-External-Asset scan remains clean")
+
+# Q20: RR instability warning with RD/E100 still usable
+assert_true(grepl("numerical-instability-warning", html_zr, fixed = TRUE) &&
+              grepl("/ 100人", html_zr, fixed = TRUE) &&
+              !is.na(res_zr$summary_df$rd_estimate[[1L]]) &&
+              !is.na(res_zr$summary_df$excess_per_100[[1L]]),
+            "Q20: RR instability warning coexists with usable RD/E100")
+
+# Q21–Q23: guide semantics retained (reusing existing fixtures)
+assert_true(grepl("posterior median", html_std, fixed = TRUE) || grepl("posterior_median", html_std, fixed = TRUE),
+            "Q21: Bayesian guide semantics retained")
+assert_true(grepl("observed_sample_estimate", html_iptw_part, fixed = TRUE) &&
+              grepl("Bootstrap 95% percentile interval", html_iptw_part, fixed = TRUE),
+            "Q22: Bootstrap guide semantics retained")
+assert_true(grepl("本レポートには複数の推論セマンティクス", html_mixed, fixed = TRUE),
+            "Q23: mixed guide semantics retained")
+
+# Q24: Gower feature keys exclude E100/reciprocal fields
+source(".agents/shared/evidence_feature_extract.R")
+forbidden_geom <- c("excess_per_100", "reciprocal_absolute_rd", "reciprocal_status", "reciprocal_direction")
+assert_true(!any(forbidden_geom %in% CORE_CLUSTERING_KEYS) &&
+              !any(forbidden_geom %in% DELTA_CLUSTERING_KEYS) &&
+              !any(forbidden_geom %in% ALLOWED_CLUSTERING_KEYS),
+            "Q24: E100/reciprocal fields excluded from Gower clustering keys")
+
+# Guide hierarchy copy
+assert_true(grepl("target_excess → NNH-like", html_std, fixed = TRUE) &&
+              grepl("reference_excess → NNT-like", html_std, fixed = TRUE),
+            "Guide: Safety direction mapping is explicit")
+assert_true(grepl("guide-item-ugrade", html_std, fixed = TRUE) &&
+              grepl("primary_delta が null の場合", html_std, fixed = TRUE),
+            "Guide: U-Grade item retained with null-delta NONE contract")
 
 cat(sprintf("\nSection 14 QA Test Summary: %d Passed, %d Failed\n", test_pass, test_fail))
 if (test_fail > 0L) quit(status = 1L)

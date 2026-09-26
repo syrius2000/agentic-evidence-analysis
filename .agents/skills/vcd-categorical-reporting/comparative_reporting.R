@@ -395,26 +395,22 @@ generate_comparative_report <- function(
     "",
     "## 2. 解析結果要約",
     "",
-    "| テーマ | 比較 | 生データ記述N (T / R) | 生データ記述イベント数 (T / R) | 有効標本サイズ ESS (T / R) | RD 推定値 [区間] | 100人あたり差 / NNT・NNH-like | RR 推定値 [区間] | 方向支持指標 | 推論方式 | U-Grade | 領域 | 診断バッジ |",
-    "|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|"
+    "| テーマ | 比較 | 記述N (T / R) | 記述イベント数 (T / R) | RD 推定値 [区間] | 100人あたり差 (E100) | NNT・NNH-like | RR 推定値 [区間] | 方向支持指標 | 実務領域・U-Grade | 精度指標 (ESS / 区間幅) | 診断バッジ |",
+    "|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|"
   )
 
   for (i in seq_len(nrow(summary_df))) {
     row <- summary_df[i, ]
     rd_str_md <- if (is.na(row$rd_estimate)) "N/A" else sprintf("%.3f [%.3f, %.3f]", row$rd_estimate, row$rd_interval_lower, row$rd_interval_upper)
+    e100_md <- if (is.na(row$excess_per_100)) "N/A" else sprintf("%+.2f / 100人", row$excess_per_100)
     reciprocal_label_md <- if (row$reciprocal_status != "STABLE_DIRECTION" || is.na(row$reciprocal_absolute_rd)) {
-      sprintf("非表示 (%s)", row$reciprocal_status)
+      sprintf("— (%s)", row$reciprocal_status)
     } else if (identical(domain, "safety") && row$reciprocal_direction == "target_excess") {
       sprintf("NNH-like ≈ %.1f人", row$reciprocal_absolute_rd)
     } else if (identical(domain, "safety") && row$reciprocal_direction == "reference_excess") {
       sprintf("NNT-like ≈ %.1f人", row$reciprocal_absolute_rd)
     } else {
       sprintf("1/|RD| ≈ %.1f人", row$reciprocal_absolute_rd)
-    }
-    absolute_translation_md <- if (is.na(row$excess_per_100)) {
-      reciprocal_label_md
-    } else {
-      sprintf("%+.2f/100; %s", row$excess_per_100, reciprocal_label_md)
     }
     rr_str_md <- if (is.na(row$rr_estimate)) {
       "N/A"
@@ -423,16 +419,21 @@ generate_comparative_report <- function(
     } else {
       sprintf("%.2f [%.2f, %.2f]", row$rr_estimate, row$rr_interval_lower, row$rr_interval_upper)
     }
+    ess_md <- if (is.na(row$target_ess)) "N/A" else sprintf("%.1f / %.1f", row$target_ess, row$reference_ess)
+    rd_width_md <- if (is.na(row$rd_interval_width)) "N/A" else sprintf("幅: %.3f", row$rd_interval_width)
+    precision_md <- sprintf("ESS: %s; %s", ess_md, rd_width_md)
     md_lines <- c(md_lines, sprintf(
-      "| %s | %s vs %s | %d / %d | %d / %d | %s | %s | %s | %s | %.3f (%s) | %s; %s | %s | %s | %s |",
+      "| %s | %s vs %s | %d / %d | %d / %d | %s | %s | %s | %s | %.3f (%s) | %s / %s | %s | %s |",
       row$theme, row$target_arm, row$reference_arm,
       row$target_total, row$reference_total,
       row$target_events, row$reference_events,
-      if (is.na(row$target_ess)) "N/A" else sprintf("%.2f / %.2f", row$target_ess, row$reference_ess),
       rd_str_md,
-      absolute_translation_md,
-      rr_str_md, row$direction_support, row$support_label, row$inferential_semantics, row$interval_label,
-      row$u_grade, row$dominant_region, row$badges
+      e100_md,
+      reciprocal_label_md,
+      rr_str_md, row$direction_support, row$support_label,
+      row$u_grade, row$dominant_region,
+      precision_md,
+      row$badges
     ))
   }
 
@@ -485,11 +486,12 @@ generate_comparative_report <- function(
     risk_guide_desc,
     "",
     "### 2. リスク差 (Risk Difference: RD)",
-    "- **定義**: $RD = p_T - p_R$（一次対比）。絶対的な過剰負担や治療効果の規模を直接評価します。",
-    "- **100人あたり差**: $E100 = 100 \\times RD$。例えば RD = 0.03 は「100人あたり3人多い」に対応します。",
-    "- **逆数RD (NNT/NNH-like)**: $1/|RD|$ は canonical RD 点推定値の逆数であり、一次estimandではなく二次的な実人数換算です。Safetyでは RD > 0 を NNH-like、RD < 0 を NNT-like と表示します。",
-    "- **逆数の不確実性契約**: RD 区間が0を跨ぐ場合は SIGN_AMBIGUOUS として NNT/NNH-like の断定表示を抑制します。0を跨ぐRD区間を単純反転した連続区間は表示しません。",
-    "- **重要禁止解釈**: 区間が 0 を跨ぐことは二群間の「同等性」や「差がないこと」を証明しません。",
+    "- **一次対比 RD**: $RD = p_T - p_R$。絶対効果の primary estimand。",
+    "- **自然単位 E100（preferred translation）**: $E100 = 100 \\times RD$。RD を置換せず、人間向け単位へ線形換算する（例: RD = 0.03 → +3.00 / 100人）。",
+    "- **二次解釈 reciprocal RD**: $1/|RD|$ は canonical RD 点推定値の逆数。primary estimand ではない。",
+    "- **Safety 方向ラベル契約**: `reciprocal_status = STABLE_DIRECTION` かつ有限値のときのみ、`target_excess → NNH-like`、`reference_excess → NNT-like`。非 Safety は `1/|RD|` のみ（NNT/NNH 断定禁止）。",
+    "- **逆数の不確実性契約**: RD 区間が0を跨ぐ場合は SIGN_AMBIGUOUS として方向付き NNT/NNH-like を抑制する。0を跨ぐRD区間を単純反転した連続区間は表示しない。",
+    "- **重要禁止解釈**: 区間が 0 を跨ぐことは二群間の「同等性」や「差がないこと」を証明しない。因果的 NNT を自動主張しない。",
     "",
     "### 3. 相対リスク (Relative Risk: RR)",
     "- **定義**: $RR = p_T / p_R$。対照群に対する相対的な発生リスクの対比を評価します。",
@@ -551,7 +553,7 @@ generate_comparative_report <- function(
     row <- summary_df[i, ]
     rd_str <- if (is.na(row$rd_estimate)) "N/A" else sprintf("<strong>%.3f</strong> [%.3f, %.3f]", row$rd_estimate, row$rd_interval_lower, row$rd_interval_upper)
     reciprocal_label_html <- if (row$reciprocal_status != "STABLE_DIRECTION" || is.na(row$reciprocal_absolute_rd)) {
-      sprintf("<small>%s</small>", html_escape(row$reciprocal_status))
+      sprintf("<small>— (%s)</small>", html_escape(row$reciprocal_status))
     } else if (identical(domain, "safety") && row$reciprocal_direction == "target_excess") {
       sprintf("<strong>NNH-like ≈ %.1f人</strong>", row$reciprocal_absolute_rd)
     } else if (identical(domain, "safety") && row$reciprocal_direction == "reference_excess") {
@@ -559,8 +561,7 @@ generate_comparative_report <- function(
     } else {
       sprintf("<strong>1/|RD| ≈ %.1f人</strong>", row$reciprocal_absolute_rd)
     }
-    excess100_html <- if (is.na(row$excess_per_100)) "N/A" else sprintf("%+.2f / 100", row$excess_per_100)
-    absolute_translation_html <- sprintf("%s<br>%s", excess100_html, reciprocal_label_html)
+    excess100_html <- if (is.na(row$excess_per_100)) "N/A" else sprintf("%+.2f / 100人", row$excess_per_100)
 
     rr_str <- if (is.na(row$rr_estimate)) {
       "N/A"
@@ -638,7 +639,13 @@ generate_comparative_report <- function(
     )
     practical_sort_val <- sprintf("%d_%s", u_ord, tolower(row$dominant_region %||% "none"))
     rd_sort_val <- if (!is.na(row$rd_estimate)) sprintf("%.8f", row$rd_estimate) else ""
-    absolute_sort_val <- if (!is.na(row$excess_per_100)) sprintf("%.8f", row$excess_per_100) else ""
+    e100_sort_val <- if (!is.na(row$excess_per_100)) sprintf("%.8f", row$excess_per_100) else ""
+    reciprocal_sort_val <- if (identical(row$reciprocal_status, "STABLE_DIRECTION") &&
+                                 !is.na(row$reciprocal_absolute_rd)) {
+      sprintf("%.8f", row$reciprocal_absolute_rd)
+    } else {
+      ""
+    }
     rr_sort_val <- if (!is.na(row$rr_estimate)) sprintf("%.8f", row$rr_estimate) else ""
     dir_sort_val <- if (!is.na(row$direction_support)) sprintf("%.8f", row$direction_support) else ""
     prec_sort_val <- if (!is.na(row$rd_interval_width)) sprintf("%.8f", row$rd_interval_width) else ""
@@ -653,14 +660,30 @@ generate_comparative_report <- function(
     row_badges_val <- trimws(row$badges %||% "")
 
     html_rows <- c(html_rows, sprintf(
-      "<tr data-row-key=\"%s\" data-theme=\"%s\" data-region=\"%s\" data-ugrade=\"%s\" data-badges=\"%s\"><td class='col-id' data-sort-value=\"%s\">%s</td><td class='col-id' data-sort-value=\"%s\">%s vs %s</td><td class='col-id' data-sort-value=\"%s\">%d / %d</td><td class='col-id' data-sort-value=\"%s\">%d / %d</td><td class='col-effect' data-sort-value=\"%s\">%s</td><td class='col-effect' data-sort-value=\"%s\">%s</td><td class='col-effect' data-sort-value=\"%s\">%s</td><td class='col-direction' data-sort-value=\"%s\">%.3f<br><small>(%s)</small></td><td class='%s' style='background-color: %s;' data-sort-value=\"%s\"><span class='ugrade'>%s</span><br><small>%s</small></td><td class='col-precision' data-sort-value=\"%s\">%s</td><td class='col-diagnostics' data-sort-value=\"%s\">%s</td></tr>",
+      paste0(
+        "<tr data-row-key=\"%s\" data-theme=\"%s\" data-region=\"%s\" data-ugrade=\"%s\" data-badges=\"%s\">",
+        "<td class='col-id' data-sort-value=\"%s\">%s</td>",
+        "<td class='col-id' data-sort-value=\"%s\">%s vs %s</td>",
+        "<td class='col-id' data-sort-value=\"%s\">%d / %d</td>",
+        "<td class='col-id' data-sort-value=\"%s\">%d / %d</td>",
+        "<td class='col-effect' data-sort-value=\"%s\">%s</td>",
+        "<td class='col-effect col-e100' data-sort-value=\"%s\">%s</td>",
+        "<td class='col-effect col-reciprocal' data-sort-value=\"%s\">%s</td>",
+        "<td class='col-effect' data-sort-value=\"%s\">%s</td>",
+        "<td class='col-direction' data-sort-value=\"%s\">%.3f<br><small>(%s)</small></td>",
+        "<td class='%s' style='background-color: %s;' data-sort-value=\"%s\"><span class='ugrade'>%s</span><br><small>%s</small></td>",
+        "<td class='col-precision' data-sort-value=\"%s\">%s</td>",
+        "<td class='col-diagnostics' data-sort-value=\"%s\">%s</td>",
+        "</tr>"
+      ),
       row_key, html_escape(row$theme), html_escape(row_region), html_escape(row_ugrade_val), html_escape(row_badges_val),
       html_escape(row$theme), html_escape(row$theme),
       html_escape(sprintf("%s vs %s", row$target_arm, row$reference_arm)), html_escape(row$target_arm), html_escape(row$reference_arm),
       n_sort_val, row$target_total, row$reference_total,
       ev_sort_val, row$target_events, row$reference_events,
       rd_sort_val, rd_str,
-      absolute_sort_val, absolute_translation_html,
+      e100_sort_val, excess100_html,
+      reciprocal_sort_val, reciprocal_label_html,
       rr_sort_val, rr_str,
       dir_sort_val, row$direction_support, html_escape(row$support_label),
       practical_class, practical_bg, practical_sort_val, html_escape(row$u_grade), html_escape(row$dominant_region),
@@ -733,6 +756,7 @@ generate_comparative_report <- function(
     caption { caption-side: top; text-align: left; font-weight: bold; margin-bottom: 8px; color: #475569; font-size: 1.05em; }
     table { width: 100%; border-collapse: collapse; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px; overflow: hidden; }
     th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 0.88em; }
+    th.col-e100, td.col-e100, th.col-reciprocal, td.col-reciprocal { font-size: 0.82em; white-space: nowrap; padding-left: 8px; padding-right: 8px; }
     th { background: #0f172a; color: #ffffff; font-weight: 600; }
     th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 24px; }
     th.sortable:hover { background: #1e293b; }
@@ -831,7 +855,8 @@ generate_comparative_report <- function(
           <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">記述N (T / R)<span class="sort-indicator" aria-hidden="true">↕</span></th>
           <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">記述イベント数 (T / R)<span class="sort-indicator" aria-hidden="true">↕</span></th>
           <th scope="col" class="col-effect sortable" aria-sort="none" tabindex="0" role="columnheader">RD 推定値 [区間]<span class="sort-indicator" aria-hidden="true">↕</span></th>
-          <th scope="col" class="col-effect sortable" aria-sort="none" tabindex="0" role="columnheader">100人あたり差 / NNT・NNH-like<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-effect col-e100 sortable" aria-sort="none" tabindex="0" role="columnheader">100人あたり差 (E100)<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-effect col-reciprocal sortable" aria-sort="none" tabindex="0" role="columnheader">NNT・NNH-like<span class="sort-indicator" aria-hidden="true">↕</span></th>
           <th scope="col" class="col-effect sortable" aria-sort="none" tabindex="0" role="columnheader">RR 推定値 [区間]<span class="sort-indicator" aria-hidden="true">↕</span></th>
           <th scope="col" class="col-direction sortable" aria-sort="none" tabindex="0" role="columnheader">方向支持指標<span class="sort-indicator" aria-hidden="true">↕</span></th>
           <th scope="col" class="col-practical sortable" aria-sort="none" tabindex="0" role="columnheader">実務領域・U-Grade<span class="sort-indicator" aria-hidden="true">↕</span></th>
@@ -931,18 +956,19 @@ generate_comparative_report <- function(
       <summary class="guide-summary">2. リスク差 (Risk Difference: RD)</summary>
       <div class="guide-content">
         <h4>定義 (Definition)</h4>
-        <p>治療群と対照群の絶対的な発生割合の差です：</p>
+        <p>治療群と対照群の絶対的な発生割合の差（primary absolute contrast）です：</p>
         <math display="block">
           <mrow>
             <mi>RD</mi><mo>=</mo><msub><mi>p</mi><mi>T</mi></msub><mo>−</mo><msub><mi>p</mi><mi>R</mi></msub>
           </mrow>
         </math>
+        <p>自然単位換算（preferred translation）は E100 = 100 × RD です。二次解釈として reciprocal absolute RD = 1/|RD| を用います。</p>
         <h4>どう読むか (Interpretation)</h4>
-        <p>例えば RD = 0.03 は、治療群で 100 人あたり 3 人多くイベントが発生することを表します（E100 = 100 × RD = +3）。二次的な実人数換算として 1/|RD| = 33.3 人です。Safety では RD &gt; 0 を NNH-like、RD &lt; 0 を NNT-like と表示します。</p>
+        <p>例えば RD = 0.03 は E100 = +3.00 / 100人 に対応します。reciprocal RD は 33.3 人です。Safety かつ STABLE_DIRECTION のときのみ、target_excess → NNH-like、reference_excess → NNT-like と表示します。非 Safety では 1/|RD| 表記のみを用い、NNT/NNH と断定しません。</p>
         <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
-        <p>逆数RDは canonical RD 点推定値を変換した二次指標であり、1/|RD| の事後中央値そのものではありません。RD 区間が 0 を跨ぐ場合は SIGN_AMBIGUOUS とし、NNT/NNH-like の断定表示と単純な逆数区間を抑制します。RD の区間が 0 を跨いでいることは、二群間の「同等性」や「差がないこと」を証明しません。</p>
+        <p>逆数RDは canonical RD 点推定値を変換した二次指標であり、primary estimand でも 1/|RD| の事後中央値でもありません。RD 区間が 0 を跨ぐ場合は SIGN_AMBIGUOUS とし、方向付き NNT/NNH-like と単純な逆数区間を抑制します。因果的 NNT を自動主張してはなりません。RD の区間が 0 を跨いでいることは、二群間の「同等性」や「差がないこと」を証明しません。</p>
         <h4>いつ使うか (When to Use)</h4>
-        <p>公衆衛生や臨床実務において、絶対的な過剰負担や治療効果の規模を直接評価するための一次対比として用います。</p>
+        <p>公衆衛生や臨床実務において、絶対的な過剰負担や治療効果の規模を直接評価するための一次対比として用います。E100 は読みやすさのための自然単位、reciprocal RD は二次的な補助解釈です。</p>
       </div>
     </details>'
 
@@ -1140,18 +1166,19 @@ generate_comparative_report <- function(
       <summary class="guide-summary">2. リスク差 (Risk Difference: RD)</summary>
       <div class="guide-content">
         <h4>定義 (Definition)</h4>
-        <p>治療群と対照群の絶対的な発生割合の差です：</p>
+        <p>治療群と対照群の絶対的な発生割合の差（primary absolute contrast）です：</p>
         <math display="block">
           <mrow>
             <mi>RD</mi><mo>=</mo><msub><mi>p</mi><mi>T</mi></msub><mo>−</mo><msub><mi>p</mi><mi>R</mi></msub>
           </mrow>
         </math>
+        <p>自然単位換算（preferred translation）は E100 = 100 × RD です。二次解釈として reciprocal absolute RD = 1/|RD| を用います。</p>
         <h4>どう読むか (Interpretation)</h4>
-        <p>例えば RD = 0.03 は、治療群で 100 人あたり 3 人多くイベントが発生することを表します（E100 = 100 × RD = +3）。二次的な実人数換算として 1/|RD| = 33.3 人です。Safety では RD &gt; 0 を NNH-like、RD &lt; 0 を NNT-like と表示します。</p>
+        <p>例えば RD = 0.03 は E100 = +3.00 / 100人 に対応します。reciprocal RD は 33.3 人です。Safety かつ STABLE_DIRECTION のときのみ、target_excess → NNH-like、reference_excess → NNT-like と表示します。非 Safety では 1/|RD| 表記のみを用い、NNT/NNH と断定しません。</p>
         <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
-        <p>逆数RDは canonical RD 点推定値を変換した二次指標であり、1/|RD| の事後中央値そのものではありません。RD 区間が 0 を跨ぐ場合は SIGN_AMBIGUOUS とし、NNT/NNH-like の断定表示と単純な逆数区間を抑制します。RD の区間が 0 を跨いでいることは、二群間の「同等性」や「差がないこと」を証明しません。</p>
+        <p>逆数RDは canonical RD 点推定値を変換した二次指標であり、primary estimand でも 1/|RD| の事後中央値でもありません。RD 区間が 0 を跨ぐ場合は SIGN_AMBIGUOUS とし、方向付き NNT/NNH-like と単純な逆数区間を抑制します。因果的 NNT を自動主張してはなりません。RD の区間が 0 を跨いでいることは、二群間の「同等性」や「差がないこと」を証明しません。</p>
         <h4>いつ使うか (When to Use)</h4>
-        <p>公衆衛生や臨床実務において、絶対的な過剰負担や治療効果の規模を直接評価するための一次対比として用います。</p>
+        <p>公衆衛生や臨床実務において、絶対的な過剰負担や治療効果の規模を直接評価するための一次対比として用います。E100 は読みやすさのための自然単位、reciprocal RD は二次的な補助解釈です。</p>
       </div>
     </details>'
 
