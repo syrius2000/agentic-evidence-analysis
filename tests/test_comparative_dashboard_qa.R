@@ -163,8 +163,8 @@ assert_true(
 )
 assert_true(
   grepl("/ 100", html_std, fixed = TRUE) &&
-    grepl("1/|RD|", html_std, fixed = TRUE),
-  "General-domain dashboard renders E100 and reciprocal RD translation"
+    grepl("NNH-like", html_std, fixed = TRUE),
+  "Safety dashboard renders E100 and direction-aware NNH-like translation"
 )
 
 cat("\n=== 5. Test 14.6: Zero External Asset Scan ===\n")
