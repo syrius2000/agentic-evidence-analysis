@@ -23,7 +23,9 @@ local({
 
 # HTML escape helper for Zero-External-Asset & markup injection prevention (14.R2)
 html_escape <- function(text) {
-  if (is.null(text) || length(text) == 0L) return("")
+  if (is.null(text) || length(text) == 0L) {
+    return("")
+  }
   s <- as.character(text)
   s <- gsub("&", "&amp;", s, fixed = TRUE)
   s <- gsub("<", "&lt;", s, fixed = TRUE)
@@ -110,18 +112,24 @@ generate_comparative_report <- function(
         row_r <- thm_data[thm_data[[group_col]] == cp$reference, , drop = FALSE]
         if (nrow(row_t) != 1L || nrow(row_r) != 1L) stop("[EVIDENCE_REPORT_PROVENANCE_MISMATCH] override対象のreport群が一意に定まりません")
         raw <- ev$iptw$raw_patient_counts
-        supplied <- c(target = row_t[[total_col]][[1L]], reference = row_r[[total_col]][[1L]],
-                      target_events = row_t[[events_col]][[1L]], reference_events = row_r[[events_col]][[1L]])
-        expected <- c(target = raw$target, reference = raw$reference,
-                      target_events = raw$target_events, reference_events = raw$reference_events)
+        supplied <- c(
+          target = row_t[[total_col]][[1L]], reference = row_r[[total_col]][[1L]],
+          target_events = row_t[[events_col]][[1L]], reference_events = row_r[[events_col]][[1L]]
+        )
+        expected <- c(
+          target = raw$target, reference = raw$reference,
+          target_events = raw$target_events, reference_events = raw$reference_events
+        )
         if (!isTRUE(all.equal(as.numeric(supplied), as.numeric(expected), tolerance = 0))) {
           stop(sprintf("[EVIDENCE_REPORT_PROVENANCE_MISMATCH] %s の集計countsがIPTW evidenceのraw_patient_countsと一致しません", pair_key))
         }
       }
     }
   }
-  canonical_df <- list(column_names = names(df), column_types = vapply(df, typeof, character(1L)),
-                       column_classes = lapply(df, class), values = unname(df), row_order = seq_len(nrow(df)))
+  canonical_df <- list(
+    column_names = names(df), column_types = vapply(df, typeof, character(1L)),
+    column_classes = lapply(df, class), values = unname(df), row_order = seq_len(nrow(df))
+  )
   df_sha256 <- digest::digest(canonical_df, algo = "sha256", serialize = TRUE, serializeVersion = 2L)
   run_output_dir <- reserve_run_output_dir(out_root = out_root, skill = "vcd-categorical-reporting", run_id = run_id)
 
@@ -153,7 +161,9 @@ generate_comparative_report <- function(
       sub_seed <- if (!is.null(seed)) {
         h <- digest::digest(paste0(seed, "_", pair_key), algo = "crc32")
         as.integer(strtoi(substr(h, 1, 7), 16L))
-      } else NULL
+      } else {
+        NULL
+      }
 
       # Use supplied design-aware evidence when available; otherwise run the Bayesian count model.
       design_aware_override <- !is.null(evidence_overrides) && !is.null(evidence_overrides[[pair_key]])
@@ -161,8 +171,10 @@ generate_comparative_report <- function(
         ev <- evidence_overrides[[pair_key]]
         raw <- ev$iptw$raw_patient_counts
         ess <- ev$iptw$effective_sample_size
-        x_T <- raw$target_events; n_T <- raw$target
-        x_R <- raw$reference_events; n_R <- raw$reference
+        x_T <- raw$target_events
+        n_T <- raw$target
+        x_R <- raw$reference_events
+        n_R <- raw$reference
       } else {
         res <- run_independent_beta_binomial(
           target_events = x_T,
@@ -227,22 +239,20 @@ generate_comparative_report <- function(
           "target_excess"
         } else {
           "reference_excess"
-        }
-      )
+        })
       reciprocal_status <- ev$risk_difference$reciprocal_status %||% (
         if (is.na(rd_est_num) || is.na(rd_low_num) || is.na(rd_upp_num)) {
           "NOT_INTERPRETABLE"
         } else if (abs(rd_est_num) <= sqrt(.Machine$double.eps)) {
           "RD_NEAR_ZERO"
         } else if ((rd_est_num > 0 && rd_low_num > 0 && rd_upp_num > 0) ||
-                   (rd_est_num < 0 && rd_low_num < 0 && rd_upp_num < 0)) {
+          (rd_est_num < 0 && rd_low_num < 0 && rd_upp_num < 0)) {
           "STABLE_DIRECTION"
         } else if (rd_low_num <= 0 && rd_upp_num >= 0) {
           "SIGN_AMBIGUOUS"
         } else {
           "NOT_INTERPRETABLE"
-        }
-      )
+        })
 
       # Relative Risk null-safe extraction (H14-01 / 14.R1)
       rr_est_raw <- ev$relative_risk$estimate$value
@@ -251,8 +261,8 @@ generate_comparative_report <- function(
 
       rr_interval <- ev$relative_risk$interval
       rr_int_avail <- !is.null(rr_interval) &&
-                      !is.null(rr_interval$lower) && !is.null(rr_interval$upper) &&
-                      !is.na(rr_interval$lower) && !is.na(rr_interval$upper)
+        !is.null(rr_interval$lower) && !is.null(rr_interval$upper) &&
+        !is.na(rr_interval$lower) && !is.na(rr_interval$upper)
       rr_low <- if (rr_int_avail) as.numeric(rr_interval$lower) else NA_real_
       rr_upp <- if (rr_int_avail) as.numeric(rr_interval$upper) else NA_real_
 
@@ -541,13 +551,15 @@ generate_comparative_report <- function(
   warning_callout_html <- if (has_rr_instability) {
     paste(
       '  <div id="numerical-instability-warning" class="callout warning" role="alert">',
-      '    <strong>【数値的不安定性に関する警告】</strong><br>',
-      '    参照群のイベント発生数がゼロ（ZERO_REFERENCE）または極めて疎であるため、相対リスク（RR）の期待値が理論的に発散、または不確実性区間が極めて広範になっています。<br>',
-      '    ※ なお、リスク差（RD）や絶対指標は引き続き適切に推定されており有効です。RR の点推定値および区間幅の解釈には十分ご注意ください。',
-      '  </div>',
+      "    <strong>【数値的不安定性に関する警告】</strong><br>",
+      "    参照群のイベント発生数がゼロ（ZERO_REFERENCE）または極めて疎であるため、相対リスク（RR）の期待値が理論的に発散、または不確実性区間が極めて広範になっています。<br>",
+      "    ※ なお、リスク差（RD）や絶対指標は引き続き適切に推定されており有効です。RR の点推定値および区間幅の解釈には十分ご注意ください。",
+      "  </div>",
       sep = "\n"
     )
-  } else ""
+  } else {
+    ""
+  }
 
   html_rows <- character(0)
   for (i in seq_len(nrow(summary_df))) {
@@ -642,7 +654,7 @@ generate_comparative_report <- function(
     rd_sort_val <- if (!is.na(row$rd_estimate)) sprintf("%.8f", row$rd_estimate) else ""
     e100_sort_val <- if (!is.na(row$excess_per_100)) sprintf("%.8f", row$excess_per_100) else ""
     reciprocal_sort_val <- if (identical(row$reciprocal_status, "STABLE_DIRECTION") &&
-                                 !is.na(row$reciprocal_absolute_rd)) {
+      !is.na(row$reciprocal_absolute_rd)) {
       sprintf("%.8f", row$reciprocal_absolute_rd)
     } else {
       ""
@@ -709,13 +721,17 @@ generate_comparative_report <- function(
   all_possible_badges <- unique(c("ZERO_REFERENCE", "ZERO_BOTH", "SPARSE_EVENTS", "UNSTABLE_RR_INTERVAL", unique_badges))
 
   theme_checkbox_items <- vapply(unique_themes, function(thm) {
-    sprintf("<label class=\"filter-item\"><input type=\"checkbox\" class=\"filter-theme\" value=\"%s\"> %s</label>",
-            html_escape(thm), html_escape(thm))
+    sprintf(
+      "<label class=\"filter-item\"><input type=\"checkbox\" class=\"filter-theme\" value=\"%s\"> %s</label>",
+      html_escape(thm), html_escape(thm)
+    )
   }, character(1L))
 
   badge_checkbox_items <- vapply(all_possible_badges, function(bdg) {
-    sprintf("<label class=\"filter-item\"><input type=\"checkbox\" class=\"filter-badge-opt\" value=\"%s\"> %s</label>",
-            html_escape(bdg), html_escape(bdg))
+    sprintf(
+      "<label class=\"filter-item\"><input type=\"checkbox\" class=\"filter-badge-opt\" value=\"%s\"> %s</label>",
+      html_escape(bdg), html_escape(bdg)
+    )
   }, character(1L))
   badge_checkbox_items <- c(badge_checkbox_items, "<label class=\"filter-item\"><input type=\"checkbox\" class=\"filter-badge-opt\" value=\"__NONE__\"> (診断なし)</label>")
 
@@ -881,75 +897,75 @@ generate_comparative_report <- function(
       '    <details id="guide-item-risk" class="guide-accordion">\n',
       '      <summary class="guide-summary">1. リスク・発症割合 (Risk / incidence proportion)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>生の記述発症割合（raw descriptive proportion）は標本イベント発生数と観察例数から算出されます：</p>\n',
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>生の記述発症割合（raw descriptive proportion）は標本イベント発生数と観察例数から算出されます：</p>\n",
       '        <math display="block">\n',
-      '          <mrow>\n',
+      "          <mrow>\n",
       '            <msub><mi>p</mi><mrow><mi>T</mi><mo>,</mo><mtext>raw</mtext></mrow></msub><mo>=</mo><mfrac><msub><mi>x</mi><mi>T</mi></msub><msub><mi>n</mi><mi>T</mi></msub></mfrac><mo>,</mo><mspace width="1em"/><msub><mi>p</mi><mrow><mi>R</mi><mo>,</mo><mtext>raw</mtext></mrow></msub><mo>=</mo><mfrac><msub><mi>x</mi><mi>R</mi></msub><msub><mi>n</mi><mi>R</mi></msub></mfrac>\n',
-      '          </mrow>\n',
-      '        </math>\n',
-      '        <p>独立 Jeffreys 事前分布 Beta(0.5, 0.5) に基づくベイズ推論モデルでは、各群の発症率は次の事後分布に従います：</p>\n',
+      "          </mrow>\n",
+      "        </math>\n",
+      "        <p>独立 Jeffreys 事前分布 Beta(0.5, 0.5) に基づくベイズ推論モデルでは、各群の発症率は次の事後分布に従います：</p>\n",
       '        <math display="block">\n',
-      '          <mrow>\n',
+      "          <mrow>\n",
       '            <msub><mi>p</mi><mi>g</mi></msub><mo>∣</mo><msub><mi>x</mi><mi>g</mi></msub><mo>,</mo><msub><mi>n</mi><mi>g</mi></msub><mo>∼</mo><mi>Beta</mi><mrow><mo>(</mo><msub><mi>x</mi><mi>g</mi></msub><mo>+</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>,</mo><mspace width="0.2em"/><msub><mi>n</mi><mi>g</mi></msub><mo>−</mo><msub><mi>x</mi><mi>g</mi></msub><mo>+</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>)</mo></mrow>\n',
-      '          </mrow>\n',
-      '        </math>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>推論上の点推定値（inferential point estimate）には事後中央値（posterior median, estimate.source = posterior_median）を用い、不確実性は事後等裾信用区間（95% ETI）で評価します。これらは生の記述割合（target_prop / reference_prop）と峻別して解釈します。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>イベント数ゼロであっても Jeffreys 事前分布により事後中央値および ETI は有限値として適切に定義されますが、極端な疎データでは事前分布の影響を受けやすくなります。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>各治療群・対照群の絶対的な発生水準を客観的に把握する基本指標として使用します。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "          </mrow>\n",
+      "        </math>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>推論上の点推定値（inferential point estimate）には事後中央値（posterior median, estimate.source = posterior_median）を用い、不確実性は事後等裾信用区間（95% ETI）で評価します。これらは生の記述割合（target_prop / reference_prop）と峻別して解釈します。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>イベント数ゼロであっても Jeffreys 事前分布により事後中央値および ETI は有限値として適切に定義されますが、極端な疎データでは事前分布の影響を受けやすくなります。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>各治療群・対照群の絶対的な発生水準を客観的に把握する基本指標として使用します。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   } else if (!has_bayesian_sem && has_bootstrap_sem) {
     paste0(
       '    <details id="guide-item-risk" class="guide-accordion">\n',
       '      <summary class="guide-summary">1. リスク・発症割合 (Risk / incidence proportion)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>生の記述発症割合（raw descriptive proportion）は標本イベント発生数と観察例数から算出されます：</p>\n',
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>生の記述発症割合（raw descriptive proportion）は標本イベント発生数と観察例数から算出されます：</p>\n",
       '        <math display="block">\n',
-      '          <mrow>\n',
+      "          <mrow>\n",
       '            <msub><mi>p</mi><mrow><mi>T</mi><mo>,</mo><mtext>raw</mtext></mrow></msub><mo>=</mo><mfrac><msub><mi>x</mi><mi>T</mi></msub><msub><mi>n</mi><mi>T</mi></msub></mfrac><mo>,</mo><mspace width="1em"/><msub><mi>p</mi><mrow><mi>R</mi><mo>,</mo><mtext>raw</mtext></mrow></msub><mo>=</mo><mfrac><msub><mi>x</mi><mi>R</mi></msub><msub><mi>n</mi><mi>R</mi></msub></mfrac>\n',
-      '          </mrow>\n',
-      '        </math>\n',
-      '        <p>デザイン考慮型（IPTW / マッチドペア等）のブートストラップ推論では、生の記述割合とともに対象デザインの推論推定量が算出されます。</p>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>推論上の点推定値（inferential point estimate）には標本観測推定量（observed sample estimate, estimate.source = observed_sample_estimate）を用います。事後中央値や事前分布モデルは適用されず、不確実性はブートストラップパーセンタイル区間（Bootstrap 95% percentile interval）およびブートストラップ支持比率 p&#770;* で評価します。これらは生の記述割合と峻別して解釈します。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>ブートストラップ推論では再標本化分布から区間や支持割合を算出するため、事後確率としての解釈を行ってはなりません。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>各治療群・対照群の絶対的な発生水準を客観的に把握する基本指標として使用します。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "          </mrow>\n",
+      "        </math>\n",
+      "        <p>デザイン考慮型（IPTW / マッチドペア等）のブートストラップ推論では、生の記述割合とともに対象デザインの推論推定量が算出されます。</p>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>推論上の点推定値（inferential point estimate）には標本観測推定量（observed sample estimate, estimate.source = observed_sample_estimate）を用います。事後中央値や事前分布モデルは適用されず、不確実性はブートストラップパーセンタイル区間（Bootstrap 95% percentile interval）およびブートストラップ支持比率 p&#770;* で評価します。これらは生の記述割合と峻別して解釈します。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>ブートストラップ推論では再標本化分布から区間や支持割合を算出するため、事後確率としての解釈を行ってはなりません。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>各治療群・対照群の絶対的な発生水準を客観的に把握する基本指標として使用します。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   } else {
     paste0(
       '    <details id="guide-item-risk" class="guide-accordion">\n',
       '      <summary class="guide-summary">1. リスク・発症割合 (Risk / incidence proportion)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>生の記述発症割合（raw descriptive proportion）は標本イベント発生数と観察例数から算出されます：</p>\n',
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>生の記述発症割合（raw descriptive proportion）は標本イベント発生数と観察例数から算出されます：</p>\n",
       '        <math display="block">\n',
-      '          <mrow>\n',
+      "          <mrow>\n",
       '            <msub><mi>p</mi><mrow><mi>T</mi><mo>,</mo><mtext>raw</mtext></mrow></msub><mo>=</mo><mfrac><msub><mi>x</mi><mi>T</mi></msub><msub><mi>n</mi><mi>T</mi></msub></mfrac><mo>,</mo><mspace width="1em"/><msub><mi>p</mi><mrow><mi>R</mi><mo>,</mo><mtext>raw</mtext></mrow></msub><mo>=</mo><mfrac><msub><mi>x</mi><mi>R</mi></msub><msub><mi>n</mi><mi>R</mi></msub></mfrac>\n',
-      '          </mrow>\n',
-      '        </math>\n',
-      '        <p>本レポートには複数の推論セマンティクス（inferential_semantics: bayesian / bootstrap）が混在しており、各行の属性に応じた推論モデルが適用されます：</p>\n',
-      '        <ul>\n',
-      '          <li><strong>ベイズ推論行 (bayesian)</strong>: 独立 Jeffreys 事前分布 Beta(0.5, 0.5) に基づく事後分布に従います。推論上の点推定値には事後中央値（posterior median, estimate.source = posterior_median）を用い、不確実性は 95% ETI で評価します。</li>\n',
-      '          <li><strong>ブートストラップ推論行 (bootstrap)</strong>: 標本観測推定量（observed sample estimate, estimate.source = observed_sample_estimate）を点推定値とし、不確実性はブートストラップ 95% パーセンタイル区間で評価します（事後中央値や Jeffreys 事前分布は適用されません）。</li>\n',
-      '        </ul>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>推論上の点推定値（事後中央値または標本観測推定量）は、各行の inferential_semantics 列を確認した上で生の記述割合と峻別して解釈します。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>ベイズ推論行とブートストラップ推論行で点推定および区間推定の数理的性質が異なるため、同一の解釈体系として混同してはなりません。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>各治療群・対照群の絶対的な発生水準を客観的に把握する基本指標として使用します。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "          </mrow>\n",
+      "        </math>\n",
+      "        <p>本レポートには複数の推論セマンティクス（inferential_semantics: bayesian / bootstrap）が混在しており、各行の属性に応じた推論モデルが適用されます：</p>\n",
+      "        <ul>\n",
+      "          <li><strong>ベイズ推論行 (bayesian)</strong>: 独立 Jeffreys 事前分布 Beta(0.5, 0.5) に基づく事後分布に従います。推論上の点推定値には事後中央値（posterior median, estimate.source = posterior_median）を用い、不確実性は 95% ETI で評価します。</li>\n",
+      "          <li><strong>ブートストラップ推論行 (bootstrap)</strong>: 標本観測推定量（observed sample estimate, estimate.source = observed_sample_estimate）を点推定値とし、不確実性はブートストラップ 95% パーセンタイル区間で評価します（事後中央値や Jeffreys 事前分布は適用されません）。</li>\n",
+      "        </ul>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>推論上の点推定値（事後中央値または標本観測推定量）は、各行の inferential_semantics 列を確認した上で生の記述割合と峻別して解釈します。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>ベイズ推論行とブートストラップ推論行で点推定および区間推定の数理的性質が異なるため、同一の解釈体系として混同してはなりません。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>各治療群・対照群の絶対的な発生水準を客観的に把握する基本指標として使用します。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   }
 
@@ -978,63 +994,63 @@ generate_comparative_report <- function(
       '    <details id="guide-item-rr" class="guide-accordion">\n',
       '      <summary class="guide-summary">3. 相対リスク (Relative Risk: RR)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>対照群に対する治療群のイベント発生率の比率です：</p>\n',
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>対照群に対する治療群のイベント発生率の比率です：</p>\n",
       '        <math display="block">\n',
-      '          <mrow>\n',
-      '            <mi>RR</mi><mo>=</mo><mfrac><msub><mi>p</mi><mi>T</mi></msub><msub><mi>p</mi><mi>R</mi></msub></mfrac>\n',
-      '          </mrow>\n',
-      '        </math>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>RR = 1 は両群同率、RR &gt; 1 は治療群で高頻度、RR &lt; 1 は対照群で高頻度を意味します。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>対照群のイベント発生数がゼロ（x_R = 0）の場合、独立 Jeffreys 事後分布では理論的期待値 E(RR) は無限大に発散するため、平均値契約は mean = null, mean_is_finite = false となります（事後中央値および信用区間は有限値として算出可能）。点推定値（中央値）や区間幅が極めて広大になるため、主対比として RD を併用する必要があります。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>病態発症の相対的脆弱性や、対照群に対する相対的な発生リスクの対比を評価する際に用います。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "          <mrow>\n",
+      "            <mi>RR</mi><mo>=</mo><mfrac><msub><mi>p</mi><mi>T</mi></msub><msub><mi>p</mi><mi>R</mi></msub></mfrac>\n",
+      "          </mrow>\n",
+      "        </math>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>RR = 1 は両群同率、RR &gt; 1 は治療群で高頻度、RR &lt; 1 は対照群で高頻度を意味します。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>対照群のイベント発生数がゼロ（x_R = 0）の場合、独立 Jeffreys 事後分布では理論的期待値 E(RR) は無限大に発散するため、平均値契約は mean = null, mean_is_finite = false となります（事後中央値および信用区間は有限値として算出可能）。点推定値（中央値）や区間幅が極めて広大になるため、主対比として RD を併用する必要があります。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>病態発症の相対的脆弱性や、対照群に対する相対的な発生リスクの対比を評価する際に用います。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   } else if (!has_bayesian_sem && has_bootstrap_sem) {
     paste0(
       '    <details id="guide-item-rr" class="guide-accordion">\n',
       '      <summary class="guide-summary">3. 相対リスク (Relative Risk: RR)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>対照群に対する治療群のイベント発生率の比率です：</p>\n',
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>対照群に対する治療群のイベント発生率の比率です：</p>\n",
       '        <math display="block">\n',
-      '          <mrow>\n',
-      '            <mi>RR</mi><mo>=</mo><mfrac><msub><mi>p</mi><mi>T</mi></msub><msub><mi>p</mi><mi>R</mi></msub></mfrac>\n',
-      '          </mrow>\n',
-      '        </math>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>RR = 1 は両群同率、RR &gt; 1 は治療群で高頻度、RR &lt; 1 は対照群で高頻度を意味します。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>対照群のイベント発生数がゼロ（x_R = 0）または定義不能レプリケートが生じた場合、ブートストラップ推論では RR 推定量・区間は利用不能（rr_estimate_available = false）となるか、ブートストラップ診断（rr_bootstrap_undefined_replicates）に従い抑制されます。主対比として RD を併用する必要があります。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>病態発症の相対的脆弱性や、対照群に対する相対的な発生リスクの対比を評価する際に用います。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "          <mrow>\n",
+      "            <mi>RR</mi><mo>=</mo><mfrac><msub><mi>p</mi><mi>T</mi></msub><msub><mi>p</mi><mi>R</mi></msub></mfrac>\n",
+      "          </mrow>\n",
+      "        </math>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>RR = 1 は両群同率、RR &gt; 1 は治療群で高頻度、RR &lt; 1 は対照群で高頻度を意味します。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>対照群のイベント発生数がゼロ（x_R = 0）または定義不能レプリケートが生じた場合、ブートストラップ推論では RR 推定量・区間は利用不能（rr_estimate_available = false）となるか、ブートストラップ診断（rr_bootstrap_undefined_replicates）に従い抑制されます。主対比として RD を併用する必要があります。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>病態発症の相対的脆弱性や、対照群に対する相対的な発生リスクの対比を評価する際に用います。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   } else {
     paste0(
       '    <details id="guide-item-rr" class="guide-accordion">\n',
       '      <summary class="guide-summary">3. 相対リスク (Relative Risk: RR)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>対照群に対する治療群のイベント発生率の比率です：</p>\n',
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>対照群に対する治療群のイベント発生率の比率です：</p>\n",
       '        <math display="block">\n',
-      '          <mrow>\n',
-      '            <mi>RR</mi><mo>=</mo><mfrac><msub><mi>p</mi><mi>T</mi></msub><msub><mi>p</mi><mi>R</mi></msub></mfrac>\n',
-      '          </mrow>\n',
-      '        </math>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>RR = 1 は両群同率、RR &gt; 1 は治療群で高頻度、RR &lt; 1 は対照群で高頻度を意味します。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>対照群イベントゼロ（x_R = 0）時の挙動は各行の inferential_semantics に準拠します。独立ベイズ推論では理論的期待値 E(RR) が無限大（mean = null, mean_is_finite = false、中央値・信用区間は有限）となる一方、ブートストラップ推論では RR 推定量・区間が利用不能（rr_estimate_available = false）またはブートストラップ診断に従います。いずれの場合も主対比として RD を併用してください。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>病態発症の相対的脆弱性や、対照群に対する相対的な発生リスクの対比を評価する際に用います。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "          <mrow>\n",
+      "            <mi>RR</mi><mo>=</mo><mfrac><msub><mi>p</mi><mi>T</mi></msub><msub><mi>p</mi><mi>R</mi></msub></mfrac>\n",
+      "          </mrow>\n",
+      "        </math>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>RR = 1 は両群同率、RR &gt; 1 は治療群で高頻度、RR &lt; 1 は対照群で高頻度を意味します。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>対照群イベントゼロ（x_R = 0）時の挙動は各行の inferential_semantics に準拠します。独立ベイズ推論では理論的期待値 E(RR) が無限大（mean = null, mean_is_finite = false、中央値・信用区間は有限）となる一方、ブートストラップ推論では RR 推定量・区間が利用不能（rr_estimate_available = false）またはブートストラップ診断に従います。いずれの場合も主対比として RD を併用してください。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>病態発症の相対的脆弱性や、対照群に対する相対的な発生リスクの対比を評価する際に用います。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   }
 
@@ -1043,58 +1059,58 @@ generate_comparative_report <- function(
       '    <details id="guide-item-intervals" class="guide-accordion">\n',
       '      <summary class="guide-summary">4. 不確実性区間 (Uncertainty Interval: 95% ETI)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>推定値の不確実性を表す 95% 区間です：</p>\n',
-      '        <ul>\n',
-      '          <li><strong>Bayesian 95% ETI (事後等裾信用区間)</strong>: モデル・事前分布・観測データを条件として、パラメータの事後確率質量の 95% を含む等裾区間（下側 2.5% 点と上側 97.5% 点）。</li>\n',
-      '        </ul>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>ベイズ ETI はモデルと事前分布のもとでの事後確信度の範囲を示します。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>区間が 0 を跨ぐことは「同等性（二群間に差がないこと）」を証明しません。また、頻回推論の信頼区間と混同してはなりません。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>点推定値単独の過信を避け、推定の安定性と幅を考慮した客観的判断を行う際に参照します。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>推定値の不確実性を表す 95% 区間です：</p>\n",
+      "        <ul>\n",
+      "          <li><strong>Bayesian 95% ETI (事後等裾信用区間)</strong>: モデル・事前分布・観測データを条件として、パラメータの事後確率質量の 95% を含む等裾区間（下側 2.5% 点と上側 97.5% 点）。</li>\n",
+      "        </ul>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>ベイズ ETI はモデルと事前分布のもとでの事後確信度の範囲を示します。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>区間が 0 を跨ぐことは「同等性（二群間に差がないこと）」を証明しません。また、頻回推論の信頼区間と混同してはなりません。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>点推定値単独の過信を避け、推定の安定性と幅を考慮した客観的判断を行う際に参照します。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   } else if (!has_bayesian_sem && has_bootstrap_sem) {
     paste0(
       '    <details id="guide-item-intervals" class="guide-accordion">\n',
       '      <summary class="guide-summary">4. 不確実性区間 (Uncertainty Interval: Bootstrap Percentile)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>推定値の不確実性を表す 95% 区間です：</p>\n',
-      '        <ul>\n',
-      '          <li><strong>Bootstrap 95% percentile interval (ブートストラップパーセンタイル区間)</strong>: ブートストラップ再標本化で得られた推定量の経験分布の 2.5% 点と 97.5% 点による区間。</li>\n',
-      '        </ul>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>ブートストラップパーセンタイル区間は再標本化による推定量自体の標本変動の幅を示し、「パラメータが 95% の確率で区間内にある」とは解釈しません。事後信用区間（ETI）は本推論では使用されていません。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>区間が 0 を跨ぐことは「同等性（二群間に差がないこと）」を証明しません。また、ベイズ信用区間とブートストラップ再標本化区間を混同してはなりません。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>点推定値単独の過信を避け、推定の安定性と幅を考慮した客観的判断を行う際に参照します。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>推定値の不確実性を表す 95% 区間です：</p>\n",
+      "        <ul>\n",
+      "          <li><strong>Bootstrap 95% percentile interval (ブートストラップパーセンタイル区間)</strong>: ブートストラップ再標本化で得られた推定量の経験分布の 2.5% 点と 97.5% 点による区間。</li>\n",
+      "        </ul>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>ブートストラップパーセンタイル区間は再標本化による推定量自体の標本変動の幅を示し、「パラメータが 95% の確率で区間内にある」とは解釈しません。事後信用区間（ETI）は本推論では使用されていません。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>区間が 0 を跨ぐことは「同等性（二群間に差がないこと）」を証明しません。また、ベイズ信用区間とブートストラップ再標本化区間を混同してはなりません。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>点推定値単独の過信を避け、推定の安定性と幅を考慮した客観的判断を行う際に参照します。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   } else {
     paste0(
       '    <details id="guide-item-intervals" class="guide-accordion">\n',
       '      <summary class="guide-summary">4. 不確実性区間 (Uncertainty Interval: ETI vs Bootstrap)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>推定値の不確実性を表す 95% 区間です。推論デザイン（inferential_semantics）に応じて明確に区別されます：</p>\n',
-      '        <ul>\n',
-      '          <li><strong>Bayesian 95% ETI (事後等裾信用区間)</strong>: ベイズ推論行に適用。モデル・事前分布・観測データを条件として、パラメータの事後確率質量の 95% を含む等裾区間（下側 2.5% 点と上側 97.5% 点）。</li>\n',
-      '          <li><strong>Bootstrap 95% percentile interval (ブートストラップパーセンタイル区間)</strong>: ブートストラップ推論行に適用。ブートストラップ再標本化で得られた推定量の経験分布の 2.5% 点と 97.5% 点による区間。</li>\n',
-      '        </ul>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>ベイズ ETI はモデルと事前分布のもとでの事後確信度の範囲を示します。一方、ブートストラップパーセンタイル区間は再標本化による推定量自体の標本変動の幅を示し、「パラメータが 95% の確率で区間内にある」とは解釈しません。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>区間が 0 を跨ぐことは「同等性（二群間に差がないこと）」を証明しません。また、ベイズ信用区間とブートストラップ再標本化区間、頻回推論の信頼区間を混同してはなりません。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>点推定値単独の過信を避け、推定の安定性と幅を考慮した客観的判断を行う際に参照します。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>推定値の不確実性を表す 95% 区間です。推論デザイン（inferential_semantics）に応じて明確に区別されます：</p>\n",
+      "        <ul>\n",
+      "          <li><strong>Bayesian 95% ETI (事後等裾信用区間)</strong>: ベイズ推論行に適用。モデル・事前分布・観測データを条件として、パラメータの事後確率質量の 95% を含む等裾区間（下側 2.5% 点と上側 97.5% 点）。</li>\n",
+      "          <li><strong>Bootstrap 95% percentile interval (ブートストラップパーセンタイル区間)</strong>: ブートストラップ推論行に適用。ブートストラップ再標本化で得られた推定量の経験分布の 2.5% 点と 97.5% 点による区間。</li>\n",
+      "        </ul>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>ベイズ ETI はモデルと事前分布のもとでの事後確信度の範囲を示します。一方、ブートストラップパーセンタイル区間は再標本化による推定量自体の標本変動の幅を示し、「パラメータが 95% の確率で区間内にある」とは解釈しません。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>区間が 0 を跨ぐことは「同等性（二群間に差がないこと）」を証明しません。また、ベイズ信用区間とブートストラップ再標本化区間、頻回推論の信頼区間を混同してはなりません。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>点推定値単独の過信を避け、推定の安定性と幅を考慮した客観的判断を行う際に参照します。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   }
 
@@ -1103,63 +1119,63 @@ generate_comparative_report <- function(
       '    <details id="guide-item-direction" class="guide-accordion">\n',
       '      <summary class="guide-summary">5. 方向支持指標 (Direction Support: Posterior Probability)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>効果の方向が正（RD &gt; 0）であるベイズ事後確率です：</p>\n',
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>効果の方向が正（RD &gt; 0）であるベイズ事後確率です：</p>\n",
       '        <math display="block">\n',
-      '          <mrow>\n',
-      '            <mi>P</mi><mrow><mo>(</mo><mi>RD</mi><mo>&gt;</mo><mn>0</mn><mo>∣</mo><mi>data</mi><mo>)</mo></mrow>\n',
-      '          </mrow>\n',
-      '        </math>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>0.5 は方向が中立、1.0 に近いほど治療群での増加、0.0 に近いほど対照群での増加を強く支持します。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>高い方向支持（例: 0.99）であっても、効果の大きさ（臨床的重要性）や治療の因果的優越性を単独で証明するものではありません。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>効果の方向性に関する確信度をスクリーニングする際の補助指標として用います。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "          <mrow>\n",
+      "            <mi>P</mi><mrow><mo>(</mo><mi>RD</mi><mo>&gt;</mo><mn>0</mn><mo>∣</mo><mi>data</mi><mo>)</mo></mrow>\n",
+      "          </mrow>\n",
+      "        </math>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>0.5 は方向が中立、1.0 に近いほど治療群での増加、0.0 に近いほど対照群での増加を強く支持します。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>高い方向支持（例: 0.99）であっても、効果の大きさ（臨床的重要性）や治療の因果的優越性を単独で証明するものではありません。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>効果の方向性に関する確信度をスクリーニングする際の補助指標として用います。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   } else if (!has_bayesian_sem && has_bootstrap_sem) {
     paste0(
       '    <details id="guide-item-direction" class="guide-accordion">\n',
       '      <summary class="guide-summary">5. 方向支持指標 (Direction Support: Bootstrap Fraction)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>効果の方向が正（RD &gt; 0）であるブートストラップ再標本化レプリケートの比率（支持比率）です：</p>\n',
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>効果の方向が正（RD &gt; 0）であるブートストラップ再標本化レプリケートの比率（支持比率）です：</p>\n",
       '        <math display="block">\n',
-      '          <mrow>\n',
+      "          <mrow>\n",
       '            <msup><mover><mi>p</mi><mo stretchy="false">^</mo></mover><mo>*</mo></msup><mo>=</mo><mfrac><mn>1</mn><mi>B</mi></mfrac><munderover><mo>∑</mo><mrow><mi>b</mi><mo>=</mo><mn>1</mn></mrow><mi>B</mi></munderover><mi>I</mi><mrow><mo>(</mo><msubsup><mi>RD</mi><mi>b</mi><mo>*</mo></msubsup><mo>&gt;</mo><mn>0</mn><mo>)</mo></mrow>\n',
-      '          </mrow>\n',
-      '        </math>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>0.5 は方向が中立、1.0 に近いほど治療群での増加、0.0 に近いほど対照群での増加を強く支持します。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>高い支持比率であっても、効果の大きさ（臨床的重要性）や治療の因果的優越性を単独で証明するものではありません。事後確率としての解釈は行いません。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>効果の方向性に関する確信度をスクリーニングする際の補助指標として用います。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "          </mrow>\n",
+      "        </math>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>0.5 は方向が中立、1.0 に近いほど治療群での増加、0.0 に近いほど対照群での増加を強く支持します。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>高い支持比率であっても、効果の大きさ（臨床的重要性）や治療の因果的優越性を単独で証明するものではありません。事後確率としての解釈は行いません。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>効果の方向性に関する確信度をスクリーニングする際の補助指標として用います。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   } else {
     paste0(
       '    <details id="guide-item-direction" class="guide-accordion">\n',
       '      <summary class="guide-summary">5. 方向支持指標 (Direction Support)</summary>\n',
       '      <div class="guide-content">\n',
-      '        <h4>定義 (Definition)</h4>\n',
-      '        <p>効果の方向が正（RD &gt; 0）である確率または割合です（inferential_semantics に準拠）：</p>\n',
+      "        <h4>定義 (Definition)</h4>\n",
+      "        <p>効果の方向が正（RD &gt; 0）である確率または割合です（inferential_semantics に準拠）：</p>\n",
       '        <math display="block">\n',
-      '          <mrow>\n',
+      "          <mrow>\n",
       '            <mi>P</mi><mrow><mo>(</mo><mi>RD</mi><mo>&gt;</mo><mn>0</mn><mo>∣</mo><mi>data</mi><mo>)</mo></mrow><mspace width="1em"/><mtext>(ベイズ)</mtext><mo>,</mo><mspace width="1em"/><msup><mover><mi>p</mi><mo stretchy="false">^</mo></mover><mo>*</mo></msup><mo>=</mo><mfrac><mn>1</mn><mi>B</mi></mfrac><munderover><mo>∑</mo><mrow><mi>b</mi><mo>=</mo><mn>1</mn></mrow><mi>B</mi></munderover><mi>I</mi><mrow><mo>(</mo><msubsup><mi>RD</mi><mi>b</mi><mo>*</mo></msubsup><mo>&gt;</mo><mn>0</mn><mo>)</mo></mrow><mspace width="1em"/><mtext>(ブートストラップ)</mtext>\n',
-      '          </mrow>\n',
-      '        </math>\n',
-      '        <h4>どう読むか (Interpretation)</h4>\n',
-      '        <p>0.5 は方向が中立、1.0 に近いほど治療群での増加、0.0 に近いほど対照群での増加を強く支持します。</p>\n',
-      '        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n',
-      '        <p>高い方向支持であっても、効果の大きさ（臨床的重要性）や治療の因果的優越性を単独で証明するものではありません。</p>\n',
-      '        <h4>いつ使うか (When to Use)</h4>\n',
-      '        <p>効果の方向性に関する確信度をスクリーニングする際の補助指標として用います。</p>\n',
-      '      </div>\n',
-      '    </details>'
+      "          </mrow>\n",
+      "        </math>\n",
+      "        <h4>どう読むか (Interpretation)</h4>\n",
+      "        <p>0.5 は方向が中立、1.0 に近いほど治療群での増加、0.0 に近いほど対照群での増加を強く支持します。</p>\n",
+      "        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>\n",
+      "        <p>高い方向支持であっても、効果の大きさ（臨床的重要性）や治療の因果的優越性を単独で証明するものではありません。</p>\n",
+      "        <h4>いつ使うか (When to Use)</h4>\n",
+      "        <p>効果の方向性に関する確信度をスクリーニングする際の補助指標として用います。</p>\n",
+      "      </div>\n",
+      "    </details>"
     )
   }
 
@@ -1283,18 +1299,18 @@ generate_comparative_report <- function(
 
   html_guide <- paste0(
     '  <section id="metric-guide" aria-label="統計指標の数学的解説と利用ガイド">\n',
-    '    <h2>統計指標の数学的解説と利用ガイド</h2>\n\n',
-    risk_accordion_html, '\n\n',
-    rd_accordion_html, '\n\n',
-    rr_accordion_html, '\n\n',
-    intervals_accordion_html, '\n\n',
-    direction_accordion_html, '\n\n',
-    practical_accordion_html, '\n\n',
-    ugrade_accordion_html, '\n\n',
-    precision_accordion_html, '\n\n',
-    diagnostics_accordion_html, '\n\n',
-    multiplicity_accordion_html, '\n',
-    '  </section>\n'
+    "    <h2>統計指標の数学的解説と利用ガイド</h2>\n\n",
+    risk_accordion_html, "\n\n",
+    rd_accordion_html, "\n\n",
+    rr_accordion_html, "\n\n",
+    intervals_accordion_html, "\n\n",
+    direction_accordion_html, "\n\n",
+    practical_accordion_html, "\n\n",
+    ugrade_accordion_html, "\n\n",
+    precision_accordion_html, "\n\n",
+    diagnostics_accordion_html, "\n\n",
+    multiplicity_accordion_html, "\n",
+    "  </section>\n"
   )
 
   # Task 14.11: Embedded canonical data JSON
@@ -1570,18 +1586,24 @@ generate_comparative_report <- function(
     list(path = "comparative_report.md", role = "summary_report"),
     list(path = "dashboard.html", role = "report_html")
   ))
-  input_record <- if (is.null(input_data_path)) list(list(
-    role = "data", source_kind = "builtin", source_path = "in_memory_data_frame",
-    logical_label = "in_memory_data_frame", sha256 = df_sha256
-  )) else NULL
+  input_record <- if (is.null(input_data_path)) {
+    list(list(
+      role = "data", source_kind = "builtin", source_path = "in_memory_data_frame",
+      logical_label = "in_memory_data_frame", sha256 = df_sha256
+    ))
+  } else {
+    NULL
+  }
   write_run_meta(
     out_root = out_root, run_output_dir = run_output_dir, skill = "vcd-categorical-reporting",
     run_id = if (!is.null(run_id)) run_id else basename(run_output_dir),
     input_data_path = input_data_path,
-    extra = list(results_manifest_sha256 = manifest$manifest_sha256,
+    extra = list(
+      results_manifest_sha256 = manifest$manifest_sha256,
       inputs = input_record, config_origin = "api_arguments", data_frame_sha256 = df_sha256,
       data_frame_hash_contract = "R-serialize-v2: column names, types, classes, values, row order",
-      delta_thresholds = delta_thresholds)
+      delta_thresholds = delta_thresholds
+    )
   )
   verify_results_manifest(run_output_dir, manifest$manifest_sha256)
 
