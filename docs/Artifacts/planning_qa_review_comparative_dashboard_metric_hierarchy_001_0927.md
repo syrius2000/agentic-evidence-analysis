@@ -84,8 +84,8 @@ git diff 41d575e28d553b42e6d7f02e1afa09225438bea2..6c9d8329de0176621ec6675fcbc74
 
 ## QA024-H01 — Safety NNT/NNH-like direction mapping is underspecified
 
-**Severity**: High  
-**Status**: Open  
+**Severity**: High
+**Status**: Open
 **Planning gate impact**: Must fix before implementation
 
 ### Finding
@@ -149,8 +149,8 @@ For domain != "safety":
 
 ## QA024-M01 — JSON contract and 40-field summary/export contract must be separated
 
-**Severity**: Medium  
-**Status**: Open  
+**Severity**: Medium
+**Status**: Open
 **Planning gate impact**: Must fix wording before implementation
 
 ### Finding
@@ -205,8 +205,8 @@ proposal/spec/design の表現を以下のように分離する。
 
 ## QA024-M02 — U-Grade configured-delta and null-delta scenarios should be split
 
-**Severity**: Medium  
-**Status**: Open  
+**Severity**: Medium
+**Status**: Open
 **Planning gate impact**: Recommended repair before implementation
 
 ### Finding
@@ -254,8 +254,8 @@ AND practical-region color highlighting MUST be disabled.
 
 ## QA024-M03 — Q1–Q24 task coverage is complete but high-risk cases should be explicit
 
-**Severity**: Medium  
-**Status**: Open  
+**Severity**: Medium
+**Status**: Open
 **Planning gate impact**: Improvement strongly recommended
 
 ### Finding
@@ -296,8 +296,8 @@ AND practical-region color highlighting MUST be disabled.
 
 ## QA024-G01 — Strict OpenSpec validation execution evidence not yet verified
 
-**Severity**: Gate condition  
-**Status**: Pending  
+**Severity**: Gate condition
+**Status**: Pending
 **Planning gate impact**: Required before final PASS
 
 ### Finding
@@ -412,10 +412,12 @@ delta spec / design は reciprocal RD を primary estimand に昇格させず、
 ## R1 — Freeze Safety reciprocal direction mapping
 
 **Files**:
+
 - `openspec/changes/comparative-dashboard-metric-hierarchy-v1/specs/comparative-evidence-reporting/spec.md`
 - 必要に応じて `design.md`, `proposal.md`, `tasks.md`
 
 **Action**:
+
 - `target_excess → NNH-like`
 - `reference_excess → NNT-like`
 - non-Safety → `1/|RD|`, NNT/NNH label禁止
@@ -430,6 +432,7 @@ Q4 / Q5 / Q8 が spec 文面だけから一意に導出できる。
 ## R2 — Separate JSON evidence contract from 40-field summary/export contract
 
 **Files**:
+
 - `proposal.md`
 - `design.md`
 - `specs/comparative-evidence-reporting/spec.md`
@@ -451,9 +454,11 @@ nested evidence JSON と flat summary/export の責務が混同されない。
 ## R3 — Split U-Grade scenario into active-delta and null-delta cases
 
 **Files**:
+
 - `specs/comparative-evidence-reporting/spec.md`
 
 **Action**:
+
 - configured delta → U0–U3 + region + local hue
 - null delta → NONE / none / achromatic
 
@@ -467,6 +472,7 @@ Q11 / Q12 / Q13 が独立して検証可能。
 ## R4 — Expand high-risk QA tasks
 
 **Files**:
+
 - `tasks.md`
 
 **Action**:
@@ -493,6 +499,7 @@ git diff --check
 ```
 
 **Acceptance**:
+
 - OpenSpec: valid / 0 errors
 - diff check: clean
 
