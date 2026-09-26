@@ -6,8 +6,8 @@
 
 # Skill output (runtime-generated)
 evidence_runs/*
+evidence_runs/
 !evidence_runs/.gitkeep
-!evidence_runs/visual_qa_s14/
 skill_out/
 skill_output/
 !skill_out/.gitkeep
@@ -36,8 +36,6 @@ inspection_results.json
 tests/skill_out_smoke/
 tests/Rlib/
 tests/fixtures/vcd_bayesian_evidence_skilltemp/.Rlib
-evidence_runs/
-!evidence_runs/.gitkeep
 # Generated images in skills
 .agents/skills/*/*/*.png
 
