@@ -36,7 +36,8 @@ inspection_results.json
 tests/skill_out_smoke/
 tests/Rlib/
 tests/fixtures/vcd_bayesian_evidence_skilltemp/.Rlib
-
+evidence_runs/
+!evidence_runs/.gitkeep
 # Generated images in skills
 .agents/skills/*/*/*.png
 
