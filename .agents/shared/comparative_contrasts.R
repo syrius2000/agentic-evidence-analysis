@@ -227,7 +227,7 @@ compute_comparative_contrasts <- function(
   if (!is.na(log_rr_width) && log_rr_width > 3.0) badges <- c(badges, "UNSTABLE_RR_INTERVAL")
 
   diagnostics <- list(
-    badges = badges
+    badges = as.list(badges)
   )
 
   # 10. Assemble canonical ComparativeEvidenceV1 output
@@ -270,7 +270,7 @@ compute_comparative_contrasts <- function(
     delta_profile = delta_profile,
     precision_metrics = list(
       rd_interval_width = rd_width,
-      log_rr_interval_width = log_rr_width,
+      log_rr_interval_width = if (is.null(log_rr_width) || is.na(log_rr_width)) NULL else log_rr_width,
       rr_interval_fold_range = NULL,
       monte_carlo_draws = S,
       effective_sample_size = NULL
@@ -279,4 +279,91 @@ compute_comparative_contrasts <- function(
   )
 
   evidence_obj
+}
+
+# Person-time rates have event/exposure denominators and must not reuse risk fields.
+compute_rate_contrasts <- function(
+  target_draws,
+  reference_draws,
+  target_events,
+  target_exposure,
+  reference_events,
+  reference_exposure,
+  exposure_unit = c("person_years", "person_months"),
+  level = 0.95
+) {
+  exposure_unit <- match.arg(exposure_unit)
+  if (!is.numeric(target_draws) || !is.numeric(reference_draws) ||
+      length(target_draws) != length(reference_draws) || length(target_draws) < 10L ||
+      any(!is.finite(target_draws)) || any(!is.finite(reference_draws)) ||
+      any(target_draws <= 0) || any(reference_draws <= 0)) {
+    stop("[INVALID_RATE_DRAWS] 両群の率drawは同数かつ10件以上の有限・正値である必要があります")
+  }
+  if (!is.numeric(level) || length(level) != 1L || !is.finite(level) || level <= 0 || level >= 1) {
+    stop("[INVALID_INTERVAL_LEVEL] 信用区間水準は0と1の間で指定してください")
+  }
+
+  probs <- c((1 - level) / 2, 0.5, 1 - (1 - level) / 2)
+  quantiles <- function(x) unname(stats::quantile(x, probs = probs))
+  interval <- function(q) list(lower = q[[1L]], upper = q[[3L]], level = level, method = "posterior_eti")
+  estimate <- function(q) list(value = q[[2L]], source = "posterior_median")
+  t_q <- quantiles(target_draws)
+  r_q <- quantiles(reference_draws)
+  ird_draws <- target_draws - reference_draws
+  irr_draws <- target_draws / reference_draws
+  if (any(!is.finite(irr_draws))) stop("[NONFINITE_RATE_RATIO] 率比drawが有限値ではありません")
+  ird_q <- quantiles(ird_draws)
+  irr_q <- quantiles(irr_draws)
+
+  # E[lambda_T/lambda_R] exists only when the reference Gamma shape exceeds 1.
+  target_shape <- target_events + 0.5
+  reference_shape <- reference_events + 0.5
+  irr_mean_finite <- reference_shape > 1
+  irr_mean <- if (irr_mean_finite) {
+    (target_shape / target_exposure) * (reference_exposure / (reference_shape - 1))
+  } else NULL
+  events_per_100_person_years <- ird_q[[2L]] * if (exposure_unit == "person_months") 1200 else 100
+  if ((irr_mean_finite && !is.finite(irr_mean)) || !is.finite(events_per_100_person_years)) {
+    stop("[NONFINITE_RATE_SUMMARY] 率要約を有限値で表せません")
+  }
+
+  list(
+    schema_version = "comparative-rate-evidence-v1",
+    inferential_semantics = "posterior",
+    target_cohort = list(
+      label = "Target", events = target_events, exposure = target_exposure,
+      incidence_rate = list(estimate = estimate(t_q), interval = interval(t_q))
+    ),
+    reference_cohort = list(
+      label = "Reference", events = reference_events, exposure = reference_exposure,
+      incidence_rate = list(estimate = estimate(r_q), interval = interval(r_q))
+    ),
+    incidence_rate_difference = list(
+      estimate = estimate(ird_q), interval = interval(ird_q),
+      additional_events_per_100_person_years = events_per_100_person_years
+    ),
+    incidence_rate_ratio = list(
+      estimate = estimate(irr_q), interval = interval(irr_q),
+      mean = irr_mean, mean_is_finite = irr_mean_finite,
+      diagnostic = if (irr_mean_finite) NULL else "ZERO_REFERENCE_EVENTS"
+    ),
+    direction_support = list(
+      metric_name = "p_ird_gt_zero", value = mean(ird_draws > 0), label = "P(IRD > 0)"
+    ),
+    person_time = list(
+      exposure_unit = exposure_unit,
+      rate_unit = if (exposure_unit == "person_months") "events_per_person_month" else "events_per_person_year",
+      gamma_parameterization = "shape_rate",
+      target_exposure = target_exposure,
+      reference_exposure = reference_exposure,
+      assumptions = list(
+        constant_hazard_assumed = TRUE,
+        within_subject_recurrent_event_clustering = "not_modeled",
+        limitations = list(
+          "一定の発生率を仮定する。時間変化するハザードは扱わない。",
+          "同一被験者内の反復イベントのクラスタリングは扱わない。"
+        )
+      )
+    )
+  )
 }

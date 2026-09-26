@@ -26,21 +26,27 @@
 *元文書: `Large_Categorical_Data_Analysis_Report.md`*
 
 ### 1.1 ビッグデータ時代におけるP値の飽和問題
+
 サンプルサイズ（$N$）が数万〜数百万規模になると、カイ二乗検定等の古典的頻度主義手法では、実務上無視できる微小な偏りであってもすべて統計的有意（$p < 0.001$）と判定されてしまいます。
+
 - **統計的有意性 (Statistical Significance)**: 「偶然ではないこと」を示すのみ。
 - **実務的有意性 (Practical Significance)**: その差が現実世界で意味を持つ大きさかを示す。
 
 ### 1.2 ポアソンGLMとエビデンススコアの数学的定義
+
 各セル $i$ における「エビデンススコア」を以下のように定義します：
 $$\text{Evidence Score}_i = r_i^2 - \log(N)$$
+
 - $r_i$: 標準化ピアソン残差 ($r_i = \frac{O_i - E_i}{\sqrt{E_i}}$)
 - $\log(N)$: BIC（ベイズ情報量規準）に基づくペナルティ項
 
 ### 1.3 ベイズ因子（Bayes Factor）によるモデル比較
+
 独立モデルと飽和モデルのBIC差分を用いた近似：
 $$\log \hat{BF}_{10} \approx \frac{1}{2} \Delta\text{BIC} = \frac{1}{2}(\text{BIC}_{\text{Independent}} - \text{BIC}_{\text{Saturated}})$$
 
 ### 1.4 HairEyeColor 100倍拡張実験（N=592 vs N=59,200）の知見
+
 - **標準規模 ($N=592$)**:
   - $\log BF_{10} = 41.56$（決定的エビデンス）。
   - 全32セルのうち、正のエビデンススコアを記録したのは7セル（21.9%）のみ。真に意味のある偏り（金髪×青い目など）を精緻に抽出。
@@ -68,6 +74,7 @@ $$\log \hat{BF}_{10} \approx \frac{1}{2} \Delta\text{BIC} = \frac{1}{2}(\text{BI
 | **3. 【ボトムアップ型】ベイズ的LIFT刈り込み** | Aprioriの支持度（Support）で足切り後、ディリクレ事前分布からLIFT値の事後分布・95%ベイズ信用区間を推定。信用区間の下限 $> 1.0$ で判定。 | 事前知識なしで、サンプルサイズや偶然の偏りに左右されない強固なルールを網羅発見。 | 支持度の閾値設計や事後分布計算のロジックがやや複雑。探索的データマイニングに最適。 |
 
 ### 2.2 エージェント（Pass 0）の対話フロー設計
+
 1. **ヒアリング**: 目的変数を固定するか、全体を探索するかを判定。
 2. **スクリーニング**: 探索型の場合は構造学習により有望な関連ペアを絞り込み。
 3. **厳密評価**: 抽出されたペアに対してベイズ的エビデンス評価と効果量算出を適用。
@@ -78,7 +85,12 @@ $$\log \hat{BF}_{10} \approx \frac{1}{2} \Delta\text{BIC} = \frac{1}{2}(\text{BI
 
 *元文書: `skill_ownership_inventory_001_0724.md`*
 
+> [!NOTE]
+> **Historical Record / Superseded Architecture Note (Task 15.7)**:
+> 本節（第3部）に記載されている「5つの統計スキル」および当時の `vcd-categorical-reporting` の位置づけ（旧形式レポート・後に一時隔離）は、2026年7月〜9月上旬時点の歴史的記録です。現行エコシステムは `comparative-design-analysis`, `evidence-decision-review`, `sas-proc-freq`, `sas-proc-means` を含む **全9スキル** 体制に拡張され、`vcd-categorical-reporting` は OpenSpec `comparative-evidence-reporting-v3` において「群間比較・安全性スクリーニングレポーター（6大概念分離・完全オフラインHTMLダッシュボード）」として再定義・刷新されています。
+
 ### 3.1 正本リポジトリと関連リポジトリの責務境界
+
 リポジトリ間でスキルの重複やコードの漂流を防ぐため、以下の境界協定が確立されています。
 
 - **`agentic-evidence-analysis` (本リポジトリ / 唯一の統計正本)**:
@@ -93,6 +105,7 @@ $$\log \hat{BF}_{10} \approx \frac{1}{2} \Delta\text{BIC} = \frac{1}{2}(\text{BI
   - 一般コードおよびSQLコードの理解を担当。
 
 ### 3.2 契約上の不変条件（Invariants）
+
 - 大標本基準は $N > 2,000$ とする（$N > 5,000$ への後退を禁止）。
 - 出力ディレクトリ契約: `run_<first16>[_N]/`（スキル固有の命名規則を厳守）。
 - 単一情報源: `analysis_config.json` を Pass 間のデータ受け渡しの契約とする。
@@ -102,10 +115,12 @@ $$\log \hat{BF}_{10} \approx \frac{1}{2} \Delta\text{BIC} = \frac{1}{2}(\text{BI
 ## 第4部: 実装計画・リファクタリング履歴アーカイブ
 
 ### 4.1 Plan 003 (2026-06-20): 旧 `.cursor` 参照の完全排除
+
 - **背景**: スキルツリーの一本化に伴い廃止された `.cursor` への参照がテストコード内に残り、テスト失敗（`No such file or directory`）が発生していた。
 - **対応内容**: `test_ggplot2_jp_font.R`, `test_vcd_categorical_template_assoc_shade.R`, `test_vcd_bayesian_layout_glossary_sync.R` 等の全テストから `.cursor` ミラー検証・パス指定を削除し、正本スキルツリー単独でのテスト実行を確立。
 
 ### 4.2 Plan 004 (2026-09-06): 主要機能・性能改善リファクタリング
+
 - **目的**: 入力行数・カテゴリ水準数が増大した際のARM（アソシエーション分析）およびバッチ処理の計算時間・不要メモリの削減。
 - **主要方針**:
   - `pass1_compute.R` の `compute_arm_rules`: 水準の論理抽出ループを廃止し、2変数の同時集計表からの直接算出に最適化。

@@ -140,13 +140,9 @@ run_independent_beta_binomial <- function(
     dir_diff <- abs(evidence$direction_support$support_value - sens_evidence$direction_support$support_value)
     grade_match <- identical(evidence$resolution_grade$grade, sens_evidence$resolution_grade$grade)
 
-    # Standard sensitivity policy: qualitative robust flag recorded along with exact deltas
-    robust <- (dir_diff < 0.20) && (grade_match || is.null(primary_delta))
-
     evidence$diagnostics$prior_sensitivity <- list(
       mode = prior_sensitivity_mode,
       evaluated = TRUE,
-      robust = robust,
       comparison = list(
         primary_prior = "Beta(0.5, 0.5) Jeffreys",
         sensitivity_prior = "Beta(1.0, 1.0) Uniform",
@@ -165,7 +161,6 @@ run_independent_beta_binomial <- function(
     evidence$diagnostics$prior_sensitivity <- list(
       mode = prior_sensitivity_mode,
       evaluated = FALSE,
-      robust = NULL,
       comparison = NULL
     )
   }

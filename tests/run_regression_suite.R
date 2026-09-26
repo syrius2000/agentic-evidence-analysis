@@ -3,8 +3,8 @@
 # 本リポジトリの正規回帰テストスイート一括実行スクリプト
 # 実行時の外部ネットワーク接続なしで、決定論的に全テストが通過することを検証する。
 
-ca   <- commandArgs(trailingOnly = FALSE)
-fa   <- ca[grep("^--file=", ca)]
+ca <- commandArgs(trailingOnly = FALSE)
+fa <- ca[grep("^--file=", ca)]
 root <- if (length(fa) > 0) {
   dirname(dirname(normalizePath(sub("^--file=", "", fa[1]))))
 } else {
@@ -50,10 +50,22 @@ official_tests <- c(
   "tests/test_pass0_routing.R",
   "tests/test_comparative_schemas.R",
   "tests/test_independent_beta_binomial.R",
+  "tests/test_matched_pair_dirichlet.R",
+  "tests/test_matched_set_inference.R",
+  "tests/test_iptw_inference.R",
+  "tests/test_person_time_rate.R",
   "tests/test_safety_adapter.R",
   "tests/test_domain_invariance.R",
   "tests/test_practical_difference.R",
-  "tests/test_vcd_categorical_reporting.R"
+  "tests/test_vcd_categorical_reporting.R",
+  "tests/test_comparative_dashboard_qa.R",
+  "tests/test_evidence_feature_extract.R",
+  "tests/test_evidence_gower.R",
+  "tests/test_evidence_cluster.R",
+  "tests/test_evidence_precedent.R",
+  "tests/test_evidence_ledger.R",
+  "tests/test_evidence_discordance.R",
+  "tests/test_evidence_trajectory.R"
 )
 
 cat("========================================================\n")

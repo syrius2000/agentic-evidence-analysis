@@ -7,7 +7,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILL_ROOT = ROOT / ".agents" / "skills"
 EXPECTED_SKILLS = {
+    "comparative-design-analysis",
+    "evidence-decision-review",
     "questionnaire-batch-analysis",
+    "sas-proc-freq",
+    "sas-proc-means",
     "vcd-bayesian-evidence-analysis",
     "vcd-categorical-analysis",
     "vcd-categorical-reporting",
@@ -42,7 +46,7 @@ def test_repository_guides_define_canonical_ownership_without_legacy_wording():
         text = read(guide_path)
 
         assert "agentic-evidence-analysis" in text
-        assert "同名5スキル" in text
+        assert "全9スキル" in text
         assert "統計schema" in text
         assert "統計品質契約" in text
         assert "Rテンプレート" in text
@@ -56,7 +60,7 @@ def test_repository_guides_define_canonical_ownership_without_legacy_wording():
             assert phrase not in text
 
 
-def test_exactly_five_canonical_skills_use_discovery_focused_descriptions():
+def test_exactly_nine_canonical_skills_use_discovery_focused_descriptions():
     canonical_skill_dirs = sorted(
         path for path in SKILL_ROOT.iterdir()
         if path.is_dir() and path.name in EXPECTED_SKILLS
@@ -65,7 +69,7 @@ def test_exactly_five_canonical_skills_use_discovery_focused_descriptions():
     skill_files = [path / "SKILL.md" for path in canonical_skill_dirs]
 
     assert skill_slugs == EXPECTED_SKILLS
-    assert len(canonical_skill_dirs) == 5
+    assert len(canonical_skill_dirs) == 9
 
     for skill_file in skill_files:
         assert skill_file.is_file(), f"Missing SKILL.md in {skill_file}"
@@ -164,6 +168,55 @@ def test_categorical_resume_identity_is_documented():
             "存在しない `--data`",
         ):
             assert contract in text
+
+
+def test_pass0_applicability_boundary_matches_governance_matrix():
+    pass0_text = read(".agents/skills/vcd-pass0-consultation/SKILL.md")
+    agents_text = read("AGENTS.md")
+    responsibilities_text = read("docs/reference/skill_responsibilities.md")
+
+    # Mandatory contracts
+    for doc in (pass0_text, agents_text, responsibilities_text):
+        assert "vcd-categorical-analysis" in doc
+        assert "vcd-bayesian-evidence-analysis" in doc
+        assert "comparative-design-analysis" in doc
+
+    # Recommended contracts
+    for doc in (pass0_text, agents_text, responsibilities_text):
+        assert "vcd-categorical-reporting" in doc
+        assert "questionnaire-batch-analysis" in doc
+
+    # Not required contracts
+    for doc in (pass0_text, agents_text, responsibilities_text):
+        assert "sas-proc-freq" in doc
+        assert "sas-proc-means" in doc
+
+
+def test_repository_skill_references_resolve_to_canonical_inventory():
+    """Verify that all `.agents/skills/<slug>/SKILL.md` references in active documentation resolve to canonical skills."""
+    pattern = re.compile(r"\.agents/skills/(?P<slug>[a-zA-Z0-9_-]+)/SKILL\.md")
+
+    # Scan active guides and reference documentation
+    active_paths = [
+        ROOT / "README.md",
+        ROOT / "AGENTS.md",
+        *sorted((ROOT / "docs" / "reference").glob("*.md")),
+        *sorted((ROOT / ".agents" / "skills").glob("**/SKILL.md")),
+    ]
+
+    for path in active_paths:
+        text = path.read_text(encoding="utf-8")
+        for line in text.splitlines():
+            for match in pattern.finditer(line):
+                slug = match.group("slug")
+                # Either slug is one of canonical 9 skills, or line explicitly marks it external
+                is_canonical = slug in EXPECTED_SKILLS
+                is_external = ("外部" in line) or ("external" in line.lower())
+                assert is_canonical or is_external, (
+                    f"Non-canonical skill reference found in {path}:\n"
+                    f"  slug: {slug}\n"
+                    f"  line: {line.strip()}"
+                )
 
 
 if __name__ == "__main__":

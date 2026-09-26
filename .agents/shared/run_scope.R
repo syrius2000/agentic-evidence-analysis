@@ -11,6 +11,23 @@ RUN_META_INTERFACE_VERSION_V1 <- "1.0"
 RUN_META_INTERFACE_VERSION_V2 <- "2.0"
 RUN_META_INTERFACE_VERSION <- RUN_META_INTERFACE_VERSION_V2
 
+# Skills whose run_meta.json can be read by read_run_control() (evidence-run-layout audit path).
+# Keep in sync with manifest_roles() / primary artifact mapping where those skills participate.
+RUN_SCOPE_SUPPORTED_SKILLS <- c(
+  "vcd-bayesian-evidence-analysis",
+  "vcd-categorical-analysis",
+  "vcd-categorical-reporting",
+  "questionnaire-batch-analysis",
+  "evidence-decision-review"
+)
+
+assert_run_scope_supported_skill <- function(skill) {
+  if (!is.character(skill) || length(skill) != 1L || is.na(skill) || !nzchar(skill) ||
+      !skill %in% RUN_SCOPE_SUPPORTED_SKILLS) {
+    stop("[ERROR] 不明なskill")
+  }
+  invisible(skill)
+}
 run_scope_source_repo_root <- function() {
   d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
   for (i in seq_len(20L)) {
@@ -51,7 +68,9 @@ run_scope_repo_root <- function(explicit = NULL, start = getwd()) {
   }
   d <- start
   for (i in seq_len(20L)) {
-    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) return(d)
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
+      return(d)
+    }
     parent <- dirname(d)
     if (identical(parent, d)) break
     d <- parent
@@ -62,14 +81,18 @@ run_scope_repo_root <- function(explicit = NULL, start = getwd()) {
 run_scope_relative_path <- function(path, root) {
   p <- normalizePath(path, winslash = "/", mustWork = FALSE)
   r <- normalizePath(root, winslash = "/", mustWork = FALSE)
-  if (!(identical(p, r) || startsWith(p, paste0(r, "/")))) return(NULL)
+  if (!(identical(p, r) || startsWith(p, paste0(r, "/")))) {
+    return(NULL)
+  }
   rel <- substring(p, nchar(r) + 2L)
   if (!nzchar(rel)) "." else rel
 }
 
 run_scope_resolve_path <- function(path, path_kind, repo_root = NULL, run_dir = NULL,
                                    external_path = NULL, allow_legacy_absolute = FALSE) {
-  if (is.null(path) || length(path) == 0L || is.na(path)) return(NULL)
+  if (is.null(path) || length(path) == 0L || is.na(path)) {
+    return(NULL)
+  }
   p <- chartr("\\", "/", as.character(path))
   kind <- if (is.null(path_kind) || !nzchar(as.character(path_kind))) NULL else as.character(path_kind)
   if (identical(kind, "repo_relative")) {
@@ -97,16 +120,22 @@ run_scope_resolve_path <- function(path, path_kind, repo_root = NULL, run_dir = 
 }
 
 run_scope_portable_path <- function(path, repo_root, run_dir = NULL, prefer_run_relative = FALSE) {
-  if (is.null(path) || length(path) == 0L || is.na(path) || !nzchar(as.character(path))) return(NULL)
+  if (is.null(path) || length(path) == 0L || is.na(path) || !nzchar(as.character(path))) {
+    return(NULL)
+  }
   p <- normalizePath(as.character(path), winslash = "/", mustWork = FALSE)
   if (!isTRUE(prefer_run_relative) && !is.null(repo_root)) {
     rel <- run_scope_relative_path(p, repo_root)
-    if (!is.null(rel)) return(list(path = rel, path_kind = "repo_relative"))
+    if (!is.null(rel)) {
+      return(list(path = rel, path_kind = "repo_relative"))
+    }
   }
   if (!is.null(run_dir)) {
     r <- normalizePath(run_dir, winslash = "/", mustWork = FALSE)
     rel <- run_scope_relative_path(p, r)
-    if (!is.null(rel)) return(list(path = rel, path_kind = "run_relative"))
+    if (!is.null(rel)) {
+      return(list(path = rel, path_kind = "run_relative"))
+    }
   }
   list(path = NULL, path_kind = "external")
 }
@@ -118,7 +147,9 @@ from_portable_repo_path <- run_scope_resolve_path
 run_scope_detect_repo_root <- function(run_dir) {
   d <- normalizePath(run_dir, winslash = "/", mustWork = FALSE)
   for (i in seq_len(20L)) {
-    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) return(d)
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
+      return(d)
+    }
     parent <- dirname(d)
     if (identical(parent, d)) break
     d <- parent
@@ -131,10 +162,13 @@ resolve_run_meta_paths <- function(meta, run_dir, allow_legacy = FALSE) {
   repo_root <- run_scope_detect_repo_root(norm_run)
   if (is.null(repo_root)) repo_root <- RUN_SCOPE_REPO_ROOT
   resolved <- meta
-  if (!identical(meta$interface_version, RUN_META_INTERFACE_VERSION_V2)) return(meta)
+  if (!identical(meta$interface_version, RUN_META_INTERFACE_VERSION_V2)) {
+    return(meta)
+  }
   if (!is.null(meta$out_root)) {
     resolved$out_root <- run_scope_resolve_path(meta$out_root, meta$out_root_path_kind, repo_root, norm_run,
-      allow_legacy_absolute = allow_legacy)
+      allow_legacy_absolute = allow_legacy
+    )
   }
   if (is.null(resolved$out_root) || !nzchar(resolved$out_root)) {
     parent <- dirname(norm_run)
@@ -143,18 +177,23 @@ resolve_run_meta_paths <- function(meta, run_dir, allow_legacy = FALSE) {
   resolved$run_output_dir <- norm_run
   if (!is.null(meta$supersedes_run)) {
     resolved$supersedes_run <- run_scope_resolve_path(meta$supersedes_run, meta$supersedes_run_path_kind,
-      repo_root, norm_run, allow_legacy_absolute = allow_legacy)
+      repo_root, norm_run,
+      allow_legacy_absolute = allow_legacy
+    )
   }
   if (!is.null(meta$config_source_path)) {
     resolved$config_source_path <- run_scope_resolve_path(meta$config_source_path, meta$config_source_path_kind,
-      repo_root, norm_run, allow_legacy_absolute = allow_legacy)
+      repo_root, norm_run,
+      allow_legacy_absolute = allow_legacy
+    )
   }
   if (is.list(meta$inputs)) {
     resolved$inputs <- lapply(meta$inputs, function(item) {
       if (!is.null(item$source_path)) {
         item$source_path <- run_scope_resolve_path(item$source_path,
           item$source_path_kind %||% item$path_kind, repo_root, norm_run,
-          allow_legacy_absolute = allow_legacy)
+          allow_legacy_absolute = allow_legacy
+        )
       }
       item
     })
@@ -163,7 +202,9 @@ resolve_run_meta_paths <- function(meta, run_dir, allow_legacy = FALSE) {
 }
 
 portableize_run_meta <- function(meta, run_dir) {
-  if (!identical(meta$interface_version, RUN_META_INTERFACE_VERSION_V2)) return(meta)
+  if (!identical(meta$interface_version, RUN_META_INTERFACE_VERSION_V2)) {
+    return(meta)
+  }
   norm_run <- normalizePath(run_dir, winslash = "/", mustWork = TRUE)
   repo_root <- run_scope_detect_repo_root(norm_run)
   if (is.null(repo_root)) repo_root <- tryCatch(run_scope_repo_root(start = norm_run), error = function(e) NULL)
@@ -198,8 +239,12 @@ portableize_run_meta <- function(meta, run_dir) {
     })
   }
   scrub <- function(x) {
-    if (is.list(x)) return(lapply(x, scrub))
-    if (is.character(x) && length(x) == 1L && run_scope_is_absolute_path(x)) return(NULL)
+    if (is.list(x)) {
+      return(lapply(x, scrub))
+    }
+    if (is.character(x) && length(x) == 1L && run_scope_is_absolute_path(x)) {
+      return(NULL)
+    }
     x
   }
   explicit_supersede <- if (!is.null(m$supersedes_run) && run_scope_is_absolute_path(m$supersedes_run) && identical(m$supersedes_run_path_kind, "external")) m$supersedes_run else NULL
@@ -398,16 +443,20 @@ atomic_run_json <- function(value, path) {
 read_run_control <- function(run_dir, allow_legacy = FALSE) {
   path <- assert_path_within_run_dir("run_meta.json", run_dir)
   meta <- jsonlite::read_json(path, simplifyVector = FALSE)
-  if (identical(meta$interface_version, "1.0") && allow_legacy) return(meta)
+  if (identical(meta$interface_version, "1.0") && allow_legacy) {
+    return(meta)
+  }
   if (!identical(meta$interface_version, "2.0")) stop("[ERROR] legacy / 不正メタデータ: v2.0 が必要です")
   if (!is.null(meta$path_schema_version) && !identical(as.character(meta$path_schema_version), RUN_SCOPE_PATH_SCHEMA_VERSION)) {
     stop("[ERROR] 未対応の path_schema_version: ", meta$path_schema_version)
   }
-  if (!meta$skill %in% c("vcd-bayesian-evidence-analysis", "vcd-categorical-analysis", "questionnaire-batch-analysis")) stop("[ERROR] 不明なskill")
+  assert_run_scope_supported_skill(meta$skill)
   if (!meta$run_state %in% c("active", "sealed")) stop("[ERROR] 不正なrun_state")
   if (is.null(meta$pass_status) || !meta$pass_status$pass1 %in% c("pending", "completed", "partial", "failed") ||
-      !meta$pass_status$pass2 %in% c("pending", "stub_generated", "completed") ||
-      !meta$pass_status$pass3 %in% c("pending", "completed")) stop("[ERROR] 不正なpass_status")
+    !meta$pass_status$pass2 %in% c("pending", "stub_generated", "completed") ||
+    !meta$pass_status$pass3 %in% c("pending", "completed")) {
+    stop("[ERROR] 不正なpass_status")
+  }
   resolve_run_meta_paths(meta, run_dir, allow_legacy = allow_legacy)
 }
 
@@ -461,7 +510,9 @@ save_config_snapshot <- function(run_output_dir, config_data, config_origin = "p
 
   repo_root <- run_scope_detect_repo_root(run_output_dir)
   sanitize_config <- function(x) {
-    if (is.list(x)) return(lapply(x, sanitize_config))
+    if (is.list(x)) {
+      return(lapply(x, sanitize_config))
+    }
     if (is.character(x) && length(x) == 1L && run_scope_is_absolute_path(x)) {
       rec <- run_scope_portable_path(x, repo_root, run_output_dir)
       return(if (!is.null(rec) && !identical(rec$path_kind, "external")) rec$path else NA_character_)
@@ -473,8 +524,9 @@ save_config_snapshot <- function(run_output_dir, config_data, config_origin = "p
     # JSON にホスト固有パスが含まれる場合だけ可搬表現へ正規化し、それ以外は原文バイト列を保持する。
     parsed <- if (grepl("\\.json$", config_data, ignore.case = TRUE)) tryCatch(jsonlite::read_json(config_data, simplifyVector = FALSE), error = function(e) NULL) else NULL
     has_abs <- grepl("(/Users/|/home/|[A-Za-z]:[\\\\/])", paste(readLines(config_data, warn = FALSE), collapse = "\n"))
-    if (!is.null(parsed) && has_abs) jsonlite::write_json(sanitize_config(parsed), dest_path, pretty = TRUE, auto_unbox = TRUE, null = "null")
-    else if (!file.copy(config_data, dest_path, overwrite = FALSE)) stop("[ERROR] 設定snapshot保存失敗")
+    if (!is.null(parsed) && has_abs) {
+      jsonlite::write_json(sanitize_config(parsed), dest_path, pretty = TRUE, auto_unbox = TRUE, null = "null")
+    } else if (!file.copy(config_data, dest_path, overwrite = FALSE)) stop("[ERROR] 設定snapshot保存失敗")
   } else if (is.list(config_data)) {
     jsonlite::write_json(sanitize_config(config_data), dest_path, pretty = TRUE, auto_unbox = TRUE, null = "null")
   } else {
@@ -528,10 +580,13 @@ manifest_roles <- function(skill) {
   switch(skill,
     "vcd-bayesian-evidence-analysis" = c("primary_results", "report_html", "figure"),
     "vcd-categorical-analysis" = c("primary_results", "diagnostic", "intermediate", "summary_table", "figure", "report_html"),
+    "vcd-categorical-reporting" = c("primary_results", "summary_table", "summary_report", "report_html"),
     "questionnaire-batch-analysis" = c("summary_table", "question_result", "canonical_result", "figure", "report_html"),
     "sas-proc-freq" = c("primary_results", "summary_table", "summary_report", "config"),
     "sas-proc-means" = c("primary_results", "summary_table", "summary_report", "config"),
-    stop("[ERROR] 不明なmanifest skill"))
+    "evidence-decision-review" = c("primary_results", "summary_table", "diagnostic"),
+    stop("[ERROR] 不明なmanifest skill")
+  )
 }
 
 validate_manifest_entries <- function(run_dir, skill, artifacts, writing = FALSE) {
@@ -541,7 +596,9 @@ validate_manifest_entries <- function(run_dir, skill, artifacts, writing = FALSE
   validated <- lapply(artifacts, function(art) {
     p <- art$path
     if (!is.character(p) || length(p) != 1L || is.na(p) || !nzchar(p) ||
-        grepl("(^/|^[A-Za-z]:|\\\\|//|/$)", p) || any(strsplit(p, "/", fixed = TRUE)[[1]] %in% c(".", ".."))) stop("[ERROR] path は正規化された相対 POSIX パスが必要です")
+      grepl("(^/|^[A-Za-z]:|\\\\|//|/$)", p) || any(strsplit(p, "/", fixed = TRUE)[[1]] %in% c(".", ".."))) {
+      stop("[ERROR] path は正規化された相対 POSIX パスが必要です")
+    }
     f <- assert_path_within_run_dir(p, run_dir)
     if (!file_test("-f", f)) stop("[ERROR] マニフェスト登録成果物が存在しません: ", p)
     if (p %in% paths) stop("[ERROR] path が重複しています")
@@ -566,8 +623,10 @@ validate_manifest_entries <- function(run_dir, skill, artifacts, writing = FALSE
   primary <- switch(skill,
     "vcd-bayesian-evidence-analysis" = "evidence_results.json",
     "vcd-categorical-analysis" = "categorical_results.json",
+    "vcd-categorical-reporting" = "comparative_evidence.json",
     "sas-proc-freq" = "freq_results.json",
     "sas-proc-means" = "means_results.json",
+    "evidence-decision-review" = "evidence_feature.json",
     NULL
   )
   if (skill != "questionnaire-batch-analysis") {
@@ -701,7 +760,9 @@ acquire_stage_lock <- function(run_dir, stage, recover_stale = FALSE, stale_thre
     run_match <- identical(info$run_dir_hash, expected_run_hash) ||
       identical(info$run_dir, normalizePath(run_dir, winslash = "/"))
     if (is.null(info) || is.null(info$token) || length(info$pid) != 1L || !is.numeric(info$pid) || info$pid <= 0 ||
-        !identical(info$stage, stage) || !run_match) stop("[ERROR] lock_info が欠損・破損しています")
+      !identical(info$stage, stage) || !run_match) {
+      stop("[ERROR] lock_info が欠損・破損しています")
+    }
     if (!identical(info$hostname, unname(Sys.info()["nodename"]))) stop("[ERROR] 異なるホストのロックです")
     # psの成功と空結果だけをPID不在と扱い、照会失敗は回復しない。
     ps <- suppressWarnings(system2("ps", c("-p", as.character(info$pid), "-o", "pid="), stdout = TRUE, stderr = TRUE))
@@ -715,24 +776,30 @@ acquire_stage_lock <- function(run_dir, stage, recover_stale = FALSE, stale_thre
     if (!identical(info, jsonlite::read_json(info_path))) stop("[ERROR] ロック所有者が変更されました")
     audit <- file.path(control, "audit.jsonl")
     assert_no_symlink(audit)
-    cat(jsonlite::toJSON(list(action = "recover_stale_lock", recovered = info,
-        timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")), auto_unbox = TRUE), "\n", file = audit, append = TRUE)
+    cat(jsonlite::toJSON(list(
+      action = "recover_stale_lock", recovered = info,
+      timestamp = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
+    ), auto_unbox = TRUE), "\n", file = audit, append = TRUE)
     unlink(lock_path, recursive = TRUE)
     if (!dir.create(lock_path, showWarnings = FALSE)) stop("[ERROR] 回復後の再取得失敗")
   }
   token <- digest::digest(list(Sys.time(), Sys.getpid(), runif(1)), algo = "sha256")
   norm_run <- normalizePath(run_dir, winslash = "/")
-  info <- list(pid = Sys.getpid(), hostname = unname(Sys.info()["nodename"]), stage = stage,
-      run_dir = ".", run_dir_path_kind = "run_relative",
-      run_dir_hash = digest::digest(norm_run, algo = "sha256", serialize = FALSE), token = token,
-      process_start = paste(system2("ps", c("-p", Sys.getpid(), "-o", "lstart="), stdout = TRUE), collapse = " "),
-      acquired_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"))
+  info <- list(
+    pid = Sys.getpid(), hostname = unname(Sys.info()["nodename"]), stage = stage,
+    run_dir = ".", run_dir_path_kind = "run_relative",
+    run_dir_hash = digest::digest(norm_run, algo = "sha256", serialize = FALSE), token = token,
+    process_start = paste(system2("ps", c("-p", Sys.getpid(), "-o", "lstart="), stdout = TRUE), collapse = " "),
+    acquired_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
+  )
   atomic_run_json(info, file.path(lock_path, "lock_info.json"))
   list(lock_dir = lock_path, lock_id = basename(control), token = token, info = info, run_dir = norm_run)
 }
 
 release_stage_lock <- function(lock_obj) {
-  if (is.null(lock_obj)) return(invisible(FALSE))
+  if (is.null(lock_obj)) {
+    return(invisible(FALSE))
+  }
   assert_no_symlink(lock_obj$lock_dir)
   path <- file.path(lock_obj$lock_dir, "lock_info.json")
   current <- tryCatch(jsonlite::read_json(path), error = function(e) NULL)
@@ -800,7 +867,9 @@ finalize_stage <- function(run_dir, stage, target_name, source_staging_path, exp
     on.exit(release_stage_lock(common), add = TRUE, after = FALSE)
   } else {
     if (!identical(common_lock$run_dir, run_dir) || !identical(common_lock$info$stage, "run") ||
-        !identical(jsonlite::read_json(file.path(common_lock$lock_dir, "lock_info.json")), common_lock$info)) stop("[ERROR] 共通ロック所有権が不一致")
+      !identical(jsonlite::read_json(file.path(common_lock$lock_dir, "lock_info.json")), common_lock$info)) {
+      stop("[ERROR] 共通ロック所有権が不一致")
+    }
   }
   lock <- acquire_stage_lock(run_dir, stage, recover_stale_lock)
   on.exit(release_stage_lock(lock), add = TRUE, after = FALSE)
@@ -826,14 +895,21 @@ finalize_stage <- function(run_dir, stage, target_name, source_staging_path, exp
     entries <- list.files(staging, all.files = TRUE, no.. = TRUE, recursive = TRUE, full.names = TRUE, include.dirs = TRUE)
     allowed <- source
     par <- dirname(source)
-    while (par != staging) { allowed <- c(allowed, par); par <- dirname(par) }
+    while (par != staging) {
+      allowed <- c(allowed, par)
+      par <- dirname(par)
+    }
     if (length(setdiff(entries, allowed))) stop("[ERROR] staging 領域が空ではありません（対象以外の残存）")
   }
-  expected_tx <- list(run_dir = run_dir, stage = stage, source = source, target = target,
-      expected_results_manifest_sha256 = v$manifest_sha256, expected_narrative_sha256 = nh)
+  expected_tx <- list(
+    run_dir = run_dir, stage = stage, source = source, target = target,
+    expected_results_manifest_sha256 = v$manifest_sha256, expected_narrative_sha256 = nh
+  )
   if (file.exists(target) || !is.null(tx)) {
     if (is.null(tx) || !all(vapply(names(expected_tx), function(k) identical(tx[[k]], expected_tx[[k]]), logical(1))) ||
-        is.null(tx$sha256)) stop("[ERROR] 回復証跡が欠損または不一致")
+      is.null(tx$sha256)) {
+      stop("[ERROR] 回復証跡が欠損または不一致")
+    }
     if (file.exists(target)) {
       if (!identical(sha256_file(target), tx$sha256) || file.exists(source)) stop("[ERROR] 回復target/sourceが不一致")
     } else {
@@ -869,8 +945,10 @@ finalize_stage <- function(run_dir, stage, target_name, source_staging_path, exp
   meta$timestamps[[paste0(stage, "_completed")]] <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
   if (stage == "pass3") meta$timestamps$sealed <- meta$timestamps$pass3_completed
   atomic_run_json(portableize_run_meta(meta, run_dir), file.path(run_dir, "run_meta.json"))
-  list(run_dir = run_dir, target_name = target_name, sha256 = tx$sha256,
-       results_manifest_sha256 = v$manifest_sha256, run_state = meta$run_state)
+  list(
+    run_dir = run_dir, target_name = target_name, sha256 = tx$sha256,
+    results_manifest_sha256 = v$manifest_sha256, run_state = meta$run_state
+  )
 }
 
 finalize_pass2 <- function(run_dir, target_name = "executive_summary.md", source_staging_path = NULL, expected_results_manifest_sha256 = NULL, recover_stale_lock = FALSE) {
@@ -986,8 +1064,7 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
         kind = "command",
         argv = c(
           "Rscript",
-          switch(
-            skill,
+          switch(skill,
             "vcd-bayesian-evidence-analysis" = ".agents/skills/vcd-bayesian-evidence-analysis/templates/pass2_stub.R",
             "vcd-categorical-analysis" = ".agents/skills/vcd-categorical-analysis/templates/analysis.R",
             "questionnaire-batch-analysis" = ".agents/skills/questionnaire-batch-analysis/templates/batch_runner.R"
@@ -1001,8 +1078,7 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
         kind = "command",
         argv = c(
           "Rscript",
-          switch(
-            skill,
+          switch(skill,
             "vcd-bayesian-evidence-analysis" = ".agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R",
             "vcd-categorical-analysis" = ".agents/skills/vcd-categorical-analysis/templates/render_dashboard.R",
             "questionnaire-batch-analysis" = ".agents/skills/questionnaire-batch-analysis/templates/render_dashboard.R"
@@ -1017,8 +1093,7 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
         kind = "command",
         argv = c(
           "Rscript",
-          switch(
-            skill,
+          switch(skill,
             "vcd-bayesian-evidence-analysis" = ".agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R",
             "vcd-categorical-analysis" = ".agents/skills/vcd-categorical-analysis/templates/render_dashboard.R",
             "questionnaire-batch-analysis" = ".agents/skills/questionnaire-batch-analysis/templates/render_dashboard.R"
@@ -1149,9 +1224,11 @@ write_run_meta <- function(out_root, run_output_dir, skill, run_id, input_data_p
   inputs <- list()
   if (!is.null(input_data_path) && nzchar(trimws(input_data_path))) {
     norm_input <- normalizePath(input_data_path, winslash = "/", mustWork = FALSE)
-    inputs[[1L]] <- list(role = "data", source_kind = "file", source_path = norm_input,
+    inputs[[1L]] <- list(
+      role = "data", source_kind = "file", source_path = norm_input,
       snapshot = NULL, snapshot_policy = "hash_only",
-      sha256 = if (file.exists(norm_input)) sha256_file(norm_input) else NULL)
+      sha256 = if (file.exists(norm_input)) sha256_file(norm_input) else NULL
+    )
   }
   if (!is.null(extra$inputs)) inputs <- extra$inputs
   inputs <- lapply(inputs, function(item) {
@@ -1200,7 +1277,9 @@ write_run_meta <- function(out_root, run_output_dir, skill, run_id, input_data_p
   if (!is.null(sup_rec) && identical(sup_rec$path_kind, "external")) sup_rec$path <- normalizePath(extra$supersedes_run, winslash = "/", mustWork = FALSE)
   cfg_rec <- if (!is.null(extra$config_source_path)) {
     if (!is.null(extra$config_source_path_kind)) list(path = extra$config_source_path, path_kind = extra$config_source_path_kind) else run_scope_portable_path(extra$config_source_path, repo_root, norm_run)
-  } else NULL
+  } else {
+    NULL
+  }
   meta <- list(
     interface_version = RUN_META_INTERFACE_VERSION_V2,
     path_schema_version = RUN_SCOPE_PATH_SCHEMA_VERSION,
@@ -1223,14 +1302,18 @@ write_run_meta <- function(out_root, run_output_dir, skill, run_id, input_data_p
     config_snapshot = extra$config_snapshot %||% "analysis_config.json", config_sha256 = extra$config_sha256 %||% NULL,
     question_config_sha256 = if (file.exists(file.path(norm_run, "question_config.csv"))) sha256_file(file.path(norm_run, "question_config.csv")) else NULL,
     artifacts = list(), partial_failures = extra$partial_failures %||% NULL,
-    pass_status = list(pass0 = extra$pass_status$pass0 %||% "completed",
+    pass_status = list(
+      pass0 = extra$pass_status$pass0 %||% "completed",
       pass1 = extra$pass_status$pass1 %||% if (!is.null(extra$results_manifest_sha256)) "completed" else "pending",
-      pass2 = extra$pass_status$pass2 %||% "pending", pass3 = extra$pass_status$pass3 %||% "pending"),
+      pass2 = extra$pass_status$pass2 %||% "pending", pass3 = extra$pass_status$pass3 %||% "pending"
+    ),
     timestamps = list(created = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"), pass1_completed = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"))
   )
   if (length(extra)) for (nm in names(extra)) if (!nm %in% c("pass_status", "timestamps", "inputs", "supersedes_run", "config_source_path", "config_source_path_kind", "out_root", "run_output_dir", "path_schema_version")) meta[[nm]] <- extra[[nm]]
   sanitize_paths <- function(x) {
-    if (is.list(x)) return(lapply(x, sanitize_paths))
+    if (is.list(x)) {
+      return(lapply(x, sanitize_paths))
+    }
     if (is.character(x) && length(x) == 1L && run_scope_is_absolute_path(x)) {
       rec <- run_scope_portable_path(x, repo_root, norm_run)
       return(if (!is.null(rec) && !identical(rec$path_kind, "external")) rec$path else NULL)
@@ -1255,7 +1338,8 @@ find_questionnaire_json_under_run <- function(run_dir) {
   if (isTRUE(file.exists(direct))) {
     return(direct)
   }
-  hits <- list.files(run_dir, pattern = "^questionnaire_results\\.json$",
+  hits <- list.files(run_dir,
+    pattern = "^questionnaire_results\\.json$",
     full.names = TRUE, recursive = TRUE
   )
   if (length(hits) == 0L) {
@@ -1306,7 +1390,9 @@ publish_run_preview <- function(run_dir, name, generate, allow_legacy = FALSE, p
     warning <- "警告: legacy run のpreviewです。manifestの完全性は未検証で、本番確定には利用できません。"
     if (grepl("[.]html$", name)) {
       content <- sub("(<body[^>]*>)", paste0("\\1<div role='alert'>", warning, "</div>"), content, perl = TRUE)
-    } else content <- c(paste0("> ", warning), "", content)
+    } else {
+      content <- c(paste0("> ", warning), "", content)
+    }
     writeLines(content, generated, useBytes = TRUE)
   }
   if (!file.exists(generated) || file.info(generated)$size == 0) stop("[ERROR] preview生成失敗")
@@ -1323,23 +1409,29 @@ publish_run_preview <- function(run_dir, name, generate, allow_legacy = FALSE, p
 }
 
 render_run_dashboard <- function(run_dir, rmd_path, preview = FALSE, allow_legacy = FALSE,
-                                  preview_output_dir = NULL, recover_stale = FALSE) {
+                                 preview_output_dir = NULL, recover_stale = FALSE) {
   render <- function(target, is_preview) {
     work <- dirname(target)
     # Rmdも一時領域へ複製し、knitr中間生成物がテンプレートを汚さないようにする。
     local_rmd <- file.path(work, "dashboard_source.Rmd")
     if (!file.copy(rmd_path, local_rmd, overwrite = FALSE)) stop("[ERROR] Rmd作業コピー失敗")
-    rmarkdown::render(local_rmd, output_file = basename(target), output_dir = work,
+    rmarkdown::render(local_rmd,
+      output_file = basename(target), output_dir = work,
       intermediates_dir = work, knit_root_dir = RUN_SCOPE_REPO_ROOT,
-      params = list(run_dir = run_dir, preview_mode = is_preview, require_pass2 = !is_preview,
-                    repo_root = RUN_SCOPE_REPO_ROOT),
-      envir = new.env(parent = globalenv()), quiet = TRUE)
+      params = list(
+        run_dir = run_dir, preview_mode = is_preview, require_pass2 = !is_preview,
+        repo_root = RUN_SCOPE_REPO_ROOT
+      ),
+      envir = new.env(parent = globalenv()), quiet = TRUE
+    )
     if (!file.exists(target)) stop("[ERROR] ダッシュボードが生成されません")
     # 自分の一時作業領域だけを掃除し、公開対象HTMLを残す。
     extra <- setdiff(list.files(work, all.files = TRUE, no.. = TRUE, full.names = TRUE), target)
     if (length(extra)) unlink(extra, recursive = TRUE)
   }
-  if (preview) return(publish_run_preview(run_dir, "dashboard_preview.html", function(target) render(target, TRUE), allow_legacy, preview_output_dir))
+  if (preview) {
+    return(publish_run_preview(run_dir, "dashboard_preview.html", function(target) render(target, TRUE), allow_legacy, preview_output_dir))
+  }
   lock <- acquire_stage_lock(run_dir, "run", recover_stale)
   on.exit(release_stage_lock(lock), add = TRUE)
   meta <- read_run_control(run_dir)
@@ -1351,7 +1443,12 @@ render_run_dashboard <- function(run_dir, rmd_path, preview = FALSE, allow_legac
   if (!dir.create(work)) stop("[ERROR] render作業領域作成失敗")
   target <- file.path(work, "dashboard.html")
   # promotion前の描画失敗だけは自分の作業領域を破棄できる。
-  tryCatch(render(target, FALSE), error = function(e) { unlink(work, recursive = TRUE); stop(e) })
+  tryCatch(render(target, FALSE), error = function(e) {
+    unlink(work, recursive = TRUE)
+    stop(e)
+  })
   finalize_stage(run_dir, "pass3", "dashboard.html", target, meta$results_manifest_sha256,
-    nh, recover_stale, common_lock = lock)
+    nh, recover_stale,
+    common_lock = lock
+  )
 }

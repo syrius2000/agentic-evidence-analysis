@@ -42,6 +42,42 @@
       "enum": ["independent_binary", "matched_pair", "matched_set", "iptw", "person_time"],
       "description": "Study design determining the appropriate estimation engine"
     },
+    "repeated_rows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject_id_col",
+        "group_col",
+        "outcome_col",
+        "event_rule",
+        "confirmed",
+        "no_other_subject_dependence_confirmed"
+      ],
+      "properties": {
+        "subject_id_col": { "type": "string", "minLength": 1 },
+        "group_col": { "type": "string", "minLength": 1 },
+        "outcome_col": { "type": "string", "minLength": 1 },
+        "event_rule": { "type": "string", "enum": ["any_event"] },
+        "confirmed": { "type": "boolean", "const": true },
+        "no_other_subject_dependence_confirmed": {
+          "type": "boolean",
+          "const": true,
+          "description": "Explicit attestation that no undeclared subject-level dependence is known beyond declared/heuristic cluster and matched columns"
+        },
+        "cluster_cols": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "description": "Explicit higher-level cluster column names merged with heuristic detection"
+        },
+        "matched_cols": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true,
+          "description": "Explicit matched-structure column names merged with heuristic detection"
+        }
+      }
+    },
     "practical_difference": {
       "type": "object",
       "required": ["mode"],
@@ -78,6 +114,13 @@
       "type": "boolean",
       "default": false,
       "description": "Flag indicating human/clinical reviewer sign-off requirement"
+    }
+  },
+  "if": { "required": ["repeated_rows"] },
+  "then": {
+    "properties": {
+      "design": { "const": "independent_binary" },
+      "analysis_unit": { "const": "subject" }
     }
   }
 }

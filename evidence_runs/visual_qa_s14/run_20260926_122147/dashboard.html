@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>比較エビデンス解析ダッシュボード</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 24px; color: #1e293b; background: #f8fafc; }
+    h1 { color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; }
+    .callout { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-size: 0.9em; }
+    .callout strong { color: #b45309; }
+    .callout.warning { background: #fef2f2; border-left: 4px solid #ef4444; }
+    .callout.warning strong { color: #991b1b; }
+    .table-container { width: 100%; overflow-x: auto; margin-top: 16px; }
+    caption { caption-side: top; text-align: left; font-weight: bold; margin-bottom: 8px; color: #475569; font-size: 1.05em; }
+    table { width: 100%; border-collapse: collapse; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px; overflow: hidden; }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 0.88em; }
+    th { background: #0f172a; color: #ffffff; font-weight: 600; }
+    th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 24px; }
+    th.sortable:hover { background: #1e293b; }
+    th.sortable:focus-visible { outline: 2px solid #38bdf8; outline-offset: -2px; }
+    th.sortable .sort-indicator { display: inline-block; margin-left: 6px; font-size: 0.8em; opacity: 0.4; }
+    th.sortable[aria-sort="ascending"] .sort-indicator { opacity: 1; color: #38bdf8; }
+    th.sortable[aria-sort="descending"] .sort-indicator { opacity: 1; color: #38bdf8; }
+    tr:hover { background-color: #f8fafc; }
+    .badge { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin: 1px; }
+    .ugrade { font-weight: bold; padding: 2px 6px; border-radius: 3px; border: 1px solid #94a3b8; }
+    small { color: #64748b; }
+  </style>
+</head>
+<body>
+  <h1 id="dashboard-title">比較エビデンス解析ダッシュボード</h1>
+  <div id="guidance-callout" class="callout">
+    <strong>【解釈上の厳格な契約・免責事項】</strong><br>
+    ・<strong>同等性の誤認禁止</strong>: 不確実性区間が0を跨ぐことは「同等」を意味しません。<br>
+    ・<strong>因果的優越の禁止</strong>: 方向確率単独で治療の因果的優越性を主張してはなりません。<br>
+    ・<strong>多重比較スクリーニング免責</strong>: FWERは制御されておらず、本成果物は探索的スクリーニングに位置付けられます。
+  </div>
+    <div id="numerical-instability-warning" class="callout warning" role="alert">
+    <strong>【数値的不安定性に関する警告】</strong><br>
+    参照群のイベント発生数がゼロ（ZERO_REFERENCE）または極めて疎であるため、相対リスク（RR）の期待値が理論的に発散、または不確実性区間が極めて広範になっています。<br>
+    ※ なお、リスク差（RD）や絶対指標は引き続き適切に推定されており有効です。RR の点推定値および区間幅の解釈には十分ご注意ください。
+  </div>
+  <div class="table-container">
+    <table id="comparative-evidence-table" aria-describedby="guidance-callout">
+      <caption>比較エビデンス解析サマリー</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">テーマ<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">比較<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">記述N (T / R)<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">記述イベント数 (T / R)<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-effect sortable" aria-sort="none" tabindex="0" role="columnheader">RD 推定値 [区間]<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-effect sortable" aria-sort="none" tabindex="0" role="columnheader">RR 推定値 [区間]<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-direction sortable" aria-sort="none" tabindex="0" role="columnheader">方向支持指標<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-practical sortable" aria-sort="none" tabindex="0" role="columnheader">実務領域・U-Grade<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-precision sortable" aria-sort="none" tabindex="0" role="columnheader">精度指標 (ESS / 区間幅)<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-diagnostics sortable" aria-sort="none" tabindex="0" role="columnheader">診断バッジ<span class="sort-indicator" aria-hidden="true">↕</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class='col-id' data-sort-value="T1_TargetExcess">T1_TargetExcess</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000000100_0000000100">100 / 100</td><td class='col-id' data-sort-value="0000000045_0000000005">45 / 5</td><td class='col-effect' data-sort-value="0.39690100"><strong>0.397</strong> [0.288, 0.502]</td><td class='col-effect' data-sort-value="8.73238794">8.73 [4.05, 23.79]</td><td class='col-direction' data-sort-value="1.00000000">1.000<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u0 practical-target-excess' style='background-color: rgba(239, 68, 68, 0.20);' data-sort-value="0_target_excess"><span class='ugrade'>U0</span><br><small>target_excess</small></td><td class='col-precision' data-sort-value="0.21357933">ESS: N/A<br><small>幅: 0.214</small></td><td class='col-diagnostics' data-sort-value=""></td></tr>
+<tr><td class='col-id' data-sort-value="T2_RefExcess">T2_RefExcess</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000000100_0000000100">100 / 100</td><td class='col-id' data-sort-value="0000000005_0000000045">5 / 45</td><td class='col-effect' data-sort-value="-0.39470546"><strong>-0.395</strong> [-0.501, -0.288]</td><td class='col-effect' data-sort-value="0.11718415">0.12 [0.04, 0.25]</td><td class='col-direction' data-sort-value="0.00000000">0.000<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u0 practical-reference-excess' style='background-color: rgba(59, 130, 246, 0.20);' data-sort-value="0_reference_excess"><span class='ugrade'>U0</span><br><small>reference_excess</small></td><td class='col-precision' data-sort-value="0.21303363">ESS: N/A<br><small>幅: 0.213</small></td><td class='col-diagnostics' data-sort-value=""></td></tr>
+<tr><td class='col-id' data-sort-value="T3_Neutral">T3_Neutral</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000001000_0000001000">1000 / 1000</td><td class='col-id' data-sort-value="0000000050_0000000050">50 / 50</td><td class='col-effect' data-sort-value="0.00037110"><strong>0.000</strong> [-0.019, 0.019]</td><td class='col-effect' data-sort-value="1.00754880">1.01 [0.68, 1.46]</td><td class='col-direction' data-sort-value="0.51375000">0.514<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u2 practical-practical-neutral' style='background-color: rgba(100, 116, 139, 0.08);' data-sort-value="2_practical_neutral"><span class='ugrade'>U2</span><br><small>practical_neutral</small></td><td class='col-precision' data-sort-value="0.03810510">ESS: N/A<br><small>幅: 0.038</small></td><td class='col-diagnostics' data-sort-value=""></td></tr>
+<tr><td class='col-id' data-sort-value="T4_U3_Uncertain">T4_U3_Uncertain</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000000100_0000000100">100 / 100</td><td class='col-id' data-sort-value="0000000010_0000000010">10 / 10</td><td class='col-effect' data-sort-value="0.00102568"><strong>0.001</strong> [-0.084, 0.085]</td><td class='col-effect' data-sort-value="1.01068131">1.01 [0.43, 2.34]</td><td class='col-direction' data-sort-value="0.51200000">0.512<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u3 practical-target-excess' style='background-color: rgba(148, 163, 184, 0.12);' data-sort-value="3_target_excess"><span class='ugrade'>U3</span><br><small>target_excess</small></td><td class='col-precision' data-sort-value="0.16923817">ESS: N/A<br><small>幅: 0.169</small></td><td class='col-diagnostics' data-sort-value=""></td></tr>
+<tr><td class='col-id' data-sort-value="T5_TargetU2">T5_TargetU2</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000000100_0000000100">100 / 100</td><td class='col-id' data-sort-value="0000000012_0000000008">12 / 8</td><td class='col-effect' data-sort-value="0.03897137"><strong>0.039</strong> [-0.046, 0.123]</td><td class='col-effect' data-sort-value="1.48067202">1.48 [0.65, 3.58]</td><td class='col-direction' data-sort-value="0.82725000">0.827<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u2 practical-target-excess' style='background-color: rgba(239, 68, 68, 0.08);' data-sort-value="2_target_excess"><span class='ugrade'>U2</span><br><small>target_excess</small></td><td class='col-precision' data-sort-value="0.16862551">ESS: N/A<br><small>幅: 0.169</small></td><td class='col-diagnostics' data-sort-value=""></td></tr>
+<tr><td class='col-id' data-sort-value="T6_ZeroRef">T6_ZeroRef</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000000100_0000000100">100 / 100</td><td class='col-id' data-sort-value="0000000010_0000000000">10 / 0</td><td class='col-effect' data-sort-value="0.09663597"><strong>0.097</strong> [0.046, 0.167]</td><td class='col-effect' data-sort-value="45.51498687">45.51 [3.80, 17480.30]</td><td class='col-direction' data-sort-value="0.99975000">1.000<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u0 practical-target-excess' style='background-color: rgba(239, 68, 68, 0.20);' data-sort-value="0_target_excess"><span class='ugrade'>U0</span><br><small>target_excess</small></td><td class='col-precision' data-sort-value="0.12181070">ESS: N/A<br><small>幅: 0.122</small></td><td class='col-diagnostics' data-sort-value="ZERO_REFERENCE;UNSTABLE_RR_INTERVAL"><span class='badge'>ZERO_REFERENCE</span> <span class='badge'>UNSTABLE_RR_INTERVAL</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      var table = document.getElementById("comparative-evidence-table");
+      if (!table) return;
+      var headers = table.querySelectorAll("thead th.sortable");
+      var tbody = table.querySelector("tbody");
+      if (!tbody) return;
+
+      headers.forEach(function(header, colIndex) {
+        function sortTable() {
+          var currentSort = header.getAttribute("aria-sort") || "none";
+          var newSort = (currentSort === "ascending") ? "descending" : "ascending";
+
+          headers.forEach(function(h) {
+            h.setAttribute("aria-sort", "none");
+            var ind = h.querySelector(".sort-indicator");
+            if (ind) ind.textContent = "↕";
+          });
+          header.setAttribute("aria-sort", newSort);
+          var activeIndicator = header.querySelector(".sort-indicator");
+          if (activeIndicator) {
+            activeIndicator.textContent = (newSort === "ascending") ? "▲" : "▼";
+          }
+
+          var isNumeric = header.classList.contains("col-effect") ||
+                          header.classList.contains("col-direction") ||
+                          header.classList.contains("col-precision");
+          var isUgrade = header.classList.contains("col-practical");
+
+          var rows = Array.from(tbody.querySelectorAll("tr"));
+          /* Decorate with original index for stable sort */
+          var decorated = rows.map(function(row, idx) {
+            return { row: row, index: idx };
+          });
+
+          decorated.sort(function(a, b) {
+            var cellA = a.row.children[colIndex];
+            var cellB = b.row.children[colIndex];
+            var valA = cellA.getAttribute("data-sort-value") !== null ? cellA.getAttribute("data-sort-value") : cellA.textContent.trim();
+            var valB = cellB.getAttribute("data-sort-value") !== null ? cellB.getAttribute("data-sort-value") : cellB.textContent.trim();
+
+            /* N/A or empty handling: always sort to bottom regardless of sort direction */
+            var aEmpty = (valA === "" || valA === "N/A" || valA === "__NA__");
+            var bEmpty = (valB === "" || valB === "N/A" || valB === "__NA__");
+            if (aEmpty && bEmpty) return a.index - b.index;
+            if (aEmpty) return 1;
+            if (bEmpty) return -1;
+
+            var cmp = 0;
+            if (isNumeric) {
+              var numA = parseFloat(valA);
+              var numB = parseFloat(valB);
+              if (!isNaN(numA) && !isNaN(numB)) {
+                cmp = numA - numB;
+              } else {
+                cmp = valA.localeCompare(valB);
+              }
+            } else if (isUgrade) {
+              /* U-Grade ordinal comparison by prefix integer */
+              cmp = valA.localeCompare(valB);
+            } else {
+              cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: "base" });
+            }
+
+            if (cmp !== 0) {
+              return (newSort === "ascending") ? cmp : -cmp;
+            }
+            return a.index - b.index; /* Stable tie-breaker */
+          });
+
+          decorated.forEach(function(item) {
+            tbody.appendChild(item.row);
+          });
+        }
+
+        header.addEventListener("click", sortTable);
+        header.addEventListener("keydown", function(e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            sortTable();
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

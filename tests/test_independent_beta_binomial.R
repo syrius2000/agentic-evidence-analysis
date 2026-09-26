@@ -80,6 +80,8 @@ assert_true(ev1$relative_risk$estimate$value > 5.0, "Case 1: RR median > 5.0")
 c2 <- run_independent_beta_binomial(0, 100, 0, 100, seed = 42L, primary_delta = 0.02)
 ev2 <- c2$evidence
 assert_true("ZERO_BOTH" %in% ev2$diagnostics$badges, "Case 2: ZERO_BOTH badge present")
+assert_true(is.null(ev2$relative_risk$mean), "Case 2: RR theoretical mean is NULL")
+assert_true(identical(ev2$relative_risk$mean_is_finite, FALSE), "Case 2: RR mean_is_finite is FALSE")
 assert_true(abs(ev2$risk_difference$estimate$value) < 0.005, "Case 2: RD median ~ 0.000 within tolerance")
 assert_true(abs(ev2$direction_support$support_value - 0.50) < 0.05, "Case 2: P(RD > 0) ~ 0.50 within tolerance")
 
@@ -89,6 +91,23 @@ ev3 <- c3$evidence
 assert_true(abs(ev3$risk_difference$estimate$value - 0.10) < 0.015, "Case 3: RD median ~ 0.10 within tolerance")
 assert_true(abs(ev3$relative_risk$estimate$value - 1.48) < 0.15, "Case 3: RR median ~ 1.48 within tolerance")
 assert_true(ev3$direction_support$support_value > 0.90, "Case 3: P(RD > 0) > 0.90")
+
+# Fixed-seed numerical regression reference for the canonical draws (seed=42, 4000 draws).
+# These detect serialization/RNG regressions; the theoretical checks above remain separate.
+reference <- list(
+  list(evidence = ev1, median = 0.02713945, lower = -0.00131570, upper = 0.07443939, direction = 0.97100),
+  list(evidence = ev2, median = -0.00000178, lower = -0.02212909, upper = 0.02125921, direction = 0.49925),
+  list(evidence = ev3, median = 0.09912598, lower = -0.02183560, upper = 0.21085824, direction = 0.94725)
+)
+for (i in seq_along(reference)) {
+  item <- reference[[i]]
+  actual <- c(item$evidence$risk_difference$estimate$value,
+              item$evidence$risk_difference$interval$lower,
+              item$evidence$risk_difference$interval$upper,
+              item$evidence$direction_support$support_value)
+  expected <- c(item$median, item$lower, item$upper, item$direction)
+  assert_true(all(abs(actual - expected) < 1e-4), sprintf("Case %d: seeded RD reference table", i))
+}
 
 # Case 4: 3/30 vs 30/300 (equal prop 10%)
 c4 <- run_independent_beta_binomial(3, 30, 30, 300, seed = 42L, primary_delta = 0.05)
@@ -124,6 +143,25 @@ assert_true(!is.null(sens_res_zero$evidence$diagnostics$prior_sensitivity$compar
             "prior_sensitivity records continuous rd_median_delta")
 assert_true(!is.null(sens_res_zero$evidence$diagnostics$prior_sensitivity$comparison$direction_support_delta),
             "prior_sensitivity records continuous direction_support_delta")
+assert_true(!"robust" %in% names(sens_res_zero$evidence$diagnostics$prior_sensitivity),
+            "Evaluated sensitivity has no unapproved binary robust flag")
+assert_true(is.logical(sens_res_zero$evidence$diagnostics$prior_sensitivity$comparison$u_grade_changed),
+            "Sensitivity comparison records whether U-grade changed")
+
+sens_res_off <- run_independent_beta_binomial(3, 100, 0, 100, seed = 42L,
+  primary_delta = 0.02, prior_sensitivity_mode = "off")
+sens_res_explicit <- run_independent_beta_binomial(3, 100, 0, 100, seed = 42L,
+  primary_delta = 0.02, prior_sensitivity_mode = "explicit")
+assert_true(!sens_res_off$evidence$diagnostics$prior_sensitivity$evaluated,
+            "off mode does not evaluate sensitivity")
+assert_true(sens_res_explicit$evidence$diagnostics$prior_sensitivity$evaluated,
+            "explicit mode evaluates sensitivity")
+assert_true(!"robust" %in% names(sens_res_off$evidence$diagnostics$prior_sensitivity) &&
+            !"robust" %in% names(sens_res_explicit$evidence$diagnostics$prior_sensitivity),
+            "Neither off nor explicit mode emits a robust flag")
+assert_true(identical(sens_res_off$evidence$resolution_grade,
+                      sens_res_explicit$evidence$resolution_grade),
+            "Prior sensitivity mode does not alter the primary U-grade")
 
 # Case with non-zero events: zero_cell mode should NOT evaluate
 sens_res_nonzero <- run_independent_beta_binomial(15, 100, 5, 100, prior_sensitivity_mode = "zero_cell")

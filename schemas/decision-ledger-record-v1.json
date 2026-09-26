@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DecisionLedgerRecordV1",
+  "description": "Append-only tamper-evident decision ledger record for evidence-decision-review (Section 13.9). record_sha256 hashes the payload excluding itself; previous_record_sha256 chains to the prior record (null for genesis).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_id",
+    "previous_record_sha256",
+    "evidence_profile_sha256",
+    "decision_state",
+    "reviewer_justification_md",
+    "actor_id",
+    "decided_at_jst",
+    "record_sha256"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "decision-ledger-record-v1" },
+    "record_id": { "type": "string", "minLength": 1 },
+    "previous_record_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "evidence_profile_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    },
+    "decision_state": { "type": "string", "minLength": 1 },
+    "reviewer_justification_md": { "type": "string" },
+    "actor_id": { "type": "string", "minLength": 1 },
+    "decided_at_jst": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} JST$"
+    },
+    "record_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "minLength": 64,
+      "maxLength": 64
+    }
+  }
+}

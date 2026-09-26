@@ -1,0 +1,96 @@
+case_id: QA-0001
+target_revision: 9a74bcfa485913e4ddebceec7b69207cd9b86905
+baseline_revision: 1d42f4ae7a7e0649b755ab437c9e67c673078cc2
+purpose: >-
+  Provide design-aware comparative statistical evidence with explicit uncertainty
+  semantics and fail-fast routing, without silently applying unsupported
+  independence assumptions to repeated observations.
+requirements:
+  - id: S11-R7
+    description: Person-time draws use posterior inferential semantics while other designs remain valid.
+    spec: openspec/changes/comparative-evidence-reporting-v3/specs/comparative-design-inference/spec.md
+    implementation:
+      - schemas/comparative-draws-v1.json
+    evidence:
+      - tests/test_comparative_schemas.R
+      - docs/Artifacts/s11_s12_boundary_exec_001_0924.md
+  - id: S11-R8
+    description: Exposure and rate units are constrained to matching person-year or person-month pairs.
+    spec: openspec/changes/comparative-evidence-reporting-v3/specs/comparative-design-inference/spec.md
+    implementation:
+      - schemas/comparative-draws-v1.json
+      - schemas/comparative-rate-evidence-v1.json
+    evidence:
+      - tests/test_comparative_schemas.R
+      - docs/Artifacts/s11_s12_boundary_exec_001_0924.md
+  - id: S11-R9
+    description: Zero-reference-event IRR mean, finiteness, and diagnostic fields form a consistent state.
+    spec: openspec/changes/comparative-evidence-reporting-v3/specs/comparative-design-inference/spec.md
+    implementation:
+      - schemas/comparative-rate-evidence-v1.json
+    evidence:
+      - tests/test_comparative_schemas.R
+      - docs/Artifacts/s11_s12_boundary_exec_001_0924.md
+  - id: S11-R10
+    description: Persisted person-time draws contain valid positive arrays and ephemeral draws explicitly contain null arrays.
+    spec: openspec/changes/comparative-evidence-reporting-v3/specs/comparative-design-inference/spec.md
+    implementation:
+      - schemas/comparative-draws-v1.json
+    evidence:
+      - tests/test_comparative_schemas.R
+      - tests/test_person_time_rate.R
+      - docs/Artifacts/s11_s12_boundary_exec_001_0924.md
+  - id: S11-R11
+    description: Verification evidence and reported test counts are accurate and distinguish assertions from test scripts.
+    spec: openspec/changes/comparative-evidence-reporting-v3/tasks.md
+    implementation:
+      - docs/Artifacts/s11_s12_boundary_exec_001_0924.md
+    evidence:
+      - tests/test_comparative_schemas.R
+      - tests/test_person_time_rate.R
+      - tests/test_pass0_routing.R
+  - id: S12-1
+    description: Pass 0 validates whether repeated rows can safely collapse to subject-level binary status.
+    spec: openspec/changes/comparative-evidence-reporting-v3/specs/pass0-analysis-routing/spec.md
+    implementation:
+      - .agents/shared/pass0_routing.R
+      - schemas/pass0-config-v1.json
+    evidence:
+      - tests/test_pass0_routing.R
+  - id: S12-2
+    description: Confirmed valid subject-level counts route to the independent binary engine with source provenance.
+    spec: openspec/changes/comparative-evidence-reporting-v3/specs/pass0-analysis-routing/spec.md
+    implementation:
+      - .agents/shared/pass0_routing.R
+    evidence:
+      - tests/test_pass0_routing.R
+  - id: S12-3
+    description: The future cluster-bootstrap interface is specified without implementing an estimator in this change.
+    spec: openspec/changes/comparative-evidence-reporting-v3/specs/pass0-analysis-routing/spec.md
+    implementation:
+      - openspec/changes/comparative-evidence-reporting-v3/design.md
+    evidence:
+      - docs/Artifacts/s11_s12_boundary_exec_001_0924.md
+  - id: S12-4
+    description: GLMM/GEE remain outside scope and unsupported higher-level clusters fail fast.
+    spec: openspec/changes/comparative-evidence-reporting-v3/specs/pass0-analysis-routing/spec.md
+    implementation:
+      - .agents/shared/pass0_routing.R
+      - openspec/changes/comparative-evidence-reporting-v3/design.md
+    evidence:
+      - tests/test_pass0_routing.R
+      - docs/Artifacts/s11_s12_boundary_exec_001_0924.md
+changed_paths:
+  - .agents/shared/pass0_routing.R
+  - docs/Artifacts/Phase2_Section11_QA_Review1_PostAcceptance_Hardening_1d42f4a_20260924.md
+  - docs/Artifacts/implementation_plan_013_0924.md
+  - docs/Artifacts/s11_s12_boundary_exec_001_0924.md
+  - openspec/changes/comparative-evidence-reporting-v3/design.md
+  - openspec/changes/comparative-evidence-reporting-v3/specs/pass0-analysis-routing/spec.md
+  - openspec/changes/comparative-evidence-reporting-v3/tasks.md
+  - schemas/comparative-draws-v1.json
+  - schemas/comparative-rate-evidence-v1.json
+  - schemas/pass0-config-v1.json
+  - tests/test_comparative_schemas.R
+  - tests/test_pass0_routing.R
+  - tests/test_person_time_rate.R

@@ -84,7 +84,9 @@ ae_multi_study <- data.frame(
 
 agg_multi <- aggregate_safety_data(
   ae_df = ae_multi_study,
-  cohort_denominators = c("Drug_A" = 100, "Placebo" = 100),
+  cohort_denominators = list(
+    STUDY_101 = c("Drug_A" = 100, "Placebo" = 100),
+    STUDY_102 = c("Drug_A" = 120, "Placebo" = 115)),
   target_arm = "Drug_A",
   reference_arm = "Placebo",
   study_col = "study_id",
@@ -95,6 +97,13 @@ assert_true(agg_multi$aggregation_mode == "descriptive_pooled", "Multi-study agg
 assert_true(!is.null(agg_multi$study_stratified), "Study-stratified hierarchy is present")
 assert_true("STUDY_101" %in% names(agg_multi$study_stratified), "STUDY_101 is stratified")
 assert_true("STUDY_102" %in% names(agg_multi$study_stratified), "STUDY_102 is stratified")
+assert_true(agg_multi$study_stratified$STUDY_101$target_denominator == 100, "Study 101 target denominator is 100")
+assert_true(agg_multi$study_stratified$STUDY_102$reference_denominator == 115, "Study 102 reference denominator is 115")
+assert_true(agg_multi$target_denominator == 220 && agg_multi$reference_denominator == 215,
+            "Pooled descriptive denominators sum the study-specific populations")
+assert_error_code(aggregate_safety_data(ae_multi_study, denoms, "Drug_A", "Placebo",
+  study_col = "study_id", meddra_metadata = valid_meddra), "INVALID_DENOMINATORS",
+  "A shared denominator vector is rejected for multiple studies")
 
 cat("\n=== 4. Test Reciprocal RD (NNH / NNT) Management & Boundary 0 Touching ===\n")
 # Case A: Crossing zero -> SIGN_AMBIGUOUS (naive interval suppressed)

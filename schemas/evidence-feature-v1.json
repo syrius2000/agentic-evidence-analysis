@@ -1,0 +1,198 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EvidenceFeatureV1",
+  "description": "Decision-label-free evidence feature vector for evidence-decision-review (Section 13). clustering_feature_keys uses a fixed canonical order: core keys first, then delta keys when present.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "feature_schema_version",
+    "source",
+    "core",
+    "delta_dependent",
+    "clustering_feature_keys"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "evidence-feature-v1" },
+    "feature_schema_version": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_schema_version", "inferential_semantics"],
+      "properties": {
+        "evidence_schema_version": { "type": "string", "const": "comparative-evidence-v1" },
+        "inferential_semantics": { "type": "string", "enum": ["posterior", "bootstrap"] },
+        "contrast_id": { "type": ["string", "null"] },
+        "theme": { "type": ["string", "null"] }
+      }
+    },
+    "core": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rd_estimate",
+        "rd_interval_width",
+        "direction_support",
+        "resolution_grade",
+        "rr_mean_is_finite",
+        "has_zero_reference",
+        "target_n",
+        "reference_n",
+        "quarantine_flag_count"
+      ],
+      "properties": {
+        "rd_estimate": { "type": "number" },
+        "rd_interval_width": { "type": "number", "minimum": 0 },
+        "direction_support": { "type": "number", "minimum": 0, "maximum": 1 },
+        "resolution_grade": {
+          "type": "string",
+          "enum": ["U0", "U1", "U2", "U3", "NONE"]
+        },
+        "rr_mean_is_finite": { "type": "boolean" },
+        "has_zero_reference": { "type": "boolean" },
+        "target_n": { "type": ["number", "null"], "minimum": 0 },
+        "reference_n": { "type": ["number", "null"], "minimum": 0 },
+        "quarantine_flag_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "delta_dependent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["present", "primary_delta", "target_excess", "practical_neutral", "reference_excess"],
+      "properties": {
+        "present": { "type": "boolean" },
+        "primary_delta": { "type": ["number", "null"] },
+        "target_excess": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "practical_neutral": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "reference_excess": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "present": { "const": true } },
+            "required": ["present"]
+          },
+          "then": {
+            "properties": {
+              "primary_delta": { "type": "number", "exclusiveMinimum": 0 },
+              "target_excess": { "type": "number", "minimum": 0, "maximum": 1 },
+              "practical_neutral": { "type": "number", "minimum": 0, "maximum": 1 },
+              "reference_excess": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "present": { "const": false } },
+            "required": ["present"]
+          },
+          "then": {
+            "properties": {
+              "primary_delta": { "type": "null" },
+              "target_excess": { "type": "null" },
+              "practical_neutral": { "type": "null" },
+              "reference_excess": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "clustering_feature_keys": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "rd_estimate",
+          "rd_interval_width",
+          "direction_support",
+          "resolution_grade",
+          "rr_mean_is_finite",
+          "has_zero_reference",
+          "target_n",
+          "reference_n",
+          "quarantine_flag_count",
+          "primary_delta",
+          "target_excess",
+          "practical_neutral",
+          "reference_excess"
+        ]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "delta_dependent": {
+            "properties": { "present": { "const": false } },
+            "required": ["present"]
+          }
+        },
+        "required": ["delta_dependent"]
+      },
+      "then": {
+        "properties": {
+          "clustering_feature_keys": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "rd_estimate",
+                "rd_interval_width",
+                "direction_support",
+                "resolution_grade",
+                "rr_mean_is_finite",
+                "has_zero_reference",
+                "target_n",
+                "reference_n",
+                "quarantine_flag_count"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "delta_dependent": {
+            "properties": { "present": { "const": true } },
+            "required": ["present"]
+          }
+        },
+        "required": ["delta_dependent"]
+      },
+      "then": {
+        "properties": {
+          "clustering_feature_keys": {
+            "type": "array",
+            "allOf": [
+              { "contains": { "const": "primary_delta" } },
+              { "contains": { "const": "target_excess" } },
+              { "contains": { "const": "practical_neutral" } },
+              { "contains": { "const": "reference_excess" } }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "not": {
+    "anyOf": [
+      { "required": ["decision"] },
+      { "required": ["decision_code"] },
+      { "required": ["decision_label"] },
+      { "required": ["clinical_verdict"] },
+      { "required": ["regulatory_label"] },
+      { "required": ["regulatory_outcome"] },
+      { "required": ["regulatory_action"] },
+      { "required": ["prior_decision"] },
+      { "required": ["expert_decision"] },
+      { "required": ["human_verdict"] },
+      { "required": ["action_label"] },
+      { "required": ["label_modification"] }
+    ]
+  }
+}

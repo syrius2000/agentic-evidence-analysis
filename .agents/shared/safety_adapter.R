@@ -75,7 +75,7 @@ aggregate_safety_data <- function(
   if (is.null(meddra_metadata$version) || !nzchar(trimws(as.character(meddra_metadata$version)))) {
     stop("[ERROR] [MISSING_MEDDRA_METADATA] MedDRA dictionary version provenance is required for Safety analysis.")
   }
-  rel_meta <- meddra_metadata$release_date %||% meddra_metadata$release %||% meddra_metadata$build %||% NULL
+  rel_meta <- if (!is.null(meddra_metadata$release_date)) meddra_metadata$release_date else if (!is.null(meddra_metadata$release)) meddra_metadata$release else meddra_metadata$build
   if (is.null(rel_meta) || !nzchar(trimws(as.character(rel_meta)))) {
     stop("[ERROR] [MISSING_MEDDRA_METADATA] MedDRA dictionary release metadata (release_date/release/build) is required.")
   }
@@ -92,10 +92,24 @@ aggregate_safety_data <- function(
   # Filter to target and reference arms
   ae_clean <- ae_df[ae_df[[arm_col]] %in% c(target_arm, reference_arm), , drop = FALSE]
 
+  denominator_for <- function(values, label) {
+    if (!is.numeric(values) || is.null(names(values)) ||
+        !all(c(target_arm, reference_arm) %in% names(values))) {
+      stop("[INVALID_DENOMINATORS] ", label, " の群別分母がありません")
+    }
+    selected <- values[c(target_arm, reference_arm)]
+    if (anyNA(selected) || any(!is.finite(selected)) || any(selected <= 0) ||
+        any(selected != floor(selected))) {
+      stop("[INVALID_DENOMINATORS] ", label, " の分母は有限の正整数が必要です")
+    }
+    unname(selected)
+  }
+
   # Helper for single dataset aggregation
   aggregate_single_cohort <- function(sub_ae, n_T, n_R) {
     # Deduplicate at PT level
-    pt_unique <- unique(sub_ae[c(arm_col, soc_col, pt_col, subject_col)])
+    identity_cols <- c(subject_col, if (!is.null(study_col)) study_col)
+    pt_unique <- unique(sub_ae[c(arm_col, soc_col, pt_col, identity_cols)])
     pt_counts <- as.data.frame(table(
       arm = pt_unique[[arm_col]],
       soc = pt_unique[[soc_col]],
@@ -104,7 +118,7 @@ aggregate_safety_data <- function(
     pt_counts <- pt_counts[pt_counts$Freq >= 0, ]
 
     # Deduplicate at SOC level
-    soc_unique <- unique(sub_ae[c(arm_col, soc_col, subject_col)])
+    soc_unique <- unique(sub_ae[c(arm_col, soc_col, identity_cols)])
     soc_counts <- as.data.frame(table(
       arm = soc_unique[[arm_col]],
       soc = soc_unique[[soc_col]]
@@ -170,15 +184,23 @@ aggregate_safety_data <- function(
 
   # H3 fix: Support study-specific stratification vs descriptive_pooled
   study_stratified <- list()
+  if (!is.null(study_col) && (anyNA(ae_clean[[study_col]]) || any(!nzchar(as.character(ae_clean[[study_col]]))))) {
+    stop("[INVALID_STUDY_ID] 試験 ID に欠損または空文字があります")
+  }
   if (!is.null(study_col) && length(unique(ae_clean[[study_col]])) > 1L) {
     all_studies <- sort(unique(ae_clean[[study_col]]))
+    if (!is.list(cohort_denominators) || is.null(names(cohort_denominators)) ||
+        "total" %in% names(cohort_denominators) ||
+        !setequal(names(cohort_denominators), as.character(all_studies))) {
+      stop("[INVALID_DENOMINATORS] 複数試験には試験 ID ごとの群別分母が必要です")
+    }
+    per_study_denominators <- list()
     for (st in all_studies) {
       sub_study <- ae_clean[ae_clean[[study_col]] == st, , drop = FALSE]
-      st_denoms <- if (is.list(cohort_denominators) && !is.null(cohort_denominators[[st]])) {
-        cohort_denominators[[st]]
-      } else cohort_denominators
-      n_T_st <- unname(st_denoms[[target_arm]])
-      n_R_st <- unname(st_denoms[[reference_arm]])
+      st_denoms <- denominator_for(cohort_denominators[[as.character(st)]], as.character(st))
+      per_study_denominators[[as.character(st)]] <- st_denoms
+      n_T_st <- st_denoms[[1L]]
+      n_R_st <- st_denoms[[2L]]
 
       study_stratified[[st]] <- list(
         study_id = st,
@@ -187,13 +209,19 @@ aggregate_safety_data <- function(
         hierarchy = aggregate_single_cohort(sub_study, n_T_st, n_R_st)
       )
     }
+    pooled_denominators <- Reduce(`+`, per_study_denominators)
     aggregation_mode <- "descriptive_pooled"
   } else {
+    single_denominators <- if (is.list(cohort_denominators)) {
+      if (is.null(study_col) || length(unique(ae_clean[[study_col]])) != 1L) stop("[INVALID_DENOMINATORS] 単一試験の分母が不明です")
+      cohort_denominators[[as.character(unique(ae_clean[[study_col]]))]]
+    } else cohort_denominators
+    pooled_denominators <- denominator_for(single_denominators, "single_study")
     aggregation_mode <- "single_study"
   }
 
-  n_T_total <- unname(if (is.list(cohort_denominators) && !is.null(cohort_denominators$total)) cohort_denominators$total[[target_arm]] else cohort_denominators[[target_arm]])
-  n_R_total <- unname(if (is.list(cohort_denominators) && !is.null(cohort_denominators$total)) cohort_denominators$total[[reference_arm]] else cohort_denominators[[reference_arm]])
+  n_T_total <- pooled_denominators[[1L]]
+  n_R_total <- pooled_denominators[[2L]]
 
   pooled_hierarchy <- aggregate_single_cohort(ae_clean, n_T_total, n_R_total)
 

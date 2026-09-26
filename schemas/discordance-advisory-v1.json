@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DiscordanceAdvisoryV1",
+  "description": "Configurable discordance advisory for evidence-decision-review (Section 13.10–13.11). Divergence is an informational QA Review Candidate only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy",
+    "n_neighborhood",
+    "provisional_decision_state",
+    "tie",
+    "decision_state_counts",
+    "is_qa_review_candidate",
+    "halts_workflow",
+    "exploratory_only",
+    "decision_rule",
+    "wording"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "discordance-advisory-v1" },
+    "policy": {
+      "type": "string",
+      "enum": ["k_neighbors", "distance_radius"]
+    },
+    "k": { "type": ["integer", "null"], "minimum": 1 },
+    "radius": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "n_neighborhood": { "type": "integer", "minimum": 1 },
+    "provisional_decision_state": { "type": "string", "minLength": 1 },
+    "dominant_state": { "type": ["string", "null"], "minLength": 1 },
+    "tie": { "type": "boolean" },
+    "decision_state_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "is_qa_review_candidate": { "type": "boolean" },
+    "advisory_flag": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "const": "QA Review Candidate" }
+      ]
+    },
+    "severity": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "const": "advisory" }
+      ]
+    },
+    "halts_workflow": { "type": "boolean", "const": false },
+    "exploratory_only": { "type": "boolean", "const": true },
+    "decision_rule": { "type": "boolean", "const": false },
+    "wording": { "type": "string", "minLength": 1 },
+    "neighborhood_case_ids": {
+      "type": "array",
+      "items": { "type": ["string", "null"] }
+    },
+    "neighborhood_distances": {
+      "type": "array",
+      "items": { "type": "number", "minimum": 0 }
+    }
+  }
+}

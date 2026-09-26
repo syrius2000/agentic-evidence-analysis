@@ -1,10 +1,10 @@
 # アーカイブ済みArtifactの要約 (Batch 004)
 
-created: 2026-09-15 18:20 (JST)  
-author: Antigravity  
-対象期間: 2026-09-13 20:05 (JST) 〜 2026-09-15 00:15 (JST)  
-archive_batch_id: 20260915_182000_004  
-source_count: 3  
+created: 2026-09-15 18:20 (JST)
+author: Antigravity
+対象期間: 2026-09-13 20:05 (JST) 〜 2026-09-15 00:15 (JST)
+archive_batch_id: 20260915_182000_004
+source_count: 3
 
 ---
 
@@ -13,6 +13,7 @@ source_count: 3
 本ドキュメントは、`docs/Artifacts/` に蓄積されていた完了済みの実装計画書 3 件を精査・統合し、監査可能な原本として `docs/Archives/20260915_182000_004/` に集約したアーカイブです。
 
 この期間において、本リポジトリは以下の重要マイルストーンを完遂しました：
+
 1. **SAS 互換プロシージャスキルの開発**: `sas-proc-freq` および `sas-proc-means` の独立スキルを新設し、度数・要約統計量・欠損処理の数値互換を確立。
 2. **R 実行環境の決定論的依存関係管理と Fail-Fast 化**: 実行時の CRAN 自動インストール（`pacman`, `run_scope.R` 等）を全面禁止し、不足時の即時停止・案内基盤（`.agents/shared/dependency_check.R`）を配備。
 3. **回帰テスト成果物の完全自己隔離・クリーンアップ**: 回帰テストスイート実行時の成果物残留ゼロを達成し、異常終了時の自動バックアップ・復元機構を実装。
@@ -32,6 +33,7 @@ source_count: 3
 ## 3. 主要成果と検証の限界
 
 ### 3.1 SAS PROC FREQ / MEANS 互換スキル (`sas-proc-freq`, `sas-proc-means`)
+
 - **成果**:
   - `sas-proc-freq`: 1元度数・割合・累積値、2元クロス集計、欠損処理（exclude, missprint, include）、独立性検定（ピアソン、尤度比、連続性補正カイ二乗）、Fisher 正確検定（2×2 および R×C ネットワーク法）、Monte Carlo 推定を実装。
   - `sas-proc-means`: 要約統計量（N, MEAN, STD, MIN, MAX, MEDIAN 等）、CLASS 層別集計、FREQ/WEIGHT 処理、VARDEF オプション（DF, N, WDF, WEIGHT）、分位点定義（QNTLDEF 1〜5）を実装。
@@ -39,6 +41,7 @@ source_count: 3
   - 本互換は明示した機能・入力範囲の数値互換であり、SAS 実機の全 ODS 出力構文や画面レイアウトの完全再現を保証するものではない。
 
 ### 3.2 R 決定論的依存関係管理 (`openspec/changes/archive/2026-09-14-enforce-deterministic-r-dependencies`)
+
 - **成果**:
   - `check_r_dependencies()` 共通モジュールを配備。依存パッケージ不足時は即座に停止し、事前導入手順を案内。
   - 回帰テストマニフェスト（`tests/test_inventory_manifest.csv`、全59行）を策定し、公式23本と除外36本の境界を固定。
@@ -47,6 +50,7 @@ source_count: 3
   - 公式回帰スイート 23 本以外の残余テスト（36本）は Tech Debt として管理され、段階的現代化の対象。
 
 ### 3.3 回帰テスト成果物の完全自己隔離
+
 - **成果**:
   - `test_logic.R`, `test_questionnaire_batch_smoke.R`, `test_questionnaire_batch_ucbadmissions.R` の成果物残留を解消。
   - 失敗注入テスト（`tests/test_questionnaire_backup_recovery.R`、32/32 PASS）により、退避・復元の堅牢性を実証。

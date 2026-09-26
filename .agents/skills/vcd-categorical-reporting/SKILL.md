@@ -47,15 +47,27 @@ flowchart TD
 
 ### 2. コントラスト算出と出力成果物
 
-本スキルは、以下の標準成果物を隔離 run ディレクトリ内に生成します：
+本スキルは、以下の標準成果物を隔離 run ディレクトリ（`evidence_runs/vcd_categorical_reporting/run_<canonical_id>[_N]/`）内に生成します：
 
-- `comparative_evidence.json`: 構造化 JSON エビデンス
-- `comparative_summary.csv`: 主要要約指標一覧 CSV
-- `comparative_report.md`: 日本語エビデンス Markdown レポート
-- `dashboard.html`: 自己完結型完全オフライン HTML ダッシュボード
+- `comparative_evidence.json`: 構造化 JSON エビデンス（top-level = `comparative-evidence-batch-v1`、`contrasts[*]` = `comparative-evidence-v1` 準拠）
+- `comparative_summary.csv`: 主要要約指標一覧 CSV（6大概念列および全来歴列を保持）
+- `comparative_report.md`: 日本語エビデンス Markdown レポート（`1.33 [N/A]` 等の統一样式）
+- `dashboard.html`: 自己完結型完全オフライン HTML ダッシュボード（外部 CDN / 絶対パス 0 件）
+
+### 3. 数理挙動契約と安全性集計規約
+
+1. **参照群ゼロ発生時の確定契約 (Zero Reference Events)**:
+   - 参照群のイベント発生数がゼロ（$x_R = 0$）の場合、相対リスク（RR）の理論的期待値は発散（$E(RR) = \infty$）します。
+   - 点推定値（中央値）および 95% ETI は正しく報告しつつ、`mean = null`、`mean_is_finite = false`、`rr_diagnostic = "ZERO_REFERENCE_RISK"` を確定します。
+   - レポート上には明確な数値的不安定性警告コールアウトを表示し、リスク差（RD）が主対比として健全に機能していることを案内します。
+2. **多重比較スクリーニング免責 (Multiplicity Disclaimer)**:
+   - 複数テーマ・多数の有害事象（PT）の一括スクリーニングにおいては、事後方向確率 $P(RD > 0)$ やランキングは探索的優先順位付けのための指標であり、ファミリーワイズ過誤率（FWER）や偽発見率（FDR）の厳格な制御を主張してはなりません。
+3. **安全性データの重複排除規約 (Safety SOC/PT Invariant)**:
+   - MedDRA 等の有害事象集計において、同一被験者が同一 SOC 内で複数の異なる PT を発症した場合、SOC レベルの件数は「当該 SOC を発現した被験者数」としてユニークに集約（Deduplicated）されます。
+   - したがって、「SOC の症例数 $\ne$ 構成する各 PT の症例数の単純和」となることが仕様であり、整合性違反ではありません。
 
 ---
 
 ## レガシー互換性
 
-以前の 2 段階レガシーレポートテンプレート（`vcd_analysis_report.md` 等）は、`references/legacy_report_template.md` として保全されています。
+以前の 2 段階レガシーレポートテンプレートは、[`references/report-template.md`](references/report-template.md) として保全されています。本スキルでの新規分析は、上記「比較エビデンス報告（v3）」を標準とします。

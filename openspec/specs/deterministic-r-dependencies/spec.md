@@ -40,9 +40,9 @@ R 解析スクリプト、共有ヘルパー（`run_scope.R` 等）、レポー�
 
 ### Requirement: Deterministic Environment Documentation and Reproducibility Baseline
 
-正本リポジトリは、再現実行に必要な R バージョン、必須パッケージ、および R 外のシステム依存（Pandoc 等）を明文化し、オフライン環境下で既存ライブラリのみを用いて動作確認できる検証手順を提供しなければならない（SHALL）。
+The canonical repository SHALL document the R version, required packages, and system dependencies necessary for reproducible execution, and SHALL reference the canonical regression suite dynamically through `tests/run_regression_suite.R` rather than asserting a fixed, static test count.
 
 #### Scenario: Offline execution verification
 
-- **WHEN** ネットワークが完全に切断された環境で、事前導入済みライブラリを用いて回帰テストまたは解析を実行したとき
-- **THEN** 外部取得エラーを起こすことなく、本変更で定義された正規回帰テストスイート（`tests/run_regression_suite.R` に定義された23本）および主要解析スクリプト（Pass 1 統計計算）が決定論的に完了する
+- **WHEN** the regression test suite or analysis scripts are executed in an isolated or offline environment with pre-installed libraries
+- **THEN** all official test scripts registered in `tests/run_regression_suite.R` and primary analysis engines MUST complete deterministically without triggering external network package installation requests.

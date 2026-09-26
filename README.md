@@ -91,13 +91,15 @@ graph TD
 
 | スキル名 | 種別 | 主な役割と守備範囲 |
 | :--- | :--- | :--- |
-| **vcd-pass0-consultation** | 事前相談 | データ検分、次元削減・層別解析の提案、`analysis_config.json` の作成 |
+| **vcd-pass0-consultation** | 事前相談 | データ検分、次元削減・層別解析の提案、観察デザインの検証・ルーティング（`analysis_config.json` / `routing_decision.json` 作成） |
 | **vcd-bayesian-evidence-analysis** | 3次元正本 | 3次元集計表の 9 階層対数線形モデル、新 4 軸セル診断、明示式 BIC、Dirichlet 事後推論、HTML レポート生成 |
 | **vcd-categorical-analysis** | 2次元正本 | 名義 2 変数の全体効果量（Cramér's V、Bergsma 補正）、調整標準化残差ヒートマップ、新 4 軸セル診断、多項 Jeffreys 事前推論、条件付き事後分布、11 セクション完全オフライン Scientific Dashboard 生成。3次元以上は `vcd-bayesian-evidence-analysis` へ委譲 |
+| **vcd-categorical-reporting** | 比較報告 | 独立 2 群（または対照群 vs 各群）の比較エビデンス（RD/RR/方向支持/実務領域/U-Grade）、ゼロセル確定挙動、完全自己完結型 HTML/Markdown ダッシュボード、安全性（SOC/PT 重複排除）および処方スクリーニング |
+| **comparative-design-analysis** | デザイン推論 | マッチドペア（Dirichlet 厳密期待値）、マッチドセット（固定条件付きクラスタブートストラップ）、IPTW（PS 再適合患者ブートストラップ）、人年発症率（共役 Gamma-Poisson 率推論）のデザイン考慮型比較推論 |
+| **evidence-decision-review** | 決定監査 | 決定ラベルを含まない統計特徴量プロファイル抽出、Gower 距離および階層クラスタリング（HAC）による歴史的先例検索と整合性監査（QA Review Candidate 助言、自動決定の完全排除） |
 | **questionnaire-batch-analysis** | バッチ処理 | アンケート複数設問の設定ファイルに基づく自動一括集計とサマリー量産 |
 | **sas-proc-freq** | SAS 互換集計 | PROC FREQ 互換の度数・分割表、独立性検定、2×2効果量、Fisher 正確検定、Monte Carlo 推定 |
 | **sas-proc-means** | SAS 互換記述統計 | PROC MEANS 互換の記述統計、CLASS 群化、FREQ/WEIGHT、VARDEF、QNTLDEF 1〜5 |
-| **vcd-categorical-reporting** | 参照用 | （レガシーテンプレートの再現・互換保守用。新規分析は上記 3 スキルを推奨） |
 
 エージェントへの依頼時は、結論・次の行動・未検証事項が分かるように、[`docs/reference/output_style_adhd.md`](docs/reference/output_style_adhd.md) の出力方針を適用します。この方針は独立したSkillではありません。
 
@@ -140,7 +142,7 @@ Agent Skills 対応ツール（Antigravity, Cursor, Gemini CLI 等）から本�
 npx skills add syrius2000/agentic-evidence-analysis
 ```
 
-このリポジトリは、同名5スキル、統計schema、統計品質契約、Rテンプレート、統計回帰テストの唯一の正本です。一般コード・SQLコード理解は `Productivity-Skill`、RWD/DB実行・統合ハブは `rwd-mysql-skill-toolkit` が担当します。
+このリポジトリは、全9スキル、統計schema、統計品質契約、Rテンプレート、統計回帰テストの唯一の正本です。一般コード・SQLコード理解は `Productivity-Skill`、RWD/DB実行・統合ハブは `rwd-mysql-skill-toolkit` が担当します。
 
 > 「`examples/titanic.csv` を Class × Sex × Survived で分析したい。まずは `vcd-pass0-consultation` スキルでデータの性質を検分して、分析設定を作って。」
 

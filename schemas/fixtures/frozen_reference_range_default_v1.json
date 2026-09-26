@@ -1,0 +1,23 @@
+{
+  "schema_version": "frozen-reference-range-v1",
+  "range_version": "1.0.0",
+  "feature_schema_version": "1.0.0",
+  "features": {
+    "rd_estimate": { "type": "numeric", "min": -1.0, "max": 1.0 },
+    "rd_interval_width": { "type": "numeric", "min": 0.0, "max": 2.0 },
+    "direction_support": { "type": "numeric", "min": 0.0, "max": 1.0 },
+    "resolution_grade": {
+      "type": "categorical",
+      "levels": ["U0", "U1", "U2", "U3", "NONE"]
+    },
+    "rr_mean_is_finite": { "type": "categorical", "levels": [true, false] },
+    "has_zero_reference": { "type": "categorical", "levels": [true, false] },
+    "target_n": { "type": "numeric", "min": 0.0, "max": 1000000.0 },
+    "reference_n": { "type": "numeric", "min": 0.0, "max": 1000000.0 },
+    "quarantine_flag_count": { "type": "numeric", "min": 0.0, "max": 100.0 },
+    "primary_delta": { "type": "numeric", "min": 0.0, "max": 1.0 },
+    "target_excess": { "type": "numeric", "min": 0.0, "max": 1.0 },
+    "practical_neutral": { "type": "numeric", "min": 0.0, "max": 1.0 },
+    "reference_excess": { "type": "numeric", "min": 0.0, "max": 1.0 }
+  }
+}

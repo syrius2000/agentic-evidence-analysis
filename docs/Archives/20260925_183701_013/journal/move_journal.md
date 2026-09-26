@@ -1,0 +1,50 @@
+# Move Journal — Archive Batch 20260925_183701_013
+
+created: 2026-09-25 18:37 (JST)
+head_at_move: `c00a1afaf0d50ea881dbd70d5f42e673be784a9a`
+source_count: 42
+
+| Artifacts path | Archive relative path | sha256 |
+|---|---|---|
+| `docs/Artifacts/implementation_plan_016_0924.md` | `sources/implementation_plan_016_0924.md` | `2b8f6a275ea779582da11e573c881580c54c7bd50b4cdd3fefe591f2fe70a970` |
+| `docs/Artifacts/implementation_plan_017_0924.md` | `sources/implementation_plan_017_0924.md` | `3ac95fad2b5a9219e80fe9dfbee371a5933788569761c57731cb5b04cbeb0974` |
+| `docs/Artifacts/implementation_plan_018_0924.md` | `sources/implementation_plan_018_0924.md` | `5395e95555e106dd9e4fa860e8be27caa94c73ffbc91df0235cebc8cd70e63ae` |
+| `docs/Artifacts/implementation_plan_019_0924.md` | `sources/implementation_plan_019_0924.md` | `37333956b23b30d06e30207401c23c34f389a53bdfbe253638057824b0b926c0` |
+| `docs/Artifacts/implementation_plan_020_0925.md` | `sources/implementation_plan_020_0925.md` | `85e3aaf082cc3defe22cc65e49c1bbdcd3f4e7b1cc7c1217f9419b5f0fbb3e26` |
+| `docs/Artifacts/implementation_plan_021_0925.md` | `sources/implementation_plan_021_0925.md` | `ac16daebc2afe19249fe020ccda01caadfea452bbb7a9bb1abe4708aabc8d4dc` |
+| `docs/Artifacts/implementation_plan_022_0925.md` | `sources/implementation_plan_022_0925.md` | `81c3c1d2296589ea061756c7231bad7448a32326fb030bd135c7c6cfdc4d554e` |
+| `docs/Artifacts/implementation_plan_023_0925.md` | `sources/implementation_plan_023_0925.md` | `89194e953d2adbaf9b6da19695ead6b2f1d2133fdc77d99d453579f60c04ba3d` |
+| `docs/Artifacts/implementation_plan_024_0925.md` | `sources/implementation_plan_024_0925.md` | `3331ec7679199ce90a44412df6ee29b44a640cb8c527969488d71f914de40972` |
+| `docs/Artifacts/implementation_plan_025_0925.md` | `sources/implementation_plan_025_0925.md` | `347e1e8d809440ce540501c6dc5f6033c6a94228e34060e992df176aedd96a9d` |
+| `docs/Artifacts/implementation_plan_026_0925.md` | `sources/implementation_plan_026_0925.md` | `aaf6f48700d5c89e8ee5b92150af16544b4710a7052c02ecaada64def1189e61` |
+| `docs/Artifacts/implementation_plan_027_0925.md` | `sources/implementation_plan_027_0925.md` | `f6864fc58ab0228f468219eb6d7a6168c3d7804a72b96d1b7fc60faf2c89a432` |
+| `docs/Artifacts/implementation_plan_028_0925.md` | `sources/implementation_plan_028_0925.md` | `80027b486f18105fb9b1bce356af83ab7b0d7d7b61773959b5fa4b0145cfa024` |
+| `docs/Artifacts/s13_10_13_phase_c_exec_001_0925.md` | `sources/s13_10_13_phase_c_exec_001_0925.md` | `52d208214ce5bbd0ef43d5f4a2534af552a6de23564a9cb0ddeba7bca8539bc6` |
+| `docs/Artifacts/s13_10_13_phase_c_qa_review1_001_0925.md` | `sources/s13_10_13_phase_c_qa_review1_001_0925.md` | `1d9d0f6e2149f88d71afc13a7356f8c2f57f5ac40a14e5a071a660df96858007` |
+| `docs/Artifacts/s13_10_13_phase_c_qa_review2_001_0925.md` | `sources/s13_10_13_phase_c_qa_review2_001_0925.md` | `5e100022bd144788815b835a0d84ffe06ee505c611cb1c6be901eba62e9af0cb` |
+| `docs/Artifacts/s13_10_13_phase_c_qa_review3_001_0925.md` | `sources/s13_10_13_phase_c_qa_review3_001_0925.md` | `584d0e98463957f9902f304cd6455a17344dfbf61e81d46ea9fe1fca93b0a79c` |
+| `docs/Artifacts/s13_10_13_phase_c_repair_exec_001_0925.md` | `sources/s13_10_13_phase_c_repair_exec_001_0925.md` | `6dcdcc10fcfb172abe454779de650100bde684b6c3d6d3e68d949e409832a530` |
+| `docs/Artifacts/s13_13_r3_repair_exec_001_0925.md` | `sources/s13_13_r3_repair_exec_001_0925.md` | `74561b24161027db0882f526b48c1acff8ffe0e4edd69f32b33ffac117b8737b` |
+| `docs/Artifacts/s13_4_gower_exec_001_0924.md` | `sources/s13_4_gower_exec_001_0924.md` | `7093fd930c6c5208be3a53ae0349b57021cf0f5209da963761a5238f16360c69` |
+| `docs/Artifacts/s13_4_gower_qa_repair_001_0924.md` | `sources/s13_4_gower_qa_repair_001_0924.md` | `29ad4f55b42eceb39f91d2c4fdcd1116d164ba8ed33e75e9bd494c0b38ae3027` |
+| `docs/Artifacts/s13_4_gower_repair_exec_001_0924.md` | `sources/s13_4_gower_repair_exec_001_0924.md` | `43ff1b7a624ad5785c2ba83ecc0648a81787da37857323dc3471cd978dc9dae9` |
+| `docs/Artifacts/s13_5_hac_exec_001_0924.md` | `sources/s13_5_hac_exec_001_0924.md` | `eb3c410ebf7135bbbd9a8712dd0adf2259a0c6aa0842cf1b9b5c4e12fe5088b7` |
+| `docs/Artifacts/s13_5_hac_qa_review1_001_0924.md` | `sources/s13_5_hac_qa_review1_001_0924.md` | `6fbf04f9609c888a0192248a2eeee01df7c02981514592e40935bd3bec7012b6` |
+| `docs/Artifacts/s13_5_hac_qa_review2_001_0925.md` | `sources/s13_5_hac_qa_review2_001_0925.md` | `a5df65f7f73f92f2aa4870090d4c3881163f91b3e5b6ea129e4a3a2f36ca085b` |
+| `docs/Artifacts/s13_5_hac_repair_exec_001_0925.md` | `sources/s13_5_hac_repair_exec_001_0925.md` | `a2780b34a89c8e94ca6b0c21ac6ffb4132b4b19cae1608a7169e6cb8861b4f63` |
+| `docs/Artifacts/s13_6_kmeans_exec_001_0925.md` | `sources/s13_6_kmeans_exec_001_0925.md` | `ccb50985081371b5743783608159075711ab24daed300bda6c9e0adcfb699111` |
+| `docs/Artifacts/s13_6_kmeans_qa_review1_001_0925.md` | `sources/s13_6_kmeans_qa_review1_001_0925.md` | `40dc0067098ee3f4fe4194aff1485e152af5dc0d939e222ce832be7f8bbe8167` |
+| `docs/Artifacts/s13_7_8_precedent_exec_001_0925.md` | `sources/s13_7_8_precedent_exec_001_0925.md` | `726b7dd20b83d294b8c79c27bb7e3bb1a7876c5dbc4903ba388c8dd70300f5b3` |
+| `docs/Artifacts/s13_7_8_precedent_qa_review1_001_0925.md` | `sources/s13_7_8_precedent_qa_review1_001_0925.md` | `6e9b7a7556b85dea20f295630fac1d8b78f6c28f21ec9b04b2981e8b74953ab9` |
+| `docs/Artifacts/s13_7_8_precedent_qa_review2_001_0925.md` | `sources/s13_7_8_precedent_qa_review2_001_0925.md` | `892bc5f607d5ff1331350f740b8c82ea116ec6024fad3b919628066b2957157e` |
+| `docs/Artifacts/s13_7_8_precedent_r1b_repair_exec_001_0925.md` | `sources/s13_7_8_precedent_r1b_repair_exec_001_0925.md` | `6e13aebdeb455cee3cf920e066f687e274c1cc5c1ad97c7f59988eaf3cb96c8e` |
+| `docs/Artifacts/s13_7_8_precedent_repair_exec_001_0925.md` | `sources/s13_7_8_precedent_repair_exec_001_0925.md` | `e197545dc975a38cc86b61224fcc72e4e15cdca27134ce890607c6de6acd6ecf` |
+| `docs/Artifacts/s13_9_ledger_exec_001_0925.md` | `sources/s13_9_ledger_exec_001_0925.md` | `9f3a652f9b424fbaa334e736f08c80183374c23fa70ba9704734872827348642` |
+| `docs/Artifacts/s13_9_ledger_hold_lift_001_0925.md` | `sources/s13_9_ledger_hold_lift_001_0925.md` | `35bba12e8276036d403e6fbfc5b1f5d49eaf4e43bb5d2d830178a54dfe19374f` |
+| `docs/Artifacts/s13_9_ledger_qa_review1_001_0925.md` | `sources/s13_9_ledger_qa_review1_001_0925.md` | `c8efb0f855e4a0c332f9f05ba1096957df11cbc11142c33da761b7eea7c46a2b` |
+| `docs/Artifacts/s13_9_ledger_repair_exec_001_0925.md` | `sources/s13_9_ledger_repair_exec_001_0925.md` | `44a81c693d6f24e650fad49012305a92fff8c1c4bb0b72b67f82f688410bf4ac` |
+| `docs/Artifacts/s13_phaseA_exec_001_0924.md` | `sources/s13_phaseA_exec_001_0924.md` | `b7e1e4098fafd6dfdec5acf39bb05c52620cedbc8e094a1ed84badc66d799ae4` |
+| `docs/Artifacts/s13_phaseA_qa_repair_001_0924.md` | `sources/s13_phaseA_qa_repair_001_0924.md` | `72644fafed4794ba60644c29470385832f45079b36118137fe55b0deb1f36609` |
+| `docs/Artifacts/s13_phaseA_qa_review2_001_0924.md` | `sources/s13_phaseA_qa_review2_001_0924.md` | `6402b7bf4180f98ca4863aaa40a64458b3e1ce6640ff7de8bf96e6e4e77d2169` |
+| `docs/Artifacts/s13_phaseA_r5_exec_001_0924.md` | `sources/s13_phaseA_r5_exec_001_0924.md` | `bfae953722b0f62aa4aa19c818065714c94e6ddff03f14857a807cbe3100f909` |
+| `docs/Artifacts/s13_phaseA_repair_exec_001_0924.md` | `sources/s13_phaseA_repair_exec_001_0924.md` | `d1574e762f25b8574c96b5efedc4ab6fd46f127645bc15af5d9fcede77217330` |
