@@ -1,6 +1,6 @@
 ## Context
 
-See `proposal.md` for motivation. Current presentation in `comparative_reporting.R` builds one HTML/Markdown cell (`absolute_translation_html` / `absolute_translation_md`) that concatenates E100 and reciprocal RD, backed by a single `absolute_sort_val` from `excess_per_100`. Canonical fields already exist on `summary_df`; this change is presentation-only. Geometry modules (`evidence_gower.R`, `evidence_feature_extract.R`) remain out of scope. Nested `comparative_evidence.json` / `comparative-evidence-v1` evidence contract and the flat 40-field `summary_df` / dashboard CSV export contract are both unchanged but must not be conflated.
+See `proposal.md` for motivation. Current presentation in `comparative_reporting.R` builds one HTML/Markdown cell (`absolute_translation_html` / `absolute_translation_md`) that concatenates E100 and reciprocal RD, backed by a single `absolute_sort_val` from `excess_per_100`. Canonical fields already exist on `summary_df`; this change is presentation-only. Geometry modules (`evidence_gower.R`, `evidence_feature_extract.R`) remain out of scope. `comparative_evidence.json` / `comparative-evidence-batch-v1` (with nested `comparative-evidence-v1` contrast objects) and the flat 40-field `summary_df` / dashboard CSV export contract are both unchanged but must not be conflated.
 
 ## Goals / Non-Goals
 
@@ -20,7 +20,7 @@ See `proposal.md` for motivation. Current presentation in `comparative_reporting
 ## Decisions
 
 1. **Presentation-only split (no schema change; dual-contract wording)**
-   Reuse `excess_per_100`, `reciprocal_absolute_rd`, `reciprocal_status`, `reciprocal_direction` from `summary_df`. Do not add presentation columns to nested evidence JSON or to the 40-field summary/export contract.
+   Reuse `excess_per_100`, `reciprocal_absolute_rd`, `reciprocal_status`, `reciprocal_direction` from `summary_df`. Do not add presentation columns to `comparative-evidence-batch-v1` JSON, nested `comparative-evidence-v1` contrasts, or the 40-field summary/export contract.
    *Alternative considered*: promote E100/reciprocal display strings into schema → rejected (violates “no new canonical field” contract).
 
 2. **Frozen Safety reciprocal direction mapping**

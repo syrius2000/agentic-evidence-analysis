@@ -21,9 +21,9 @@ The previously combined column「100人あたり差 / NNT・NNH-like」SHALL be 
 
 Canonical contract separation SHALL be preserved:
 
-- `comparative_evidence.json` / `comparative-evidence-v1` nested evidence contract SHALL remain unchanged.
+- `comparative_evidence.json` SHALL continue to conform to `comparative-evidence-batch-v1`, whose `contrasts` entries SHALL continue to conform to `comparative-evidence-v1`.
 - Canonical `summary_df` and dashboard CSV export SHALL remain exactly 40 canonical summary fields.
-- No presentation-only field SHALL be added to either canonical contract.
+- No presentation-only field SHALL be added to any of these canonical contracts.
 
 Safety-domain reciprocal direction mapping SHALL be frozen as follows when `reciprocal_status = "STABLE_DIRECTION"` and `reciprocal_absolute_rd` is finite:
 
@@ -85,7 +85,7 @@ For non-Safety domains under the same stable finite conditions, the NNT/NNH-like
 #### Scenario: Preserving canonical export and geometry contracts
 
 - **WHEN** CSV export or Gower / PCoA / HAC feature extraction runs after the presentation hierarchy change
-- **THEN** dashboard CSV export MUST still serialize exactly the 40 canonical summary fields (excluding presentation-only keys), `comparative_evidence.json` nested evidence structure MUST remain unchanged, and `excess_per_100`, `reciprocal_absolute_rd`, `reciprocal_status`, and `reciprocal_direction` MUST NOT be added to Gower clustering feature keys
+- **THEN** dashboard CSV export MUST still serialize exactly the 40 canonical summary fields (excluding presentation-only keys), `comparative_evidence.json` MUST remain a `comparative-evidence-batch-v1` document whose `contrasts` entries remain `comparative-evidence-v1`, and `excess_per_100`, `reciprocal_absolute_rd`, `reciprocal_status`, and `reciprocal_direction` MUST NOT be added to Gower clustering feature keys
 
 ### Requirement: Risk Difference Guide Hierarchy for E100 and Reciprocal RD
 
