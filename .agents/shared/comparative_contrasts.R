@@ -121,9 +121,47 @@ compute_comparative_contrasts <- function(
     )
   )
 
-  # 5. Natural Unit Conversions
+  # 5. Natural Unit Conversions and reciprocal-RD translation
+  # E100 is linear in RD and remains the preferred natural-unit translation.
+  # reciprocal_absolute_rd is secondary: it is the reciprocal of the canonical
+  # RD point estimate, not a posterior/bootstrap summary of 1/|RD|.
   excess_per_100 <- rd_point * 100
   additional_subjects_per_100 <- excess_per_100
+
+  reciprocal_numeric_tolerance <- sqrt(.Machine$double.eps)
+  rd_summary_finite <- all(is.finite(c(rd_point, rd_lower, rd_upper)))
+  reciprocal_absolute_rd <- if (rd_summary_finite && abs(rd_point) > reciprocal_numeric_tolerance) {
+    1 / abs(rd_point)
+  } else {
+    NULL
+  }
+
+  reciprocal_direction <- if (!rd_summary_finite || abs(rd_point) <= reciprocal_numeric_tolerance) {
+    "none"
+  } else if (rd_point > 0) {
+    "target_excess"
+  } else {
+    "reference_excess"
+  }
+
+  interval_positive <- rd_summary_finite && rd_lower > 0 && rd_upper > 0
+  interval_negative <- rd_summary_finite && rd_lower < 0 && rd_upper < 0
+  point_positive <- rd_summary_finite && rd_point > reciprocal_numeric_tolerance
+  point_negative <- rd_summary_finite && rd_point < -reciprocal_numeric_tolerance
+
+  reciprocal_status <- if (!rd_summary_finite) {
+    "NOT_INTERPRETABLE"
+  } else if (abs(rd_point) <= reciprocal_numeric_tolerance) {
+    "RD_NEAR_ZERO"
+  } else if ((interval_positive && point_positive) || (interval_negative && point_negative)) {
+    "STABLE_DIRECTION"
+  } else if (rd_lower <= 0 && rd_upper >= 0) {
+    "SIGN_AMBIGUOUS"
+  } else {
+    # Covers pathological point/interval direction disagreement, which can occur
+    # with observed bootstrap point estimates outside percentile intervals.
+    "NOT_INTERPRETABLE"
+  }
 
   # 6. Direction Support Metric
   rd_gt_zero <- mean(rd_draws > 0, na.rm = TRUE)
@@ -248,7 +286,10 @@ compute_comparative_contrasts <- function(
         method = int_method
       ),
       excess_per_100 = excess_per_100,
-      additional_subjects_per_100_treated = additional_subjects_per_100
+      additional_subjects_per_100_treated = additional_subjects_per_100,
+      reciprocal_absolute_rd = reciprocal_absolute_rd,
+      reciprocal_status = reciprocal_status,
+      reciprocal_direction = reciprocal_direction
     ),
     relative_risk = list(
       estimate = list(
