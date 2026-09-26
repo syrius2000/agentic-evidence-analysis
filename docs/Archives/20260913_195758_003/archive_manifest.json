@@ -1,0 +1,29 @@
+{
+  "archive_batch_id": "20260913_195758_003",
+  "created_at": "2026-09-13 19:57:58 +0900",
+  "operation": "通常アーカイブ",
+  "source_count": 3,
+  "items": [
+    {
+      "source": "docs/Artifacts/implementation_plan_014_0912.md",
+      "destination": "docs/Archives/20260913_195758_003/sources/implementation_plan_014_0912.md",
+      "operation": "move",
+      "sha256": "120ca182f9d8dbdb8e6521de9181ab032f5be7ee6c46175753a9f31f5e70b71f",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_015_0912.md",
+      "destination": "docs/Archives/20260913_195758_003/sources/implementation_plan_015_0912.md",
+      "operation": "move",
+      "sha256": "41d631d6ef23e8a23b1b68f74904026fe8c5afca3b39986bb08a8a56fae60bb5",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_016_0912.md",
+      "destination": "docs/Archives/20260913_195758_003/sources/implementation_plan_016_0912.md",
+      "operation": "move",
+      "sha256": "4676f777d79b1c45f33e99b2e854ea019225386b15e1e42b733881cd8dcb808e",
+      "status": "moved"
+    }
+  ]
+}

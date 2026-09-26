@@ -1,0 +1,26 @@
+{
+  "interface_version": "1.0",
+  "skill": "vcd-categorical-reporting",
+  "artifacts": [
+    {
+      "path": "comparative_evidence.json",
+      "role": "primary_results",
+      "sha256": "966504838f5cec91e78ba18e971cdfce8a2f1a54e7d293751433d787a2fdc380"
+    },
+    {
+      "path": "comparative_report.md",
+      "role": "summary_report",
+      "sha256": "3f9b7befa59d97e9cf739e4d1dcc663528eaa40ccc95bf9d4e420079582866d0"
+    },
+    {
+      "path": "comparative_summary.csv",
+      "role": "summary_table",
+      "sha256": "53398dbc1228dc558b6e0711c57ca41fbab467bc81d6599267c7bc7d062d2f6a"
+    },
+    {
+      "path": "dashboard.html",
+      "role": "report_html",
+      "sha256": "b05379ed56de8367002347d4048e2f4c61b0e6e0f3d9152e5f8ada6c44a66f5f"
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComparativeDrawsV1",
+  "description": "Logical runtime schema for uncertainty draws across target and reference cohorts (supports ephemeral in-memory or persisted contract)",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "inferential_semantics",
+    "num_draws",
+    "draw_storage"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["comparative-draws-v1"]
+    },
+    "design": { "type": "string", "enum": ["person_time"] },
+    "inferential_semantics": {
+      "type": "string",
+      "enum": ["posterior", "bootstrap"]
+    },
+    "num_draws": {
+      "type": "integer",
+      "minimum": 10
+    },
+    "draw_storage": {
+      "type": "string",
+      "enum": ["ephemeral", "persisted"]
+    },
+    "target_draws": {
+      "type": ["array", "null"],
+      "items": { "type": "number" }
+    },
+    "reference_draws": {
+      "type": ["array", "null"],
+      "items": { "type": "number" }
+    },
+    "seed": {
+      "type": ["integer", "null"]
+    },
+    "observed_sample_estimate": {
+      "type": ["object", "null"],
+      "properties": {
+        "rd": { "type": "number" },
+        "rr": { "type": ["number", "null"] },
+        "p_target": { "type": "number" },
+        "p_reference": { "type": "number" }
+      }
+    },
+    "matched_pair_counts": {
+      "type": ["object", "null"],
+      "properties": {
+        "n11": { "type": "integer" },
+        "n10": { "type": "integer" },
+        "n01": { "type": "integer" },
+        "n00": { "type": "integer" }
+      }
+    },
+    "cell_probability_draws": {
+      "type": ["array", "null"]
+    },
+    "matched_set_metadata": {
+      "type": ["object", "null"],
+      "required": [
+        "set_count",
+        "matching_ratio_type",
+        "estimand",
+        "bootstrap_scope",
+        "rr_bootstrap_diagnostics"
+      ],
+      "properties": {
+        "set_count": { "type": "integer", "minimum": 1 },
+        "matching_ratio_type": { "type": "string", "enum": ["fixed", "variable"] },
+        "estimand": { "type": "string", "enum": ["ATT"] },
+        "bootstrap_scope": {
+          "type": "object",
+          "required": ["type", "rematching_within_replicate", "propensity_model_refit"],
+          "properties": {
+            "type": { "type": "string", "enum": ["conditional_on_fixed_matched_sets"] },
+            "rematching_within_replicate": { "type": "boolean" },
+            "propensity_model_refit": { "type": "boolean" }
+          }
+        },
+        "rr_bootstrap_diagnostics": {
+          "type": ["object", "null"],
+          "required": ["defined_replicates", "undefined_replicates", "defined_fraction"],
+          "properties": {
+            "defined_replicates": { "type": "integer", "minimum": 0 },
+            "undefined_replicates": { "type": "integer", "minimum": 0 },
+            "defined_fraction": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+          }
+        }
+      }
+    },
+    "person_time_metadata": {
+      "type": "object",
+      "required": ["exposure_unit", "rate_unit", "gamma_parameterization", "target_events", "reference_events", "target_exposure", "reference_exposure", "target_shape", "reference_shape"],
+      "if": { "properties": { "exposure_unit": { "const": "person_years" } }, "required": ["exposure_unit"] },
+      "then": { "properties": { "rate_unit": { "const": "events_per_person_year" } } },
+      "else": { "properties": { "rate_unit": { "const": "events_per_person_month" } } },
+      "properties": {
+        "exposure_unit": { "type": "string", "enum": ["person_years", "person_months"] },
+        "rate_unit": { "type": "string", "enum": ["events_per_person_year", "events_per_person_month"] },
+        "gamma_parameterization": { "type": "string", "enum": ["shape_rate"] },
+        "target_events": { "type": "integer", "minimum": 0 },
+        "reference_events": { "type": "integer", "minimum": 0 },
+        "target_exposure": { "type": "number", "exclusiveMinimum": 0 },
+        "reference_exposure": { "type": "number", "exclusiveMinimum": 0 },
+        "target_shape": { "type": "number", "exclusiveMinimum": 0 },
+        "reference_shape": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "iptw_metadata": {
+      "type": ["object", "null"],
+      "required": [
+        "estimand",
+        "stabilization",
+        "iptw_mode",
+        "truncation",
+        "att_scaling_mode",
+        "propensity_model",
+        "propensity_score_boundary_policy",
+        "bootstrap_clipping_diagnostics",
+        "max_failure_rate",
+        "effective_sample_size",
+        "bootstrap_diagnostics"
+      ],
+      "properties": {
+        "estimand": { "type": "string", "enum": ["ATE", "ATT"] },
+        "stabilization": { "type": "boolean" },
+        "iptw_mode": { "type": "string", "enum": ["refit_ps"] },
+        "truncation": {
+          "type": ["object", "null"],
+          "required": ["lower", "upper"],
+          "properties": {
+            "lower": { "type": "number", "minimum": 0, "maximum": 1 },
+            "upper": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "att_scaling_mode": { "type": ["string", "null"], "enum": ["conventional", "marginal_odds_scaled", null] },
+        "propensity_model": {
+          "type": "object",
+          "required": ["family", "link", "covariates"],
+          "properties": {
+            "family": { "type": "string", "enum": ["binomial"] },
+            "link": { "type": "string", "enum": ["logit"] },
+            "covariates": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "propensity_score_boundary_policy": {
+          "type": "object",
+          "required": ["mode", "lower", "upper", "clipped_low_count", "clipped_high_count", "raw_min", "raw_max"],
+          "properties": {
+            "mode": { "type": "string", "enum": ["clamp"] },
+            "lower": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+            "upper": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+            "clipped_low_count": { "type": "integer", "minimum": 0 },
+            "clipped_high_count": { "type": "integer", "minimum": 0 },
+            "raw_min": { "type": "number", "minimum": 0, "maximum": 1 },
+            "raw_max": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "bootstrap_clipping_diagnostics": {
+          "type": "object",
+          "required": ["replicates_with_any_clipping", "total_clipped_low", "total_clipped_high", "max_clipped_fraction"],
+          "properties": {
+            "replicates_with_any_clipping": { "type": "integer", "minimum": 0 },
+            "total_clipped_low": { "type": "integer", "minimum": 0 },
+            "total_clipped_high": { "type": "integer", "minimum": 0 },
+            "max_clipped_fraction": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "max_failure_rate": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 },
+        "effective_sample_size": {
+          "type": "object",
+          "required": ["target", "reference"],
+          "properties": {
+            "target": { "type": "number", "minimum": 0 },
+            "reference": { "type": "number", "minimum": 0 }
+          }
+        },
+        "bootstrap_diagnostics": {
+          "type": "object",
+          "required": ["num_draws", "failed_replicates", "failure_rate", "max_failure_rate"],
+          "properties": {
+            "num_draws": { "type": "integer", "minimum": 10 },
+            "failed_replicates": { "type": "integer", "minimum": 0 },
+            "failure_rate": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "max_failure_rate": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 },
+            "defined_rr_replicates": { "type": "integer", "minimum": 0 },
+            "undefined_rr_replicates": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": { "design": { "const": "person_time" } },
+    "required": ["design"]
+  },
+  "then": {
+    "required": ["person_time_metadata", "target_draws", "reference_draws"],
+    "properties": { "inferential_semantics": { "const": "posterior" } },
+    "if": { "properties": { "draw_storage": { "const": "persisted" } }, "required": ["draw_storage"] },
+    "then": {
+      "properties": {
+        "target_draws": { "type": "array", "minItems": 10, "items": { "type": "number", "exclusiveMinimum": 0 } },
+        "reference_draws": { "type": "array", "minItems": 10, "items": { "type": "number", "exclusiveMinimum": 0 } }
+      }
+    },
+    "else": {
+      "properties": {
+        "target_draws": { "type": "null" },
+        "reference_draws": { "type": "null" }
+      }
+    }
+  }
+}

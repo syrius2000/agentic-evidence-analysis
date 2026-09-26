@@ -1,0 +1,8 @@
+case_id: QA-0001
+target_revision: 9a74bcfa485913e4ddebceec7b69207cd9b86905
+baseline_revision: 1d42f4ae7a7e0649b755ab437c9e67c673078cc2
+status: draft
+current_cycle: 0
+max_automated_cycles: 3
+final_verdict: pending
+findings: []

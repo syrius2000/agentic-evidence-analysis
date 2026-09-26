@@ -1,0 +1,627 @@
+#!/usr/bin/env Rscript
+
+find_agent_repo <- function() {
+  d <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+  for (i in seq_len(25L)) {
+    if (file.exists(file.path(d, ".agents", "shared", "run_scope.R"))) {
+      return(d)
+    }
+    parent <- dirname(d)
+    if (parent == d) break
+    d <- parent
+  }
+  getwd()
+}
+repo_root <- find_agent_repo()
+source(file.path(repo_root, ".agents", "shared", "dependency_check.R"))
+source(file.path(repo_root, ".agents", "shared", "run_scope.R"))
+
+check_r_dependencies(
+  c("optparse", "jsonlite", "ggplot2"),
+  context = "questionnaire-batch-analysis バッチ実行 (batch_runner.R)"
+)
+
+suppressPackageStartupMessages({
+  library(optparse)
+  library(jsonlite)
+  library(ggplot2)
+})
+
+runner_file_arg <- grep("^--file=", commandArgs(trailingOnly = FALSE), value = TRUE)
+runner_dir <- if (length(runner_file_arg) > 0L) {
+  dirname(normalizePath(sub("^--file=", "", runner_file_arg[1L]), mustWork = TRUE))
+} else {
+  getwd()
+}
+source(file.path(runner_dir, "marginal_strata_contract.R"))
+
+option_list <- list(
+  optparse::make_option("--data", type = "character"),
+  optparse::make_option("--config", type = "character", help = "Path to analysis_config.json (Pass 0)"),
+  optparse::make_option("--question-config", type = "character", help = "Path to question config CSV"),
+  optparse::make_option("--out", type = "character", default = "./evidence_runs/questionnaire"),
+  optparse::make_option("--run-id", type = "character", default = "auto")
+)
+opt <- optparse::parse_args(optparse::OptionParser(option_list = option_list))
+
+# JSON 設定の読み込み (Pass 0 連携用)
+if (!is.null(opt$config) && file.exists(opt$config)) {
+  message("[INFO] 共通設定ファイルを読み込み中: ", opt$config)
+  cfg_json <- jsonlite::fromJSON(opt$config)
+  if (!is.null(cfg_json$input)) opt$data <- cfg_json$input
+  if (!is.null(cfg_json$question_config)) opt$`question-config` <- cfg_json$question_config
+  if (!is.null(cfg_json$output_dir)) opt$out <- cfg_json$output_dir
+  if (!is.null(cfg_json$run_id)) opt$`run-id` <- cfg_json$run_id
+}
+
+stopifnot(!is.null(opt$data), file.exists(opt$data))
+stopifnot(!is.null(opt$`question-config`), file.exists(opt$`question-config`))
+
+base_out <- opt$out
+
+rid <- trimws(as.character(opt$`run-id`))
+if (!nzchar(rid) || tolower(rid) %in% c("auto", "run")) {
+  rid <- format(Sys.time(), "%Y%m%d_%H%M%S", tz = "Asia/Tokyo")
+} else {
+  rid <- gsub("[/\\\\]", "_", rid)
+  rid <- gsub("^\\.+|\\.+$", "", rid)
+  rid <- sub("^run_", "", rid)
+}
+# summary.csv の run_id 初期値（バリデーション後に reserve_run_output_dir で確定）
+run_id_record <- rid
+
+detect_jp_font <- function() {
+  os <- Sys.info()[["sysname"]]
+  candidates <- switch(os,
+    "Darwin"  = c("Hiragino Sans", "HiraginoSans-W3", "Hiragino Kaku Gothic Pro"),
+    "Windows" = c("Yu Gothic", "Meiryo", "MS Gothic"),
+    "Linux"   = c("Noto Sans CJK JP", "IPAexGothic", "IPAGothic"),
+    character(0)
+  )
+  if (requireNamespace("systemfonts", quietly = TRUE)) {
+    avail <- unique(systemfonts::system_fonts()$family)
+    for (f in candidates) {
+      if (f %in% avail) {
+        return(f)
+      }
+    }
+  }
+  if (length(candidates) > 0L) {
+    return(candidates[1L])
+  }
+  ""
+}
+
+cramer_v_2way <- function(tab) {
+  tab <- as.matrix(tab)
+  if (length(dim(tab)) != 2L) {
+    return(NA_real_)
+  }
+  n <- sum(tab)
+  if (!is.finite(n) || n <= 0) {
+    return(NA_real_)
+  }
+  suppressWarnings({
+    ct <- chisq.test(tab, correct = FALSE)
+  })
+  chi2 <- as.numeric(ct$statistic)
+  r <- nrow(tab)
+  c <- ncol(tab)
+  df_star <- min(r - 1L, c - 1L)
+  if (df_star <= 0) {
+    return(NA_real_)
+  }
+  v <- sqrt(chi2 / (n * df_star))
+  v
+}
+
+effect_label <- function(v) {
+  if (!is.finite(v)) {
+    return(NA_character_)
+  }
+  if (v < 0.1) {
+    return("small")
+  }
+  if (v < 0.3) {
+    return("medium")
+  }
+  if (v < 0.5) {
+    return("large")
+  }
+  "very_large"
+}
+
+max_residual_cell <- function(tab, dimnames_list) {
+  suppressWarnings({
+    ct <- chisq.test(tab, correct = FALSE)
+  })
+  r <- ct$residuals
+  idx <- which(abs(r) == max(abs(r), na.rm = TRUE), arr.ind = TRUE)[1L, ]
+  rn <- rownames(r)[idx[1]]
+  cn <- colnames(r)[idx[2]]
+  paste(rn, cn, sep = ":")
+}
+
+make_residual_plot <- function(residual_vec, out_path, jp_font) {
+  plot_df <- data.frame(
+    idx = seq_along(residual_vec),
+    res = as.numeric(residual_vec)
+  )
+  plot_df$idx_f <- factor(plot_df$idx, levels = plot_df$idx)
+  p <- ggplot2::ggplot(plot_df, ggplot2::aes(idx_f, res)) +
+    ggplot2::geom_hline(yintercept = c(-1.96, 0, 1.96), linetype = c("dashed", "solid", "dashed"), linewidth = 0.3) +
+    ggplot2::geom_point(size = 1.8) +
+    ggplot2::labs(x = "Index (cell order)", y = "Pearson residuals vs index") +
+    ggplot2::theme_minimal(base_size = 13, base_family = jp_font)
+  ggplot2::ggsave(out_path, plot = p, width = 7, height = 4, dpi = 72)
+}
+
+df <- utils::read.csv(opt$data, stringsAsFactors = FALSE, na.strings = c("", "NA"))
+cfg <- utils::read.csv(
+  opt$`question-config`,
+  stringsAsFactors = FALSE,
+  colClasses = "character",
+  na.strings = "",
+  check.names = FALSE
+)
+
+sanitize_cfg_var <- function(x) {
+  if (length(x) != 1L) {
+    return("")
+  }
+  if (is.na(x)) {
+    return("")
+  }
+  s <- trimws(as.character(x))
+  if (!nzchar(s)) {
+    return("")
+  }
+  s
+}
+
+required_cols <- c("survey_id", "question_id", "analysis_type", "var1", "var2", "var3", "output_slug", "question_label", "subset_expr", "na_policy", "ordered_levels", "reference_note")
+stopifnot(all(required_cols %in% names(cfg)))
+
+non_slug_cols <- setdiff(names(cfg), "output_slug")
+cfg[non_slug_cols] <- lapply(cfg[non_slug_cols], function(values) {
+  na_sentinel <- !is.na(values) & values == "NA"
+  values[na_sentinel] <- NA_character_
+  values
+})
+
+normalize_slug_alias_key <- function(slug) {
+  slash_slug <- gsub("\\", "/", slug, fixed = TRUE)
+  parts <- strsplit(slash_slug, "/", fixed = TRUE)[[1L]]
+  parts <- parts[nzchar(parts) & parts != "."]
+  tolower(paste(parts, collapse = "/"))
+}
+
+# output_slug は out_dir 直下の安全な単一ディレクトリ名に限定する。
+# 先に "." を除いてcase-foldした字句キーを作ることで "x" と "x/."、
+# "Question1" と "question1" も重複として扱い、
+# 全設定の検証が終わるまで出力ディレクトリや成果物を作らない。
+slugs <- as.character(cfg$output_slug)
+slug_alias_keys <- vapply(trimws(slugs), normalize_slug_alias_key, character(1))
+dup_slugs <- unique(slug_alias_keys[duplicated(slug_alias_keys)])
+if (length(dup_slugs) > 0L) {
+  stop(
+    "output_slug が重複または同一実パスを表しています（成果物が上書きされます）: ",
+    paste(dup_slugs, collapse = ", "),
+    "。各設問に一意な output_slug を設定してください。"
+  )
+}
+
+ascii_slug_pattern <- "^[A-Za-z0-9]([A-Za-z0-9._-]{0,98}[A-Za-z0-9_-])?$"
+slug_length <- nchar(slugs, type = "chars", allowNA = TRUE)
+valid_ascii_slug <- !is.na(slugs) &
+  slug_length >= 1L &
+  slug_length <= 100L &
+  grepl(ascii_slug_pattern, slugs, perl = TRUE)
+invalid_slug <- !valid_ascii_slug
+if (any(invalid_slug)) {
+  stop(
+    "output_slug は1〜100文字の安全な単一ASCII slug成分である必要があります: ",
+    paste(unique(slugs[invalid_slug]), collapse = ", "),
+    "。先頭は英数字、使用可能文字は英数字・.・_・-、末尾は英数字・_・-です。"
+  )
+}
+
+windows_name_base <- toupper(sub("\\..*$", "", slugs))
+windows_reserved <- grepl(
+  "^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$",
+  windows_name_base
+)
+if (any(windows_reserved)) {
+  stop(
+    "output_slug にWindows予約名は使用できません（拡張子付きも禁止）: ",
+    paste(unique(slugs[windows_reserved]), collapse = ", ")
+  )
+}
+cfg$output_slug <- slugs
+
+# 入力・設定のバリデーション完了後に初めてRunディレクトリを原子的予約
+out_dir <- reserve_run_output_dir(base_out, "questionnaire-batch-analysis", rid)
+run_id_record <- sub("^run_", "", basename(out_dir))
+if (nzchar(rid) && rid != "run") {
+  message("[INFO] --run-id により出力先: ", out_dir)
+}
+
+# 単一成分でも、既存の同名symlinkがroot外を指す場合は書込み前に停止する。
+base_out_real <- normalizePath(base_out, mustWork = TRUE)
+base_out_prefix <- paste0(base_out_real, .Platform$file.sep)
+for (slug in slugs) {
+  for (check_parent in unique(c(base_out, out_dir))) {
+    slug_path <- file.path(check_parent, slug)
+    if (file.exists(slug_path) || dir.exists(slug_path)) {
+      slug_path_real <- normalizePath(slug_path, mustWork = TRUE)
+      if (!startsWith(slug_path_real, base_out_prefix)) {
+        stop("output_slug の既存パスが出力root外を指しています: ", slug)
+      }
+    }
+  }
+}
+
+jp_font <- detect_jp_font()
+if (!nzchar(jp_font)) jp_font <- ""
+
+rows <- list()
+
+for (i in seq_len(nrow(cfg))) {
+  row <- cfg[i, , drop = FALSE]
+  survey_id <- as.character(row$survey_id)
+  question_id <- as.character(row$question_id)
+  analysis_type <- as.character(row$analysis_type)
+  var1 <- sanitize_cfg_var(row$var1)
+  var2 <- sanitize_cfg_var(row$var2)
+  var3 <- sanitize_cfg_var(row$var3)
+  output_slug <- as.character(row$output_slug)
+  subset_expr <- if (is.na(row$subset_expr)) "" else trimws(as.character(row$subset_expr))
+  na_policy <- as.character(row$na_policy)
+
+  q_res <- tryCatch(
+    {
+      q_df <- df
+      if (isTRUE(nzchar(subset_expr))) {
+        keep <- tryCatch(with(q_df, eval(parse(text = subset_expr))), error = function(e) rep(TRUE, nrow(q_df)))
+        if (length(keep) == nrow(q_df) && is.logical(keep)) {
+          q_df <- q_df[!is.na(keep) & keep, , drop = FALSE]
+        }
+      }
+
+      vars <- c(var1, var2)
+      if (isTRUE(nzchar(var3))) vars <- c(vars, var3)
+
+      missing_vars <- setdiff(vars, names(q_df))
+      if (length(missing_vars) > 0L) {
+        stop("Variables not found in data: ", paste(missing_vars, collapse = ", "))
+      }
+
+      q_df <- q_df[, vars, drop = FALSE]
+      n_total <- nrow(q_df)
+      if (identical(na_policy, "drop")) {
+        q_df <- q_df[stats::complete.cases(q_df), , drop = FALSE]
+      }
+      n_used <- nrow(q_df)
+      n_missing <- n_total - n_used
+
+      q_out <- file.path(out_dir, output_slug)
+      fig_dir <- file.path(q_out, "figures")
+      dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
+
+      report_path <- file.path(q_out, "report.html")
+      plot_path <- file.path(fig_dir, "residual_plot.png")
+
+      if (n_used <= 1L) stop("Not enough rows after filtering.")
+
+      statistic_value <- NA_real_
+      p_value <- NA_real_
+      effect_value <- NA_real_
+      cramer_v_marginal <- NA_real_
+      cramer_v_df_star <- NA_real_
+      cramer_v_effect_label <- NA_character_
+      cramer_v_strata_json <- NA_character_
+      cramer_v_strata_mean <- NA_real_
+      cramer_v_strata_max <- NA_real_
+      cramer_v_strata_max_level <- NA_character_
+      marginal_strata_signal <- "none"
+      marginal_strata_note <- ""
+      max_abs_pearson_res <- NA_real_
+      max_residual_cell_val <- NA_character_
+      mosaic_rendered <- FALSE
+      assoc_rendered <- FALSE
+
+      if (analysis_type %in% c("nominal_2way", "likert_2way")) {
+        tab <- table(q_df[[var1]], q_df[[var2]])
+        ct <- suppressWarnings(chisq.test(tab, correct = FALSE))
+        statistic_value <- as.numeric(ct$statistic)
+        p_value <- as.numeric(ct$p.value)
+
+        r <- nrow(tab)
+        c <- ncol(tab)
+        cramer_v_df_star <- min(r - 1L, c - 1L)
+        cramer_v_marginal <- cramer_v_2way(tab)
+        effect_value <- cramer_v_marginal
+        cramer_v_effect_label <- effect_label(cramer_v_marginal)
+
+        max_abs_pearson_res <- max(abs(ct$residuals), na.rm = TRUE)
+        max_residual_cell_val <- max_residual_cell(tab)
+
+        n_cells <- prod(dim(tab))
+        mosaic_rendered <- isTRUE(n_cells <= 16L)
+        assoc_rendered <- isTRUE(n_cells <= 16L)
+
+        make_residual_plot(as.numeric(ct$residuals), plot_path, jp_font)
+      } else if (analysis_type == "nominal_3way") {
+        if (!nzchar(var3)) stop("var3 is required for nominal_3way.")
+        tab3 <- table(q_df[[var1]], q_df[[var2]], q_df[[var3]])
+        tab_m <- margin.table(tab3, c(1L, 2L))
+        ct <- suppressWarnings(chisq.test(tab_m, correct = FALSE))
+        statistic_value <- as.numeric(ct$statistic)
+        p_value <- as.numeric(ct$p.value)
+
+        r <- nrow(tab_m)
+        c <- ncol(tab_m)
+        cramer_v_df_star <- min(r - 1L, c - 1L)
+        cramer_v_marginal <- cramer_v_2way(tab_m)
+        effect_value <- cramer_v_marginal
+        cramer_v_effect_label <- effect_label(cramer_v_marginal)
+
+        max_abs_pearson_res <- max(abs(ct$residuals), na.rm = TRUE)
+        max_residual_cell_val <- max_residual_cell(tab_m)
+
+        strata_levels <- dimnames(tab3)[[3]]
+        strata_v <- setNames(rep(NA_real_, length(strata_levels)), strata_levels)
+        for (lv in strata_levels) {
+          tab_s <- tab3[, , lv, drop = TRUE]
+          strata_v[[lv]] <- cramer_v_2way(tab_s)
+        }
+        cramer_v_strata_json <- jsonlite::toJSON(as.list(strata_v), auto_unbox = TRUE)
+        finite_strata_v <- strata_v[is.finite(strata_v)]
+        if (length(finite_strata_v) > 0L) {
+          cramer_v_strata_max <- max(finite_strata_v)
+          cramer_v_strata_max_level <- names(which.max(strata_v))[1L]
+        }
+
+        marginal_strata <- classify_marginal_strata(cramer_v_marginal, strata_v)
+        cramer_v_strata_mean <- marginal_strata$strata_mean
+        marginal_strata_signal <- marginal_strata$signal
+        marginal_strata_note <- marginal_strata$note
+
+        n_cells <- prod(dim(tab3))
+        mosaic_rendered <- isTRUE(n_cells <= 36L)
+        assoc_rendered <- isTRUE(n_cells <= 36L)
+
+        make_residual_plot(as.numeric(ct$residuals), plot_path, jp_font)
+      } else {
+        stop("Unsupported analysis_type: ", analysis_type)
+      }
+
+      # 統計結果の JSON 保存
+      results_json <- list(
+        survey_id = survey_id,
+        question_id = question_id,
+        analysis_type = analysis_type,
+        n_total = n_total,
+        n_used = n_used,
+        statistic = list(
+          method = "chisq",
+          value = statistic_value,
+          p_value = p_value
+        ),
+        residuals = list(
+          max_abs = max_abs_pearson_res,
+          max_cell = max_residual_cell_val
+        ),
+        plots = list(
+          mosaic_rendered = mosaic_rendered,
+          assoc_rendered = assoc_rendered
+        )
+      )
+      jsonlite::write_json(results_json, file.path(q_out, "questionnaire_results.json"), auto_unbox = TRUE, pretty = TRUE)
+
+      html <- c(
+        "<!doctype html>",
+        "<html><head><meta charset=\"utf-8\"><title>Report</title></head><body>",
+        sprintf("<h1>%s</h1>", ifelse(is.na(row$question_label), "Report", row$question_label)),
+        "<h2>Residual plot</h2>",
+        "<p>Pearson residuals vs index</p>",
+        "<img src=\"figures/residual_plot.png\" alt=\"residual plot\">",
+        "</body></html>"
+      )
+      writeLines(html, report_path, useBytes = TRUE)
+
+      list(
+        status = "success",
+        error_message = "",
+        skip_reason = "",
+        n_total = n_total,
+        n_used = n_used,
+        n_missing = n_missing,
+        statistic_value = statistic_value,
+        p_value = p_value,
+        effect_value = effect_value,
+        cramer_v_marginal = cramer_v_marginal,
+        cramer_v_df_star = cramer_v_df_star,
+        cramer_v_effect_label = cramer_v_effect_label,
+        cramer_v_strata_json = cramer_v_strata_json,
+        cramer_v_strata_mean = cramer_v_strata_mean,
+        cramer_v_strata_max = cramer_v_strata_max,
+        cramer_v_strata_max_level = cramer_v_strata_max_level,
+        marginal_strata_signal = marginal_strata_signal,
+        marginal_strata_note = marginal_strata_note,
+        max_abs_pearson_res = max_abs_pearson_res,
+        max_residual_cell = max_residual_cell_val,
+        mosaic_rendered = mosaic_rendered,
+        assoc_rendered = assoc_rendered,
+        report_path = report_path
+      )
+    },
+    error = function(e) {
+      list(
+        status = "error",
+        error_message = conditionMessage(e),
+        skip_reason = conditionMessage(e),
+        n_total = NA_integer_,
+        n_used = NA_integer_,
+        n_missing = NA_integer_,
+        statistic_value = NA_real_,
+        p_value = NA_real_,
+        effect_value = NA_real_,
+        cramer_v_marginal = NA_real_,
+        cramer_v_df_star = NA_real_,
+        cramer_v_effect_label = NA_character_,
+        cramer_v_strata_json = NA_character_,
+        cramer_v_strata_mean = NA_real_,
+        cramer_v_strata_max = NA_real_,
+        cramer_v_strata_max_level = NA_character_,
+        marginal_strata_signal = "none",
+        marginal_strata_note = "",
+        max_abs_pearson_res = NA_real_,
+        max_residual_cell = NA_character_,
+        mosaic_rendered = FALSE,
+        assoc_rendered = FALSE,
+        report_path = NA_character_
+      )
+    }
+  )
+
+  rows[[length(rows) + 1L]] <- data.frame(
+    run_id = run_id_record,
+    survey_id = survey_id,
+    question_id = question_id,
+    analysis_type = analysis_type,
+    n_total = q_res$n_total,
+    n_used = q_res$n_used,
+    n_missing = q_res$n_missing,
+    model_name = "chisq",
+    statistic_value = q_res$statistic_value,
+    p_value = q_res$p_value,
+    effect_value = q_res$effect_value,
+    cramer_v_marginal = q_res$cramer_v_marginal,
+    cramer_v_df_star = q_res$cramer_v_df_star,
+    cramer_v_effect_label = q_res$cramer_v_effect_label,
+    cramer_v_strata_json = q_res$cramer_v_strata_json,
+    cramer_v_strata_mean = q_res$cramer_v_strata_mean,
+    cramer_v_strata_max = q_res$cramer_v_strata_max,
+    cramer_v_strata_max_level = q_res$cramer_v_strata_max_level,
+    marginal_strata_signal = q_res$marginal_strata_signal,
+    marginal_strata_note = q_res$marginal_strata_note,
+    max_abs_pearson_res = q_res$max_abs_pearson_res,
+    max_residual_cell = q_res$max_residual_cell,
+    mosaic_rendered = q_res$mosaic_rendered,
+    assoc_rendered = q_res$assoc_rendered,
+    skip_reason = q_res$skip_reason,
+    residual_plot_mode = "dotplot",
+    report_path = q_res$report_path,
+    status = ifelse(q_res$status == "success", "success", "error"),
+    error_message = ifelse(q_res$status == "success", "", q_res$error_message),
+    stringsAsFactors = FALSE
+  )
+}
+
+summary_df <- do.call(rbind, rows)
+summary_path <- file.path(out_dir, "summary.csv")
+utils::write.csv(summary_df, summary_path, row.names = FALSE, na = "")
+
+# 成果物マニフェスト (results_manifest.json) および run_meta.json の生成
+artifacts <- list()
+if (file.exists(summary_path)) {
+  artifacts[[length(artifacts) + 1L]] <- list(path = "summary.csv", role = "summary_table")
+}
+for (res_row in seq_len(nrow(summary_df))) {
+  q_slug <- cfg$output_slug[res_row]
+  q_id <- summary_df$question_id[res_row]
+  q_status <- summary_df$status[res_row]
+  if (isTRUE(identical(as.character(q_status), "success")) && !is.null(q_slug) && !is.na(q_slug) && nzchar(trimws(as.character(q_slug)))) {
+    q_dir_rel <- as.character(q_slug)
+    q_dir_abs <- file.path(out_dir, q_dir_rel)
+
+    # 1. questionnaire_results.json
+    q_json_rel <- file.path(q_dir_rel, "questionnaire_results.json")
+    if (file.exists(file.path(out_dir, q_json_rel))) {
+      artifacts[[length(artifacts) + 1L]] <- list(
+        path = chartr("\\", "/", q_json_rel),
+        role = "question_result",
+        question_id = as.character(q_id)
+      )
+    }
+
+    # 2. report.html
+    q_report_rel <- file.path(q_dir_rel, "report.html")
+    if (file.exists(file.path(out_dir, q_report_rel))) {
+      artifacts[[length(artifacts) + 1L]] <- list(
+        path = chartr("\\", "/", q_report_rel),
+        role = "report_html",
+        question_id = as.character(q_id)
+      )
+    }
+
+    # 3. figures 配下の画像ファイル
+    q_fig_dir <- file.path(q_dir_abs, "figures")
+    if (dir.exists(q_fig_dir)) {
+      fig_files <- list.files(q_fig_dir, pattern = "\\.(png|svg|jpg|jpeg)$", full.names = FALSE)
+      for (ff in fig_files) {
+        fig_rel <- file.path(q_dir_rel, "figures", ff)
+        artifacts[[length(artifacts) + 1L]] <- list(
+          path = chartr("\\", "/", fig_rel),
+          role = "figure",
+          question_id = as.character(q_id)
+        )
+      }
+    }
+  }
+}
+
+failed_rows <- summary_df[as.character(summary_df$status) != "success", , drop = FALSE]
+has_failures <- nrow(failed_rows) > 0L
+run_state <- if (has_failures) "failed" else "completed"
+pass1_status <- if (has_failures) "failed" else "completed"
+
+manifest_error_msg <- NULL
+manifest_res <- tryCatch({
+  write_results_manifest(out_dir, "questionnaire-batch-analysis", artifacts)
+}, error = function(e) {
+  manifest_error_msg <<- conditionMessage(e)
+  NULL
+})
+
+if (!is.null(manifest_error_msg)) {
+  run_state <- "failed"
+  pass1_status <- "failed"
+}
+
+extra_meta <- list(
+  logical_run_id = rid,
+  requested_run_id = opt$`run-id`,
+  run_state = run_state,
+  results_manifest_sha256 = if (!is.null(manifest_res)) manifest_res$manifest_sha256 else NULL,
+  partial_failures = if (has_failures) as.character(failed_rows$question_id) else NULL,
+  failure_reason = if (has_failures) {
+    sprintf("%d question(s) failed in batch.", nrow(failed_rows))
+  } else if (!is.null(manifest_error_msg)) {
+    sprintf("write_results_manifest failed: %s", manifest_error_msg)
+  } else {
+    NULL
+  },
+  pass_status = list(pass0 = "completed", pass1 = pass1_status, pass2 = "pending", pass3 = "pending")
+)
+
+tryCatch({
+  write_run_meta(
+    out_root = base_out,
+    run_output_dir = out_dir,
+    skill = "questionnaire-batch-analysis",
+    run_id = run_id_record,
+    input_data_path = opt$data,
+    extra = extra_meta
+  )
+}, error = function(e) {
+  stop(sprintf("CRITICAL_METADATA_FAILURE: run_meta.json could not be written: %s", conditionMessage(e)))
+})
+
+if (has_failures || !is.null(manifest_error_msg)) {
+  message(sprintf("[FAIL] Questionnaire batch completed with failures (run_state=failed). Exiting with status 1."))
+  quit(status = 1L)
+}
+
+quit(status = 0L)

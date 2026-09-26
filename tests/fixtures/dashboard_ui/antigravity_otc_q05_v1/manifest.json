@@ -1,0 +1,27 @@
+{
+  "fixture_id": "antigravity_otc_q05_v1",
+  "description": "Antigravity edition OTC_Q05 UI baseline fixture preserved for 2-way UI reference and layout comparison",
+  "source_worktree": "agentic-evidence-analysis-antigravity",
+  "source_commit": "4186a0573d251e6ae1fbdf74822d26822fecd497",
+  "source_run_id": "otc_q05_brand_symptom",
+  "generated_at": "2026-09-11T23:44:08+0900",
+  "input_data": {
+    "repo_relative_path": "examples/OTC_Q05_tidy.csv",
+    "sha256": "72e5a4d32fd8b326aae5d26ee7043e2df9ab81cb5345e22008c233fc5a9f5de7"
+  },
+  "generation_commands": [
+    "Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R --config output/OTC_Q05/00_consultation/analysis_config.json --out output/OTC_Q05/10_bayesian --run-id otc_q05_brand_symptom",
+    "Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R --run-dir output/OTC_Q05/10_bayesian/run_otc_q05_brand_sy"
+  ],
+  "artifacts": {
+    "dashboard.html": {
+      "sha256": "91a038fbe3a7f97b2546f36da6cc7a96e683304049eb2df7e50d51509e9c7c3e"
+    },
+    "analysis_config.json": {
+      "sha256": "d4bb090055eda8911e7aafa4f7890ff1bc7e1402618ed05539b7b17054605961"
+    },
+    "evidence_results.json": {
+      "sha256": "605057ec759f0a85e452ed12caff2352014eca68b5d87a347635a8a1045b2b39"
+    }
+  }
+}

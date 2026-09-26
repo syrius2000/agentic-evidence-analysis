@@ -1,0 +1,313 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComparativeRateEvidenceV1",
+  "description": "Summary evidence for two-group Gamma-Poisson person-time rate inference",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "inferential_semantics",
+    "target_cohort",
+    "reference_cohort",
+    "incidence_rate_difference",
+    "incidence_rate_ratio",
+    "direction_support",
+    "person_time"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "comparative-rate-evidence-v1"
+      ]
+    },
+    "inferential_semantics": {
+      "type": "string",
+      "enum": [
+        "posterior"
+      ]
+    },
+    "target_cohort": {
+      "$ref": "#/definitions/cohort"
+    },
+    "reference_cohort": {
+      "$ref": "#/definitions/cohort"
+    },
+    "incidence_rate_difference": {
+      "type": "object",
+      "required": [
+        "estimate",
+        "interval",
+        "additional_events_per_100_person_years"
+      ],
+      "properties": {
+        "estimate": {
+          "$ref": "#/definitions/estimate"
+        },
+        "interval": {
+          "$ref": "#/definitions/interval"
+        },
+        "additional_events_per_100_person_years": {
+          "type": "number"
+        }
+      }
+    },
+    "incidence_rate_ratio": {
+      "type": "object",
+      "required": [
+        "estimate",
+        "interval",
+        "mean",
+        "mean_is_finite",
+        "diagnostic"
+      ],
+      "properties": {
+        "estimate": {
+          "$ref": "#/definitions/estimate"
+        },
+        "interval": {
+          "$ref": "#/definitions/interval"
+        },
+        "mean": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "mean_is_finite": {
+          "type": "boolean"
+        },
+        "diagnostic": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "ZERO_REFERENCE_EVENTS",
+            null
+          ]
+        }
+      }
+    },
+    "direction_support": {
+      "type": "object",
+      "required": [
+        "metric_name",
+        "value",
+        "label"
+      ],
+      "properties": {
+        "metric_name": {
+          "type": "string",
+          "enum": [
+            "p_ird_gt_zero"
+          ]
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "label": {
+          "type": "string",
+          "enum": [
+            "P(IRD > 0)"
+          ]
+        }
+      }
+    },
+    "person_time": {
+      "type": "object",
+      "required": [
+        "exposure_unit",
+        "rate_unit",
+        "gamma_parameterization",
+        "target_exposure",
+        "reference_exposure",
+        "assumptions"
+      ],
+      "if": { "properties": { "exposure_unit": { "const": "person_years" } }, "required": ["exposure_unit"] },
+      "then": { "properties": { "rate_unit": { "const": "events_per_person_year" } } },
+      "else": { "properties": { "rate_unit": { "const": "events_per_person_month" } } },
+      "properties": {
+        "exposure_unit": {
+          "type": "string",
+          "enum": [
+            "person_years",
+            "person_months"
+          ]
+        },
+        "rate_unit": {
+          "type": "string",
+          "enum": [
+            "events_per_person_year",
+            "events_per_person_month"
+          ]
+        },
+        "gamma_parameterization": {
+          "type": "string",
+          "enum": [
+            "shape_rate"
+          ]
+        },
+        "target_exposure": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "reference_exposure": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "assumptions": {
+          "type": "object",
+          "required": [
+            "constant_hazard_assumed",
+            "within_subject_recurrent_event_clustering",
+            "limitations"
+          ],
+          "properties": {
+            "constant_hazard_assumed": {
+              "type": "boolean",
+              "enum": [
+                true
+              ]
+            },
+            "within_subject_recurrent_event_clustering": {
+              "type": "string",
+              "enum": [
+                "not_modeled"
+              ]
+            },
+            "limitations": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "reference_cohort": {
+        "properties": { "events": { "const": 0 } },
+        "required": ["events"]
+      }
+    },
+    "required": ["reference_cohort"]
+  },
+  "then": {
+    "properties": {
+      "incidence_rate_ratio": {
+        "properties": {
+          "mean": { "type": "null" },
+          "mean_is_finite": { "const": false },
+          "diagnostic": { "const": "ZERO_REFERENCE_EVENTS" }
+        }
+      }
+    }
+  },
+  "else": {
+    "properties": {
+      "incidence_rate_ratio": {
+        "properties": {
+          "mean": { "type": "number" },
+          "mean_is_finite": { "const": true },
+          "diagnostic": { "type": "null" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "cohort": {
+      "type": "object",
+      "required": [
+        "label",
+        "events",
+        "exposure",
+        "incidence_rate"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "enum": [
+            "Target",
+            "Reference"
+          ]
+        },
+        "events": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exposure": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "incidence_rate": {
+          "type": "object",
+          "required": [
+            "estimate",
+            "interval"
+          ],
+          "properties": {
+            "estimate": {
+              "$ref": "#/definitions/estimate"
+            },
+            "interval": {
+              "$ref": "#/definitions/interval"
+            }
+          }
+        }
+      }
+    },
+    "estimate": {
+      "type": "object",
+      "required": [
+        "value",
+        "source"
+      ],
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "posterior_median"
+          ]
+        }
+      }
+    },
+    "interval": {
+      "type": "object",
+      "required": [
+        "lower",
+        "upper",
+        "level",
+        "method"
+      ],
+      "properties": {
+        "lower": {
+          "type": "number"
+        },
+        "upper": {
+          "type": "number"
+        },
+        "level": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "posterior_eti"
+          ]
+        }
+      }
+    }
+  }
+}

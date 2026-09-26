@@ -1,0 +1,103 @@
+{
+  "contract_version": "1.0",
+  "result_sha256": "245bc18dfa90655aad215ec267a87ee4d1cbac5dde3271555dd7edaad508c55d",
+  "status": "REVIEWED",
+  "claims": [
+    {
+      "claim_id": "total_sample_size",
+      "pointer": "/input_summary/total_n",
+      "value": 4526,
+      "description": "総度数 N=4526"
+    },
+    {
+      "claim_id": "total_cells",
+      "pointer": "/input_summary/n_cells",
+      "value": 24,
+      "description": "総セル数 24"
+    },
+    {
+      "claim_id": "best_model_m5_bic",
+      "pointer": "/models/summary/0/bic",
+      "value": 332.3119,
+      "description": "最良モデル M5 の明示式 BIC = 332.3119"
+    },
+    {
+      "claim_id": "second_model_m8_bic",
+      "pointer": "/models/summary/1/bic",
+      "value": 339.1982,
+      "description": "次点モデル M8 の明示式 BIC = 339.1982"
+    },
+    {
+      "claim_id": "m1_candidate_cells",
+      "pointer": "/cells/by_base_model/M1/counts/candidate_cells",
+      "value": 12,
+      "description": "M1基準（相互独立）の探索候補セル数 = 12"
+    },
+    {
+      "claim_id": "m5_candidate_cells",
+      "pointer": "/cells/by_base_model/M5/counts/candidate_cells",
+      "value": 1,
+      "description": "M5基準（条件付き独立）の残余探索候補セル数 = 1"
+    },
+    {
+      "claim_id": "m5_regular_cells",
+      "pointer": "/cells/by_base_model/M5/counts/regular_cells",
+      "value": 13,
+      "description": "M5基準の安定（REGULAR）セル数 = 13"
+    },
+    {
+      "claim_id": "m5_quarantined_cells",
+      "pointer": "/cells/by_base_model/M5/counts/quarantined_cells",
+      "value": 11,
+      "description": "M5基準の隔離（QUARANTINED）セル数 = 11"
+    },
+    {
+      "claim_id": "dept_a_male_post_mean",
+      "pointer": "/conditional_rate_view/rates/A__Male/post_mean",
+      "value": 0.6204,
+      "description": "学部 A における男性の合格率事後平均 = 0.6204"
+    },
+    {
+      "claim_id": "dept_a_male_raw_rate",
+      "pointer": "/conditional_rate_view/rates/A__Male/raw_rate",
+      "value": 0.6206,
+      "description": "学部 A における男性の合格率観測生割合 = 0.6206"
+    },
+    {
+      "claim_id": "dept_a_male_obs_numerator",
+      "pointer": "/conditional_rate_view/rates/A__Male/obs_numerator",
+      "value": 512,
+      "description": "学部 A における男性の合格者数 = 512"
+    },
+    {
+      "claim_id": "dept_a_male_obs_denominator",
+      "pointer": "/conditional_rate_view/rates/A__Male/obs_denominator",
+      "value": 825,
+      "description": "学部 A における男性の志願者数 = 825"
+    },
+    {
+      "claim_id": "dept_a_female_raw_rate",
+      "pointer": "/conditional_rate_view/rates/A__Female/raw_rate",
+      "value": 0.8241,
+      "description": "学部 A における女性の合格率観測生割合 = 0.8241"
+    },
+    {
+      "claim_id": "dept_a_female_obs_numerator",
+      "pointer": "/conditional_rate_view/rates/A__Female/obs_numerator",
+      "value": 89,
+      "description": "学部 A における女性の合格者数 = 89"
+    },
+    {
+      "claim_id": "dept_a_female_obs_denominator",
+      "pointer": "/conditional_rate_view/rates/A__Female/obs_denominator",
+      "value": 108,
+      "description": "学部 A における女性の志願者数 = 108"
+    },
+    {
+      "claim_id": "dept_a_diff_mean",
+      "pointer": "/conditional_rate_view/differences/A__Male_minus_Female/difference_mean",
+      "value": -0.1976,
+      "description": "学部 A における男女合格率差（Male - Female）事後平均 = -0.1976"
+    }
+  ]
+}

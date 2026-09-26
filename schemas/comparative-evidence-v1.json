@@ -1,0 +1,557 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComparativeEvidenceV1",
+  "description": "Permanent deliverable schema for single contrast comparative evidence reporting in comparative-evidence-reporting-v3",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "inferential_semantics",
+    "target_cohort",
+    "reference_cohort",
+    "risk_difference",
+    "relative_risk",
+    "direction_support",
+    "resolution_grade",
+    "precision_metrics",
+    "diagnostics"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["comparative-evidence-v1"]
+    },
+    "inferential_semantics": {
+      "type": "string",
+      "enum": ["posterior", "bootstrap"]
+    },
+    "contrast_id": {
+      "type": "string"
+    },
+    "theme": {
+      "type": "string"
+    },
+    "target_cohort": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string" },
+        "events": { "type": ["number", "null"] },
+        "total": { "type": ["number", "null"] },
+        "incidence_proportion": { "type": ["number", "null"] },
+        "estimate_semantics": { "type": "string" },
+        "estimate": {
+          "type": "object",
+          "required": ["value", "source"],
+          "properties": {
+            "value": { "type": "number" },
+            "source": { "type": "string", "enum": ["posterior_median", "observed_sample_estimate"] }
+          }
+        },
+        "interval": {
+          "type": "object",
+          "required": ["lower", "upper", "level", "method"],
+          "properties": {
+            "lower": { "type": "number" },
+            "upper": { "type": "number" },
+            "level": { "type": "number" },
+            "method": { "type": "string", "enum": ["posterior_eti", "bootstrap_percentile"] }
+          }
+        }
+      }
+    },
+    "reference_cohort": {
+      "type": "object",
+      "required": ["label"],
+      "properties": {
+        "label": { "type": "string" },
+        "events": { "type": ["number", "null"] },
+        "total": { "type": ["number", "null"] },
+        "incidence_proportion": { "type": ["number", "null"] },
+        "estimate_semantics": { "type": "string" },
+        "estimate": {
+          "type": "object",
+          "required": ["value", "source"],
+          "properties": {
+            "value": { "type": "number" },
+            "source": { "type": "string", "enum": ["posterior_median", "observed_sample_estimate"] }
+          }
+        },
+        "interval": {
+          "type": "object",
+          "required": ["lower", "upper", "level", "method"],
+          "properties": {
+            "lower": { "type": "number" },
+            "upper": { "type": "number" },
+            "level": { "type": "number" },
+            "method": { "type": "string", "enum": ["posterior_eti", "bootstrap_percentile"] }
+          }
+        }
+      }
+    },
+    "risk_difference": {
+      "type": "object",
+      "required": ["estimate", "interval"],
+      "properties": {
+        "estimate": {
+          "type": "object",
+          "required": ["value", "source"],
+          "properties": {
+            "value": { "type": "number" },
+            "source": { "type": "string", "enum": ["posterior_median", "observed_sample_estimate"] }
+          }
+        },
+        "interval": {
+          "type": "object",
+          "required": ["lower", "upper", "level", "method"],
+          "properties": {
+            "lower": { "type": "number" },
+            "upper": { "type": "number" },
+            "level": { "type": "number" },
+            "method": { "type": "string", "enum": ["posterior_eti", "bootstrap_percentile"] }
+          }
+        },
+        "excess_per_100": { "type": "number" },
+        "additional_subjects_per_100_treated": { "type": "number" }
+      }
+    },
+    "relative_risk": {
+      "type": "object",
+      "required": ["estimate", "mean_is_finite"],
+      "properties": {
+        "estimate": {
+          "type": "object",
+          "required": ["value", "source"],
+          "properties": {
+            "value": { "type": ["number", "null"] },
+            "source": { "type": "string", "enum": ["posterior_median", "observed_sample_estimate"] }
+          }
+        },
+        "interval": {
+          "type": ["object", "null"],
+          "required": ["lower", "upper", "level", "method"],
+          "properties": {
+            "lower": { "type": ["number", "null"] },
+            "upper": { "type": ["number", "null"] },
+            "level": { "type": "number" },
+            "method": { "type": "string", "enum": ["posterior_eti", "bootstrap_percentile"] }
+          }
+        },
+        "mean": { "type": ["number", "null"] },
+        "mean_is_finite": { "type": "boolean" },
+        "diagnostic": { "type": ["string", "null"] },
+        "rr_bootstrap_diagnostics": {
+          "type": ["object", "null"],
+          "required": ["defined_replicates", "undefined_replicates", "defined_fraction"],
+          "properties": {
+            "defined_replicates": { "type": "integer", "minimum": 0 },
+            "undefined_replicates": { "type": "integer", "minimum": 0 },
+            "defined_fraction": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
+          }
+        }
+      }
+    },
+    "direction_support": {
+      "type": "object",
+      "properties": {
+        "metric_name": { "type": "string" },
+        "support_value": { "type": "number" },
+        "label": { "type": "string" }
+      }
+    },
+    "practical_region_support": {
+      "type": ["object", "null"],
+      "properties": {
+        "inferential_semantics": { "type": "string", "enum": ["posterior", "bootstrap"] },
+        "target_excess": { "type": "number" },
+        "practical_neutral": { "type": "number" },
+        "reference_excess": { "type": "number" },
+        "primary_delta": { "type": ["number", "null"] }
+      }
+    },
+    "resolution_grade": {
+      "type": "object",
+      "required": ["grade", "label"],
+      "properties": {
+        "grade": { "type": "string", "enum": ["U0", "U1", "U2", "U3", "NONE"] },
+        "label": { "type": "string" },
+        "max_region_probability": { "type": ["number", "null"] }
+      }
+    },
+    "delta_profile": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "properties": {
+          "delta": { "type": "number" },
+          "p_rd_gt_delta": { "type": "number" },
+          "p_rd_lt_minus_delta": { "type": "number" },
+          "p_neutral": { "type": "number" }
+        }
+      }
+    },
+    "precision_metrics": {
+      "type": "object",
+      "required": ["rd_interval_width"],
+      "properties": {
+        "rd_interval_width": { "type": "number" },
+        "log_rr_interval_width": { "type": ["number", "null"] },
+        "rr_interval_fold_range": { "type": ["number", "null"] },
+        "monte_carlo_draws": { "type": ["integer", "null"] },
+        "effective_sample_size": { "type": ["number", "null"] }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "required": ["badges"],
+      "properties": {
+        "badges": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "prior_sensitivity": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string" },
+            "evaluated": { "type": "boolean" },
+            "comparison": { "type": ["object", "null"] }
+          },
+          "not": { "required": ["robust"] }
+        }
+      }
+    },
+    "presentation": {
+      "type": "object"
+    },
+    "matched_pair": {
+      "type": "object",
+      "required": [
+        "pair_count",
+        "concordant_pair_count",
+        "discordant_pair_count",
+        "cell_counts",
+        "odds_ratio_definition",
+        "odds_ratio",
+        "intra_pair_association_or"
+      ],
+      "properties": {
+        "pair_count": { "type": "integer", "minimum": 1 },
+        "concordant_pair_count": { "type": "integer", "minimum": 0 },
+        "discordant_pair_count": { "type": "integer", "minimum": 0 },
+        "cell_counts": {
+          "type": "object",
+          "required": ["n11", "n10", "n01", "n00"],
+          "properties": {
+            "n11": { "type": "integer", "minimum": 0 },
+            "n10": { "type": "integer", "minimum": 0 },
+            "n01": { "type": "integer", "minimum": 0 },
+            "n00": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "odds_ratio_definition": {
+          "type": "string",
+          "enum": ["discordant_pair_p10_over_p01"]
+        },
+        "odds_ratio": {
+          "type": "object",
+          "required": ["estimate", "interval", "mean_is_finite"],
+          "properties": {
+            "estimate": {
+              "type": "object",
+              "required": ["value", "source"],
+              "properties": {
+                "value": { "type": ["number", "null"] },
+                "source": { "type": "string", "enum": ["posterior_median", "observed_sample_estimate"] }
+              }
+            },
+            "interval": {
+              "type": "object",
+              "required": ["lower", "upper", "level", "method"],
+              "properties": {
+                "lower": { "type": ["number", "null"] },
+                "upper": { "type": ["number", "null"] },
+                "level": { "type": "number" },
+                "method": { "type": "string", "enum": ["posterior_eti", "bootstrap_percentile"] }
+              }
+            },
+            "mean": { "type": ["number", "null"] },
+            "mean_is_finite": { "type": "boolean" }
+          }
+        },
+        "intra_pair_association_or": {
+          "type": "object",
+          "required": ["estimate", "interval", "mean_is_finite"],
+          "properties": {
+            "estimate": {
+              "type": "object",
+              "required": ["value", "source"],
+              "properties": {
+                "value": { "type": ["number", "null"] },
+                "source": { "type": "string", "enum": ["posterior_median", "observed_sample_estimate"] }
+              }
+            },
+            "interval": {
+              "type": "object",
+              "required": ["lower", "upper", "level", "method"],
+              "properties": {
+                "lower": { "type": ["number", "null"] },
+                "upper": { "type": ["number", "null"] },
+                "level": { "type": "number" },
+                "method": { "type": "string", "enum": ["posterior_eti", "bootstrap_percentile"] }
+              }
+            },
+            "mean": { "type": ["number", "null"] },
+            "mean_is_finite": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "matched_set": {
+      "type": "object",
+      "required": [
+        "set_count",
+        "matching_ratio",
+        "replacement",
+        "patient_counts",
+        "estimand",
+        "bootstrap_scope",
+        "raw_target_counts",
+        "raw_reference_counts"
+      ],
+      "properties": {
+        "set_count": { "type": "integer", "minimum": 1 },
+        "estimand": { "type": "string", "enum": ["ATT"] },
+        "bootstrap_scope": {
+          "type": "object",
+          "required": ["type", "rematching_within_replicate", "propensity_model_refit"],
+          "properties": {
+            "type": { "type": "string", "enum": ["conditional_on_fixed_matched_sets"] },
+            "rematching_within_replicate": { "type": "boolean" },
+            "propensity_model_refit": { "type": "boolean" }
+          }
+        },
+        "raw_target_counts": {
+          "type": "object",
+          "required": ["events", "total"],
+          "properties": {
+            "events": { "type": "integer", "minimum": 0 },
+            "total": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "raw_reference_counts": {
+          "type": "object",
+          "required": ["events", "total"],
+          "properties": {
+            "events": { "type": "integer", "minimum": 0 },
+            "total": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "matching_ratio": {
+          "type": "object",
+          "required": ["type", "min_controls", "max_controls", "mean_controls"],
+          "properties": {
+            "type": { "type": "string", "enum": ["fixed", "variable"] },
+            "min_controls": { "type": "integer", "minimum": 1 },
+            "max_controls": { "type": "integer", "minimum": 1 },
+            "mean_controls": { "type": "number", "minimum": 1.0 }
+          }
+        },
+        "caliper": { "type": ["number", "null"] },
+        "replacement": { "type": "boolean" },
+        "patient_counts": {
+          "type": "object",
+          "required": ["target_matched", "reference_matched"],
+          "properties": {
+            "target_matched": { "type": "integer", "minimum": 1 },
+            "reference_matched": { "type": "integer", "minimum": 1 },
+            "target_discarded": { "type": "integer", "minimum": 0 },
+            "reference_discarded": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "covariate_balance": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "required": ["covariate", "smd_matched", "status"],
+            "properties": {
+              "covariate": { "type": "string" },
+              "target_mean": { "type": "number" },
+              "reference_weighted_mean": { "type": "number" },
+              "smd_matched": { "type": ["number", "null"] },
+              "status": {
+                "type": "string",
+                "enum": ["OK", "ZERO_VARIANCE_ZERO_DIFFERENCE", "ZERO_VARIANCE_NONZERO_DIFFERENCE"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "iptw": {
+      "type": "object",
+      "required": [
+        "estimand",
+        "stabilization",
+        "iptw_mode",
+        "truncation",
+        "att_scaling_mode",
+        "propensity_model",
+        "propensity_score_boundary_policy",
+        "bootstrap_clipping_diagnostics",
+        "max_failure_rate",
+        "effective_sample_size",
+        "raw_patient_counts",
+        "weight_summary",
+        "covariate_balance",
+        "positivity",
+        "bootstrap_diagnostics"
+      ],
+      "properties": {
+        "estimand": { "type": "string", "enum": ["ATE", "ATT"] },
+        "stabilization": { "type": "boolean" },
+        "iptw_mode": { "type": "string", "enum": ["refit_ps"] },
+        "truncation": {
+          "type": ["object", "null"],
+          "required": ["lower", "upper"],
+          "properties": {
+            "lower": { "type": "number", "minimum": 0, "maximum": 1 },
+            "upper": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "att_scaling_mode": { "type": ["string", "null"], "enum": ["conventional", "marginal_odds_scaled", null] },
+        "propensity_model": {
+          "type": "object",
+          "required": ["family", "link", "covariates"],
+          "properties": {
+            "family": { "type": "string", "enum": ["binomial"] },
+            "link": { "type": "string", "enum": ["logit"] },
+            "covariates": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "propensity_score_boundary_policy": {
+          "type": "object",
+          "required": ["mode", "lower", "upper", "clipped_low_count", "clipped_high_count", "raw_min", "raw_max"],
+          "properties": {
+            "mode": { "type": "string", "enum": ["clamp"] },
+            "lower": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+            "upper": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+            "clipped_low_count": { "type": "integer", "minimum": 0 },
+            "clipped_high_count": { "type": "integer", "minimum": 0 },
+            "raw_min": { "type": "number", "minimum": 0, "maximum": 1 },
+            "raw_max": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "bootstrap_clipping_diagnostics": {
+          "type": "object",
+          "required": ["replicates_with_any_clipping", "total_clipped_low", "total_clipped_high", "max_clipped_fraction"],
+          "properties": {
+            "replicates_with_any_clipping": { "type": "integer", "minimum": 0 },
+            "total_clipped_low": { "type": "integer", "minimum": 0 },
+            "total_clipped_high": { "type": "integer", "minimum": 0 },
+            "max_clipped_fraction": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "max_failure_rate": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 },
+        "effective_sample_size": {
+          "type": "object",
+          "required": ["target", "reference"],
+          "properties": {
+            "target": { "type": "number", "minimum": 0 },
+            "reference": { "type": "number", "minimum": 0 }
+          }
+        },
+        "raw_patient_counts": {
+          "type": "object",
+          "required": ["target", "reference", "target_events", "reference_events"],
+          "properties": {
+            "target": { "type": "integer", "minimum": 0 },
+            "reference": { "type": "integer", "minimum": 0 },
+            "target_events": { "type": "integer", "minimum": 0 },
+            "reference_events": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "weight_summary": {
+          "type": "object",
+          "required": ["min", "q25", "median", "mean", "q75", "max"],
+          "properties": {
+            "min": { "type": "number" },
+            "q25": { "type": "number" },
+            "median": { "type": "number" },
+            "mean": { "type": "number" },
+            "q75": { "type": "number" },
+            "max": { "type": "number" }
+          }
+        },
+        "covariate_balance": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "required": ["covariate", "unweighted", "weighted"],
+            "properties": {
+              "covariate": { "type": "string" },
+              "unweighted": {
+                "type": "object",
+                "required": ["target_mean", "reference_mean", "smd", "status"],
+                "properties": {
+                  "target_mean": { "type": "number" },
+                  "reference_mean": { "type": "number" },
+                  "smd": { "type": ["number", "null"] },
+                  "status": {
+                    "type": "string",
+                    "enum": ["OK", "ZERO_VARIANCE_ZERO_DIFFERENCE", "ZERO_VARIANCE_NONZERO_DIFFERENCE"]
+                  }
+                }
+              },
+              "weighted": {
+                "type": "object",
+                "required": ["target_mean", "reference_mean", "smd", "status"],
+                "properties": {
+                  "target_mean": { "type": "number" },
+                  "reference_mean": { "type": "number" },
+                  "smd": { "type": ["number", "null"] },
+                  "status": {
+                    "type": "string",
+                    "enum": ["OK", "ZERO_VARIANCE_ZERO_DIFFERENCE", "ZERO_VARIANCE_NONZERO_DIFFERENCE"]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "positivity": {
+          "type": "object",
+          "required": ["target_ps", "reference_ps", "raw_target_ps", "raw_reference_ps", "common_support"],
+          "properties": {
+            "target_ps": { "$ref": "comparative-ps-summary-v1.json" },
+            "reference_ps": { "$ref": "comparative-ps-summary-v1.json" },
+            "raw_target_ps": { "$ref": "comparative-ps-summary-v1.json" },
+            "raw_reference_ps": { "$ref": "comparative-ps-summary-v1.json" },
+            "common_support": {
+              "type": "object",
+              "required": ["min", "max", "has_overlap", "effective_min", "effective_max", "effective_has_overlap"],
+              "properties": {
+                "min": { "type": "number", "minimum": 0, "maximum": 1 },
+                "max": { "type": "number", "minimum": 0, "maximum": 1 },
+                "has_overlap": { "type": "boolean" },
+                "effective_min": { "type": "number", "minimum": 0, "maximum": 1 },
+                "effective_max": { "type": "number", "minimum": 0, "maximum": 1 },
+                "effective_has_overlap": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "bootstrap_diagnostics": {
+          "type": "object",
+          "required": ["num_draws", "failed_replicates", "failure_rate", "max_failure_rate"],
+          "properties": {
+            "num_draws": { "type": "integer", "minimum": 10 },
+            "failed_replicates": { "type": "integer", "minimum": 0 },
+            "failure_rate": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+            "max_failure_rate": { "type": "number", "minimum": 0.0, "exclusiveMaximum": 1.0 },
+            "defined_rr_replicates": { "type": "integer", "minimum": 0 },
+            "undefined_rr_replicates": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  }
+}

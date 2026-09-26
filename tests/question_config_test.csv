@@ -1,0 +1,4 @@
+survey_id,question_id,analysis_type,var1,var2,var3,output_slug,question_label,subset_expr,na_policy,ordered_levels,reference_note
+smoke_survey,q01_gender_dept,nominal_2way,gender,department,,q01_gender_dept,Gender x Dept,,drop,,2-way nominal smoke
+smoke_survey,q02_satisfaction_age,likert_2way,satisfaction,age_group,,q02_satisfaction_age,Satisfaction x Age (outpatient),visit_type == 'outpatient',drop,very_unsatisfied|unsatisfied|neutral|satisfied|very_satisfied,Likert ordered smoke
+smoke_survey,q03_waiting_dept_time,nominal_3way,waiting_eval,department,time_band,q03_waiting_dept_time,Waiting x Dept x Timeband,response_status == 'complete',drop,,3-way nominal smoke

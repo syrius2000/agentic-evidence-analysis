@@ -1,0 +1,133 @@
+{
+  "contract_version": "1.0",
+  "result_sha256": "19289826998d061ee62e943d8e1fe662e6801cc0b67be0d28300674f1cd4736a",
+  "status": "REVIEWED",
+  "claims": [
+    {
+      "claim_id": "total_sample_size",
+      "pointer": "/input_summary/total_n",
+      "value": 4526,
+      "description": "総度数 N=4526"
+    },
+    {
+      "claim_id": "total_cells",
+      "pointer": "/input_summary/n_cells",
+      "value": 24,
+      "description": "総セル数 24"
+    },
+    {
+      "claim_id": "best_model_m5_bic",
+      "pointer": "/models/summary/0/bic",
+      "value": 332.3119,
+      "description": "最良モデル M5 の明示式 BIC = 332.3119"
+    },
+    {
+      "claim_id": "second_model_m8_bic",
+      "pointer": "/models/summary/1/bic",
+      "value": 339.1982,
+      "description": "次点モデル M8 の明示式 BIC = 339.1982"
+    },
+    {
+      "claim_id": "m1_candidate_cells",
+      "pointer": "/cells/by_base_model/M1/counts/candidate_cells",
+      "value": 12,
+      "description": "M1基準の探索候補セル数 = 12"
+    },
+    {
+      "claim_id": "m5_candidate_cells",
+      "pointer": "/cells/by_base_model/M5/counts/candidate_cells",
+      "value": 1,
+      "description": "M5基準の残余探索候補セル数 = 1"
+    },
+    {
+      "claim_id": "m5_regular_cells",
+      "pointer": "/cells/by_base_model/M5/counts/regular_cells",
+      "value": 13,
+      "description": "M5基準の REGULAR セル数 = 13"
+    },
+    {
+      "claim_id": "m5_quarantined_cells",
+      "pointer": "/cells/by_base_model/M5/counts/quarantined_cells",
+      "value": 11,
+      "description": "M5基準の QUARANTINED セル数 = 11"
+    },
+    {
+      "claim_id": "primary_alpha",
+      "pointer": "/conditional_rate_view/prior_specification/alpha",
+      "value": 0.5,
+      "description": "主事前セルα = 0.5（Jeffreys）"
+    },
+    {
+      "claim_id": "sensitivity_alpha",
+      "pointer": "/conditional_rate_view/sensitivity_prior/alpha",
+      "value": 1.0,
+      "description": "感度事前セルα = 1.0"
+    },
+    {
+      "claim_id": "support_k",
+      "pointer": "/conditional_rate_view/support/K",
+      "value": 24,
+      "description": "支持集合セル数 K = 24"
+    },
+    {
+      "claim_id": "dept_a_male_post_mean",
+      "pointer": "/conditional_rate_view/rates/A__Male/post_mean",
+      "value": 0.6206,
+      "description": "学部 A 男性合格率の事後平均 = 0.6206"
+    },
+    {
+      "claim_id": "dept_a_male_raw_rate",
+      "pointer": "/conditional_rate_view/rates/A__Male/raw_rate",
+      "value": 0.6206,
+      "description": "学部 A 男性合格率の生割合 = 0.6206"
+    },
+    {
+      "claim_id": "dept_a_male_obs_numerator",
+      "pointer": "/conditional_rate_view/rates/A__Male/obs_numerator",
+      "value": 512,
+      "description": "学部 A 男性合格者数 = 512"
+    },
+    {
+      "claim_id": "dept_a_male_obs_denominator",
+      "pointer": "/conditional_rate_view/rates/A__Male/obs_denominator",
+      "value": 825,
+      "description": "学部 A 男性志願者数 = 825"
+    },
+    {
+      "claim_id": "dept_a_female_post_mean",
+      "pointer": "/conditional_rate_view/rates/A__Female/post_mean",
+      "value": 0.8209,
+      "description": "学部 A 女性合格率の事後平均 = 0.8209"
+    },
+    {
+      "claim_id": "dept_a_female_raw_rate",
+      "pointer": "/conditional_rate_view/rates/A__Female/raw_rate",
+      "value": 0.8241,
+      "description": "学部 A 女性合格率の生割合 = 0.8241"
+    },
+    {
+      "claim_id": "dept_a_diff_mean",
+      "pointer": "/conditional_rate_view/differences/A__Male_minus_Female/difference_mean",
+      "value": -0.2004,
+      "description": "学部 A 男女合格率差（Male-Female）事後平均 = -0.2004"
+    },
+    {
+      "claim_id": "sensitivity_max_mean_diff",
+      "pointer": "/conditional_rate_view/sensitivity_analysis/max_absolute_mean_diff",
+      "value": 0.005,
+      "description": "主／感度の事後平均最大絶対差 = 0.005"
+    },
+    {
+      "claim_id": "m5_candidate_log_oe",
+      "pointer": "/cells/by_base_model/M5/top_k_data/0/log_oe_ratio",
+      "value": -0.7044,
+      "description": "M5候補先頭セル（A Female Rejected）の log(O/E) = -0.7044"
+    },
+    {
+      "claim_id": "m5_candidate_score",
+      "pointer": "/cells/by_base_model/M5/top_k_data/0/score_stat",
+      "value": 17.248,
+      "description": "同セルの Score 統計量 T = 17.248"
+    }
+  ]
+}

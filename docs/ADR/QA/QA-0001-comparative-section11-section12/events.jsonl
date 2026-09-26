@@ -1,0 +1,1 @@
+{"event":"case-created","case_id":"QA-0001","timestamp":"2026-09-24T09:02:15+09:00","status":"draft","target_revision":"9a74bcfa485913e4ddebceec7b69207cd9b86905","baseline_revision":"1d42f4ae7a7e0649b755ab437c9e67c673078cc2","profile":"regulated","origin":"document-only","note":"QA metadata initialized; independent review has not started."}

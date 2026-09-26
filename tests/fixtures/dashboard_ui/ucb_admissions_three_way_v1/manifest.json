@@ -1,0 +1,42 @@
+{
+  "fixture_id": "ucb_admissions_three_way_v1",
+  "description": "Standard 3-way dashboard canonical fixture with 4-axis multi-baseline diagnostics and Dirichlet conditional rates",
+  "branch": "codex/dashboard-unification",
+  "base_commit": "dfc851b",
+  "generated_at": "2026-09-12T08:56:50+0900",
+  "input_data": {
+    "repo_relative_path": "examples/ucb_admissions.csv",
+    "sha256": "3c869703114951dfac2b3bb72b41ea4efaface26a5fc84e64b3358efe409cf54"
+  },
+  "dependencies": {
+    "r_version": "R version 4.6.1 (2026-06-24)",
+    "katex_pkg_version": "1.5.0",
+    "katex_css_version": "0.16.9",
+    "rmarkdown_version": "2.31",
+    "dt_version": "0.34.0"
+  },
+  "generation_commands": [
+    "Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R --config output/ucb_admissions/00_consultation/analysis_config.json --out output/ucb_admissions --run-id ucb_admit_standard",
+    "Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R --run-dir output/ucb_admissions/run_ucb_admit_standa --layout-variant band"
+  ],
+  "artifacts": {
+    "dashboard.html": {
+      "sha256": "0938b925656a2f6a1827f6535f2e92f7293d689be3956fce3fc63af83775b53a"
+    },
+    "analysis_config.json": {
+      "sha256": "cc2c5d52ed4e1a26ca0d8d73c0e2bead07f73b623295cfda431db58aecf78325"
+    },
+    "evidence_results.json": {
+      "sha256": "245bc18dfa90655aad215ec267a87ee4d1cbac5dde3271555dd7edaad508c55d"
+    },
+    "executive_summary.md": {
+      "sha256": "f1abe897c5de2663d03c469d2f4a35a6a4da9f8a3466f4c5d7307832fac4898c"
+    },
+    "quality_check.md": {
+      "sha256": "2ef1eb3bebb0f6669ef6b768e8306a1671b9148efdbf4759d8fc3cc8bddd025f"
+    },
+    "narrative_claims.json": {
+      "sha256": "a9242870b27d1b7ffa607eaacc62a9df034471600e1bce29183995b37579445a"
+    }
+  }
+}

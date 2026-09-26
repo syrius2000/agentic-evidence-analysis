@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>比較エビデンス解析ダッシュボード</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 24px; color: #1e293b; background: #f8fafc; }
+    h1 { color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; }
+    .callout { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-size: 0.9em; }
+    .callout strong { color: #b45309; }
+    .callout.warning { background: #fef2f2; border-left: 4px solid #ef4444; }
+    .callout.warning strong { color: #991b1b; }
+    .toolbar-container { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 14px 18px; margin: 16px 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .toolbar-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .toolbar-row + .toolbar-row { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
+    .filter-dropdown { position: relative; display: inline-block; }
+    .filter-summary { cursor: pointer; padding: 6px 12px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.88em; font-weight: 500; user-select: none; }
+    .filter-summary:hover { background: #e2e8f0; }
+    .filter-panel { position: absolute; z-index: 50; top: 100%; left: 0; margin-top: 4px; background: #ffffff; border: 1px solid #94a3b8; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 10px; min-width: 240px; max-height: 280px; overflow-y: auto; }
+    .filter-dual-panel { display: flex; gap: 16px; min-width: 320px; }
+    .filter-subgroup { display: flex; flex-direction: column; gap: 4px; }
+    .filter-subgroup-title { font-weight: bold; font-size: 0.82em; color: #475569; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; }
+    .filter-search { width: 100%; box-sizing: border-box; padding: 4px 8px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85em; }
+    .checkbox-list { display: flex; flex-direction: column; gap: 4px; }
+    .filter-item { font-size: 0.85em; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .filter-badge-indicator { font-size: 0.78em; background: #e2e8f0; color: #334155; padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
+    .btn-action { padding: 6px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.88em; cursor: pointer; }
+    .btn-action:hover { background: #f1f5f9; }
+    .btn-export { padding: 6px 14px; background: #0284c7; color: #ffffff; border: none; border-radius: 4px; font-size: 0.88em; font-weight: 500; cursor: pointer; }
+    .btn-export:hover { background: #0369a1; }
+    .status-indicator { display: flex; align-items: center; gap: 10px; font-size: 0.9em; font-weight: 500; }
+    .count-badge { background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; }
+    .active-badge { color: #64748b; font-size: 0.85em; }
+    .export-buttons { margin-left: auto; display: flex; gap: 8px; }
+    .table-container { width: 100%; overflow-x: auto; margin-top: 16px; }
+    caption { caption-side: top; text-align: left; font-weight: bold; margin-bottom: 8px; color: #475569; font-size: 1.05em; }
+    table { width: 100%; border-collapse: collapse; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px; overflow: hidden; }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 0.88em; }
+    th { background: #0f172a; color: #ffffff; font-weight: 600; }
+    th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 24px; }
+    th.sortable:hover { background: #1e293b; }
+    th.sortable:focus-visible { outline: 2px solid #38bdf8; outline-offset: -2px; }
+    th.sortable .sort-indicator { display: inline-block; margin-left: 6px; font-size: 0.8em; opacity: 0.4; }
+    th.sortable[aria-sort="ascending"] .sort-indicator { opacity: 1; color: #38bdf8; }
+    th.sortable[aria-sort="descending"] .sort-indicator { opacity: 1; color: #38bdf8; }
+    tr:hover { background-color: #f8fafc; }
+    .badge { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin: 1px; }
+    .ugrade { font-weight: bold; padding: 2px 6px; border-radius: 3px; border: 1px solid #94a3b8; }
+    small { color: #64748b; }
+    #metric-guide { margin-top: 36px; padding-top: 20px; border-top: 2px solid #e2e8f0; }
+    #metric-guide h2 { font-size: 1.25em; color: #0f172a; margin-bottom: 12px; }
+    .guide-accordion { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+    .guide-summary { cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: 0.95em; color: #1e293b; background: #f8fafc; user-select: none; }
+    .guide-summary:hover { background: #f1f5f9; }
+    .guide-content { padding: 14px 18px; font-size: 0.9em; line-height: 1.6; border-top: 1px solid #e2e8f0; }
+    .guide-content h4 { margin: 10px 0 4px 0; color: #334155; font-size: 0.95em; }
+    .guide-content p, .guide-content ul { margin: 4px 0 8px 0; }
+    .guide-content ul { padding-left: 20px; }
+    math { font-size: 1.1em; }
+  </style>
+</head>
+<body>
+  <h1 id="dashboard-title">比較エビデンス解析ダッシュボード</h1>
+  <div id="guidance-callout" class="callout">
+    <strong>【解釈上の厳格な契約・免責事項】</strong><br>
+    ・<strong>同等性の誤認禁止</strong>: 不確実性区間が0を跨ぐことは「同等」を意味しません。<br>
+    ・<strong>因果的優越の禁止</strong>: 方向確率単独で治療の因果的優越性を主張してはなりません。<br>
+    ・<strong>多重比較スクリーニング免責</strong>: FWERは制御されておらず、本成果物は探索的スクリーニングに位置付けられます。
+  </div>
+  <div id="dashboard-toolbar" class="toolbar-container" role="region" aria-label="ダッシュボード操作パネル">
+    <div class="toolbar-row filter-controls">
+      <details id="filter-group-theme" class="filter-dropdown">
+        <summary class="filter-summary">テーマ選択 <span id="theme-filter-count" class="filter-badge-indicator">すべて</span></summary>
+        <div class="filter-panel">
+          <input type="text" id="theme-search-input" placeholder="テーマを絞り込み..." class="filter-search" aria-label="テーマ絞り込み検索">
+          <div id="theme-checkbox-list" class="checkbox-list">
+            <label class="filter-item"><input type="checkbox" class="filter-theme" value="T1_TargetExcess"> T1_TargetExcess</label>
+<label class="filter-item"><input type="checkbox" class="filter-theme" value="T2_RefExcess"> T2_RefExcess</label>
+<label class="filter-item"><input type="checkbox" class="filter-theme" value="T3_Neutral"> T3_Neutral</label>
+<label class="filter-item"><input type="checkbox" class="filter-theme" value="T4_U3_Uncertain"> T4_U3_Uncertain</label>
+<label class="filter-item"><input type="checkbox" class="filter-theme" value="T5_TargetU2"> T5_TargetU2</label>
+<label class="filter-item"><input type="checkbox" class="filter-theme" value="T6_ZeroRef"> T6_ZeroRef</label>
+          </div>
+        </div>
+      </details>
+      <details id="filter-group-practical" class="filter-dropdown">
+        <summary class="filter-summary">実務領域 / U-Grade <span id="practical-filter-count" class="filter-badge-indicator">すべて</span></summary>
+        <div class="filter-panel filter-dual-panel">
+          <div class="filter-subgroup">
+            <div class="filter-subgroup-title">実務領域 (OR)</div>
+            <label class="filter-item"><input type="checkbox" class="filter-region" value="target_excess"> target_excess</label>
+            <label class="filter-item"><input type="checkbox" class="filter-region" value="practical_neutral"> practical_neutral</label>
+            <label class="filter-item"><input type="checkbox" class="filter-region" value="reference_excess"> reference_excess</label>
+            <label class="filter-item"><input type="checkbox" class="filter-region" value="none"> none</label>
+          </div>
+          <div class="filter-subgroup">
+            <div class="filter-subgroup-title">U-Grade (OR)</div>
+            <label class="filter-item"><input type="checkbox" class="filter-ugrade" value="U0"> U0</label>
+            <label class="filter-item"><input type="checkbox" class="filter-ugrade" value="U1"> U1</label>
+            <label class="filter-item"><input type="checkbox" class="filter-ugrade" value="U2"> U2</label>
+            <label class="filter-item"><input type="checkbox" class="filter-ugrade" value="U3"> U3</label>
+            <label class="filter-item"><input type="checkbox" class="filter-ugrade" value="NONE"> NONE</label>
+          </div>
+        </div>
+      </details>
+      <details id="filter-group-diagnostics" class="filter-dropdown">
+        <summary class="filter-summary">診断バッジ <span id="diagnostics-filter-count" class="filter-badge-indicator">すべて</span></summary>
+        <div class="filter-panel">
+          <div id="diagnostics-checkbox-list" class="checkbox-list">
+            <label class="filter-item"><input type="checkbox" class="filter-badge-opt" value="ZERO_REFERENCE"> ZERO_REFERENCE</label>
+<label class="filter-item"><input type="checkbox" class="filter-badge-opt" value="ZERO_BOTH"> ZERO_BOTH</label>
+<label class="filter-item"><input type="checkbox" class="filter-badge-opt" value="SPARSE_EVENTS"> SPARSE_EVENTS</label>
+<label class="filter-item"><input type="checkbox" class="filter-badge-opt" value="UNSTABLE_RR_INTERVAL"> UNSTABLE_RR_INTERVAL</label>
+<label class="filter-item"><input type="checkbox" class="filter-badge-opt" value="__NONE__"> (診断なし)</label>
+          </div>
+        </div>
+      </details>
+      <button id="btn-reset-filters" type="button" class="btn-action">フィルタ解除</button>
+    </div>
+    <div class="toolbar-row export-controls">
+      <div class="status-indicator">
+        <span id="visible-row-count" aria-live="polite" class="count-badge">表示 6 / 6 件</span>
+        <span id="active-filter-badge" class="active-badge">アクティブ: 0</span>
+      </div>
+      <div class="export-buttons">
+        <button id="btn-export-all" type="button" class="btn-export">全件 CSV 出力</button>
+        <button id="btn-export-filtered" type="button" class="btn-export">現在表示中 CSV 出力</button>
+      </div>
+    </div>
+  </div>
+    <div id="numerical-instability-warning" class="callout warning" role="alert">
+    <strong>【数値的不安定性に関する警告】</strong><br>
+    参照群のイベント発生数がゼロ（ZERO_REFERENCE）または極めて疎であるため、相対リスク（RR）の期待値が理論的に発散、または不確実性区間が極めて広範になっています。<br>
+    ※ なお、リスク差（RD）や絶対指標は引き続き適切に推定されており有効です。RR の点推定値および区間幅の解釈には十分ご注意ください。
+  </div>
+  <div class="table-container">
+    <table id="comparative-evidence-table" aria-describedby="guidance-callout">
+      <caption>比較エビデンス解析サマリー</caption>
+      <thead>
+        <tr>
+          <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">テーマ<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">比較<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">記述N (T / R)<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">記述イベント数 (T / R)<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-effect sortable" aria-sort="none" tabindex="0" role="columnheader">RD 推定値 [区間]<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-effect sortable" aria-sort="none" tabindex="0" role="columnheader">RR 推定値 [区間]<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-direction sortable" aria-sort="none" tabindex="0" role="columnheader">方向支持指標<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-practical sortable" aria-sort="none" tabindex="0" role="columnheader">実務領域・U-Grade<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-precision sortable" aria-sort="none" tabindex="0" role="columnheader">精度指標 (ESS / 区間幅)<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-diagnostics sortable" aria-sort="none" tabindex="0" role="columnheader">診断バッジ<span class="sort-indicator" aria-hidden="true">↕</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-row-key="row_000001" data-theme="T1_TargetExcess" data-region="target_excess" data-ugrade="U0" data-badges=""><td class='col-id' data-sort-value="T1_TargetExcess">T1_TargetExcess</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000000100_0000000100">100 / 100</td><td class='col-id' data-sort-value="0000000045_0000000005">45 / 5</td><td class='col-effect' data-sort-value="0.39690100"><strong>0.397</strong> [0.288, 0.502]</td><td class='col-effect' data-sort-value="8.73238794">8.73 [4.05, 23.79]</td><td class='col-direction' data-sort-value="1.00000000">1.000<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u0 practical-target-excess' style='background-color: rgba(239, 68, 68, 0.20);' data-sort-value="0_target_excess"><span class='ugrade'>U0</span><br><small>target_excess</small></td><td class='col-precision' data-sort-value="0.21357933">ESS: N/A<br><small>幅: 0.214</small></td><td class='col-diagnostics' data-sort-value=""></td></tr>
+<tr data-row-key="row_000002" data-theme="T2_RefExcess" data-region="reference_excess" data-ugrade="U0" data-badges=""><td class='col-id' data-sort-value="T2_RefExcess">T2_RefExcess</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000000100_0000000100">100 / 100</td><td class='col-id' data-sort-value="0000000005_0000000045">5 / 45</td><td class='col-effect' data-sort-value="-0.39470546"><strong>-0.395</strong> [-0.501, -0.288]</td><td class='col-effect' data-sort-value="0.11718415">0.12 [0.04, 0.25]</td><td class='col-direction' data-sort-value="0.00000000">0.000<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u0 practical-reference-excess' style='background-color: rgba(59, 130, 246, 0.20);' data-sort-value="0_reference_excess"><span class='ugrade'>U0</span><br><small>reference_excess</small></td><td class='col-precision' data-sort-value="0.21303363">ESS: N/A<br><small>幅: 0.213</small></td><td class='col-diagnostics' data-sort-value=""></td></tr>
+<tr data-row-key="row_000003" data-theme="T3_Neutral" data-region="practical_neutral" data-ugrade="U2" data-badges=""><td class='col-id' data-sort-value="T3_Neutral">T3_Neutral</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000001000_0000001000">1000 / 1000</td><td class='col-id' data-sort-value="0000000050_0000000050">50 / 50</td><td class='col-effect' data-sort-value="0.00037110"><strong>0.000</strong> [-0.019, 0.019]</td><td class='col-effect' data-sort-value="1.00754880">1.01 [0.68, 1.46]</td><td class='col-direction' data-sort-value="0.51375000">0.514<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u2 practical-practical-neutral' style='background-color: rgba(100, 116, 139, 0.08);' data-sort-value="2_practical_neutral"><span class='ugrade'>U2</span><br><small>practical_neutral</small></td><td class='col-precision' data-sort-value="0.03810510">ESS: N/A<br><small>幅: 0.038</small></td><td class='col-diagnostics' data-sort-value=""></td></tr>
+<tr data-row-key="row_000004" data-theme="T4_U3_Uncertain" data-region="target_excess" data-ugrade="U3" data-badges=""><td class='col-id' data-sort-value="T4_U3_Uncertain">T4_U3_Uncertain</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000000100_0000000100">100 / 100</td><td class='col-id' data-sort-value="0000000010_0000000010">10 / 10</td><td class='col-effect' data-sort-value="0.00102568"><strong>0.001</strong> [-0.084, 0.085]</td><td class='col-effect' data-sort-value="1.01068131">1.01 [0.43, 2.34]</td><td class='col-direction' data-sort-value="0.51200000">0.512<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u3 practical-target-excess' style='background-color: rgba(148, 163, 184, 0.12);' data-sort-value="3_target_excess"><span class='ugrade'>U3</span><br><small>target_excess</small></td><td class='col-precision' data-sort-value="0.16923817">ESS: N/A<br><small>幅: 0.169</small></td><td class='col-diagnostics' data-sort-value=""></td></tr>
+<tr data-row-key="row_000005" data-theme="T5_TargetU2" data-region="target_excess" data-ugrade="U2" data-badges=""><td class='col-id' data-sort-value="T5_TargetU2">T5_TargetU2</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000000100_0000000100">100 / 100</td><td class='col-id' data-sort-value="0000000012_0000000008">12 / 8</td><td class='col-effect' data-sort-value="0.03897137"><strong>0.039</strong> [-0.046, 0.123]</td><td class='col-effect' data-sort-value="1.48067202">1.48 [0.65, 3.58]</td><td class='col-direction' data-sort-value="0.82725000">0.827<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u2 practical-target-excess' style='background-color: rgba(239, 68, 68, 0.08);' data-sort-value="2_target_excess"><span class='ugrade'>U2</span><br><small>target_excess</small></td><td class='col-precision' data-sort-value="0.16862551">ESS: N/A<br><small>幅: 0.169</small></td><td class='col-diagnostics' data-sort-value=""></td></tr>
+<tr data-row-key="row_000006" data-theme="T6_ZeroRef" data-region="target_excess" data-ugrade="U0" data-badges="ZERO_REFERENCE;UNSTABLE_RR_INTERVAL"><td class='col-id' data-sort-value="T6_ZeroRef">T6_ZeroRef</td><td class='col-id' data-sort-value="Active vs Control">Active vs Control</td><td class='col-id' data-sort-value="0000000100_0000000100">100 / 100</td><td class='col-id' data-sort-value="0000000010_0000000000">10 / 0</td><td class='col-effect' data-sort-value="0.09663597"><strong>0.097</strong> [0.046, 0.167]</td><td class='col-effect' data-sort-value="45.51498687">45.51 [3.80, 17480.30]</td><td class='col-direction' data-sort-value="0.99975000">1.000<br><small>(P(RD &gt; 0))</small></td><td class='col-practical practical-u0 practical-target-excess' style='background-color: rgba(239, 68, 68, 0.20);' data-sort-value="0_target_excess"><span class='ugrade'>U0</span><br><small>target_excess</small></td><td class='col-precision' data-sort-value="0.12181070">ESS: N/A<br><small>幅: 0.122</small></td><td class='col-diagnostics' data-sort-value="ZERO_REFERENCE;UNSTABLE_RR_INTERVAL"><span class='badge'>ZERO_REFERENCE</span> <span class='badge'>UNSTABLE_RR_INTERVAL</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <section id="metric-guide" aria-label="統計指標の数学的解説と利用ガイド">
+    <h2>統計指標の数学的解説と利用ガイド</h2>
+
+    <details id="guide-item-risk" class="guide-accordion">
+      <summary class="guide-summary">1. リスク・発症割合 (Risk / incidence proportion)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>生の記述発症割合（raw descriptive proportion）は標本イベント発生数と観察例数から算出されます：</p>
+        <math display="block">
+          <mrow>
+            <msub><mi>p</mi><mrow><mi>T</mi><mo>,</mo><mtext>raw</mtext></mrow></msub><mo>=</mo><mfrac><msub><mi>x</mi><mi>T</mi></msub><msub><mi>n</mi><mi>T</mi></msub></mfrac><mo>,</mo><mspace width="1em"/><msub><mi>p</mi><mrow><mi>R</mi><mo>,</mo><mtext>raw</mtext></mrow></msub><mo>=</mo><mfrac><msub><mi>x</mi><mi>R</mi></msub><msub><mi>n</mi><mi>R</mi></msub></mfrac>
+          </mrow>
+        </math>
+        <p>独立 Jeffreys 事前分布 Beta(0.5, 0.5) に基づくベイズ推論モデルでは、各群の発症率は次の事後分布に従います：</p>
+        <math display="block">
+          <mrow>
+            <msub><mi>p</mi><mi>g</mi></msub><mo>∣</mo><msub><mi>x</mi><mi>g</mi></msub><mo>,</mo><msub><mi>n</mi><mi>g</mi></msub><mo>∼</mo><mi>Beta</mi><mrow><mo>(</mo><msub><mi>x</mi><mi>g</mi></msub><mo>+</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>,</mo><mspace width="0.2em"/><msub><mi>n</mi><mi>g</mi></msub><mo>−</mo><msub><mi>x</mi><mi>g</mi></msub><mo>+</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>)</mo></mrow>
+          </mrow>
+        </math>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>推論上の点推定値（inferential point estimate）には事後中央値（posterior median, estimate.source = posterior_median）を用い、不確実性は事後等裾信用区間（95% ETI）で評価します。これらは生の記述割合（target_prop / reference_prop）と峻別して解釈します。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>イベント数ゼロであっても Jeffreys 事前分布により事後中央値および ETI は有限値として適切に定義されますが、極端な疎データでは事前分布の影響を受けやすくなります。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>各治療群・対照群の絶対的な発生水準を客観的に把握する基本指標として使用します。</p>
+      </div>
+    </details>
+
+    <details id="guide-item-rd" class="guide-accordion">
+      <summary class="guide-summary">2. リスク差 (Risk Difference: RD)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>治療群と対照群の絶対的な発生割合の差です：</p>
+        <math display="block">
+          <mrow>
+            <mi>RD</mi><mo>=</mo><msub><mi>p</mi><mi>T</mi></msub><mo>−</mo><msub><mi>p</mi><mi>R</mi></msub>
+          </mrow>
+        </math>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>例えば RD = 0.03 は、治療群で 100 人あたり 3 人多くイベントが発生することを表します（3 percentage points の絶対過剰）。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>RD の信用区間が 0 を跨いでいること（差が統計的に明瞭でないこと）は、二群間の「同等性」や「差がないこと」を証明しません。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>公衆衛生や臨床実務において、絶対的な過剰負担や治療効果の規模を直接評価するための一次対比として用います。</p>
+      </div>
+    </details>
+
+    <details id="guide-item-rr" class="guide-accordion">
+      <summary class="guide-summary">3. 相対リスク (Relative Risk: RR)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>対照群に対する治療群のイベント発生率の比率です：</p>
+        <math display="block">
+          <mrow>
+            <mi>RR</mi><mo>=</mo><mfrac><msub><mi>p</mi><mi>T</mi></msub><msub><mi>p</mi><mi>R</mi></msub></mfrac>
+          </mrow>
+        </math>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>RR = 1 は両群同率、RR &gt; 1 は治療群で高頻度、RR &lt; 1 は対照群で高頻度を意味します。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>対照群のイベント発生数がゼロ（x_R = 0）の場合、独立 Jeffreys 事後分布では理論的期待値 E(RR) は無限大に発散するため、平均値契約は mean = null, mean_is_finite = false となります（事後中央値および信用区間は有限値として算出可能）。点推定値（中央値）や区間幅が極めて広大になるため、主対比として RD を併用する必要があります。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>病態発症の相対的脆弱性や、対照群に対する相対的な発生リスクの対比を評価する際に用います。</p>
+      </div>
+    </details>
+
+    <details id="guide-item-intervals" class="guide-accordion">
+      <summary class="guide-summary">4. 不確実性区間 (Uncertainty Interval: 95% ETI)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>推定値の不確実性を表す 95% 区間です：</p>
+        <ul>
+          <li><strong>Bayesian 95% ETI (事後等裾信用区間)</strong>: モデル・事前分布・観測データを条件として、パラメータの事後確率質量の 95% を含む等裾区間（下側 2.5% 点と上側 97.5% 点）。</li>
+        </ul>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>ベイズ ETI はモデルと事前分布のもとでの事後確信度の範囲を示します。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>区間が 0 を跨ぐことは「同等性（二群間に差がないこと）」を証明しません。また、頻回推論の信頼区間と混同してはなりません。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>点推定値単独の過信を避け、推定の安定性と幅を考慮した客観的判断を行う際に参照します。</p>
+      </div>
+    </details>
+
+    <details id="guide-item-direction" class="guide-accordion">
+      <summary class="guide-summary">5. 方向支持指標 (Direction Support: Posterior Probability)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>効果の方向が正（RD &gt; 0）であるベイズ事後確率です：</p>
+        <math display="block">
+          <mrow>
+            <mi>P</mi><mrow><mo>(</mo><mi>RD</mi><mo>&gt;</mo><mn>0</mn><mo>∣</mo><mi>data</mi><mo>)</mo></mrow>
+          </mrow>
+        </math>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>0.5 は方向が中立、1.0 に近いほど治療群での増加、0.0 に近いほど対照群での増加を強く支持します。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>高い方向支持（例: 0.99）であっても、効果の大きさ（臨床的重要性）や治療の因果的優越性を単独で証明するものではありません。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>効果の方向性に関する確信度をスクリーニングする際の補助指標として用います。</p>
+      </div>
+    </details>
+
+    <details id="guide-item-practical" class="guide-accordion">
+      <summary class="guide-summary">6. 実務領域と一次対比閾値 (Practical Difference Regions &amp; primary_delta)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>承認された実務閾値 δ &gt; 0（primary_delta）に基づき、不確実性分布を3領域に分割します：</p>
+        <math display="block">
+          <mrow>
+            <msub><mi>q</mi><mi>T</mi></msub><mo>=</mo><mi>P</mi><mrow><mo>(</mo><mi>RD</mi><mo>&gt;</mo><mi>δ</mi><mo>)</mo></mrow><mo>,</mo><mspace width="0.8em"/><msub><mi>q</mi><mi>N</mi></msub><mo>=</mo><mi>P</mi><mrow><mo>(</mo><mo>−</mo><mi>δ</mi><mo>≤</mo><mi>RD</mi><mo>≤</mo><mi>δ</mi><mo>)</mo></mrow><mo>,</mo><mspace width="0.8em"/><msub><mi>q</mi><mi>R</mi></msub><mo>=</mo><mi>P</mi><mrow><mo>(</mo><mi>RD</mi><mo>&lt;</mo><mo>−</mo><mi>δ</mi><mo>)</mo></mrow>
+          </mrow>
+        </math>
+        <math display="block">
+          <mrow>
+            <msub><mi>q</mi><mi>T</mi></msub><mo>+</mo><msub><mi>q</mi><mi>N</mi></msub><mo>+</mo><msub><mi>q</mi><mi>R</mi></msub><mo>=</mo><mn>1</mn>
+          </mrow>
+        </math>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>最大確率を占める領域を優勢領域（dominant_region: target_excess, practical_neutral, reference_excess）として識別します。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>primary_delta が未指定（null）の場合、実務領域分類は無効化（none）され、セルのハイライト配色は行われません。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>統計的有意性だけでなく、実務上意味のある差が存在するかを領域確率として評価する際に用います。</p>
+      </div>
+    </details>
+
+    <details id="guide-item-ugrade" class="guide-accordion">
+      <summary class="guide-summary">7. 実務領域解像度グレード (Practical-Region Resolution Grade: U-Grade)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>最大領域確率 C = max(q_T, q_N, q_R) に基づき、優勢領域への収まり具合を等級化します：</p>
+        <ul>
+          <li><strong>U0 (高確信)</strong>: C ≥ 0.95</li>
+          <li><strong>U1 (中高確信)</strong>: 0.80 ≤ C &lt; 0.95</li>
+          <li><strong>U2 (中確信)</strong>: 0.60 ≤ C &lt; 0.80</li>
+          <li><strong>U3 (未解像・不確実)</strong>: C &lt; 0.60</li>
+          <li><strong>NONE</strong>: primary_delta が null の場合</li>
+        </ul>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>U0 や U1 は優勢領域への所属が明確であり、U3 はどの領域にも偏らず不確実性が高い状態を示します。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>U-Grade は「不確実性分布の実務領域への解像度」であり、サンプルの大きさ（精度）や有害事象の臨床的重症度を意味するものではありません。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>探索的スクリーニングにおいて、結果の確信度に基づく優先度付けや追加調査の要否を判断する際に用います。</p>
+      </div>
+    </details>
+
+    <details id="guide-item-precision" class="guide-accordion">
+      <summary class="guide-summary">8. 連続精度指標と有効標本サイズ (Precision Metrics &amp; ESS)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>推定値の精度を連続尺度で評価します：</p>
+        <math display="block">
+          <mrow>
+            <msub><mi>RD</mi><mtext>width</mtext></msub><mo>=</mo><msub><mi>RD</mi><mtext>upper</mtext></msub><mo>−</mo><msub><mi>RD</mi><mtext>lower</mtext></msub><mo>,</mo><mspace width="1em"/><msub><mi>RR</mi><mtext>fold</mtext></msub><mo>=</mo><mfrac><msub><mi>RR</mi><mtext>upper</mtext></msub><msub><mi>RR</mi><mtext>lower</mtext></msub></mfrac>
+          </mrow>
+        </math>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>区間幅が狭いほど推定が高精度であることを示します。IPTW などの重み付けデザインでは、有効標本サイズ（ESS）が観察標本数 N より小さくなります。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>精度（区間幅の狭さ）と実務的確信度（U-Grade）は異なる次元です。高精度であっても閾値境界上にあれば U3 となることがあります。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>研究のデザイン品質やデータ規模の十分性を客観的に評価する際に用います。</p>
+      </div>
+    </details>
+
+    <details id="guide-item-diagnostics" class="guide-accordion">
+      <summary class="guide-summary">9. 診断バッジと数値安定性 (Diagnostic Badges &amp; Numerical Stability)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>数値計算の安定性や疎データに関する警告バッジです：</p>
+        <ul>
+          <li><strong>ZERO_REFERENCE</strong>: 対照群イベント数ゼロ (x_R = 0)</li>
+          <li><strong>ZERO_BOTH</strong>: 両群ともにイベント数ゼロ (x_T = 0, x_R = 0)</li>
+          <li><strong>SPARSE_EVENTS</strong>: イベント発生数が極めて疎 (&lt; 5)</li>
+          <li><strong>UNSTABLE_RR_INTERVAL</strong>: RR 区間幅が過度に広大 (fold range &gt; 100)</li>
+        </ul>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>バッジが付与されている項目は、比率指標（RR）の解釈に注意が必要であり、絶対指標（RD）を重視すべきです。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>診断バッジはデータの信頼性を全否定するものではなく、どの指標を主として解釈すべきかを示すガイドです。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>多テーマ解析において数値的異常値や発散セルを素早く特定し、安全な解釈を行うために用います。</p>
+      </div>
+    </details>
+
+    <details id="guide-item-multiplicity" class="guide-accordion">
+      <summary class="guide-summary">10. 多重比較・探索的スクリーニング利用指針 (Multiplicity &amp; Exploratory Use Guidance)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>多数の有害事象（PT）や項目を一括スクリーニングする際の統計的指針です。</p>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>本解析では家族ワイズ第1種過誤率（FWER）や偽発見率（FDR）の厳格な調整は行われておらず、各テーマの独立推論を並列表示しています。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>探索的スクリーニングで得られた高支持度や低 P 値を、単独で薬事承認や規制判断の決定的根拠としてはなりません。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>シグナル検出、仮説生成、専門家による詳細評価の優先順位付けを行う際に活用します。</p>
+      </div>
+    </details>
+  </section>
+  <script id="comparative-summary-data" type="application/json">[{"theme":"T1_TargetExcess","target_arm":"Active","reference_arm":"Control","target_events":45,"target_total":100,"target_prop":0.45,"target_ess":null,"reference_events":5,"reference_total":100,"reference_prop":0.05,"reference_ess":null,"counts_semantics":"raw_counts","inferential_semantics":"posterior","interval_label":"ETI","support_label":"P(RD \\u003e 0)","rd_estimate":0.3969,"rd_interval_lower":0.2882,"rd_interval_upper":0.5017,"rr_estimate":8.7324,"rr_interval_lower":4.0516,"rr_interval_upper":23.7901,"direction_support":1,"u_grade":"U0","dominant_region":"target_excess","fisher_p_value":2.1718e-11,"design_aware_fisher_p_value":null,"rd_interval_width":0.2136,"log_rr_interval_width":1.7702,"rr_interval_fold_range":5.8718,"rr_mean_is_finite":true,"rr_diagnostic":null,"rr_estimate_available":true,"rr_interval_available":true,"rr_bootstrap_defined_replicates":null,"rr_bootstrap_undefined_replicates":null,"badges":"","row_key":"row_000001"},{"theme":"T2_RefExcess","target_arm":"Active","reference_arm":"Control","target_events":5,"target_total":100,"target_prop":0.05,"target_ess":null,"reference_events":45,"reference_total":100,"reference_prop":0.45,"reference_ess":null,"counts_semantics":"raw_counts","inferential_semantics":"posterior","interval_label":"ETI","support_label":"P(RD \\u003e 0)","rd_estimate":-0.3947,"rd_interval_lower":-0.5011,"rd_interval_upper":-0.2881,"rr_estimate":0.1172,"rr_interval_lower":0.0439,"rr_interval_upper":0.2458,"direction_support":0,"u_grade":"U0","dominant_region":"reference_excess","fisher_p_value":2.1718e-11,"design_aware_fisher_p_value":null,"rd_interval_width":0.213,"log_rr_interval_width":1.7223,"rr_interval_fold_range":5.5976,"rr_mean_is_finite":true,"rr_diagnostic":null,"rr_estimate_available":true,"rr_interval_available":true,"rr_bootstrap_defined_replicates":null,"rr_bootstrap_undefined_replicates":null,"badges":"","row_key":"row_000002"},{"theme":"T3_Neutral","target_arm":"Active","reference_arm":"Control","target_events":50,"target_total":1000,"target_prop":0.05,"target_ess":null,"reference_events":50,"reference_total":1000,"reference_prop":0.05,"reference_ess":null,"counts_semantics":"raw_counts","inferential_semantics":"posterior","interval_label":"ETI","support_label":"P(RD \\u003e 0)","rd_estimate":0.0004,"rd_interval_lower":-0.0189,"rd_interval_upper":0.0192,"rr_estimate":1.0075,"rr_interval_lower":0.6807,"rr_interval_upper":1.4612,"direction_support":0.5138,"u_grade":"U2","dominant_region":"practical_neutral","fisher_p_value":1,"design_aware_fisher_p_value":null,"rd_interval_width":0.0381,"log_rr_interval_width":0.7639,"rr_interval_fold_range":2.1467,"rr_mean_is_finite":true,"rr_diagnostic":null,"rr_estimate_available":true,"rr_interval_available":true,"rr_bootstrap_defined_replicates":null,"rr_bootstrap_undefined_replicates":null,"badges":"","row_key":"row_000003"},{"theme":"T4_U3_Uncertain","target_arm":"Active","reference_arm":"Control","target_events":10,"target_total":100,"target_prop":0.1,"target_ess":null,"reference_events":10,"reference_total":100,"reference_prop":0.1,"reference_ess":null,"counts_semantics":"raw_counts","inferential_semantics":"posterior","interval_label":"ETI","support_label":"P(RD \\u003e 0)","rd_estimate":0.001,"rd_interval_lower":-0.0839,"rd_interval_upper":0.0854,"rr_estimate":1.0107,"rr_interval_lower":0.4333,"rr_interval_upper":2.3353,"direction_support":0.512,"u_grade":"U3","dominant_region":"target_excess","fisher_p_value":1,"design_aware_fisher_p_value":null,"rd_interval_width":0.1692,"log_rr_interval_width":1.6844,"rr_interval_fold_range":5.3894,"rr_mean_is_finite":true,"rr_diagnostic":null,"rr_estimate_available":true,"rr_interval_available":true,"rr_bootstrap_defined_replicates":null,"rr_bootstrap_undefined_replicates":null,"badges":"","row_key":"row_000004"},{"theme":"T5_TargetU2","target_arm":"Active","reference_arm":"Control","target_events":12,"target_total":100,"target_prop":0.12,"target_ess":null,"reference_events":8,"reference_total":100,"reference_prop":0.08,"reference_ess":null,"counts_semantics":"raw_counts","inferential_semantics":"posterior","interval_label":"ETI","support_label":"P(RD \\u003e 0)","rd_estimate":0.039,"rd_interval_lower":-0.0458,"rd_interval_upper":0.1229,"rr_estimate":1.4807,"rr_interval_lower":0.6543,"rr_interval_upper":3.5772,"direction_support":0.8272,"u_grade":"U2","dominant_region":"target_excess","fisher_p_value":0.4804,"design_aware_fisher_p_value":null,"rd_interval_width":0.1686,"log_rr_interval_width":1.6988,"rr_interval_fold_range":5.4675,"rr_mean_is_finite":true,"rr_diagnostic":null,"rr_estimate_available":true,"rr_interval_available":true,"rr_bootstrap_defined_replicates":null,"rr_bootstrap_undefined_replicates":null,"badges":"","row_key":"row_000005"},{"theme":"T6_ZeroRef","target_arm":"Active","reference_arm":"Control","target_events":10,"target_total":100,"target_prop":0.1,"target_ess":null,"reference_events":0,"reference_total":100,"reference_prop":0,"reference_ess":null,"counts_semantics":"raw_counts","inferential_semantics":"posterior","interval_label":"ETI","support_label":"P(RD \\u003e 0)","rd_estimate":0.0966,"rd_interval_lower":0.0457,"rd_interval_upper":0.1675,"rr_estimate":45.515,"rr_interval_lower":3.8026,"rr_interval_upper":17480.3031,"direction_support":0.9998,"u_grade":"U0","dominant_region":"target_excess","fisher_p_value":0.0015,"design_aware_fisher_p_value":null,"rd_interval_width":0.1218,"log_rr_interval_width":8.4332,"rr_interval_fold_range":4596.9743,"rr_mean_is_finite":false,"rr_diagnostic":"ZERO_REFERENCE","rr_estimate_available":true,"rr_interval_available":true,"rr_bootstrap_defined_replicates":null,"rr_bootstrap_undefined_replicates":null,"badges":"ZERO_REFERENCE;UNSTABLE_RR_INTERVAL","row_key":"row_000006"}]</script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      var table = document.getElementById("comparative-evidence-table");
+      if (!table) return;
+      var headers = table.querySelectorAll("thead th.sortable");
+      var tbody = table.querySelector("tbody");
+      if (!tbody) return;
+
+      var rawSummaryScript = document.getElementById("comparative-summary-data");
+      var summaryData = rawSummaryScript ? JSON.parse(rawSummaryScript.textContent) : [];
+      var summaryMap = {};
+      summaryData.forEach(function(row) {
+        if (row.row_key) summaryMap[row.row_key] = row;
+      });
+
+      /* --- Filter State & Application (Task 14.12) --- */
+      var themeCheckboxes = Array.from(document.querySelectorAll(".filter-theme"));
+      var regionCheckboxes = Array.from(document.querySelectorAll(".filter-region"));
+      var ugradeCheckboxes = Array.from(document.querySelectorAll(".filter-ugrade"));
+      var badgeCheckboxes = Array.from(document.querySelectorAll(".filter-badge-opt"));
+      var themeSearchInput = document.getElementById("theme-search-input");
+      var btnReset = document.getElementById("btn-reset-filters");
+      var visibleCountEl = document.getElementById("visible-row-count");
+      var activeFilterEl = document.getElementById("active-filter-badge");
+      var themeCountEl = document.getElementById("theme-filter-count");
+      var practicalCountEl = document.getElementById("practical-filter-count");
+      var diagCountEl = document.getElementById("diagnostics-filter-count");
+
+      function applyFilters() {
+        var selThemes = themeCheckboxes.filter(function(cb) { return cb.checked; }).map(function(cb) { return cb.value; });
+        var selRegions = regionCheckboxes.filter(function(cb) { return cb.checked; }).map(function(cb) { return cb.value; });
+        var selUgrades = ugradeCheckboxes.filter(function(cb) { return cb.checked; }).map(function(cb) { return cb.value; });
+        var selBadges = badgeCheckboxes.filter(function(cb) { return cb.checked; }).map(function(cb) { return cb.value; });
+
+        var activeCount = (selThemes.length > 0 ? 1 : 0) +
+                          (selRegions.length > 0 ? 1 : 0) +
+                          (selUgrades.length > 0 ? 1 : 0) +
+                          (selBadges.length > 0 ? 1 : 0);
+
+        if (activeFilterEl) {
+          activeFilterEl.textContent = "アクティブ: " + activeCount;
+        }
+        if (themeCountEl) {
+          themeCountEl.textContent = selThemes.length > 0 ? selThemes.length + " 件選択" : "すべて";
+        }
+        if (practicalCountEl) {
+          var pCount = selRegions.length + selUgrades.length;
+          practicalCountEl.textContent = pCount > 0 ? pCount + " 件選択" : "すべて";
+        }
+        if (diagCountEl) {
+          diagCountEl.textContent = selBadges.length > 0 ? selBadges.length + " 件選択" : "すべて";
+        }
+
+        var rows = Array.from(tbody.querySelectorAll("tr"));
+        var visibleRows = 0;
+
+        rows.forEach(function(row) {
+          var rowTheme = row.getAttribute("data-theme") || "";
+          var rowRegion = row.getAttribute("data-region") || "";
+          var rowUgrade = row.getAttribute("data-ugrade") || "";
+          var rowBadgesStr = row.getAttribute("data-badges") || "";
+          var rowBadges = rowBadgesStr ? rowBadgesStr.split(";").map(function(s) { return s.trim(); }) : [];
+
+          var themeMatch = (selThemes.length === 0) || (selThemes.indexOf(rowTheme) !== -1);
+          var regionMatch = (selRegions.length === 0) || (selRegions.indexOf(rowRegion) !== -1);
+          var ugradeMatch = (selUgrades.length === 0) || (selUgrades.indexOf(rowUgrade) !== -1);
+
+          var badgeMatch = true;
+          if (selBadges.length > 0) {
+            badgeMatch = selBadges.some(function(b) {
+              if (b === "__NONE__") {
+                return rowBadges.length === 0 || rowBadgesStr === "";
+              }
+              return rowBadges.indexOf(b) !== -1;
+            });
+          }
+
+          var isVisible = themeMatch && (regionMatch && ugradeMatch) && badgeMatch;
+          row.style.display = isVisible ? "" : "none";
+          if (isVisible) visibleRows++;
+        });
+
+        if (visibleCountEl) {
+          visibleCountEl.textContent = "表示 " + visibleRows + " / " + rows.length + " 件";
+        }
+      }
+
+      /* Theme search text filtering inside panel */
+      if (themeSearchInput) {
+        themeSearchInput.addEventListener("input", function() {
+          var query = themeSearchInput.value.trim().toLowerCase();
+          var items = document.querySelectorAll("#theme-checkbox-list .filter-item");
+          items.forEach(function(item) {
+            var text = item.textContent.trim().toLowerCase();
+            item.style.display = (query === "" || text.indexOf(query) !== -1) ? "" : "none";
+          });
+        });
+      }
+
+      var allFilterCheckboxes = themeCheckboxes.concat(regionCheckboxes, ugradeCheckboxes, badgeCheckboxes);
+      allFilterCheckboxes.forEach(function(cb) {
+        cb.addEventListener("change", applyFilters);
+      });
+
+      if (btnReset) {
+        btnReset.addEventListener("click", function() {
+          allFilterCheckboxes.forEach(function(cb) { cb.checked = false; });
+          if (themeSearchInput) {
+            themeSearchInput.value = "";
+            var items = document.querySelectorAll("#theme-checkbox-list .filter-item");
+            items.forEach(function(item) { item.style.display = ""; });
+          }
+          applyFilters();
+        });
+      }
+
+      /* --- CSV Export (Task 14.11) --- */
+      function escapeCsvCell(val) {
+        if (val === null || val === undefined) return "";
+        var str = String(val);
+        if (str.indexOf(",") !== -1 || str.indexOf('"') !== -1 || str.indexOf("\n") !== -1 || str.indexOf("\r") !== -1) {
+          return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+      }
+
+      function generateCsv(rowsData, filename) {
+        if (!rowsData || rowsData.length === 0) return;
+        var headers = Object.keys(rowsData[0]).filter(function(h) { return h !== "row_key"; });
+        var csvLines = [];
+        /* Header */
+        csvLines.push(headers.map(escapeCsvCell).join(","));
+        /* Rows */
+        rowsData.forEach(function(row) {
+          var line = headers.map(function(h) {
+            return escapeCsvCell(row[h]);
+          }).join(",");
+          csvLines.push(line);
+        });
+        /* UTF-8 BOM + CRLF */
+        var csvContent = "\uFEFF" + csvLines.join("\r\n") + "\r\n";
+        var blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      var btnExportAll = document.getElementById("btn-export-all");
+      var btnExportFiltered = document.getElementById("btn-export-filtered");
+
+      if (btnExportAll) {
+        btnExportAll.addEventListener("click", function() {
+          generateCsv(summaryData, "comparative_summary_all.csv");
+        });
+      }
+
+      if (btnExportFiltered) {
+        btnExportFiltered.addEventListener("click", function() {
+          var rows = Array.from(tbody.querySelectorAll("tr"));
+          var filteredData = [];
+          rows.forEach(function(row) {
+            if (row.style.display !== "none") {
+              var rKey = row.getAttribute("data-row-key");
+              if (rKey && summaryMap[rKey]) {
+                filteredData.push(summaryMap[rKey]);
+              }
+            }
+          });
+          generateCsv(filteredData, "comparative_summary_filtered.csv");
+        });
+      }
+
+      /* --- Sort Table Logic (Task 14.10) --- */
+      headers.forEach(function(header, colIndex) {
+        function sortTable() {
+          var currentSort = header.getAttribute("aria-sort") || "none";
+          var newSort = (currentSort === "ascending") ? "descending" : "ascending";
+
+          headers.forEach(function(h) {
+            h.setAttribute("aria-sort", "none");
+            var ind = h.querySelector(".sort-indicator");
+            if (ind) ind.textContent = "↕";
+          });
+          header.setAttribute("aria-sort", newSort);
+          var activeIndicator = header.querySelector(".sort-indicator");
+          if (activeIndicator) {
+            activeIndicator.textContent = (newSort === "ascending") ? "▲" : "▼";
+          }
+
+          var isNumeric = header.classList.contains("col-effect") ||
+                          header.classList.contains("col-direction") ||
+                          header.classList.contains("col-precision");
+          var isUgrade = header.classList.contains("col-practical");
+
+          var rows = Array.from(tbody.querySelectorAll("tr"));
+          /* Decorate with original index for stable sort */
+          var decorated = rows.map(function(row, idx) {
+            return { row: row, index: idx };
+          });
+
+          decorated.sort(function(a, b) {
+            var cellA = a.row.children[colIndex];
+            var cellB = b.row.children[colIndex];
+            var valA = cellA.getAttribute("data-sort-value") !== null ? cellA.getAttribute("data-sort-value") : cellA.textContent.trim();
+            var valB = cellB.getAttribute("data-sort-value") !== null ? cellB.getAttribute("data-sort-value") : cellB.textContent.trim();
+
+            /* N/A or empty handling: always sort to bottom regardless of sort direction */
+            var aEmpty = (valA === "" || valA === "N/A" || valA === "__NA__");
+            var bEmpty = (valB === "" || valB === "N/A" || valB === "__NA__");
+            if (aEmpty && bEmpty) return a.index - b.index;
+            if (aEmpty) return 1;
+            if (bEmpty) return -1;
+
+            var cmp = 0;
+            if (isNumeric) {
+              var numA = parseFloat(valA);
+              var numB = parseFloat(valB);
+              if (!isNaN(numA) && !isNaN(numB)) {
+                cmp = numA - numB;
+              } else {
+                cmp = valA.localeCompare(valB);
+              }
+            } else if (isUgrade) {
+              /* U-Grade ordinal comparison by prefix integer */
+              cmp = valA.localeCompare(valB);
+            } else {
+              cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: "base" });
+            }
+
+            if (cmp !== 0) {
+              return (newSort === "ascending") ? cmp : -cmp;
+            }
+            return a.index - b.index; /* Stable tie-breaker */
+          });
+
+          decorated.forEach(function(item) {
+            tbody.appendChild(item.row);
+          });
+        }
+
+        header.addEventListener("click", sortTable);
+        header.addEventListener("keydown", function(e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            sortTable();
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

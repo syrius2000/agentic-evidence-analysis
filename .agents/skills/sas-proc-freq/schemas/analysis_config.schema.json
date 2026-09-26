@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/sas-proc-freq/analysis_config.schema.json",
+  "title": "sas-proc-freq analysis_config.json",
+  "description": "Configuration schema for SAS PROC FREQ compatible categorical analysis in R.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "analysis_kind",
+    "input",
+    "output_dir",
+    "run_id",
+    "tables"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "sas-summary-config-v1",
+      "description": "Schema version identifier."
+    },
+    "analysis_kind": {
+      "type": "string",
+      "const": "sas_proc_freq",
+      "description": "Analysis kind identifier."
+    },
+    "input": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Path to the input CSV file."
+    },
+    "output_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Output root directory. Runner isolates output into run_<first 16 chars of run_id>/.",
+      "examples": [
+        "evidence_runs/sas_proc_freq"
+      ]
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique run identifier."
+    },
+    "tables": {
+      "type": "array",
+      "minItems": 1,
+      "description": "List of table requests to compute.",
+      "items": {
+        "type": "object",
+        "required": [
+          "table_id",
+          "row_var"
+        ],
+        "properties": {
+          "table_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique identifier for this table request."
+          },
+          "row_var": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Row variable name."
+          },
+          "col_var": {
+            "type": ["string", "null"],
+            "description": "Column variable name (null or omitted for 1-way frequency table)."
+          },
+          "count_var": {
+            "type": ["string", "null"],
+            "description": "Observation count/weight variable name (WEIGHT count equivalent). If omitted or null, each row counts as 1."
+          },
+          "strata_vars": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "default": [],
+            "description": "List of stratification variables."
+          },
+          "levels_order": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Explicit ordering of levels for variables to prevent locale or appearance-order drift."
+          },
+          "event_level": {
+            "type": ["string", "null"],
+            "description": "Event level for column variable in 2x2 effect size and binomial proportion calculations."
+          },
+          "comparison_direction": {
+            "type": ["string", "null"],
+            "description": "Direction of comparison for row variable in 2x2 tables (e.g. 'Trt_vs_Pbo')."
+          },
+          "missing_mode": {
+            "type": "string",
+            "enum": ["exclude", "missprint", "include"],
+            "default": "exclude",
+            "description": "Missing value handling mode: exclude (SAS default), missprint, or include."
+          },
+          "chisq": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to compute Chi-Square tests (Pearson, Likelihood Ratio, Continuity-Adjusted)."
+          },
+          "measures": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to compute 2x2 effect sizes (Odds Ratio, Relative Risk)."
+          },
+          "relrisk": {
+            "type": "boolean",
+            "default": true,
+            "description": "Alias/flag for Relative Risk computation."
+          },
+          "binomial": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether to compute binomial proportion confidence intervals."
+          },
+          "binomial_methods": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["wald", "clopper_pearson", "wilson"]
+            },
+            "default": ["wald", "clopper_pearson", "wilson"],
+            "description": "List of binomial confidence interval methods to compute."
+          },
+          "binomial_level": {
+            "type": ["string", "null"],
+            "description": "Target level for binomial proportion estimation. If omitted, uses event_level or first level."
+          },
+          "alpha": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1,
+            "default": 0.05,
+            "description": "Significance level for confidence intervals (1 - alpha)."
+          },
+          "structural_zeros": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["row", "col"],
+              "properties": {
+                "row": { "type": "string" },
+                "col": { "type": "string" }
+              }
+            },
+            "default": [],
+            "description": "List of known structural zero cells."
+          },
+          "fisher": {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": ["none", "exact", "monte_carlo"],
+                "default": "none",
+                "description": "Fisher test method: none, exact, or monte_carlo."
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "timeout_sec": {
+                    "type": "number",
+                    "minimum": 1,
+                    "default": 300,
+                    "description": "Maximum execution time in seconds for child process."
+                  },
+                  "max_memory_mb": {
+                    "type": "number",
+                    "minimum": 16,
+                    "default": 1024,
+                    "description": "Maximum resident memory in MB."
+                  },
+                  "workspace_bytes": {
+                    "type": "integer",
+                    "minimum": 4,
+                    "default": 33554432,
+                    "description": "Workspace limit in bytes (converted to min(floor(bytes/4), 2147483647) for R fisher.test workspace argument in general R x C tables)."
+                  }
+                },
+                "additionalProperties": false
+              },
+              "fallback_to_mc": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, automatically fallback to Monte Carlo estimation when exact computation exceeds resource limits."
+              },
+              "mc_sampling_algorithm": {
+                "type": "string",
+                "enum": ["patefield", "awb"],
+                "default": "patefield",
+                "description": "v1 implements patefield only; awb is reserved and rejected at validate time."
+              },
+              "mc_replications": {
+                "type": "integer",
+                "minimum": 100,
+                "default": 10000,
+                "description": "Number of Monte Carlo replicates B."
+              },
+              "mc_seed": {
+                "type": "integer",
+                "default": 20260913,
+                "description": "Random seed for Monte Carlo simulation."
+              },
+              "mc_alpha": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 1,
+                "default": 0.01,
+                "description": "Significance level for Monte Carlo confidence interval (1 - mc_alpha)."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

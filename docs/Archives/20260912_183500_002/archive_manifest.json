@@ -1,0 +1,61 @@
+{
+  "archive_batch_id": "20260912_183500_002",
+  "created_at": "2026-09-12 18:36:45 (JST)",
+  "period": {
+    "start": "2026-09-06 16:59 (JST)",
+    "end": "2026-09-12 04:24 (JST)"
+  },
+  "source_count": 7,
+  "summary_file": "docs/Archives/archived_summary_002_0912.md",
+  "items": [
+    {
+      "source": "docs/Artifacts/implementation_plan_005_0906.md",
+      "destination": "docs/Archives/20260912_183500_002/sources/implementation_plan_005_0906.md",
+      "action": "move",
+      "sha256": "d923dbd492830b3116bf5dd1e0607b5c2c377880785c6404af1b2c2f4012a8ea",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_006_0906.md",
+      "destination": "docs/Archives/20260912_183500_002/sources/implementation_plan_006_0906.md",
+      "action": "move",
+      "sha256": "8f0941066623d9a815be3764358581b92a2eba67cdde9ccddc599fa053b94af2",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_012_0911.md",
+      "destination": "docs/Archives/20260912_183500_002/sources/implementation_plan_012_0911.md",
+      "action": "move",
+      "sha256": "020ea355a8ea82115886c9ab34f4ef7119ff1d39d3026605b4dbb18c39bd1872",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/implementation_plan_013_0912.md",
+      "destination": "docs/Archives/20260912_183500_002/sources/implementation_plan_013_0912.md",
+      "action": "move",
+      "sha256": "f9ed4c691041a105c31084c31711e831af3f5a93d1e1e4a66a7b358c96d38ae9",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/reference_docs_update_plan_001_0906.md",
+      "destination": "docs/Archives/20260912_183500_002/sources/reference_docs_update_plan_001_0906.md",
+      "action": "move",
+      "sha256": "33f19aaa64f4a47d5dd21b90776acaeaa7433d31126a7c9a5045540c78970ad9",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/semantic_governance_and_ranking_stability_plan_001_0907.md",
+      "destination": "docs/Archives/20260912_183500_002/sources/semantic_governance_and_ranking_stability_plan_001_0907.md",
+      "action": "move",
+      "sha256": "b1e8a50da8b22190c78e79478d058f151db9d0aba5216301d8ad47b749886379",
+      "status": "moved"
+    },
+    {
+      "source": "docs/Artifacts/statistical_validation_001_0906.md",
+      "destination": "docs/Archives/20260912_183500_002/sources/statistical_validation_001_0906.md",
+      "action": "move",
+      "sha256": "935627d392e01232bc409b7658a66ab9ce5db27ab8300fb17260fd0d5b3a3bca",
+      "status": "moved"
+    }
+  ]
+}

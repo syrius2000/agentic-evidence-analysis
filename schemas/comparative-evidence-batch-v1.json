@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComparativeEvidenceBatchV1",
+  "description": "Permanent deliverable schema for multi-contrast comparative evidence reporting in comparative-evidence-reporting-v3",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "domain",
+    "contrasts"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["comparative-evidence-batch-v1"]
+    },
+    "run_timestamp": {
+      "type": "string"
+    },
+    "run_meta": {
+      "type": "object"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "primary_delta": {
+      "type": ["number", "null"]
+    },
+    "contrasts": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "comparative-evidence-v1.json#"
+      }
+    }
+  }
+}

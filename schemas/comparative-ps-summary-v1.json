@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ComparativePSSummaryV1",
+  "description": "Shared propensity score summary contract for raw and effective IPTW diagnostics",
+  "type": "object",
+  "required": ["min", "q25", "median", "mean", "q75", "max"],
+  "properties": {
+    "min": { "type": "number", "minimum": 0, "maximum": 1 },
+    "q25": { "type": "number", "minimum": 0, "maximum": 1 },
+    "median": { "type": "number", "minimum": 0, "maximum": 1 },
+    "mean": { "type": "number", "minimum": 0, "maximum": 1 },
+    "q75": { "type": "number", "minimum": 0, "maximum": 1 },
+    "max": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}

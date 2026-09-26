@@ -1,0 +1,325 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TwoWayCategoricalResultsV3",
+  "description": "Interface 3.0 schema for complete two-way categorical analysis (two-way-results-v2)",
+  "type": "object",
+  "required": [
+    "interface_version",
+    "schema",
+    "analysis_signature",
+    "global",
+    "cells",
+    "posterior",
+    "quality",
+    "provenance"
+  ],
+  "properties": {
+    "interface_version": {
+      "type": "string",
+      "enum": ["3.0"]
+    },
+    "schema": {
+      "type": "string",
+      "enum": ["two-way-results-v2"]
+    },
+    "analysis_signature": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "global": {
+      "type": "object",
+      "required": [
+        "n_total",
+        "n_rows",
+        "n_cols",
+        "df",
+        "pearson_chisq",
+        "pearson_p_value",
+        "deviance_gsq",
+        "deviance_p_value",
+        "cramers_v",
+        "cramers_v_ci",
+        "cramers_v_corrected",
+        "cramers_v_corrected_ci"
+      ],
+      "properties": {
+        "n_total": { "type": "integer", "minimum": 1 },
+        "n_rows": { "type": "integer", "minimum": 2 },
+        "n_cols": { "type": "integer", "minimum": 2 },
+        "df": { "type": "integer", "minimum": 1 },
+        "pearson_chisq": { "type": "number", "minimum": 0 },
+        "pearson_p_value": { "type": "number", "minimum": 0, "maximum": 1 },
+        "deviance_gsq": { "type": "number", "minimum": 0 },
+        "deviance_p_value": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cramers_v": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cramers_v_ci": {
+          "type": "array",
+          "items": { "type": "number", "minimum": 0, "maximum": 1 },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "cramers_v_corrected": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cramers_v_corrected_ci": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": { "type": "number", "minimum": 0, "maximum": 1 },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "cells": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "row_level",
+          "col_level",
+          "observed",
+          "expected",
+          "pearson_res",
+          "deviance_res",
+          "adj_res",
+          "leverage",
+          "log_oe",
+          "log_oe_state",
+          "is_finite",
+          "signed_diff_ratio",
+          "rao_score",
+          "p_value_unadj",
+          "p_value_bh",
+          "quarantine_status",
+          "quarantine_reasons",
+          "dual_filter_candidate"
+        ],
+        "properties": {
+          "row_level": { "type": "string" },
+          "col_level": { "type": "string" },
+          "observed": { "type": "integer", "minimum": 0 },
+          "expected": { "type": "number", "exclusiveMinimum": 0 },
+          "pearson_res": { "type": "number" },
+          "deviance_res": { "type": "number" },
+          "adj_res": { "type": "number" },
+          "leverage": { "type": "number", "minimum": 0, "maximum": 1 },
+          "log_oe": { "type": ["number", "null"] },
+          "log_oe_state": {
+            "type": "string",
+            "enum": ["FINITE", "NEGATIVE_INFINITY", "UNDEFINED"]
+          },
+          "is_finite": { "type": "boolean" },
+          "signed_diff_ratio": { "type": "number" },
+          "rao_score": { "type": "number", "minimum": 0 },
+          "p_value_unadj": { "type": "number", "minimum": 0, "maximum": 1 },
+          "p_value_bh": { "type": "number", "minimum": 0, "maximum": 1 },
+          "quarantine_status": {
+            "type": "string",
+            "enum": ["ACTIVE", "QUARANTINED"]
+          },
+          "quarantine_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["ZERO_OBSERVED", "EXPECTED_LT_5", "HIGH_LEVERAGE"]
+            }
+          },
+          "dual_filter_candidate": { "type": "boolean" }
+        }
+      }
+    },
+    "posterior": {
+      "type": "object",
+      "required": [
+        "prior_specification",
+        "n_draws",
+        "deterministic_seed",
+        "cell_posteriors",
+        "sensitivity_analysis"
+      ],
+      "properties": {
+        "prior_specification": {
+          "type": "object",
+          "required": ["family", "alpha", "role", "name"],
+          "properties": {
+            "family": { "type": "string", "enum": ["symmetric_dirichlet"] },
+            "alpha": { "type": "number", "exclusiveMinimum": 0 },
+            "role": { "type": "string", "enum": ["primary"] },
+            "name": { "type": "string", "enum": ["jeffreys"] }
+          }
+        },
+        "n_draws": { "type": "integer", "minimum": 1000 },
+        "deterministic_seed": { "type": "integer" },
+        "practical_delta": { "type": ["number", "null"] },
+        "cell_posteriors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "row_level",
+              "col_level",
+              "prob_mean",
+              "prob_sd",
+              "prob_q025",
+              "prob_q500",
+              "prob_q975",
+              "prob_eti_width",
+              "cond_row_prob_mean",
+              "cond_row_prob_sd",
+              "cond_row_prob_median",
+              "cond_row_prob_q025",
+              "cond_row_prob_q975",
+              "cond_row_prob_eti_width",
+              "cond_col_prob_mean",
+              "cond_col_prob_sd",
+              "cond_col_prob_median",
+              "cond_col_prob_q025",
+              "cond_col_prob_q975",
+              "cond_col_prob_eti_width",
+              "log_divergence_mean",
+              "log_divergence_median",
+              "log_divergence_q025",
+              "log_divergence_q975",
+              "log_divergence_eti_width",
+              "prob_dir_positive",
+              "prob_practical_delta"
+            ],
+            "properties": {
+              "row_level": { "type": "string" },
+              "col_level": { "type": "string" },
+              "prob_analytic_mean": { "type": "number" },
+              "prob_analytic_sd": { "type": "number" },
+              "prob_mean": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_sd": { "type": "number", "minimum": 0 },
+              "prob_q025": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_q250": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_q500": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_q750": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_q975": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_eti_width": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_row_prob_mean": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_row_prob_sd": { "type": "number", "minimum": 0 },
+              "cond_row_prob_median": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_row_prob_q025": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_row_prob_q975": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_row_prob_eti_width": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_col_prob_mean": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_col_prob_sd": { "type": "number", "minimum": 0 },
+              "cond_col_prob_median": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_col_prob_q025": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_col_prob_q975": { "type": "number", "minimum": 0, "maximum": 1 },
+              "cond_col_prob_eti_width": { "type": "number", "minimum": 0, "maximum": 1 },
+              "log_divergence_mean": { "type": "number" },
+              "log_divergence_median": { "type": "number" },
+              "log_divergence_q025": { "type": "number" },
+              "log_divergence_q975": { "type": "number" },
+              "log_divergence_eti_width": { "type": "number", "minimum": 0 },
+              "prob_dir_positive": { "type": "number", "minimum": 0, "maximum": 1 },
+              "prob_practical_delta": { "type": ["number", "null"] }
+            }
+          }
+        },
+        "uncertainty_ranking": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["rank", "row_level", "col_level", "prob_eti_width", "observed"],
+            "properties": {
+              "rank": { "type": "integer", "minimum": 1 },
+              "row_level": { "type": "string" },
+              "col_level": { "type": "string" },
+              "prob_eti_width": { "type": "number", "minimum": 0, "maximum": 1 },
+              "observed": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "sensitivity_analysis": {
+          "type": "object",
+          "required": [
+            "primary_alpha",
+            "sensitivity_alpha",
+            "max_absolute_mean_diff",
+            "max_median_shift",
+            "max_eti_width_diff",
+            "cell_comparisons"
+          ],
+          "properties": {
+            "primary_alpha": { "type": "number" },
+            "sensitivity_alpha": { "type": "number" },
+            "max_absolute_mean_diff": { "type": "number" },
+            "max_median_shift": { "type": "number" },
+            "max_eti_width_diff": { "type": "number" },
+            "cell_comparisons": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "row_level",
+                  "col_level",
+                  "primary_median",
+                  "sensitivity_median",
+                  "median_shift",
+                  "primary_eti_width",
+                  "sensitivity_eti_width",
+                  "eti_width_difference"
+                ],
+                "properties": {
+                  "row_level": { "type": "string" },
+                  "col_level": { "type": "string" },
+                  "primary_median": { "type": "number" },
+                  "sensitivity_median": { "type": "number" },
+                  "median_shift": { "type": "number", "minimum": 0 },
+                  "primary_eti_width": { "type": "number", "minimum": 0 },
+                  "sensitivity_eti_width": { "type": "number", "minimum": 0 },
+                  "eti_width_difference": { "type": "number" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "required": [
+        "n_quarantined_cells",
+        "n_candidates",
+        "warnings"
+      ],
+      "properties": {
+        "n_quarantined_cells": { "type": "integer", "minimum": 0 },
+        "n_candidates": { "type": "integer", "minimum": 0 },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "run_id",
+        "execution_mode",
+        "analysis_signature",
+        "input_sha256",
+        "config_sha256",
+        "timestamp_jst",
+        "r_version",
+        "platform"
+      ],
+      "properties": {
+        "run_id": { "type": "string" },
+        "execution_mode": { "type": "string", "enum": ["canonical"] },
+        "analysis_signature": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "input_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "config_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "deterministic_seed": { "type": "integer" },
+        "timestamp_jst": { "type": "string" },
+        "r_version": { "type": "string" },
+        "platform": { "type": "string" }
+      }
+    }
+  }
+}
