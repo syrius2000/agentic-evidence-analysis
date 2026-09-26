@@ -87,6 +87,11 @@
     `primary_delta`, `target_excess`, `practical_neutral`, `reference_excess`
 - **決定ラベル排除の原則**:
   - `FORBIDDEN_DECISION_LABEL_KEYS`（`decision`, `regulatory_outcome`, `approval_status` 等）は距離特徴量から物理的に排除する（`assert_no_forbidden_decision_labels`）。
+- **自然単位・逆数 RD は表示専用（Geometry Exclusion Contract）**:
+  - `excess_per_100 = 100 × rd_estimate` は RD の線形再表現、`reciprocal_absolute_rd = 1 / |rd_estimate|` は RD の非線形・特異な再表現であり、いずれも独立したエビデンス次元ではない。
+  - とくに `1/|RD|` は $RD \to 0$ で発散するため、Gower 距離・PCoA・HAC の特徴量に含めると小さな RD 差を過度に拡大し、幾何を不安定化させる。
+  - したがって `excess_per_100`, `reciprocal_absolute_rd`, `reciprocal_status`, `reciprocal_direction` は `CORE_CLUSTERING_KEYS` / `DELTA_CLUSTERING_KEYS` へ追加せず、ツールチップ・詳細表・CSV の解釈補助メタデータとしてのみ搬送する。
+  - Safety 表示では、RD 区間が 0 を跨がず方向が安定する場合に限り、`target_excess` を **NNH-like**、`reference_excess` を **NNT-like** と表示する。区間が 0 を跨ぐ場合は `SIGN_AMBIGUOUS` とし方向ラベルを抑制する。
 
 ### 2.5 主座標分析（PCoA）と非ユークリッド加法補正（Additive Constant Correction）
 
@@ -129,6 +134,10 @@ Gower 非類似度行列 $D$ は、欠測やカテゴリカル特徴量により
 | `rd_interval_lower` | numeric | NO | 95% interval lower | RD 95%信用区間/ブートストラップ下限 |
 | `rd_interval_upper` | numeric | NO | 95% interval upper | RD 95%信用区間/ブートストラップ上限 |
 | `rd_interval_width` | numeric | NO | upper - lower | 連続精度指標（区間幅） |
+| `excess_per_100` | numeric | NO | $100 \times RD$ | RD を「100人あたり何人多い／少ない」へ線形変換した自然単位表示。幾何特徴量には使用しない。 |
+| `reciprocal_absolute_rd` | numeric | YES | $1/|RD|$ | canonical RD 点推定値の逆数。$RD \approx 0$ では NULL。NNT/NNH-like の二次解釈値であり幾何特徴量には使用しない。 |
+| `reciprocal_status` | character | NO | canonical RD + interval | `STABLE_DIRECTION`, `SIGN_AMBIGUOUS`, `RD_NEAR_ZERO`, `NOT_INTERPRETABLE` のいずれか。 |
+| `reciprocal_direction` | character | NO | sign(RD) | `target_excess`, `reference_excess`, `none`。Safety 表示時の NNH-like / NNT-like ラベル選択に使用。 |
 | `direction_support` | numeric | NO | $P(RD > 0)$ または $\hat{p}^*$ | 方向支持確率（因果的優越の主張禁止） |
 | `resolution_grade` | character | NO | U0–U3 / NONE | 実務領域解像度グレード（U-Grade） |
 | `dominant_region` | character | NO | canonical region | 最も確率密度の高い領域名 |
@@ -210,7 +219,7 @@ Gower 非類似度行列 $D$ は、欠測やカテゴリカル特徴量により
 | **クラスタ境界** | `cluster_id` | 凸包（Convex Hull）の点線または外周ラベル | 色相と衝突させずグループを明示 |
 
 ### 4.2 インタラクション機能
-1. **ホバー・ツールチップ**: シグネチャID、事象件数 ($x_T/n_T, x_R/n_R$)、RD/RR、U-Grade、所属する代表PT名（上位5件＋他N件）。
+1. **ホバー・ツールチップ**: シグネチャID、事象件数 ($x_T/n_T, x_R/n_R$)、RD/RR、100人あたり差（E100）、安全に解釈可能な場合の NNT/NNH-like（または reciprocal status）、U-Grade、所属する代表PT名（上位5件＋他N件）。
 2. **クリック・詳細ドロワー**: クリックしたシグネチャに属する全 PT / SOC の一覧テーブル表示。
 3. **ビュー切り替えタブ**: 「Core Evidence Map」 $\leftrightarrow$ 「Practical Evidence Map」のワンクリック切り替え。
 4. **多機能フィルタ**: SOC 絞り込み、U-Grade 絞り込み、特定 PT 検索（マップ上の該当点がハイライト）。
@@ -235,6 +244,8 @@ Gower 非類似度行列 $D$ は、欠測やカテゴリカル特徴量により
 | **T9** | **負の固有値補正** | 負の慣性比率が 0.05 を超える人工距離行列 | `cmdscale(..., add = TRUE)` による加法補正適用の検証 | 補正後の固有値がすべて非負（実数座標）となり、`correction_applied = TRUE` が記録されること。 |
 | **T10** | **HAC ガードレール** | HAC クラスタリング結果 | 禁止リンケージ（Ward 法）の拒絶、免責文言の存在 | Ward 法指定時はエラー停止し、出力結果に `EVIDENCE_CLUSTER_WORDING` が必ず含まれること。 |
 | **T11** | **オフライン静的監査** | 生成された `evidence_map.html` | `http:`, `https:`, `//` 等の外部ネットワーク参照、およびローカル絶対パスのスキャン | 外部通信 0 件、OS ローカル絶対パス（`/Users/`, `C:\` 等）0 件で完全合格すること。 |
+| **T12** | **自然単位・逆数RD表示契約** | RD が正・負・0近傍・区間0跨ぎの4人工シグネチャ | `E100 = 100×RD`, `1/|RD|`, `reciprocal_status`, `reciprocal_direction` と Safety 表示ラベルを検証 | 正の安定方向は NNH-like、負の安定方向は NNT-like、0近傍は `RD_NEAR_ZERO` + reciprocal NULL、区間0跨ぎは `SIGN_AMBIGUOUS` で方向ラベル非表示。 |
+| **T13** | **逆数RDの幾何非介入** | T12 の人工シグネチャ + frozen feature contract | Gower/PCoA に渡される feature keys と出力座標を、逆数表示フィールド追加前後で比較 | `excess_per_100` / reciprocal 3 fields が feature keys に存在せず、同一 core evidence に対する距離行列・PCoA 座標が不変であること。 |
 
 ---
 
