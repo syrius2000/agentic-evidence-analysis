@@ -40,6 +40,8 @@ html_std <- paste(readLines(res_std$html_path, warn = FALSE, encoding = "UTF-8")
 # Check required header classes exist (with sortable extension for 14.10)
 assert_true(grepl("th scope=\"col\" class=\"col-id sortable\"", html_std, fixed = TRUE), "Header contains col-id")
 assert_true(grepl("th scope=\"col\" class=\"col-effect sortable\"", html_std, fixed = TRUE), "Header contains col-effect")
+assert_true(grepl("100人あたり差 / NNT・NNH-like", html_std, fixed = TRUE),
+            "Absolute translation header exposes E100 and reciprocal RD")
 assert_true(grepl("th scope=\"col\" class=\"col-direction sortable\"", html_std, fixed = TRUE), "Header contains col-direction")
 assert_true(grepl("th scope=\"col\" class=\"col-practical sortable\"", html_std, fixed = TRUE), "Header contains col-practical")
 assert_true(grepl("th scope=\"col\" class=\"col-precision sortable\"", html_std, fixed = TRUE), "Header contains col-precision")
@@ -47,6 +49,7 @@ assert_true(grepl("th scope=\"col\" class=\"col-diagnostics sortable\"", html_st
 
 # Check provenance columns present in summary_df
 required_prov <- c(
+  "excess_per_100", "reciprocal_absolute_rd", "reciprocal_status", "reciprocal_direction",
   "rd_interval_width", "log_rr_interval_width", "rr_interval_fold_range",
   "rr_mean_is_finite", "rr_diagnostic", "rr_estimate_available",
   "rr_interval_available", "rr_bootstrap_defined_replicates",
@@ -153,6 +156,16 @@ res_stable <- generate_comparative_report(df_stable, reference_arm = "Control", 
 html_stable <- paste(readLines(res_stable$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(!grepl("numerical-instability-warning", html_stable, fixed = TRUE),
             "Numerical instability warning callout is absent for stable evidence")
+assert_true(
+  all(c("excess_per_100", "reciprocal_absolute_rd", "reciprocal_status", "reciprocal_direction") %in%
+        names(res_stable$summary_df)),
+  "Dashboard summary carries natural-unit and reciprocal-RD fields"
+)
+assert_true(
+  grepl("/ 100", html_std, fixed = TRUE) &&
+    grepl("1/|RD|", html_std, fixed = TRUE),
+  "General-domain dashboard renders E100 and reciprocal RD translation"
+)
 
 cat("\n=== 5. Test 14.6: Zero External Asset Scan ===\n")
 # Strict Zero-External-Asset scanner: detect any active external resource loading
@@ -388,11 +401,11 @@ assert_true(grepl("data-sort-value=\"3_", html_u3, fixed = TRUE),
 assert_true(grepl("td class='col-diagnostics' data-sort-value=", html_std, fixed = TRUE),
             "14.10: Diagnostics cell contains explicit data-sort-value attribute (14.10.R2)")
 
-# Verify exactly 10 data-sort-value attributes per row in standard output
+# Verify exactly 11 data-sort-value attributes per row in standard output
 std_rows <- length(gregexpr("<tr><td class=", html_std)[[1L]])
 std_dsv <- length(gregexpr("data-sort-value=", html_std)[[1L]])
-assert_true(std_dsv == std_rows * 10L,
-            sprintf("14.10: Exactly 10 sort keys per row across all columns (%d / %d)", std_dsv, std_rows * 10L))
+assert_true(std_dsv == std_rows * 11L,
+            sprintf("14.10: Exactly 11 sort keys per row across all columns (%d / %d)", std_dsv, std_rows * 11L))
 
 # 4. Verify inline sort script presence and contract
 assert_true(grepl("document.addEventListener(\"DOMContentLoaded\", function()", html_std, fixed = TRUE),
