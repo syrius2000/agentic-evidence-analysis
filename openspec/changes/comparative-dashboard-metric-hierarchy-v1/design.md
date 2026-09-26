@@ -1,6 +1,6 @@
 ## Context
 
-See `proposal.md` for motivation. Current presentation in `comparative_reporting.R` builds one HTML/Markdown cell (`absolute_translation_html` / `absolute_translation_md`) that concatenates E100 and reciprocal RD, backed by a single `absolute_sort_val` from `excess_per_100`. Canonical fields already exist on `summary_df` / `comparative-evidence-v1`; this change is presentation-only. Geometry modules (`evidence_gower.R`, `evidence_feature_extract.R`) and JSON schema remain out of scope.
+See `proposal.md` for motivation. Current presentation in `comparative_reporting.R` builds one HTML/Markdown cell (`absolute_translation_html` / `absolute_translation_md`) that concatenates E100 and reciprocal RD, backed by a single `absolute_sort_val` from `excess_per_100`. Canonical fields already exist on `summary_df`; this change is presentation-only. Geometry modules (`evidence_gower.R`, `evidence_feature_extract.R`) remain out of scope. Nested `comparative_evidence.json` / `comparative-evidence-v1` evidence contract and the flat 40-field `summary_df` / dashboard CSV export contract are both unchanged but must not be conflated.
 
 ## Goals / Non-Goals
 
@@ -19,23 +19,27 @@ See `proposal.md` for motivation. Current presentation in `comparative_reporting
 
 ## Decisions
 
-1. **Presentation-only split (no schema change)**
-   Reuse `excess_per_100`, `reciprocal_absolute_rd`, `reciprocal_status`, `reciprocal_direction` from `summary_df`. Do not add presentation columns to JSON/CSV.
+1. **Presentation-only split (no schema change; dual-contract wording)**
+   Reuse `excess_per_100`, `reciprocal_absolute_rd`, `reciprocal_status`, `reciprocal_direction` from `summary_df`. Do not add presentation columns to nested evidence JSON or to the 40-field summary/export contract.
    *Alternative considered*: promote E100/reciprocal display strings into schema → rejected (violates “no new canonical field” contract).
 
-2. **Two sort keys in the HTML renderer**
+2. **Frozen Safety reciprocal direction mapping**
+   `target_excess → NNH-like`, `reference_excess → NNT-like`. Non-Safety stable finite reciprocal uses `1/|RD|` only (no NNT/NNH wording).
+   *Alternative considered*: leave mapping “according to reciprocal_direction” → rejected (Zero-Guesswork; direction reversal risk).
+
+3. **Two sort keys in the HTML renderer**
    Keep `e100_sort_val` from `excess_per_100`; add `reciprocal_sort_val` (numeric when `STABLE_DIRECTION` + finite; empty when suppressed). Continue finite-before-missing table sort policy; do not invent ordinal ranks for status labels.
    *Alternative considered*: keep one combined sort on E100 only → rejected (reciprocal column would not be independently sortable).
 
-3. **Surgical edits in `comparative_reporting.R`**
+4. **Surgical edits in `comparative_reporting.R`**
    Update HTML header/row builders, Markdown table builder, and Risk Difference guide copy in one module. Leave contrast computation and shared geometry code untouched.
    *Alternative considered*: new template file → rejected as overkill for a column split.
 
-4. **QA expansion in `tests/test_comparative_dashboard_qa.R`**
-   Encode plan matrix Q1–Q24 as assertions (column order, cell count, Safety/non-Safety labels, suppression, provenance, U-Grade retention, sort/export/geometry non-regression).
+5. **QA expansion in `tests/test_comparative_dashboard_qa.R`**
+   Encode plan matrix Q1–Q24 as assertions (column order, cell count, Safety/non-Safety labels, suppression, provenance, U-Grade retention, sort/export/geometry non-regression), with high-risk cases Q4–Q8 / Q15 / Q20 stated as explicit expected results.
    *Alternative considered*: manual visual QA only → rejected (fails Zero-Guesswork / reproducible acceptance).
 
-5. **Width mitigation without dropping columns**
+6. **Width mitigation without dropping columns**
    Keep `overflow-x: auto` and compact typography on E100 / NNT columns rather than deleting Precision or Diagnostics.
    *Alternative considered*: drop precision/diagnostics to fit viewport → rejected (breaks concept hierarchy).
 

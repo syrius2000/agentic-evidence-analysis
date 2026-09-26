@@ -10,7 +10,12 @@
 - U-Grade / Practical Region 列は削除せず維持する。実務領域色は当該セルのみに限定する。
 - Metric Guide の Risk Difference セクションで、RD（一次対比）・E100（自然単位）・reciprocal RD（二次解釈）を明示分離する。
 - `reciprocal_sort_val` を presentation layer で分離管理する（表示文字列の再数値化禁止）。
-- **非変更**: JSON / CSV canonical schema（40 fields）、Gower / PCoA / HAC 特徴量契約、RD/RR 推論、U-Grade 閾値、schema version。
+- Safety reciprocal 方向マッピングを正本固定する: `target_excess → NNH-like`、`reference_excess → NNT-like`。非 Safety は `1/|RD|` のみ（NNT/NNH 断定禁止）。
+- **非変更（契約分離）**:
+  - `comparative_evidence.json` / `comparative-evidence-v1` nested evidence contract は変更しない。
+  - `summary_df` および dashboard CSV export は引き続き exactly 40 canonical summary fields。
+  - presentation-only フィールドをいずれの canonical contract にも追加しない。
+  - Gower / PCoA / HAC 特徴量契約、RD/RR 推論、U-Grade 閾値、schema version は変更しない。
 
 ## Capabilities
 
