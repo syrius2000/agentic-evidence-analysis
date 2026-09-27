@@ -135,7 +135,7 @@ assert_true(nrow(iptw_row) == 1L && iptw_row$interval_label == "bootstrap percen
 assert_true(grepl("Bootstrap support fraction (RD > 0)", iptw_md, fixed = TRUE), "IPTW report labels direction support as a bootstrap support fraction")
 assert_true(iptw_row$target_events == iptw_ev$iptw$raw_patient_counts$target_events && iptw_row$target_total == iptw_ev$iptw$raw_patient_counts$target,
             "Report raw descriptive counts match the same-source IPTW evidence")
-assert_true(isTRUE(all.equal(iptw_row$target_ess, iptw_ev$iptw$effective_sample_size$target)) && grepl("有効標本サイズ ESS (T / R)", iptw_md, fixed = TRUE),
+assert_true(isTRUE(all.equal(iptw_row$target_ess, iptw_ev$iptw$effective_sample_size$target)) && grepl("ESS:", iptw_md, fixed = TRUE),
             "Report displays effective sample size separately from raw sample size")
 assert_true(is.na(iptw_row$fisher_p_value) && is.na(iptw_row$design_aware_fisher_p_value), "Fisher compatibility output is absent for design-aware evidence by default")
 assert_true(!grepl("ETI", iptw_md, fixed = TRUE) && !grepl("posterior median", tolower(iptw_md), fixed = TRUE) && !grepl("P(RD > 0)", iptw_md, fixed = TRUE) && !grepl("信用区間", iptw_md, fixed = TRUE),

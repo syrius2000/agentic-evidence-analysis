@@ -83,7 +83,7 @@ Reviewerに依頼する前に、Ownerまたは案件作成者は次を準備し�
 その上で、Reviewerは必ず公開CLIで読み取り専用の status を確認します。
 
 ```bash
-/Users/myamaguchi/.agents/skills/quality-review/bin/quality-review-cli \
+~/.agents/skills/quality-review/bin/quality-review-cli \
   --case-root <case-root> status --case-id <case-id>
 ```
 
@@ -161,7 +161,7 @@ invocation_id          = この1操作専用の新しい値
 概念上の呼出しは次の形です。
 
 ```bash
-/Users/myamaguchi/.agents/skills/quality-review/bin/quality-review-cli \
+~/.agents/skills/quality-review/bin/quality-review-cli \
   --case-root <case-root> <review|review-plan|verify|assess-risk> \
   --case-id <case-id> --input <入力JSONまたはJSONファイル>
 ```
@@ -267,7 +267,7 @@ case_revision、next_role、next_action、handoff_id、open_findingsを
 
 ### 11.1 `QMS-THREE-WAY-DASHBOARD-001`
 
-参照メモは `/tmp/qms_three_way_dashboard_001_meta_20260912.md`（実行時一時メタデータ）です。ここでは、`review → submit-plan → review-plan → submit-response → verify → adjudicate` の流れを観測しました。また、ReviewerによるPlan合意後もOwnerの実装許可が自動で有効化されず、許可範囲の登録と再handoffが必要になった経緯が記録されています。
+参照メモは実行時一時メタデータ（`tempfile()` 相当の作業用パス）です。ここでは、`review → submit-plan → review-plan → submit-response → verify → adjudicate` の流れを観測しました。また、ReviewerによるPlan合意後もOwnerの実装許可が自動で有効化されず、許可範囲の登録と再handoffが必要になった経緯が記録されています。
 
 この例から一般化できる安全原則は、「Plan合意」「Ownerの実装許可」「独立verify」「Owner終端裁定」を別状態として確認すること」です。一方、Owner裁定後にどのnext actionへ遷移するかはCoreのバージョンや案件状態に依存し得るため、この履歴を固定手順として使いません。
 
@@ -294,7 +294,7 @@ case_revision、next_role、next_action、handoff_id、open_findingsを
 ## 13. 参照元と関連文書
 
 - 本マニュアルの作成計画: [implementation_plan_016_0912.md](../Archives/20260913_195758_003/sources/implementation_plan_016_0912.md)
-- 初回ダッシュボード案件の運用メモ: `/tmp/qms_three_way_dashboard_001_meta_20260912.md`
+- 初回ダッシュボード案件の運用メモ: 実行時一時メタデータ（作業用パス；リポジトリ外）
 - Reviewer工程の操作契約: 外部 / ユーザー環境の `quality-review` スキル（本リポジトリの canonical 9 skills には含まれない。具体パスは環境依存）
 
 このマニュアルは操作手順の理解を目的とする補助Artifactであり、個別案件の status、handoff、Evidence、Owner裁定の正本を置き換えません。

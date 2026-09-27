@@ -8,7 +8,7 @@ commit_chain:
 
 - `e1d1343`: feat(vcd-3way): 3次元ダッシュボードの標準化と数理・オフライン基盤の実装
 - `6d07077`: test(fixtures): UCB 3-Way 正本 fixture の追加と不変性回帰テストの導入
-worktree: `/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-dashboard`
+worktree: `<workspace>/agentic-evidence-analysis-dashboard`
 
 ---
 
@@ -96,4 +96,4 @@ Owner（統括者）のレビューにより、縦スペースを圧迫せず情
 - 本 Worktree（`codex/dashboard-unification`）は比較基準 `dfc851beb7030e8fd4cb07a0f8384bc98f275977` から分岐し、2つのコミット（`e1d1343` 実装＋テスト、`6d07077` fixture 追加）で構成されています。
 - 今回の QMS 是正作業（F-001: 生割合と事後平均の推定量明示・テスト強化、F-002: レポート来歴照合）は、Owner 実装許可（`allowed_targets`）の認可範囲内で厳密に修正・更新されています。
 - `main` への commit / merge / push は一切行われていません。
-- メインリポジトリ（`/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis`）は `working tree clean` のまま維持されています。
+- メインリポジトリ（`<workspace>/agentic-evidence-analysis`）は `working tree clean` のまま維持されています。

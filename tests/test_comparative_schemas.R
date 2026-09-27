@@ -641,6 +641,61 @@ assert_true(bayes_res$direction_support$label == "P(RD > 0)", "Direction support
 assert_true(bayes_res$relative_risk$estimate$source == "posterior_median", "RR estimate source is posterior_median")
 assert_true(bayes_res$relative_risk$interval$method == "posterior_eti", "RR interval method is posterior_eti")
 assert_true(bayes_res$relative_risk$mean_is_finite == TRUE, "RR mean is finite when reference events > 0")
+assert_true(isTRUE(all.equal(
+  bayes_res$risk_difference$excess_per_100,
+  100 * bayes_res$risk_difference$estimate$value
+)), "E100 equals 100 times the canonical RD point estimate")
+assert_true(isTRUE(all.equal(
+  bayes_res$risk_difference$reciprocal_absolute_rd,
+  1 / abs(bayes_res$risk_difference$estimate$value)
+)), "Reciprocal RD equals 1/abs(canonical RD point estimate)")
+assert_true(
+  bayes_res$risk_difference$reciprocal_status == "STABLE_DIRECTION" &&
+    bayes_res$risk_difference$reciprocal_direction == "target_excess",
+  "Strong positive RD is classified as stable target excess"
+)
+
+ambiguous_t <- seq(0.065, 0.165, length.out = S)
+ambiguous_r <- seq(0.140, 0.080, length.out = S)
+ambiguous_res <- compute_comparative_contrasts(
+  target_draws = ambiguous_t,
+  reference_draws = ambiguous_r,
+  target_events = 10L,
+  target_total = 100L,
+  reference_events = 10L,
+  reference_total = 100L,
+  inferential_semantics = "posterior",
+  primary_delta = 0.05
+)
+assert_true(
+  ambiguous_res$risk_difference$reciprocal_status == "SIGN_AMBIGUOUS" &&
+    !is.null(ambiguous_res$risk_difference$reciprocal_absolute_rd),
+  "RD interval crossing zero retains reciprocal point value but flags SIGN_AMBIGUOUS"
+)
+
+zero_rd_res <- compute_comparative_contrasts(
+  target_draws = t_draws,
+  reference_draws = t_draws,
+  target_events = 15L,
+  target_total = 100L,
+  reference_events = 15L,
+  reference_total = 100L,
+  inferential_semantics = "posterior",
+  primary_delta = 0.05
+)
+assert_true(
+  zero_rd_res$risk_difference$reciprocal_status == "RD_NEAR_ZERO" &&
+    is.null(zero_rd_res$risk_difference$reciprocal_absolute_rd) &&
+    zero_rd_res$risk_difference$reciprocal_direction == "none",
+  "Numerically zero RD suppresses reciprocal value with RD_NEAR_ZERO status"
+)
+
+bad_reciprocal_status <- bayes_res
+bad_reciprocal_status$risk_difference$reciprocal_status <- "INVALID"
+assert_true(
+  !validate_payload_against_schema(bad_reciprocal_status, "comparative-evidence-v1.json")$valid,
+  "Schema rejects invalid reciprocal_status"
+)
 
 cat("\n=== 2. Test Bootstrap Semantics & Point Estimates ===\n")
 boot_res <- compute_comparative_contrasts(

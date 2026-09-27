@@ -78,11 +78,18 @@
   7. 人間による意思決定と監査（決定ラベルを用いない Gower 距離・HAC による先例監査、自動規制決定の絶対禁止）
 
 > [!NOTE]
-> 各スキルの数理モデル詳細（3次元対数線形 M1〜M9、明示式 BIC、新 4 軸セル診断、多項 Dirichlet 事後推論、独立 Jeffreys Beta-Binomial、デザイン考慮型推論、エビデンス決定監査など）は、正本リファレンスを参照してください：
+> 各スキルの数理モデル詳細は正本リファレンスを参照してください。3 次元／2 次元探索、比較エビデンス（独立 Jeffreys / U-Grade / 12列提示）、デザイン考慮推論（マッチドペア / セット / IPTW / 人年発症率）は**専用数理正本を充足**しています。
 >
-> - [`docs/reference/README.md`](docs/reference/README.md)
-> - [`docs/reference/three_way_models.md`](docs/reference/three_way_models.md)
-> - [`docs/reference/skill_responsibilities.md`](docs/reference/skill_responsibilities.md)
+> - ポータル・読解順・スキル対応: [`docs/reference/README.md`](docs/reference/README.md)
+> - カバレッジ監査と記載すべき情報: [`docs/reference/math_coverage_gap_inventory_001_0927.md`](docs/reference/math_coverage_gap_inventory_001_0927.md)
+> - 3 次元対数線形・4 軸・CRR: [`docs/reference/three_way_models.md`](docs/reference/three_way_models.md)
+> - 多項 Dirichlet／ベイズ因子: [`docs/reference/stats_bayesian.md`](docs/reference/stats_bayesian.md)
+> - 2 次元効果量・残差: [`docs/reference/stats_categorical.md`](docs/reference/stats_categorical.md)
+> - 比較エビデンス推論の数理: [`docs/reference/comparative_evidence_math.md`](docs/reference/comparative_evidence_math.md)
+> - デザイン考慮型推論の数理: [`docs/reference/design_aware_inference_math.md`](docs/reference/design_aware_inference_math.md)
+> - スキル責務・比較／デザイン／監査の原則: [`docs/reference/skill_responsibilities.md`](docs/reference/skill_responsibilities.md)
+>
+> Gower／HAC 決定監査の**式レベル正本**は上記ギャップ監査の P1 計画文書として追加予定です。現行の規範挙動は `openspec/specs/`（特に `comparative-evidence-reporting`, `comparative-design-inference`, `evidence-decision-consistency`）を優先します。
 
 ---
 
@@ -92,8 +99,8 @@
 | :--- | :--- | :--- |
 | **3次元集計表の構造・局所セル診断** | `vcd-bayesian-evidence-analysis` | Pass 0（事前相談）$\to$ Pass 1（R 計算）$\to$ Pass 2（AI レビュー）$\to$ Pass 3（HTML） |
 | **2次元分割表の全体効果量・残差分析・11セクション自己完結Dashboard** | `vcd-categorical-analysis` | Pass 0（事前相談）$\to$ Pass 1（R 計算: 新4軸・Jeffreys事後推論）$\to$ Pass 2（AI レビュー）$\to$ Pass 3（完全オフラインHTML） |
-| **比較群間エビデンス・多テーマスクリーニング (2群比較・安全性PT・処方)** | `vcd-categorical-reporting` | Pass 0（事前検分）$\to$ Pass 1（独立 Jeffreys 推論）$\to$ Pass 2（JSON/CSV）$\to$ Pass 3（完全オフラインHTML・多重性免責明記） |
-| **デザイン考慮型比較推論 (マッチドペア/セット・IPTW・人年発症率)** | `comparative-design-analysis` | Pass 0（デザイン検証）$\to$ デザイン特化推論（Dirichlet/IPTW/Gamma-Poisson）$\to$ 標準化 Draw/Evidence 出力 |
+| **比較群間エビデンス・多テーマスクリーニング (2群比較・安全性PT・処方)** | `vcd-categorical-reporting` | Pass 0（事前検分）$\to$ Pass 1（独立 Jeffreys）$\to$ Pass 2（JSON/CSV）$\to$ Pass 3（12 列オフライン HTML・多重性免責）。数理正本: [`docs/reference/comparative_evidence_math.md`](docs/reference/comparative_evidence_math.md) |
+| **デザイン考慮型比較推論 (マッチドペア/セット・IPTW・人年発症率)** | `comparative-design-analysis` | Pass 0（デザイン検証）$\to$ デザイン特化推論（Dirichlet/IPTW/Gamma-Poisson）$\to$ 標準化 Draw/Evidence 出力。数理正本: [`docs/reference/design_aware_inference_math.md`](docs/reference/design_aware_inference_math.md) |
 | **統計エビデンス決定監査・歴史的先例検索** | `evidence-decision-review` | 決定ラベル非含有特徴量抽出 $\to$ Gower 距離・HAC $\to$ QA Review Candidate 助言（自動決定排除） |
 | **SAS PROC FREQ 互換度数集計・独立性検定** | `sas-proc-freq` | **Pass 0 不要**。直接実行（JSON/CSV/MD 出力） |
 | **SAS PROC MEANS 互換記述統計・層別集計** | `sas-proc-means` | **Pass 0 不要**。直接実行（JSON/CSV/MD 出力） |
@@ -121,12 +128,13 @@
    - 大規模な改修や OpenSpec Change の実装を開始する際は、`main` から `feat/<feature-name>` などの専用トピックブランチを切り、作業開始基準点（ベースラインコミット）とする。
 2. **レビュー用中間コミット（`Yip:` コミット）の自律作成**:
    - `openspec-apply-change` 等の実装作業やレビュー指摘の修復区切りにおいて、エージェントは **`Yip: <タスク・変更要約>`** というプレフィックスを用いて作業ブランチ上へ中間コミットを自律的に作成できる。
-   - コミット作成後、独立レビュー役の別 AI に対して、レビュー対象コミット（`Reviewed commit: <Commit ID>`）および差分基準（`Baseline: <Base ID>`）を一意に提示して確定的なブラインドレビューを依頼する。この時、QA用のメタデータをコードブロックで表示して依頼を効率化する
+   - コミット作成後、独立レビュー役の別 AI に対して、レビュー対象コミット（`Reviewed commit: <Commit ID>`）および差分基準（`Baseline: <Base ID>`）を一意に提示して確定的なブラインドレビューを依頼する。この時、QA用のメタデータをコードブロックで表示して依頼を効率化する。
+   - **独立ブラインド QA**: 明示起動の `/blind-qa-cycle checkpoint`（実装前 Baseline）→ 実装 → `/blind-qa-cycle cloud`（Reviewed Yip → `00_invite.md` → invite コミット → **topic-only push** → Cloud へ相対パス手渡し）で依頼する。Re-QA は `/blind-qa-cycle cloud re-qa`。成果物は `docs/Artifacts/qa_cycles/<topic>/c<N>/`。**実装と別のエージェント**が `review` し、cloud では **QA 成果物4ファイルのみ** commit+topic push（不可時は本文返却 → `/blind-qa-cycle ingest`）。手順は [`.agents/skills/blind-qa-cycle/SKILL.md`](.agents/skills/blind-qa-cycle/SKILL.md)、置き場契約は [`docs/Artifacts/README.md`](docs/Artifacts/README.md)。自動起動・Owner 裁定代行・実装修復はしない。
 3. **完了時の `main` への集約（`--squash` マージ & 履歴クリーンアップ）**:
    - 一連の実装・レビューがすべて PASS し、フェーズ完了または Change 完了となった段階で、ユーザーの承認に基づき、`main` ブランチへ `--squash` マージ（または集約コミット）を実施してコミットログを整理する。
    - 過去のレビュー文書（`docs/Artifacts/`）とのトレーサビリティ（監査証跡）を維持するため、集約コミットメッセージ内には取り込んだ `Yip:` コミットのハッシュ一覧を明記する。
 4. **プッシュ・破壊的操作の禁止**:
-   - `git push`（特に force push）、ブランチ削除、リモートへの書き込みは、実装完了や squash 完了とは別の操作として扱い、ユーザーからの明示的な指示がない限り一切実施しない。
+   - `git push`（特に force push）、ブランチ削除、リモートへの書き込みは、実装完了や squash 完了とは別の操作として扱い、ユーザーからの明示的な指示がない限り一切実施しない。例外: ユーザーが明示起動した `/blind-qa-cycle cloud` / `cloud re-qa` / cloud `review`（成果物のみ）/ `ingest` は、スキル契約に従い **現 topic ブランチへの `git push -u origin HEAD` のみ**を実行してよい（`main`/`master` 上では fail-fast 停止。main マージ・force-push・製品コード変更は含めない）。
 
 ## 6. 報告時の証拠区分
 

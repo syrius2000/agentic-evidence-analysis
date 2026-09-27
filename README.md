@@ -94,9 +94,9 @@ graph TD
 | **vcd-pass0-consultation** | 事前相談 | データ検分、次元削減・層別解析の提案、観察デザインの検証・ルーティング（`analysis_config.json` / `routing_decision.json` 作成） |
 | **vcd-bayesian-evidence-analysis** | 3次元正本 | 3次元集計表の 9 階層対数線形モデル、新 4 軸セル診断、明示式 BIC、Dirichlet 事後推論、HTML レポート生成 |
 | **vcd-categorical-analysis** | 2次元正本 | 名義 2 変数の全体効果量（Cramér's V、Bergsma 補正）、調整標準化残差ヒートマップ、新 4 軸セル診断、多項 Jeffreys 事前推論、条件付き事後分布、11 セクション完全オフライン Scientific Dashboard 生成。3次元以上は `vcd-bayesian-evidence-analysis` へ委譲 |
-| **vcd-categorical-reporting** | 比較報告 | 独立 2 群（または対照群 vs 各群）の比較エビデンス（RD/RR/方向支持/実務領域/U-Grade）、ゼロセル確定挙動、完全自己完結型 HTML/Markdown ダッシュボード、安全性（SOC/PT 重複排除）および処方スクリーニング |
-| **comparative-design-analysis** | デザイン推論 | マッチドペア（Dirichlet 厳密期待値）、マッチドセット（固定条件付きクラスタブートストラップ）、IPTW（PS 再適合患者ブートストラップ）、人年発症率（共役 Gamma-Poisson 率推論）のデザイン考慮型比較推論 |
-| **evidence-decision-review** | 決定監査 | 決定ラベルを含まない統計特徴量プロファイル抽出、Gower 距離および階層クラスタリング（HAC）による歴史的先例検索と整合性監査（QA Review Candidate 助言、自動決定の完全排除） |
+| **vcd-categorical-reporting** | 比較報告 | 独立 2 群（または対照群 vs 各群）の比較エビデンス（RD/RR/E100/reciprocal・方向支持/実務領域/U-Grade）、12 列提示階層、ゼロセル確定挙動、完全自己完結型 HTML/Markdown、安全性（SOC/PT 重複排除）および処方スクリーニング。数理正本: [`docs/reference/comparative_evidence_math.md`](docs/reference/comparative_evidence_math.md) |
+| **comparative-design-analysis** | デザイン推論 | マッチドペア（Dirichlet 厳密期待値）、マッチドセット（固定条件付きクラスタブートストラップ）、IPTW（PS 再適合患者ブートストラップ）、人年発症率（共役 Gamma-Poisson 率推論）。数理正本: [`docs/reference/design_aware_inference_math.md`](docs/reference/design_aware_inference_math.md) |
+| **evidence-decision-review** | 決定監査 | 決定ラベル非含有特徴量、Gower・HAC、先例検索（QA Review Candidate、自動決定排除）。数理解説は P1 計画中（[ギャップ監査](docs/reference/math_coverage_gap_inventory_001_0927.md)） |
 | **questionnaire-batch-analysis** | バッチ処理 | アンケート複数設問の設定ファイルに基づく自動一括集計とサマリー量産 |
 | **sas-proc-freq** | SAS 互換集計 | PROC FREQ 互換の度数・分割表、独立性検定、2×2効果量、Fisher 正確検定、Monte Carlo 推定 |
 | **sas-proc-means** | SAS 互換記述統計 | PROC MEANS 互換の記述統計、CLASS 群化、FREQ/WEIGHT、VARDEF、QNTLDEF 1〜5 |
@@ -170,7 +170,15 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard
 
 ## 参考文献・一次情報ポータル
 
-本ツールキットの統計数理手法は、国際的に認知された学術論文および標準教科書（一次情報）に厳密に依拠しています。詳細な数理導出と文献一覧は [docs/reference/README.md](docs/reference/README.md) をご覧ください。
+本ツールキットの統計数理手法は、国際的に認知された学術論文および標準教科書（一次情報）に厳密に依拠しています。
+
+- **ポータル（読解順・OpenSpec 17 対応・スキル別リンク）**: [docs/reference/README.md](docs/reference/README.md)
+- **カバレッジ監査（不足と記載すべき情報）**: [docs/reference/math_coverage_gap_inventory_001_0927.md](docs/reference/math_coverage_gap_inventory_001_0927.md)
+
+> [!NOTE]
+> 3 次元／2 次元探索、比較エビデンス（独立 Jeffreys / U-Grade / 12列提示: [`comparative_evidence_math.md`](docs/reference/comparative_evidence_math.md)）、デザイン考慮推論（マッチドペア / セット / IPTW / 人年発症率: [`design_aware_inference_math.md`](docs/reference/design_aware_inference_math.md)）は**専用数理正本を充足**しています。Gower／HAC 決定監査の数理文書は上記ギャップ監査の P1 計画文書として策定予定です。現行の規範挙動は `openspec/specs/` と [skill_responsibilities.md](docs/reference/skill_responsibilities.md) を参照してください。
+
+代表的一次文献（詳細一覧はポータル §5）:
 
 - **局所スコア検定理論**: Rao, C. R. (1948). *Proc. Camb. Phil. Soc.* [DOI:10.1017/S0305004100024038](https://doi.org/10.1017/S0305004100024038)
 - **GLM 診断とレバレッジ**: Pregibon, D. (1981). *Ann. Statist.* [DOI:10.1214/aos/1176345513](https://doi.org/10.1214/aos/1176345513)

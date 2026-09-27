@@ -194,7 +194,9 @@ if (c1 && c2 && c3 && c4) {
   test_fail <- test_fail + 1L
 }
 
-writeLines(html_verified_content, "/tmp/dbg_dash.html")
+dbg_dash <- tempfile(fileext = ".html")
+writeLines(html_verified_content, dbg_dash)
+unlink(dbg_dash)
 # 8. Section 7 (Conditional Posterior) の表示検証
 p1 <- grepl("条件付き事後推論 (Conditional Posterior Distributions)", html_verified_content, fixed = TRUE)
 p2 <- grepl("中央値や分位点の総和は一般には\\s*1\\s*に制約されません", html_verified_content)
@@ -543,7 +545,9 @@ render_large_res <- tryCatch({
 
 if (render_large_res && file.exists(large_html)) {
   large_content <- paste(readLines(large_html, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  writeLines(large_content, "/tmp/dbg_large.html")
+  dbg_large <- tempfile(fileext = ".html")
+  writeLines(large_content, dbg_large)
+  unlink(dbg_large)
   # Top-25表示、非表示セル数「非表示: 80 セル」、全件表への導線確認
   has_top25 <- grepl("上位 25 セル / 全 105 セル", large_content, fixed = TRUE)
   has_hidden <- grepl("非表示:\\s*80\\s*セル", large_content)

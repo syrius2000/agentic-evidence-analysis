@@ -1,10 +1,13 @@
 # 統計数理リファレンス・ポータル
 
 created: 2026-09-06 23:52 (JST)
-update: 2026-09-12 21:54 (JST)
-author: Codex (GPT-5) / Antigravity
+update: 2026-09-27 17:46 (JST)
+author: Codex (GPT-5) / Antigravity / Cursor (Composer) / Codex (GPT-6)
 
-このディレクトリは、本リポジトリの分析スキルが計算・出力する統計指標の数学的定義、背後にある理論、適用条件、および一次文献（学術論文・標準教科書）を網羅した**統計数理的正本リファレンス**です。
+このディレクトリは、本リポジトリの分析スキルが計算・出力する統計指標の数学的定義、背後にある理論、適用条件、および一次文献（学術論文・標準教科書）を扱う**統計数理的正本リファレンス**です。
+
+> [!IMPORTANT]
+> **カバレッジ現状（2026-09-27）:** 3 次元／2 次元カテゴリカル探索、および比較エビデンス（独立 Jeffreys / U-Grade / 12列階層）、デザイン考慮推論（マッチドペア / セット / IPTW / 人年発症率）の数理正本（P0）は**充足**。決定監査（Gower / HAC）および SAS 互換の専用数理解説が計画中。不足と記載すべき情報の正本は [数理カバレッジ監査](math_coverage_gap_inventory_001_0927.md) を参照。
 
 ---
 
@@ -24,15 +27,33 @@ author: Codex (GPT-5) / Antigravity
 
 ## 2. ドキュメント構成と読解順序
 
-| 順序 | リファレンス文書 | 主な解説内容・カバーする数理 |
+| 順序 | リファレンス文書 | 主な解説内容・カバーする数理 | 充足 |
+| :--- | :--- | :--- | :---: |
+| **1** | [カテゴリカル分析の基礎](stats_categorical.md) | 分割表の基礎（行数・セル数・総度数 $N$ の区別）、ピアソン残差と標準化残差、全体効果量 Cramér's V（Cohen 1988 基準と Bergsma 2013 バイアス補正）、旧スコア破綻の数理、ASA 2016 P値声明 | ✓ |
+| **2** | [3次元カテゴリカル探索の数理](three_way_models.md) | 9 階層対数線形モデル（M1〜M9）、閉形式最尤推定量と反復比例適合（IPF）、ゼロセル分類と最尤推定量存在条件（Fienberg 1970）、ポアソン完全対数尤度と明示式 BIC、新 4 軸セル診断（Effect/Evidence/Influence/Stability）、マルチベースライン診断構造、大標本 Dual-Filter 原則、標本サイズ $c$ 倍拡張（100倍実験）の漸近挙動体系、局所逸脱度改善量 $\Delta G_i^2/N$、条件付きセル順位再現性（CRR）の多項再標本化と反復再推定 | ✓ |
+| **3** | [ベイズ推定とモデル比較の基礎](stats_bayesian.md) | ベイズ因子（周辺尤度比）の定義、Schwarz BIC 近似の成立条件、多項 Dirichlet 事後推論、部分集合指定による一般化条件付き割合と層間差の同時事後推論、均一連関オッズ比不変性、シンプソンのパラドックス解消機構、独立対飽和の解析的厳密ベイズ因子、Freeman-Tukey 事後予測チェック。※独立群 Beta-Binomial／Gamma-Poisson との対照節は未追記 | △ |
+| **4** | [比較エビデンス推論の統計数理](comparative_evidence_math.md) | 独立 Jeffreys Beta-Binomial モデル、共役事後分布と事前感度、6大対比（RD/RR/E100/reciprocal RD/方向支持/ETI）、reciprocal 決定論的状態機械、参照群ゼロ発生時（$x_R=0$）の無限大期待値契約（`mean=null`）、実務領域と U-Grade（U0〜U3）、12 列提示階層、探索的多重性免責、安全性重複排除規約 | ✓ |
+| **5** | [デザイン考慮型比較推論の統計数理](design_aware_inference_math.md) | 1:1 マッチドペア（4セル多項 Jeffreys Dirichlet、McNemar オッズ比、解析的厳密期待値）、1:k マッチドセット（ATT エスティマンド、固定条件付き原子クラスタブートストラップ、SMD）、IPTW（PS モデル再適合患者ブートストラップ、Kish ESS、Positivity 診断、非整数度数拒絶原則）、人年発症率（共役 Gamma-Poisson モデル、IRD/IRR） | ✓ |
+| **6** | [探索的分析設計と実務ワークフロー](advanced_analysis.md) | 4-Pass 推奨思考プロセス、大標本 Dual-Filter スクリーニング手順、アソシエーションルール（ARM）や疎な表との境界 | ✓ |
+| **7** | [分析スキルの責務境界](skill_responsibilities.md) | 全 9 スキルの役割分担とインターフェース契約、比較・デザイン・決定監査の原則、CRRの解釈境界 | ✓ |
+| **運用** | [独立QAスキル簡便マニュアル](blind_qa_cycle_manual_001_0927.md) | `checkpoint` → 実装 → `cloud`（Reviewed/invite コミット・topic push・パス手渡し）、`cloud re-qa`、所定の4成果物 | ✓ |
+| **監査** | [数理カバレッジ監査と記載すべき情報](math_coverage_gap_inventory_001_0927.md) | スキル×トピック充足表、未整備文書アウトライン（決定監査／SAS）、OpenSpec 17 対応、受入チェックリスト | 監査正本 |
+| **補助** | [DB由来集計表の分析入力契約](DB_Best_Practices.md) | DB由来集計表のデータ型・文字コード・時刻意味論、総度数 $N$ 完全一致検証、サンプリングゼロの保持。DB/SQL 実装の正本は対象外。 | ✓ |
+| **運用** | [エージェント出力スタイル（ADHD配慮）](output_style_adhd.md) | 認知負荷を抑え、アクションに直結させるための出力・コミュニケーションスタイル規約 | ✓ |
+| **履歴** | [OpenSpec supersession map](spec_supersession_map.md) | archive Change と現行 Spec の対応（規範再利用禁止） | ✓ |
+
+### 2.1 スキル → 数理ドキュメント（現行）
+
+| スキル | 読むべき現行文書 | 不足（計画） |
 | :--- | :--- | :--- |
-| **1** | [カテゴリカル分析の基礎](stats_categorical.md) | 分割表の基礎（行数・セル数・総度数 $N$ の区別）、ピアソン残差と標準化残差、全体効果量 Cramér's V（Cohen 1988 基準と Bergsma 2013 バイアス補正）、旧スコア破綻の数理、ASA 2016 P値声明 |
-| **2** | [3次元カテゴリカル探索の数理](three_way_models.md) | 9 階層対数線形モデル（M1〜M9）、閉形式最尤推定量と反復比例適合（IPF）、ゼロセル分類と最尤推定量存在条件（Fienberg 1970）、ポアソン完全対数尤度と明示式 BIC、新 4 軸セル診断（Effect/Evidence/Influence/Stability）、マルチベースライン診断構造、大標本 Dual-Filter 原則、標本サイズ $c$ 倍拡張（100倍実験）の漸近挙動体系、局所逸脱度改善量 $\Delta G_i^2/N$、条件付きセル順位再現性（CRR）の多項再標本化と反復再推定 |
-| **3** | [ベイズ推定とモデル比較の基礎](stats_bayesian.md) | ベイズ因子（周辺尤度比）の定義、Schwarz BIC 近似の成立条件、多項 Dirichlet 事後推論、部分集合指定による一般化条件付き割合と層間差の同時事後推論、均一連関オッズ比不変性、シンプソンのパラドックス解消機構、独立対飽和の解析的厳密ベイズ因子、Freeman-Tukey 事後予測チェック |
-| **4** | [探索的分析設計と実務ワークフロー](advanced_analysis.md) | 4-Pass 推奨思考プロセス、大標本 Dual-Filter スクリーニング手順、アソシエーションルール（ARM）や疎な表との境界 |
-| **5** | [分析スキルの責務境界](skill_responsibilities.md) | 各スキル（Pass 0, vcd-bayesian 3次元正本, vcd-categorical 2次元, バッチ）の役割分担とインターフェース契約、CRRの解釈境界 |
-| **補助** | [DB由来集計表の分析入力契約](DB_Best_Practices.md) | DB由来集計表のデータ型・文字コード・時刻意味論、総度数 $N$ 完全一致検証、サンプリングゼロの保持。DB/SQL 実装の正本は対象外。 |
-| **運用** | [エージェント出力スタイル（ADHD配慮）](output_style_adhd.md) | 認知負荷を抑え、アクションに直結させるための出力・コミュニケーションスタイル規約 |
+| `vcd-pass0-consultation` | [責務境界](skill_responsibilities.md) | — |
+| `vcd-bayesian-evidence-analysis` | [3次元数理](three_way_models.md)、[ベイズ](stats_bayesian.md) | — |
+| `vcd-categorical-analysis` | [カテゴリカル基礎](stats_categorical.md)、[ベイズ](stats_bayesian.md) | — |
+| `vcd-categorical-reporting` | [比較エビデンス数理](comparative_evidence_math.md)、[責務境界](skill_responsibilities.md) §3 | — (P0 充足) |
+| `comparative-design-analysis` | [デザイン考慮推論数理](design_aware_inference_math.md)、[責務境界](skill_responsibilities.md) §3 | — (P0 充足) |
+| `evidence-decision-review` | [責務境界](skill_responsibilities.md) §3、[監査](math_coverage_gap_inventory_001_0927.md) §4.3 | `evidence_decision_audit_math.md`（P1） |
+| `questionnaire-batch-analysis` | [責務境界](skill_responsibilities.md)（下流スキルの数理に委譲） | — |
+| `sas-proc-freq` / `sas-proc-means` | 各 `SKILL.md`、[監査](math_coverage_gap_inventory_001_0927.md) §4.4 | `sas_compatible_summaries.md`（P2） |
 
 ---
 
@@ -45,17 +66,33 @@ author: Codex (GPT-5) / Antigravity
 
 ## 4. OpenSpec 仕様群（`openspec/specs/`）と数理リファレンスの対応マッピング
 
-本リポジトリの分析スキルが準拠する正本仕様（`openspec/specs/` 配下の 7 仕様）と、本数理リファレンスの各セクションとの対応関係は以下の通りです：
+本リポジトリの分析スキルが準拠する正本仕様は `openspec/specs/` 配下の **17 capability** である。規範挙動は各 `spec.md`、数理解説は下表のリファレンス（またはギャップ監査の計画文書）を参照する。
+
+### 4.1 充足済み（3 次元・2 次元探索系）
 
 | OpenSpec 仕様 (`openspec/specs/`) | 依拠する主な数理リファレンス | カバーされる数理的基礎・定理 |
 | :--- | :--- | :--- |
 | **[`cell-evidence-interpretation`](../../openspec/specs/cell-evidence-interpretation/spec.md)** | [3次元探索の数理](three_way_models.md) §4, §5<br>[ベイズ推定の基礎](stats_bayesian.md) §3 | ・Effect / Evidence / Influence / Stability の新 4 軸分離<br>・旧スコア監査列化と真の信号判定の分離<br>・多項 Dirichlet 事後信用区間と事前感度分析<br>・探索的セル候補と確証検定（多重比較）の非同値性 |
-| **[`conditional-rank-reproducibility`](../../openspec/specs/conditional-rank-reproducibility/spec.md)** | [3次元探索の数理](three_way_models.md) §7 | ・反復モデル再適合（M1/M5 閉形式 MLE）による固定期待度数の誤謬解消<br>・元データ `REGULAR` 適格セル母集合への条件付けと 0.5 連続性補正<br>・因子水準直積順 `canonical_cell_index` による決定論的タイブレーク<br>・Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$ とモンテカルロ標準誤差（MCSE）の定式化<br>・運用品質ゲート（有効反復率 $\ge 0.95$）による解釈保留（HOLD）契約<br>・未指定時における既存出力の完全な 1 ビット・SHA-256 不変性 |
-| **[`conditional-rate-view`](../../openspec/specs/conditional-rate-view/spec.md)** | [ベイズ推定の基礎](stats_bayesian.md) §3.3, §3.4, §3.5 | ・部分集合分子・分母による一般化条件付き割合 $\theta_{A \mid B, g}$<br>・全セル同時 Dirichlet 事後標本による層間差 $\Delta \theta$ の推論<br>・分母ゼロ時の不確実性発散と部分 HOLD の数理条件<br>・均一連関オッズ比不変性とシンプソンのパラドックス解消 |
-| **[`multi-baseline-cell-diagnostics`](../../openspec/specs/multi-baseline-cell-diagnostics/spec.md)** | [3次元探索の数理](three_way_models.md) §4.4, §4.5 | ・M1 相互独立基準（大局的連関）と M_best 選択モデル基準（残余乖離）の分離<br>・基準モデル依存の期待値・残差・Leverage の数学的直交性<br>・基準モデル間のセル件数合算・率平均化の数理的禁止<br>・Stability 3 条件（観測ゼロ、疎セル、過大レバレッジ）の論理和判定 |
-| **[`three-way-model-assessment`](../../openspec/specs/three-way-model-assessment/spec.md)** | [3次元探索の数理](three_way_models.md) §2, §2.1, §2.2, §3 | ・9 階層対数線形モデル（M1〜M9）の配位と自由度<br>・M1〜M7 の閉形式最尤推定量公式と M8 の反復比例適合（IPF）<br>・サンプリングゼロと構造ゼロの区分、最尤推定量存在条件（Fienberg 1970）<br>・総度数 $N$ 基準のポアソン明示式 BIC（$-2\ln L + p\ln N$） |
-| **[`three-way-validation-cases`](../../openspec/specs/three-way-validation-cases/spec.md)** | [3次元探索の数理](three_way_models.md) §2.1, §5.2<br>[カテゴリカル基礎](stats_categorical.md) §4 | ・標本サイズ $c$ 倍拡張（100倍実験）における統計量の漸近次数体系（$O(1)$ vs $O(N)$ vs $O(1/\sqrt{N})$）<br>・GLM と閉形式解・IPF の独立参照値二重照合<br>・人工既知構造表・異常系シナリオの挙動固定 |
-| **[`three-way-dashboard-reporting`](../../openspec/specs/three-way-dashboard-reporting/spec.md)** | [3次元探索の数理](three_way_models.md) §2, §3<br>[実務ワークフロー](advanced_analysis.md) §1<br>[責務境界](skill_responsibilities.md) §3 | ・BIC 最小モデルの「相対的評価」原則（真のモデルの証明ではない限界明示）<br>・完全オフライン契約（外部 CDN / Ajax / フォント取得ゼロ）<br>・Pass 2.5 主張ゲート（JSON Pointer / 数値 / SHA-256）の照合保証 |
+| **[`conditional-rank-reproducibility`](../../openspec/specs/conditional-rank-reproducibility/spec.md)** | [3次元探索の数理](three_way_models.md) §7 | ・反復モデル再適合（M1/M5 閉形式 MLE）による固定期待度数の誤謬解消<br>・元データ `REGULAR` 適格セル母集合への条件付けと 0.5 連続性補正<br>・因子水準直積順 `canonical_cell_index` による決定論的タイブレーク<br>・Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$ と MCSE<br>・運用品質ゲート（有効反復率 $\ge 0.95$）による HOLD 契約 |
+| **[`conditional-rate-view`](../../openspec/specs/conditional-rate-view/spec.md)** | [ベイズ推定の基礎](stats_bayesian.md) §3.3, §3.4, §3.5 | ・一般化条件付き割合 $\theta_{A \mid B, g}$、層間差 $\Delta \theta$、分母ゼロ HOLD、均一連関 OR 不変性 |
+| **[`multi-baseline-cell-diagnostics`](../../openspec/specs/multi-baseline-cell-diagnostics/spec.md)** | [3次元探索の数理](three_way_models.md) §4.4, §4.5 | ・M1 と M_best の基準分離、Leverage／Stability 論理和 |
+| **[`three-way-model-assessment`](../../openspec/specs/three-way-model-assessment/spec.md)** | [3次元探索の数理](three_way_models.md) §2–3 | ・M1〜M9、閉形式 MLE／IPF、明示式 BIC、Fienberg 存在条件 |
+| **[`three-way-validation-cases`](../../openspec/specs/three-way-validation-cases/spec.md)** | [3次元探索の数理](three_way_models.md) §2.1, §5.2<br>[カテゴリカル基礎](stats_categorical.md) §4 | ・$c$ 倍拡張の漸近次数、二重照合、異常系固定 |
+| **[`three-way-dashboard-reporting`](../../openspec/specs/three-way-dashboard-reporting/spec.md)** | [実務ワークフロー](advanced_analysis.md) §1<br>[責務境界](skill_responsibilities.md) | ・BIC 相対評価、Zero-External、Pass 2.5 主張ゲート |
+| **[`two-way-evidence-analysis`](../../openspec/specs/two-way-evidence-analysis/spec.md)** | [カテゴリカル基礎](stats_categorical.md)<br>[ベイズ推定の基礎](stats_bayesian.md) | ・Cramér's V／Bergsma、Haberman 残差、2D Dual-Filter、多項 Jeffreys |
+| **[`comparative-evidence-reporting`](../../openspec/specs/comparative-evidence-reporting/spec.md)** | [比較エビデンス数理](comparative_evidence_math.md) | ・独立 Jeffreys Beta-Binomial、RD/RR/E100/reciprocal、U-Grade、12 列提示階層、ゼロ参照確定契約 |
+| **[`comparative-design-inference`](../../openspec/specs/comparative-design-inference/spec.md)** | [デザイン考慮推論数理](design_aware_inference_math.md) | ・1:1 マッチドペア Dirichlet、1:k マッチドセット固定条件付きクラスタブートストラップ、IPTW、Gamma-Poisson 人年 |
+
+### 4.2 数理文書計画中（監査・SAS・横断運用）
+
+| OpenSpec 仕様 | 現行の依拠先 | 計画文書（[監査](math_coverage_gap_inventory_001_0927.md)） |
+| :--- | :--- | :--- |
+| **[`evidence-decision-consistency`](../../openspec/specs/evidence-decision-consistency/spec.md)** | [責務境界](skill_responsibilities.md) §3（原則のみ） | P1 `evidence_decision_audit_math.md`（Gower／HAC／先例） |
+| **[`sas-proc-freq`](../../openspec/specs/sas-proc-freq/spec.md)** / **[`sas-proc-means`](../../openspec/specs/sas-proc-means/spec.md)** | 各 `SKILL.md` | P2 `sas_compatible_summaries.md`（互換境界・未定義契約） |
+| **[`pass0-analysis-routing`](../../openspec/specs/pass0-analysis-routing/spec.md)** | [責務境界](skill_responsibilities.md) | 原則充足（判定木中心） |
+| **[`shared-dashboard-presentation`](../../openspec/specs/shared-dashboard-presentation/spec.md)** | AGENTS 鉄則 6 | 数式不要（オフライン・テーマ契約） |
+| **[`evidence-run-layout`](../../openspec/specs/evidence-run-layout/spec.md)** | AGENTS 鉄則 3 | 数式不要 |
+| **[`deterministic-r-dependencies`](../../openspec/specs/deterministic-r-dependencies/spec.md)** | AGENTS 鉄則 1 | 数式不要 |
 
 ---
 

@@ -1,10 +1,10 @@
 # 分析スキルの責務境界とアーキテクチャ
 
 created: 2026-09-07 00:08 (JST)
-update: 2026-09-21 00:35 (JST)
-author: Codex (GPT-5)
+update: 2026-09-27 02:56 (JST)
+author: Codex (GPT-5) / Cursor (Composer)
 
-この文書は、本リポジトリで提供される各種分析スキルの役割分担と適用範囲を説明する派生リファレンスです。規範的挙動は`openspec/specs/`を正本とし、archiveは履歴として扱います。
+この文書は、本リポジトリで提供される各種分析スキルの役割分担と適用範囲を説明する派生リファレンスです。規範的挙動は`openspec/specs/`を正本とし、archiveは履歴として扱います。数理解説の充足状況と不足アウトラインは [`math_coverage_gap_inventory_001_0927.md`](math_coverage_gap_inventory_001_0927.md) を参照してください。
 
 ---
 
@@ -58,6 +58,10 @@ author: Codex (GPT-5)
    - リサンプリングモデル（IPTW、マッチドセット）は `inferential_semantics = "bootstrap"`、`interval.method = "bootstrap_percentile"` とし、`bootstrap_support_fraction` として表現する。
 4. **自動規制決定の絶対排除**:
    - `evidence-decision-review` は決定ラベルを用いない客観的特徴量から歴史的先例との類似度を計算し、乖離を "QA Review Candidate" として提示する探索的ツールであり、規制判断（承認/不承認/警告）を自動化してはならない。
+5. **提示階層（presentation-only、概念分離の一部）**:
+   - 比較ダッシュボード要約表は 12 列（RD → E100 → NNT/NNH-like → … → U-Grade → …）。E100 と reciprocal RD は結合列にしない。Safety の方向マッピングは `target_excess → NNH-like` / `reference_excess → NNT-like`、非 Safety は `1/|RD|` 表記。詳細式・状態機械は [`comparative_evidence_math.md`](comparative_evidence_math.md) および `openspec/specs/comparative-evidence-reporting` を正本とする。
+6. **数理正本体系（充足状況）**:
+   - 独立 Jeffreys・U-Grade・12列提示階層の数理は [`comparative_evidence_math.md`](comparative_evidence_math.md)（P0 充足）、デザイン 4 系統の推論数理は [`design_aware_inference_math.md`](design_aware_inference_math.md)（P0 充足）に集約済み。Gower／HAC の監査数理は [`math_coverage_gap_inventory_001_0927.md`](math_coverage_gap_inventory_001_0927.md) の P1 計画文書として追加予定。
 
 ---
 

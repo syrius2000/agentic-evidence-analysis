@@ -52,6 +52,16 @@ assert_error_code(
   "NON_INTEGER_COUNT",
   "Rejects non-integer count"
 )
+assert_error_code(
+  run_independent_beta_binomial(5 + 1e-9, 100, 5, 100),
+  "NON_INTEGER_COUNT",
+  "Rejects integer + tiny epsilon (5 + 1e-9)"
+)
+assert_error_code(
+  run_independent_beta_binomial(5, 100 - 1e-9, 5, 100),
+  "NON_INTEGER_COUNT",
+  "Rejects integer - tiny epsilon (100 - 1e-9)"
+)
 
 cat("\n=== 2. Test Deterministic Reproducibility with Seed ===\n")
 run1 <- run_independent_beta_binomial(15, 100, 5, 100, seed = 12345L, primary_delta = 0.05)

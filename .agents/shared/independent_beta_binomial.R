@@ -36,16 +36,16 @@ run_independent_beta_binomial <- function(
     stop("[ERROR] [INVALID_INPUT] Event and total counts must be numeric integers.")
   }
 
-  is_int <- function(x) abs(x - round(x)) < 1e-8
+  is_int <- function(x) is.numeric(x) && length(x) == 1L && is.finite(x) && x == floor(x)
   if (!is_int(target_events) || !is_int(target_total) ||
       !is_int(reference_events) || !is_int(reference_total)) {
     stop("[ERROR] [NON_INTEGER_COUNT] Event and total counts must be exact non-negative integers.")
   }
 
-  x_T <- as.integer(round(target_events))
-  n_T <- as.integer(round(target_total))
-  x_R <- as.integer(round(reference_events))
-  n_R <- as.integer(round(reference_total))
+  x_T <- as.integer(target_events)
+  n_T <- as.integer(target_total)
+  x_R <- as.integer(reference_events)
+  n_R <- as.integer(reference_total)
 
   if (x_T < 0L || x_R < 0L) {
     stop("[ERROR] [NEGATIVE_COUNT] Event counts must be non-negative.")

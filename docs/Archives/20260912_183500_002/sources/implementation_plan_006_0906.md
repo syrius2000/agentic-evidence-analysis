@@ -8,7 +8,7 @@ author: Codex (GPT-6)
 
 ユーザーの「実装してください。お願いします。」を、本リポジトリにおける検証修正から既存スキル・日本語考察・HTMLまでの実装指示として受領した。開始時は main、origin/main より1コミット先行、作業ツリーはクリーン。コミット・push・archiveは範囲外。
 
-[前計画](implementation_plan_005_0906.md)と[OpenSpec](../../openspec/changes/validate-three-way-statistical-foundations/design.md)を継承する。参照する他AIの成果は[改定案](/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/docs/Artifacts/statistical_foundation_refinement_plan_001_0906.md)、[検証試作](/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/tests/statistical_foundations/)、[セル診断コメント](/Users/myamaguchi/Downloads/HairEyeColor_local_cell_diagnostics_redesign.md)。他worktreeは変更しない。
+[前計画](implementation_plan_005_0906.md)と[OpenSpec](../../openspec/changes/validate-three-way-statistical-foundations/design.md)を継承する。参照する他AIの成果は改定案（`statistical_foundation_refinement_plan_001_0906.md`）、検証試作（`tests/statistical_foundations/`）、セル診断コメント（`HairEyeColor_local_cell_diagnostics_redesign.md`）。他worktreeは変更しない。
 
 ## 今回の実装と順序
 

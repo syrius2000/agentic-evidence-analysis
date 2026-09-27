@@ -21,7 +21,7 @@ author: Codex (GPT-6 / GPT-5)
 
 AG版の凡例・結論表示・モデル比較と、M版のセル集計・監査表示の良さを3次元ダッシュボードへ取り入れ、評価指標の定義と説明を整合させる。確認用データには [`examples/ucb_admissions.csv`](../../examples/ucb_admissions.csv) を使用する。
 
-- UI要素のAG版参照元：[OTC_Q05参照HTML](/Users/myamaguchi/Programing/00TotalRWD/agentic-evidence-analysis-antigravity/output/OTC_Q05/10_bayesian/run_otc_q05_brand_sy/dashboard.html)
+- UI要素のAG版参照元：OTC_Q05参照HTML（`output/OTC_Q05/10_bayesian/run_otc_q05_brand_sy/dashboard.html`）
 - UI要素のM版参照元：[OTC_Q05参照HTML](../../output/OTC_Q05/10_bayesian/run_otc_q05_brand_sy/dashboard.html)
 - 3次元確認用データ：[`examples/ucb_admissions.csv`](../../examples/ucb_admissions.csv)
 

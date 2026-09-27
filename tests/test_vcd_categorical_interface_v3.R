@@ -258,8 +258,12 @@ if (schema_type_ok && grepl('"warnings":\\s*\\[', raw_json) && grepl('"quarantin
 
 # 13b. Python jsonschema による schemas/categorical_results_v3.json の厳格検証 (WARNING 3 対応)
 schema_path <- normalizePath(".agents/skills/vcd-categorical-analysis/schemas/categorical_results_v3.json", mustWork = TRUE)
-py_candidates <- c("/Users/myamaguchi/.local/venvs/ide/bin/python3", Sys.which("python3"))
-py_exec <- NULL
+py_candidates <- c(
+  Sys.getenv("PYTHON_BIN"),
+  file.path(Sys.getenv("HOME"), ".local/venvs/ide/bin/python3"),
+  Sys.which("python3")
+)
+py_candidates <- py_candidates[nzchar(py_candidates)]
 for (p in py_candidates) {
   if (nzchar(p) && file.exists(p)) {
     test_run <- suppressWarnings(system2(p, args = c("-c", "\"import jsonschema\""), stdout = FALSE, stderr = FALSE))
