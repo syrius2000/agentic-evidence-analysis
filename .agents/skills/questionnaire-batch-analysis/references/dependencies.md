@@ -34,4 +34,4 @@ install.packages(c(
 ), repos = "https://cloud.r-project.org")
 ```
 
-全体の一括導入についてはリポジトリルートの [README.md](../../../README.md) を参照してください。
+全体の一括導入についてはリポジトリルートの [README.md](../../../../README.md) を参照してください。
