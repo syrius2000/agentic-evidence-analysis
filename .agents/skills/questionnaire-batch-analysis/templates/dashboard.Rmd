@@ -2,8 +2,10 @@
 title: "アンケートバッチ分析ダッシュボード"
 output:
   html_document:
-    theme: flatly
-    mathjax: "default"
+    theme: null
+    highlight: null
+    self_contained: true
+    mathjax: null
 params:
   output_dir: "./evidence_runs/questionnaire"
 ---
@@ -24,6 +26,8 @@ find_agent_repo <- function() {
 }
 repo_root <- find_agent_repo()
 source(file.path(repo_root, ".agents", "shared", "dependency_check.R"))
+source(file.path(repo_root, ".agents", "shared", "dashboard_theme_tokens.R"), local = TRUE)
+shared_theme_css <- load_shared_dashboard_theme_css(repo_root)
 
 check_r_dependencies(
   c("ggplot2", "knitr", "jsonlite"),
@@ -50,10 +54,14 @@ detect_jp_font <- function() {
   if (requireNamespace("systemfonts", quietly = TRUE)) {
     avail <- unique(systemfonts::system_fonts()$family)
     for (f in candidates) {
-      if (f %in% avail) return(f)
+      if (f %in% avail) {
+        return(f)
+      }
     }
   }
-  if (length(candidates) > 0L) return(candidates[1L])
+  if (length(candidates) > 0L) {
+    return(candidates[1L])
+  }
   ""
 }
 jp_font <- detect_jp_font()
@@ -107,16 +115,14 @@ if (file.exists(summ_path)) {
 }
 ```
 
-```{css, echo=FALSE}
-body {
-  font-family: "Helvetica Neue", "Yu Gothic", "Meiryo", sans-serif;
-  font-size: 14px;
-  color: #333;
-  background: #f0f2f5;
-  margin: 0;
-  padding: 20px;
-}
+```{r embed-shared-theme, results='asis'}
+cat("<style>\n")
+cat(shared_theme_css)
+cat("\n</style>\n")
+```
 
+```{css, echo=FALSE}
+/* Questionnaire layout only — page chrome from shared dashboard_theme.css */
 .dashboard-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -125,26 +131,13 @@ body {
   gap: 24px;
 }
 
-.header-banner {
-  background: linear-gradient(135deg, #1a3a5c 0%, #2d6a9f 100%);
-  color: white;
-  padding: 24px 32px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.header-banner h2 {
-  margin: 0 0 12px 0;
-  font-size: 24px;
-  font-weight: bold;
-}
-
+/* Layout only — do not override shared .header-banner chrome (bg/heading color). */
 .header-banner .meta-info {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
   font-size: 14px;
-  opacity: 0.9;
+  color: #f1f5f9;
 }
 
 .stats-grid {
@@ -154,52 +147,53 @@ body {
 }
 
 .stat-card {
-  background: #fff;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
+  background: #f6f8fb;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  border-left: 4px solid #1f4d7a;
   padding: 16px;
   text-align: center;
   flex: 1 1 180px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  box-shadow: none;
 }
 
 .stat-card .value {
   font-size: 24px;
   font-weight: bold;
-  color: #1a3a5c;
+  color: #152238;
 }
 
 .stat-card .label {
   font-size: 12px;
-  color: #666;
+  color: #64748b;
   margin-top: 6px;
 }
 
 .section-title {
   font-size: 18px;
   font-weight: bold;
-  color: #1a3a5c;
-  border-left: 5px solid #2d6a9f;
+  color: #152238;
+  border-left: 4px solid #1f4d7a;
   padding-left: 12px;
   margin: 8px 0 16px 0;
 }
 
 .ai-summary-box {
-  background: #fff;
-  border: 1px solid #d0dce8;
-  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
   padding: 24px 32px;
   line-height: 1.8;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: none;
 }
 
-.ai-summary-box h3, .ai-summary-box h4 { color: #1a3a5c; margin-top: 24px; }
+.ai-summary-box h3, .ai-summary-box h4 { color: #152238; margin-top: 24px; }
 
 .img-container {
-  background: #fff;
+  background: #ffffff;
   padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
   text-align: center;
 }
 ```
@@ -208,21 +202,23 @@ body {
 
 ```{r header-banner, results='asis'}
 run_line <- if (!is.null(run_meta) && !is.null(run_meta$run_id)) {
-  paste0('<span><b>run_id:</b> ', run_meta$run_id, '</span>',
-    '<span><b>run_output_dir:</b> ', run_meta$run_output_dir %||% run_dir, '</span>')
+  paste0(
+    "<span><b>run_id:</b> ", run_meta$run_id, "</span>",
+    "<span><b>run_output_dir:</b> ", run_meta$run_output_dir %||% run_dir, "</span>"
+  )
 } else {
-  paste0('<span><b>run_output_dir:</b> ', run_dir, '</span>')
+  paste0("<span><b>run_output_dir:</b> ", run_dir, "</span>")
 }
 cat(paste0(
   '<div class="header-banner">',
-  '<h2>\U1F4CA アンケートバッチ分析ダッシュボード</h2>',
+  "<h2>\U1F4CA アンケートバッチ分析ダッシュボード</h2>",
   '<div class="meta-info">',
-  '<span>\U1F4C1 <b>調査ID:</b> ', dataset_nm, '</span>',
-  '<span>\U1F4CA <b>設問:</b> ', q_label, '</span>',
-  '<span>🔢 <b>有効回答数:</b> N = ', format(n_total, big.mark = ","), '</span>',
-  '<span>\u23f1 <b>作成:</b> ', format(Sys.time(), "%Y-%m-%d %H:%M", tz="Asia/Tokyo"), '</span>',
+  "<span>\U1F4C1 <b>調査ID:</b> ", dataset_nm, "</span>",
+  "<span>\U1F4CA <b>設問:</b> ", q_label, "</span>",
+  "<span>🔢 <b>有効回答数:</b> N = ", format(n_total, big.mark = ","), "</span>",
+  "<span>\u23f1 <b>作成:</b> ", format(Sys.time(), "%Y-%m-%d %H:%M", tz = "Asia/Tokyo"), "</span>",
   run_line,
-  '</div></div>'
+  "</div></div>"
 ))
 ```
 
@@ -246,7 +242,7 @@ cat(paste0(
   '<div class="label">\u6700\u5927\u6b8b\u5dee\uff08\u7d76\u5bfe\u5024\uff09</div></div>',
   '<div class="stat-card"><div class="value">', p_display, "</div>",
   '<div class="label">P\u5024</div></div>',
-  '<div class="stat-card" style="border-color: #8e44ad;"><div class="value" style="color: #8e44ad;">', cv_display, "</div>",
+  '<div class="stat-card" style="border-color: #6D28D9;"><div class="value" style="color: #6D28D9;">', cv_display, "</div>",
   '<div class="label">Cram&eacute;r\'s V\uff08\u52b9\u679c\u91cf\uff09</div></div>',
   "</div>"
 ))
@@ -267,7 +263,7 @@ cat("\n</div>\n")
 </div>
 
 <details class="glossary-box" style="background:#fff; padding:15px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.05); font-size:12px; margin-top:24px;">
-<summary style="font-weight:bold; color:#1a3a5c; cursor:pointer;">&#128218; 統計指標の用語解説</summary>
+<summary style="font-weight:bold; color:#152238; cursor:pointer;">&#128218; 統計指標の用語解説</summary>
 <div style="margin-top:12px; color:#555;">
 
 <h4>■ ピアソン残差 (Pearson Residuals)</h4>

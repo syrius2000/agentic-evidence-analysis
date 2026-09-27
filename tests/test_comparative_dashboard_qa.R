@@ -80,7 +80,7 @@ df_target_exc <- data.frame(
 )
 res_te <- generate_comparative_report(df_target_exc, reference_arm = "Control", primary_delta = 0.05, output_dir = tempfile("qa_te_"))
 html_te <- paste(readLines(res_te$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-assert_true(grepl("background-color: rgba(239, 68, 68", html_te, fixed = TRUE), "target_excess practical cell uses coral/red hue")
+assert_true(grepl("background-color: rgba(155, 41, 69", html_te, fixed = TRUE), "target_excess practical cell uses academic burgundy")
 assert_true(!grepl("<tr style='background-color:", html_te, fixed = TRUE), "Row-wide tr background-color is absent (cell-only styling)")
 
 # Test reference_excess
@@ -93,7 +93,7 @@ df_ref_exc <- data.frame(
 )
 res_re <- generate_comparative_report(df_ref_exc, reference_arm = "Control", primary_delta = 0.05, output_dir = tempfile("qa_re_"))
 html_re <- paste(readLines(res_re$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-assert_true(grepl("background-color: rgba(59, 130, 246", html_re, fixed = TRUE), "reference_excess practical cell uses indigo/blue hue")
+assert_true(grepl("background-color: rgba(31, 77, 122", html_re, fixed = TRUE), "reference_excess practical cell uses academic navy")
 
 # Test practical_neutral
 df_neut <- data.frame(
@@ -112,7 +112,7 @@ res_null_delta <- generate_comparative_report(df_target_exc, reference_arm = "Co
 html_nd <- paste(readLines(res_null_delta$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(!grepl("background-color: rgba(", html_nd, fixed = TRUE), "When primary_delta is NULL, all cells have transparent background")
 
-# Test U3 muted desaturated override: rgba(148, 163, 184, 0.12)
+# Test U3 muted desaturated override: academic slate #64748B @ 0.12
 # Strictly deterministic U3 condition: x_T = 10, n_T = 100, x_R = 10, n_R = 100 with delta = 0.01
 df_u3 <- data.frame(
   theme = c("T_U3", "T_U3"),
@@ -125,8 +125,8 @@ res_u3 <- generate_comparative_report(df_u3, reference_arm = "Control", primary_
 html_u3 <- paste(readLines(res_u3$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 # Strict test adequacy: must be U3 without unconditional pass fallback
 assert_true(any(res_u3$summary_df$u_grade == "U3"), "U3 state produced deterministically for test")
-assert_true(grepl("rgba(148, 163, 184, 0.12)", html_u3, fixed = TRUE), "U3 practical cell renders with muted desaturated slate override")
-assert_true(!grepl("rgba(239, 68, 68", html_u3, fixed = TRUE), "U3 practical cell does NOT contain alarmist red/coral hue")
+assert_true(grepl("rgba(100, 116, 139, 0.12)", html_u3, fixed = TRUE), "U3 practical cell renders with muted desaturated slate override")
+assert_true(!grepl("rgba(155, 41, 69", html_u3, fixed = TRUE), "U3 practical cell does NOT contain target_excess burgundy")
 
 cat("\n=== 3. Test 14.4: Canonical Diagnostic Badges in Dedicated Column ===\n")
 # Zero reference events triggers ZERO_REFERENCE and possibly SPARSE_EVENTS
@@ -1049,7 +1049,7 @@ assert_true(
 )
 assert_true(
   any(res_u3$summary_df$u_grade == "U3") &&
-    grepl("rgba(148, 163, 184, 0.12)", html_u3, fixed = TRUE),
+    grepl("rgba(100, 116, 139, 0.12)", html_u3, fixed = TRUE),
   "Q12: U3 muted/achromatic contract retained"
 )
 assert_true(

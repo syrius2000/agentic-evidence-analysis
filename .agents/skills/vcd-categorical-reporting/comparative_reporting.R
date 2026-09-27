@@ -15,10 +15,15 @@ local({
   engine_path <- file.path(shared_dir, "independent_beta_binomial.R")
   contrasts_path <- file.path(shared_dir, "comparative_contrasts.R")
   run_scope_path <- file.path(shared_dir, "run_scope.R")
+  tokens_path <- file.path(shared_dir, "dashboard_theme_tokens.R")
   if (file.exists(engine_path)) source(engine_path, local = FALSE)
   if (file.exists(contrasts_path)) source(contrasts_path, local = FALSE)
   if (!file.exists(run_scope_path)) stop("[SHARED_RUN_SCOPE_UNAVAILABLE] run_scope.R が見つかりません")
   source(run_scope_path, local = FALSE)
+  if (!file.exists(tokens_path)) {
+    stop("[ERROR] dashboard_theme_tokens.R が見つかりません", call. = FALSE)
+  }
+  source(tokens_path, local = FALSE)
 })
 
 # HTML escape helper for Zero-External-Asset & markup injection prevention (14.R2)
@@ -589,8 +594,7 @@ generate_comparative_report <- function(
     practical_bg <- "transparent"
     if (!is.null(primary_delta) && !is.na(primary_delta) && row$u_grade != "NONE") {
       if (row$u_grade == "U3") {
-        # U3: Muted desaturated slate override regardless of dominant region
-        practical_bg <- "rgba(148, 163, 184, 0.12)"
+        practical_bg <- theme_hex_to_rgba(THEME_TOKENS$practical_u3, "0.12")
       } else {
         alpha_val <- switch(row$u_grade,
           "U0" = "0.20",
@@ -599,11 +603,11 @@ generate_comparative_report <- function(
           "0.08"
         )
         if (row$dominant_region == "target_excess") {
-          practical_bg <- sprintf("rgba(239, 68, 68, %s)", alpha_val)
+          practical_bg <- theme_hex_to_rgba(THEME_TOKENS$practical_t, alpha_val)
         } else if (row$dominant_region == "reference_excess") {
-          practical_bg <- sprintf("rgba(59, 130, 246, %s)", alpha_val)
+          practical_bg <- theme_hex_to_rgba(THEME_TOKENS$practical_n, alpha_val)
         } else if (row$dominant_region == "practical_neutral") {
-          practical_bg <- sprintf("rgba(100, 116, 139, %s)", alpha_val)
+          practical_bg <- theme_hex_to_rgba(THEME_TOKENS$practical_r, alpha_val)
         }
       }
     }
@@ -735,63 +739,75 @@ generate_comparative_report <- function(
   }, character(1L))
   badge_checkbox_items <- c(badge_checkbox_items, "<label class=\"filter-item\"><input type=\"checkbox\" class=\"filter-badge-opt\" value=\"__NONE__\"> (診断なし)</label>")
 
-  html_head <- '<!DOCTYPE html>
+  frames <- sys.frames()
+  files <- Filter(Negate(is.null), lapply(frames, function(f) f$ofile))
+  own <- Filter(function(f) basename(f) == "comparative_reporting.R", files)
+  report_dir <- if (length(own)) dirname(tail(own, 1)[[1]]) else file.path(getwd(), ".agents", "skills", "vcd-categorical-reporting")
+  shared_css_root <- file.path(dirname(dirname(report_dir)), "shared")
+  shared_theme_css <- paste(
+    readLines(file.path(shared_css_root, "dashboard_theme.css"), warn = FALSE, encoding = "UTF-8"),
+    collapse = "\n"
+  )
+
+  html_head <- sprintf('<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <title>比較エビデンス解析ダッシュボード</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 24px; color: #1e293b; background: #f8fafc; }
-    h1 { color: #0f172a; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; }
-    .callout { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-size: 0.9em; }
-    .callout strong { color: #b45309; }
-    .callout.warning { background: #fef2f2; border-left: 4px solid #ef4444; }
-    .callout.warning strong { color: #991b1b; }
-    .toolbar-container { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 14px 18px; margin: 16px 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+%s
+  </style>
+  <style>
+    /* Layout / interaction only — page chrome comes from shared dashboard_theme.css */
+    .callout { background: #fffbeb; border-left: 4px solid #d97706; padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-size: 0.9em; }
+    .callout strong { color: #a16207; }
+    .callout.warning { background: #fef2f2; border-left: 4px solid #9b2945; }
+    .callout.warning strong { color: #9b2945; }
+    .toolbar-container { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; padding: 14px 18px; margin: 16px 0; box-shadow: none; }
     .toolbar-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
     .toolbar-row + .toolbar-row { margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
     .filter-dropdown { position: relative; display: inline-block; }
-    .filter-summary { cursor: pointer; padding: 6px 12px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.88em; font-weight: 500; user-select: none; }
+    .filter-summary { cursor: pointer; padding: 6px 12px; background: #f6f8fb; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.88em; font-weight: 500; user-select: none; }
     .filter-summary:hover { background: #e2e8f0; }
-    .filter-panel { position: absolute; z-index: 50; top: 100%; left: 0; margin-top: 4px; background: #ffffff; border: 1px solid #94a3b8; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 10px; min-width: 240px; max-height: 280px; overflow-y: auto; }
+    .filter-panel { position: absolute; z-index: 50; top: 100%%; left: 0; margin-top: 4px; background: #ffffff; border: 1px solid #64748b; border-radius: 4px; box-shadow: none; padding: 10px; min-width: 240px; max-height: 280px; overflow-y: auto; }
     .filter-dual-panel { display: flex; gap: 16px; min-width: 320px; }
     .filter-subgroup { display: flex; flex-direction: column; gap: 4px; }
-    .filter-subgroup-title { font-weight: bold; font-size: 0.82em; color: #475569; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; }
-    .filter-search { width: 100%; box-sizing: border-box; padding: 4px 8px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.85em; }
+    .filter-subgroup-title { font-weight: bold; font-size: 0.82em; color: #64748b; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; }
+    .filter-search { width: 100%%; box-sizing: border-box; padding: 4px 8px; margin-bottom: 8px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.85em; }
     .checkbox-list { display: flex; flex-direction: column; gap: 4px; }
     .filter-item { font-size: 0.85em; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    .filter-badge-indicator { font-size: 0.78em; background: #e2e8f0; color: #334155; padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
-    .btn-action { padding: 6px 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.88em; cursor: pointer; }
-    .btn-action:hover { background: #f1f5f9; }
-    .btn-export { padding: 6px 14px; background: #0284c7; color: #ffffff; border: none; border-radius: 4px; font-size: 0.88em; font-weight: 500; cursor: pointer; }
-    .btn-export:hover { background: #0369a1; }
+    .filter-badge-indicator { font-size: 0.78em; background: #e2e8f0; color: #152238; padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
+    .btn-action { padding: 6px 14px; background: #f6f8fb; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.88em; cursor: pointer; }
+    .btn-action:hover { background: #e2e8f0; }
+    .btn-export { padding: 6px 14px; background: #1f4d7a; color: #ffffff; border: none; border-radius: 4px; font-size: 0.88em; font-weight: 500; cursor: pointer; }
+    .btn-export:hover { background: #152238; }
     .status-indicator { display: flex; align-items: center; gap: 10px; font-size: 0.9em; font-weight: 500; }
-    .count-badge { background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; }
+    .count-badge { background: #e2e8f0; color: #1f4d7a; padding: 2px 8px; border-radius: 4px; }
     .active-badge { color: #64748b; font-size: 0.85em; }
     .export-buttons { margin-left: auto; display: flex; gap: 8px; }
-    .table-container { width: 100%; overflow-x: auto; margin-top: 16px; }
-    caption { caption-side: top; text-align: left; font-weight: bold; margin-bottom: 8px; color: #475569; font-size: 1.05em; }
-    table { width: 100%; border-collapse: collapse; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 6px; overflow: hidden; }
+    .table-container { width: 100%%; overflow-x: auto; margin-top: 16px; }
+    caption { caption-side: top; text-align: left; font-weight: bold; margin-bottom: 8px; color: #64748b; font-size: 1.05em; }
+    table { width: 100%%; border-collapse: collapse; background: #ffffff; box-shadow: none; border-radius: 4px; overflow: hidden; border: 1px solid #e2e8f0; }
     th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 0.88em; }
     th.col-e100, td.col-e100, th.col-reciprocal, td.col-reciprocal { font-size: 0.82em; white-space: nowrap; padding-left: 8px; padding-right: 8px; }
-    th { background: #0f172a; color: #ffffff; font-weight: 600; }
+    th { background: #152238; color: #ffffff; font-weight: 600; }
     th.sortable { cursor: pointer; user-select: none; position: relative; padding-right: 24px; }
-    th.sortable:hover { background: #1e293b; }
-    th.sortable:focus-visible { outline: 2px solid #38bdf8; outline-offset: -2px; }
+    th.sortable:hover { background: #1f4d7a; }
+    th.sortable:focus-visible { outline: 2px solid #1f4d7a; outline-offset: -2px; }
     th.sortable .sort-indicator { display: inline-block; margin-left: 6px; font-size: 0.8em; opacity: 0.4; }
-    th.sortable[aria-sort="ascending"] .sort-indicator { opacity: 1; color: #38bdf8; }
-    th.sortable[aria-sort="descending"] .sort-indicator { opacity: 1; color: #38bdf8; }
-    tr:hover { background-color: #f8fafc; }
-    .badge { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin: 1px; }
-    .ugrade { font-weight: bold; padding: 2px 6px; border-radius: 3px; border: 1px solid #94a3b8; }
+    th.sortable[aria-sort="ascending"] .sort-indicator { opacity: 1; color: #ffffff; }
+    th.sortable[aria-sort="descending"] .sort-indicator { opacity: 1; color: #ffffff; }
+    tr:hover { background-color: #f6f8fb; }
+    .badge { background: #ffedd5; color: #a16207; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: bold; display: inline-block; margin: 1px; }
+    .ugrade { font-weight: bold; padding: 2px 6px; border-radius: 3px; border: 1px solid #64748b; }
     small { color: #64748b; }
     #metric-guide { margin-top: 36px; padding-top: 20px; border-top: 2px solid #e2e8f0; }
-    #metric-guide h2 { font-size: 1.25em; color: #0f172a; margin-bottom: 12px; }
-    .guide-accordion { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
-    .guide-summary { cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: 0.95em; color: #1e293b; background: #f8fafc; user-select: none; }
-    .guide-summary:hover { background: #f1f5f9; }
+    #metric-guide h2 { font-size: 1.25em; color: #152238; margin-bottom: 12px; }
+    .guide-accordion { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; margin-bottom: 8px; overflow: hidden; }
+    .guide-summary { cursor: pointer; padding: 10px 14px; font-weight: 600; font-size: 0.95em; color: #152238; background: #f6f8fb; user-select: none; }
+    .guide-summary:hover { background: #e2e8f0; }
     .guide-content { padding: 14px 18px; font-size: 0.9em; line-height: 1.6; border-top: 1px solid #e2e8f0; }
-    .guide-content h4 { margin: 10px 0 4px 0; color: #334155; font-size: 0.95em; }
+    .guide-content h4 { margin: 10px 0 4px 0; color: #152238; font-size: 0.95em; }
     .guide-content p, .guide-content ul { margin: 4px 0 8px 0; }
     .guide-content ul { padding-left: 20px; }
     math { font-size: 1.1em; }
@@ -805,7 +821,7 @@ generate_comparative_report <- function(
     ・<strong>因果的優越の禁止</strong>: 方向確率単独で治療の因果的優越性を主張してはなりません。<br>
     ・<strong>多重比較スクリーニング免責</strong>: FWERは制御されておらず、本成果物は探索的スクリーニングに位置付けられます。
   </div>
-'
+', shared_theme_css)
 
   html_toolbar <- sprintf('  <div id="dashboard-toolbar" class="toolbar-container" role="region" aria-label="ダッシュボード操作パネル">
     <div class="toolbar-row filter-controls">

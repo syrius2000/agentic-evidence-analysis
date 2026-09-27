@@ -3,8 +3,8 @@ title: "3次元エビデンス分析ダッシュボード"
 date: "`r format(Sys.time(), '%Y年%m月%d日 %H:%M', tz='Asia/Tokyo')`"
 output:
   html_document:
-    theme: flatly
-    highlight: tango
+    theme: null
+    highlight: null
     toc: false
     self_contained: true
     mathjax: null
@@ -42,7 +42,12 @@ explicit_root <- params$repo_root
 if (!is.null(explicit_root) && nzchar(trimws(as.character(explicit_root)))) {
   repo_root <- normalizePath(trimws(as.character(explicit_root)), winslash = "/", mustWork = FALSE)
 }
-needed_assets <- c("dashboard_theme.css", "dashboard_dt_ja.R", "dashboard_glossary.R")
+needed_assets <- c(
+  "dashboard_theme.css",
+  "dashboard_theme_tokens.R",
+  "dashboard_dt_ja.R",
+  "dashboard_glossary.R"
+)
 missing_assets <- needed_assets[!file.exists(file.path(repo_root, ".agents", "shared", needed_assets))]
 if (length(missing_assets) > 0L) {
   stop(sprintf(
@@ -50,13 +55,11 @@ if (length(missing_assets) > 0L) {
     paste(missing_assets, collapse = ", "), repo_root
   ), call. = FALSE)
 }
-repo_root <- normalizePath(repo_root, winslash = "/", mustWork = TRUE)
+source(file.path(repo_root, ".agents", "shared", "dashboard_theme_tokens.R"), local = TRUE)
 source(file.path(repo_root, ".agents", "shared", "dashboard_dt_ja.R"), local = TRUE)
 source(file.path(repo_root, ".agents", "shared", "dashboard_glossary.R"), local = TRUE)
-shared_theme_css <- paste(
-  readLines(file.path(repo_root, ".agents", "shared", "dashboard_theme.css"), warn = FALSE, encoding = "UTF-8"),
-  collapse = "\n"
-)
+shared_theme_css <- load_shared_dashboard_theme_css(repo_root)
+repo_root <- normalizePath(repo_root, winslash = "/", mustWork = TRUE)
 source(file.path(repo_root, ".agents", "shared", "dependency_check.R"))
 source(file.path(repo_root, ".agents", "shared", "run_scope.R"))
 
@@ -77,8 +80,7 @@ suppressPackageStartupMessages({
   library(ggplot2)
 })
 
-ggplot_jp_font <- switch(
-  Sys.info()[["sysname"]],
+ggplot_jp_font <- switch(Sys.info()[["sysname"]],
   "Darwin" = "Hiragino Sans",
   "Windows" = "Yu Gothic",
   "Linux" = "Noto Sans CJK JP",
@@ -742,7 +744,7 @@ if (nrow(models_summary) > 0) {
 # 各候補モデルの数理定義・構造仮定詳細（アコーディオン）
 if (nrow(models_summary) > 0) {
   cat('<div style="margin-top:20px;">')
-  cat('<h4 style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:12px;">&#128269; 各候補モデルの数理定義・構造仮定詳細</h4>')
+  cat('<h4 style="font-size:14px; font-weight:700; color:#152238; margin-bottom:12px;">&#128269; 各候補モデルの数理定義・構造仮定詳細</h4>')
 
   candidate_ids <- if (dimension == 3L) paste0("M", 1:9) else paste0("M", 1:2)
   should_open_id <- if (!best_model_is_failed && !is.null(best_model_id) && best_model_id %in% candidate_ids) best_model_id else ""
@@ -858,7 +860,7 @@ for (k in seq_along(base_model_keys)) {
   cat('<div class="topk-panel">\n')
 
   cat(sprintf(
-    '<h4 style="margin:0 0 8px 0; font-size:15px; font-weight:700; color:#0f172a;">%s</h4>',
+    '<h4 style="margin:0 0 8px 0; font-size:15px; font-weight:700; color:#152238;">%s</h4>',
     htmltools::htmlEscape(b_diag$question_ja %||% sprintf("基準モデル %s による診断", bkey))
   ))
 
@@ -898,7 +900,7 @@ for (k in seq_along(base_model_keys)) {
   }
   tk_data <- to_df(b_diag$top_k_data)
   if (nrow(tk_data) > 0L) {
-    cat(sprintf('<div style="font-weight:700; font-size:14px; margin-bottom:8px; color:#0f172a;">&#127942; 効果比 |log(O/E)| 上位 %d セル</div>', nrow(tk_data)))
+    cat(sprintf('<div style="font-weight:700; font-size:14px; margin-bottom:8px; color:#152238;">&#127942; 効果比 |log(O/E)| 上位 %d セル</div>', nrow(tk_data)))
 
     disp_cols <- c(dims, intersect(names(col_rename), names(tk_data)))
     tk_disp <- tk_data[, disp_cols, drop = FALSE]

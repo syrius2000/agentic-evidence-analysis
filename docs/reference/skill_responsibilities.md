@@ -1,7 +1,7 @@
 # 分析スキルの責務境界とアーキテクチャ
 
 created: 2026-09-07 00:08 (JST)
-update: 2026-09-27 02:56 (JST)
+update: 2026-09-28 02:30 (JST)
 author: Codex (GPT-5) / Cursor (Composer)
 
 この文書は、本リポジトリで提供される各種分析スキルの役割分担と適用範囲を説明する派生リファレンスです。規範的挙動は`openspec/specs/`を正本とし、archiveは履歴として扱います。数理解説の充足状況と不足アウトラインは [`math_coverage_gap_inventory_001_0927.md`](math_coverage_gap_inventory_001_0927.md) を参照してください。
@@ -20,7 +20,7 @@ author: Codex (GPT-5) / Cursor (Composer)
 | **比較群間エビデンス・多テーマスクリーニング** | `vcd-categorical-reporting` | 独立2群・対照群対比のエビデンス（RD/RR/方向支持/実務領域/U-Grade）、ゼロ参照群確定挙動（`mean=null, mean_is_finite=false`）、安全性（SOC/PT重複排除）、完全オフラインHTML | マッチドペア・IPTW等の依存デザイン、FWER厳格制御の主張、自動規制判定 |
 | **デザイン考慮型比較推論** | `comparative-design-analysis` | 1:1マッチドペア（Dirichlet 厳密期待値）、1:kマッチドセット（固定条件付きクラスタブートストラップ）、IPTW（PS再適合患者ブートストラップ）、人年発症率（共役Gamma-Poisson推論） | 独立群用推論器への依存データ投入、GLMM/GEEモデリング、非整数度数のDirichlet投入 |
 | **統計エビデンス決定監査・先例検索** | `evidence-decision-review` | 決定ラベル非含有特徴量プロファイル抽出（`evidence-feature-v1`）、Gower距離、階層クラスタリング（HAC）、歴史的先例検索、決定台帳（Ledger）、QA Review Candidate助言 | 自動規制決定（承認/棄却）、決定ラベルの直接クラスタリング投入、処方的判断 |
-| **アンケート設問の量産・バッチ** | `questionnaire-batch-analysis` | 設定ファイルに基づく複数設問の自動バッチ実行、サマリー集約 | 設問ごとの統計的前提や因果構造の自動的正当化 |
+| **アンケート設問の量産・バッチ** | `questionnaire-batch-analysis` | 設定ファイルに基づく複数設問の自動バッチ実行、サマリー集約、共有学術テーマによる完全オフライン HTML | 設問ごとの統計的前提や因果構造の自動的正当化 |
 | **SAS PROC FREQ 互換集計** | `sas-proc-freq` | PROC FREQ 互換度数集計、独立性検定、2×2効果量、Fisher正確検定、Monte Carlo推定 | Pass 0 対話相談、ベイジアン事後推論 |
 | **SAS PROC MEANS 互換記述統計** | `sas-proc-means` | PROC MEANS 互換記述統計、CLASS層別、FREQ/WEIGHT、VARDEF、QNTLDEF 1〜5 | Pass 0 対話相談、因果推論 |
 
@@ -60,6 +60,7 @@ author: Codex (GPT-5) / Cursor (Composer)
    - `evidence-decision-review` は決定ラベルを用いない客観的特徴量から歴史的先例との類似度を計算し、乖離を "QA Review Candidate" として提示する探索的ツールであり、規制判断（承認/不承認/警告）を自動化してはならない。
 5. **提示階層（presentation-only、概念分離の一部）**:
    - 比較ダッシュボード要約表は 12 列（RD → E100 → NNT/NNH-like → … → U-Grade → …）。E100 と reciprocal RD は結合列にしない。Safety の方向マッピングは `target_excess → NNH-like` / `reference_excess → NNT-like`、非 Safety は `1/|RD|` 表記。詳細式・状態機械は [`comparative_evidence_math.md`](comparative_evidence_math.md) および `openspec/specs/comparative-evidence-reporting` を正本とする。
+   - HTML Dashboard を生成するスキルは `.agents/shared/dashboard_theme.css`（および共有トークン）を正本とし、`comparative-design-analysis` / `evidence-decision-review` が将来 HTML を追加する場合も同一共有テーマを必須とする。
 6. **数理正本体系（充足状況）**:
    - 独立 Jeffreys・U-Grade・12列提示階層の数理は [`comparative_evidence_math.md`](comparative_evidence_math.md)（P0 充足）、デザイン 4 系統の推論数理は [`design_aware_inference_math.md`](design_aware_inference_math.md)（P0 充足）に集約済み。Gower／HAC の監査数理は [`math_coverage_gap_inventory_001_0927.md`](math_coverage_gap_inventory_001_0927.md) の P1 計画文書として追加予定。
 

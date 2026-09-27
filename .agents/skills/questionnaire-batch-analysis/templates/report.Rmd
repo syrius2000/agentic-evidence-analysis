@@ -3,8 +3,10 @@ title: "Questionnaire Batch Analysis Report"
 output:
   html_document:
     toc: true
-    toc_float: true
-    theme: flatly
+    toc_float: false
+    theme: null
+    highlight: null
+    self_contained: true
 params:
   title: "Report"
 ---
@@ -25,6 +27,8 @@ find_agent_repo <- function() {
 }
 repo_root <- find_agent_repo()
 source(file.path(repo_root, ".agents", "shared", "dependency_check.R"))
+source(file.path(repo_root, ".agents", "shared", "dashboard_theme_tokens.R"), local = TRUE)
+shared_theme_css <- load_shared_dashboard_theme_css(repo_root)
 
 check_r_dependencies(
   c("ggplot2", "knitr"),
@@ -59,6 +63,12 @@ detect_jp_font <- function() {
 }
 
 jp_font <- detect_jp_font()
+```
+
+```{r embed-shared-theme, results='asis'}
+cat("<style>\n")
+cat(shared_theme_css)
+cat("\n</style>\n")
 ```
 
 ```{r summary-text}
