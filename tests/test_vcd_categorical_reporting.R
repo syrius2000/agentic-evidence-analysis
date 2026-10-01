@@ -128,7 +128,7 @@ iptw_report_df <- data.frame(
 )
 iptw_key <- "synthetic__Target_vs_Reference"
 iptw_report <- generate_comparative_report(iptw_report_df, target_arm = "Target", reference_arm = "Reference", contrast_mode = "explicit",
-  evidence_overrides = setNames(list(iptw_ev), iptw_key), output_dir = tempfile("iptw_report_"))
+  evidence_overrides = setNames(list(iptw_ev), iptw_key), allow_unevaluated = TRUE, output_dir = tempfile("iptw_report_"))
 iptw_md <- paste(readLines(iptw_report$md_path, warn = FALSE), collapse = "\n")
 iptw_row <- iptw_report$summary_df[iptw_report$summary_df$inferential_semantics == "bootstrap", , drop = FALSE]
 assert_true(nrow(iptw_row) == 1L && iptw_row$interval_label == "bootstrap percentile interval", "IPTW override is rendered with bootstrap percentile interval semantics")
@@ -143,7 +143,7 @@ assert_true(!grepl("ETI", iptw_md, fixed = TRUE) && !grepl("posterior median", t
 bad_source_counts <- iptw_report_df
 bad_source_counts$events[[1L]] <- bad_source_counts$events[[1L]] + 1L
 provenance_error <- tryCatch(generate_comparative_report(bad_source_counts, target_arm = "Target", reference_arm = "Reference",
-  contrast_mode = "explicit", evidence_overrides = setNames(list(iptw_ev), iptw_key), output_dir = tempfile("iptw_mismatch_")),
+  contrast_mode = "explicit", evidence_overrides = setNames(list(iptw_ev), iptw_key), allow_unevaluated = TRUE, output_dir = tempfile("iptw_mismatch_")),
   error = function(e) conditionMessage(e))
 assert_true(!is.null(provenance_error) && grepl("EVIDENCE_REPORT_PROVENANCE_MISMATCH", provenance_error, fixed = TRUE),
             "Mismatched report counts fail with governed provenance error")
@@ -155,6 +155,7 @@ res_none <- generate_comparative_report(
   df = batch_df[batch_df$theme == "AE_Infection", ],
   reference_arm = "Placebo",
   primary_delta = NULL,
+  allow_unevaluated = TRUE,
   output_dir = out_dir_none
 )
 html_none <- paste(readLines(res_none$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -165,6 +166,16 @@ neutral_report <- generate_comparative_report(data.frame(theme = c("neutral", "n
 neutral_html <- paste(readLines(neutral_report$html_path, warn = FALSE), collapse = "\n")
 assert_true(grepl("rgba(100, 116, 139", neutral_html, fixed = TRUE),
             "Practical-neutral region uses neutral gray")
+
+assert_true(all(res_none$summary_df$practical_evaluation_status == "not_evaluated") &&
+  all(res_none$summary_df$practical_evaluation_reason == "primary_delta_not_set"), "未設定閾値の理由を搬送")
+assert_true(grepl("未評価：実務閾値未設定", html_none, fixed = TRUE), "未評価は日本語の理由付き表示")
+assert_true(grepl('id="guide-item-e100"', html_text, fixed = TRUE) &&
+  grepl('id="guide-item-reciprocal"', html_text, fixed = TRUE), "E100と逆数RDの個別ガイドを保持")
+
+assert_true(res$summary_df$effective_primary_delta[[1L]] == 0.05 &&
+  res$summary_df$practical_threshold_source[[1L]] == "explicit_argument", "Explicit primary delta and provenance are transported")
+assert_true(grepl("重篤事象は閾値・U-Gradeにかかわらず別途レビュー", html_text, fixed = TRUE), "Serious-event review note rendered")
 
 cat(sprintf("\nTest Summary: %d Passed, %d Failed\n", test_pass, test_fail))
 if (test_fail > 0L) quit(status = 1L)

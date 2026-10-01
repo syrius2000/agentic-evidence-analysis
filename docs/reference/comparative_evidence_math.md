@@ -1,7 +1,7 @@
 # 比較エビデンス推論の統計数理（Comparative Evidence Math）
 
 created: 2026-09-27 09:20 (JST)
-update: 2026-09-27 09:20 (JST)
+update: 2026-10-01 22:38 (JST)
 author: Antigravity (Pair Programming Agent)
 依拠仕様: `openspec/specs/comparative-evidence-reporting` (Section 2, 3, 7)
 主スキル: `vcd-categorical-reporting`
@@ -205,3 +205,21 @@ q_R &= P(\mathrm{RD} < -\Delta \mid \text{data}) \quad &\text{(Reference Excess:
 2. **Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., & Rubin, D. B. (2013)**. *Bayesian Data Analysis* (3rd ed.). Chapman and Hall/CRC. (Chapter 2: Single-parameter models).
 3. **Agresti, A., & Min, Y. (2005)**. "Frequentist performance of Bayesian confidence intervals for comparing proportions in $2 \times 2$ contingency tables." *Biometrics*, 61(2), 515–523.
 4. **American Statistical Association (ASA) (2016)**. "Statement on Statistical Significance and P-Values." *The American Statistician*, 70(2), 129–133.
+
+
+## 追加表示契約：自然単位・逆数RDの解説と実務評価状態
+
+E100とNNT・NNH-likeは、それぞれ独立した日本語ガイドを持ち、HTML表の見出しから参照できる。E100は100人あたりのイベント発生者数の絶対差であり、RD=±0.03は±3人／100人（±3パーセントポイント）に相当する。相対的な3%増減とは区別する。逆数RDは同じ点推定の二次変換で、約33.3人あたりイベント発生者1人分の差に相当する規模を示す。逆数の事後中央値や因果的NNTとは解釈しない。表示抑制の状態コードと理由は個別ガイドに記載する。
+
+要約データの `practical_evaluation_status` は `evaluated` / `not_evaluated`、`practical_evaluation_reason` は未評価時に `primary_delta_not_set`、評価済み時に欠測とする。これは各contrastの `practical_region_support` と `resolution_grade` の正本状態から搬送し、バッチ引数や表示値から再推論しない。欠落・矛盾した正本は入力不整合として停止する。
+
+未評価セルは「未評価：実務閾値未設定」と表示し、canonicalの `NONE / none` を保持する。未評価はU3、実務的中立、同等性の証拠ではない。全行未評価なら理由を表上部に示し、実務領域・U-Gradeフィルタを無効化する。混在時は未評価行の選択を可能にし、評価済みの配色は各contrastの正本状態に従う。12列と無彩色の未評価セルを維持する。
+
+実務閾値は分析目的に応じて事前に定め、自動補完しない。割合尺度で `primary_delta = 0.05` は5パーセントポイントを意味する例であって、推奨既定値ではない。
+
+
+## 稀な有害事象の探索用既定方針
+
+`vcd-categorical-reporting` は有害事象の探索的比較で、引数省略時に `rare_ae_exploratory_v1` を適用する。割合尺度の `primary_delta = 0.001`（1,000人あたり1人差）、感度候補は `0.0001, 0.0005, 0.001, 0.005`。これは利用者の入力負担を省く運用上の暫定基準で、普遍的臨床的重要性や許容可能リスクの基準ではない。既定値の結果は正式な安全性判断を自動化しない。
+
+重篤事象は共通の絶対差・U-Gradeにかかわらず別途レビューする。PT名から重篤性を推測しない。各実行の主閾値、感度候補、設定元、方針版をJSON・run metadataに記録し、各contrastの `practical_region_support` と既存 `delta_profile` の値を表示する。非Safetyの既定挙動は本方針の対象外とする。明示的な未評価は `allow_unevaluated = true` を伴う利用者合意がある場合に限る。
