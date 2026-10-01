@@ -108,7 +108,7 @@ html_neut <- paste(readLines(res_neut$html_path, warn = FALSE, encoding = "UTF-8
 assert_true(grepl("background-color: rgba(100, 116, 139", html_neut, fixed = TRUE), "practical_neutral practical cell uses neutral slate hue")
 
 # Test primary_delta = NULL -> all practical cells transparent
-res_null_delta <- generate_comparative_report(df_target_exc, reference_arm = "Control", primary_delta = NULL, output_dir = tempfile("qa_nd_"))
+res_null_delta <- generate_comparative_report(df_target_exc, reference_arm = "Control", primary_delta = NULL, allow_unevaluated = TRUE, output_dir = tempfile("qa_nd_"))
 html_nd <- paste(readLines(res_null_delta$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(!grepl("background-color: rgba(", html_nd, fixed = TRUE), "When primary_delta is NULL, all cells have transparent background")
 
@@ -264,6 +264,7 @@ iptw_override_partial <- list(
     diagnostic = "PARTIAL_UNDEFINED_BOOTSTRAP_REPLICATES"
   ),
   direction_support = list(support_value = 0.85),
+  practical_region_support = list(target_excess = 0.65, practical_neutral = 0.35, reference_excess = 0, primary_delta = 0.01),
   resolution_grade = list(grade = "U2", dominant_region = "target_excess"),
   precision_metrics = list(
     rd_interval_width = 0.070,
@@ -285,6 +286,7 @@ res_iptw_partial <- generate_comparative_report(
   df = df_iptw,
   reference_arm = "Control",
   evidence_overrides = list("IPTW_Partial__Active_vs_Control" = iptw_override_partial),
+  allow_unevaluated = TRUE,
   output_dir = tempfile("qa_iptw_part_")
 )
 
@@ -337,6 +339,7 @@ iptw_override_zero <- list(
     diagnostic = "ZERO_REFERENCE_RISK"
   ),
   direction_support = list(support_value = 0.999),
+  practical_region_support = list(target_excess = 0.85, practical_neutral = 0.15, reference_excess = 0, primary_delta = 0.01),
   resolution_grade = list(grade = "U1", dominant_region = "target_excess"),
   precision_metrics = list(
     rd_interval_width = 0.100,
@@ -571,9 +574,9 @@ assert_true(
   "14.13: Guide section is present with accessible label"
 )
 
-# 2. Exactly 10 default-collapsed accordion items
+# 2. Twelve default-collapsed accordion items
 guide_accordions <- c(
-  "guide-item-risk", "guide-item-rd", "guide-item-rr", "guide-item-intervals",
+  "guide-item-risk", "guide-item-rd", "guide-item-e100", "guide-item-reciprocal", "guide-item-rr", "guide-item-intervals",
   "guide-item-direction", "guide-item-practical", "guide-item-ugrade",
   "guide-item-precision", "guide-item-diagnostics", "guide-item-multiplicity"
 )
@@ -698,6 +701,7 @@ iptw_override_mixed <- list(
     diagnostic = "WELL_BEHAVED"
   ),
   direction_support = list(support_value = 0.98),
+  practical_region_support = list(target_excess = 0.85, practical_neutral = 0.15, reference_excess = 0, primary_delta = 0.01),
   resolution_grade = list(grade = "U1", dominant_region = "target_excess"),
   precision_metrics = list(
     rd_interval_width = 0.08,
@@ -901,6 +905,7 @@ res_near0 <- generate_comparative_report(
   df_near0,
   reference_arm = "Control",
   evidence_overrides = list("Near0__Active_vs_Control" = near0_override),
+  allow_unevaluated = TRUE,
   output_dir = tempfile("qa_near0_")
 )
 html_near0 <- paste(readLines(res_near0$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -939,6 +944,7 @@ ni_override <- list(
     diagnostic = "WELL_BEHAVED"
   ),
   direction_support = list(support_value = 0.9),
+  practical_region_support = list(target_excess = 0.65, practical_neutral = 0.35, reference_excess = 0, primary_delta = 0.01),
   resolution_grade = list(grade = "U2", dominant_region = "target_excess"),
   precision_metrics = list(rd_interval_width = 0.25, log_rr_interval_width = 1.1, rr_interval_fold_range = 3.2),
   diagnostics = list(badges = character(0))
@@ -1079,14 +1085,14 @@ assert_true(
   "Q15: suppressed reciprocal uses empty (missing) sort key"
 )
 
-# Q16–Q19: keyboard/aria-sort, CSV 40 fields, filtered export, Zero-External-Asset
+# Q16–Q19: keyboard/aria-sort, CSV 44 fields, filtered export, Zero-External-Asset
 assert_true(
   grepl("keydown", html_std, fixed = TRUE) && grepl("aria-sort", html_std, fixed = TRUE),
   "Q16: keyboard sorting and aria-sort remain present"
 )
 assert_true(
-  ncol(res_std$summary_df) == 40L,
-  sprintf("Q17: summary_df remains exactly 40 canonical fields (got %d)", ncol(res_std$summary_df))
+  ncol(res_std$summary_df) == 44L,
+  sprintf("Q17: summary_df contains 40 existing fields, 2 practical-evaluation fields, and 2 threshold provenance fields (got %d)", ncol(res_std$summary_df))
 )
 assert_true(
   grepl("btn-export-filtered", html_std, fixed = TRUE) &&
@@ -1145,6 +1151,81 @@ assert_true(
     grepl("primary_delta が null の場合", html_std, fixed = TRUE),
   "Guide: U-Grade item retained with null-delta NONE contract"
 )
+
+
+cat("\n=== 実務評価状態と個別ガイドの回帰確認 ===\n")
+assert_true(all(res_null_delta$summary_df$practical_evaluation_status == "not_evaluated") &&
+  all(res_null_delta$summary_df$practical_evaluation_reason == "primary_delta_not_set"), "未評価理由を要約データで保持")
+assert_true(all(res_std$summary_df$practical_evaluation_status == "evaluated") &&
+  all(is.na(res_std$summary_df$practical_evaluation_reason)), "評価済み状態を要約データで保持")
+assert_true(grepl('id="practical-evaluation-notice"', html_nd, fixed = TRUE) &&
+  grepl("未評価：実務閾値未設定", html_nd, fixed = TRUE), "全未評価時の案内とセル表示")
+assert_true(!grepl('id="practical-evaluation-notice"', html_std, fixed = TRUE), "評価済みrunに全未評価の案内を出さない")
+assert_true(grepl("明示的な省略許可", html_nd, fixed = TRUE) && !grepl("δ=NA", html_nd, fixed = TRUE), "省略時に未設定閾値を数値として誤表示しない")
+assert_true(grepl('<fieldset disabled aria-label="実務評価フィルタ（未評価）">', html_nd, fixed = TRUE) &&
+  grepl('</fieldset>', html_nd, fixed = TRUE), "全未評価時にフィルタをネイティブ無効化")
+assert_true(!grepl('<fieldset disabled', html_std, fixed = TRUE), "評価済みrunはフィルタを維持")
+md_none <- paste(readLines(res_null_delta$md_path, warn = FALSE), collapse = "\n")
+assert_true(grepl("未評価：実務閾値未設定", md_none, fixed = TRUE) &&
+  grepl("### 2a. 100人あたり差 (E100)", md_none, fixed = TRUE) &&
+  grepl("### 2b. NNT・NNH-like", md_none, fixed = TRUE), "Markdownにも理由と2つの個別解説を搬送")
+none_csv <- read.csv(res_null_delta$csv_path, stringsAsFactors = FALSE)
+assert_true(all(none_csv$practical_evaluation_status == "not_evaluated") &&
+  all(none_csv$practical_evaluation_reason == "primary_delta_not_set"), "CSVは要約と同じ未評価理由")
+assert_true(grepl('href="#guide-item-e100"', html_std, fixed = TRUE) &&
+  grepl('href="#guide-item-reciprocal"', html_std, fixed = TRUE), "見出しから個別解説への導線")
+
+# 各contrastを優先：バッチ引数NULLでも評価済みoverrideを未評価にしない。
+mixed_practical <- generate_comparative_report(rbind(df_iptw, df_near0), reference_arm = "Control",
+  primary_delta = NULL,
+  evidence_overrides = list(IPTW_Partial__Active_vs_Control = iptw_override_partial,
+    Near0__Active_vs_Control = near0_override), allow_unevaluated = TRUE,
+  output_dir = tempfile("qa_practical_mixed_"))
+mixed_practical_html <- paste(readLines(mixed_practical$html_path, warn = FALSE), collapse = "\n")
+assert_true(identical(sort(mixed_practical$summary_df$practical_evaluation_status), c("evaluated", "not_evaluated")),
+  "混在overrideの評価状態は各contrastの正本を優先")
+assert_true(!grepl('<fieldset disabled', mixed_practical_html, fixed = TRUE) &&
+  grepl('value="NONE"> 未評価（閾値未設定）', mixed_practical_html, fixed = TRUE) &&
+  grepl("background-color: rgba(", mixed_practical_html, fixed = TRUE), "混在時は未評価の選択と評価済みセル配色を維持")
+
+invalid_practical <- list(
+  missing_grade = within(near0_override, rm(resolution_grade)),
+  missing_region = modifyList(near0_override, list(resolution_grade = list(dominant_region = NULL)), keep.null = TRUE),
+  missing_support = within(iptw_override_partial, rm(practical_region_support)),
+  contradictory_none = modifyList(near0_override, list(practical_region_support = list(primary_delta = 0.05))),
+  invalid_probability = modifyList(iptw_override_partial, list(practical_region_support = list(target_excess = NA_real_))),
+  invalid_delta = modifyList(iptw_override_partial, list(practical_region_support = list(primary_delta = 0)))
+)
+for (name in names(invalid_practical)) {
+  ev_bad <- invalid_practical[[name]]
+  df_bad <- if (name %in% c("missing_grade", "missing_region", "contradictory_none")) df_near0 else df_iptw
+  key_bad <- paste0(df_bad$theme[1], "__Active_vs_Control")
+  error_bad <- tryCatch({ generate_comparative_report(df_bad, reference_arm = "Control",
+    evidence_overrides = setNames(list(ev_bad), key_bad), allow_unevaluated = TRUE,
+    output_dir = tempfile("qa_invalid_practical_")); "NO_ERROR" },
+    error = function(e) conditionMessage(e))
+  assert_true(grepl("INVALID_PRACTICAL_EVIDENCE", error_bad, fixed = TRUE), paste("不整合は未評価とせず停止:", name))
+}
+
+
+cat("\n=== Safety既定閾値と実行前fail-fast ===\n")
+default_dir <- tempfile("qa_safety_default_")
+default_result <- generate_comparative_report(df_standard, reference_arm="Control", output_dir=default_dir)
+default_html <- paste(readLines(default_result$html_path,warn=FALSE),collapse="\n")
+default_evidence <- jsonlite::fromJSON(default_result$json_path,simplifyVector=FALSE)
+assert_true(all(default_result$summary_df$effective_primary_delta == 0.001), "Safety省略時に既定閾値0.001を搬送")
+assert_true(all(default_result$summary_df$practical_threshold_source == "default_policy"), "Safety既定値の来歴をcontrastごとに搬送")
+assert_true(identical(unlist(default_evidence$run_meta$practical_difference_policy$delta_thresholds),c(0.0001,0.0005,0.001,0.005)), "4つの感度候補と版をJSONに記録")
+assert_true(grepl("重篤事象は閾値・U-Gradeにかかわらず別途レビュー",default_html,fixed=TRUE) && grepl("δ=0.001",default_html,fixed=TRUE), "ダッシュボードに既定閾値と重篤レビュー方針を表示")
+assert_true(grepl("閾値感度",paste(readLines(default_result$md_path,warn=FALSE),collapse="\n"),fixed=TRUE), "Markdownにcanonical delta_profileの感度結果を表示")
+for (bad_delta in list(0,-0.01,NA_real_,Inf,c(0.01,0.02),1.01)) {
+  untouched <- tempfile("qa_bad_delta_")
+  err <- tryCatch({generate_comparative_report(df_standard,primary_delta=bad_delta,output_dir=untouched);"NO_ERROR"},error=function(e)conditionMessage(e))
+  assert_true(grepl("INVALID_PRIMARY_DELTA",err,fixed=TRUE) && !dir.exists(untouched), paste("不正閾値は出力予約前に停止",paste(bad_delta,collapse=",")))
+}
+null_dir <- tempfile("qa_null_delta_")
+null_err <- tryCatch({generate_comparative_report(df_standard,primary_delta=NULL,output_dir=null_dir);"NO_ERROR"},error=function(e)conditionMessage(e))
+assert_true(grepl("PRACTICAL_THRESHOLD_REQUIRED",null_err,fixed=TRUE) && !dir.exists(null_dir), "明示NULLは省略許可なしに計算開始前停止")
 
 cat(sprintf("\nSection 14 QA Test Summary: %d Passed, %d Failed\n", test_pass, test_fail))
 if (test_fail > 0L) quit(status = 1L)

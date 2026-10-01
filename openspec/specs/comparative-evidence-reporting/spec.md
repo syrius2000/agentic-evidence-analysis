@@ -212,3 +212,52 @@ The system SHALL enforce narrative and visual safeguards, prohibiting claims tha
 
 - **WHEN** comparative evidence reports are compiled for multiple screening terms
 - **THEN** the report narrative MUST include the exploratory screening disclaimer, use semantics-aware interval terminology (credible interval vs bootstrap percentile interval), and SHALL NOT assign cell background hue based on posterior direction alone.
+
+
+### Requirement: 自然単位と逆数RDの個別解説
+
+システムはE100とNNT・NNH-likeの独立した日本語解説をHTMLとMarkdownに備えなければならない（SHALL）。HTMLの表見出しは各解説への導線を備え、ソート操作と干渉してはならない（MUST NOT）。既存の逆数RD状態・Safety限定方向ラベル・因果的解釈の禁止を維持する。
+
+#### Scenario: 表見出しから指標解説を開く
+
+- **WHEN** 利用者がE100またはNNT・NNH-likeの解説リンクを操作する
+- **THEN** 対応する解説が開き、表のソート状態は変化しない
+
+### Requirement: 実務評価の未設定理由の搬送と表示
+
+システムは各contrastの正本実務評価状態から `practical_evaluation_status` と `practical_evaluation_reason` を要約データに搬送しなければならない（SHALL）。`NONE / none` は `not_evaluated / primary_delta_not_set` とし、評価済みは `evaluated` と欠測理由を搬送する。正本の欠落・矛盾は入力不整合として停止しなければならない（SHALL）。表示時に実務閾値を補完したり、バッチ引数のみからoverrideの評価状態を判断してはならない（MUST NOT）。
+
+#### Scenario: 全行で実務閾値が未設定
+
+- **WHEN** 全contrastが明示的な未評価状態である
+- **THEN** 12列を維持し、各未評価セルに「未評価：実務閾値未設定」を表示し、表上部に理由を示し、実務領域・U-Gradeフィルタを無効化し、セルは無彩色とする
+
+#### Scenario: 評価済みと未評価のcontrastが混在
+
+- **WHEN** 正本overrideに評価済みと未評価が混在する
+- **THEN** 各contrastの状態を優先し、未評価を選択できるフィルタを維持し、評価済みのセル配色とソート順を維持する
+
+
+### Requirement: Safety報告の既定実務閾値と感度表示
+
+この報告Skillは、新規Safety比較で閾値引数が省略された場合に方針版 `rare_ae_exploratory_v1` を適用し、割合尺度 `primary_delta = 0.001` と `delta_thresholds = [0.0001, 0.0005, 0.001, 0.005]` を使用する。システムは閾値、感度候補、設定元、方針版をJSONとrun metadataへ搬送し、画面とMarkdownに適用値、感度結果、探索用基準である旨を示さなければならない（SHALL）。明示値は既定値より優先する。
+
+#### Scenario: Safety設定の省略
+
+- **WHEN** Safety比較で閾値引数を省略する
+- **THEN** 既定主閾値と4感度候補をcanonicalエンジンに渡し、正本に一致する設定値と来歴を成果物に記録する
+
+#### Scenario: Safety閾値が明示NULLまたは不正
+
+- **WHEN** Safety比較にNULLまたは有限でない・正でない・割合範囲外の閾値を指定する
+- **THEN** 明示的な評価省略許可なしにはrun出力を予約せず停止する。不正な感度候補も同様に停止する
+
+#### Scenario: 重篤事象と実務閾値
+
+- **WHEN** Safetyダッシュボードを提示する
+- **THEN** 重篤事象は閾値・U-Gradeにかかわらず別途レビューし、実務的中立は安全性保証でないと表示する。重篤性のデータがなければPT名から自動分類しない
+
+#### Scenario: 非Safety互換
+
+- **WHEN** 非Safety領域で引数を省略する
+- **THEN** 本Safety方針の閾値既定値を適用しない

@@ -26,6 +26,14 @@ local({
   source(tokens_path, local = FALSE)
 })
 
+# 本Skill限定の探索用既定値。他Skillや共有推論エンジンの既定値は変更しない。
+REPORTING_SAFETY_POLICY <- list(
+  version = "rare_ae_exploratory_v1",
+  primary_delta = 0.001,
+  delta_thresholds = c(0.0001, 0.0005, 0.001, 0.005),
+  unit = "proportion"
+)
+
 # HTML escape helper for Zero-External-Asset & markup injection prevention (14.R2)
 html_escape <- function(text) {
   if (is.null(text) || length(text) == 0L) {
@@ -61,8 +69,34 @@ generate_comparative_report <- function(
   domain = "safety",
   include_frequentist_compat = TRUE,
   evidence_overrides = NULL,
-  include_design_aware_fisher = FALSE
+  include_design_aware_fisher = FALSE,
+  allow_unevaluated = FALSE
 ) {
+  primary_delta_was_missing <- missing(primary_delta)
+  delta_thresholds_were_missing <- missing(delta_thresholds)
+  is_safety_domain <- identical(tolower(as.character(domain)[[1L]]), "safety")
+  if (is_safety_domain) {
+    if (!is.logical(allow_unevaluated) || length(allow_unevaluated) != 1L || is.na(allow_unevaluated)) {
+      stop("[INVALID_UNEVALUATED_PERMISSION] allow_unevaluated は単一のTRUE/FALSEが必要です", call. = FALSE)
+    }
+    if (primary_delta_was_missing) primary_delta <- REPORTING_SAFETY_POLICY$primary_delta
+    if (delta_thresholds_were_missing) delta_thresholds <- REPORTING_SAFETY_POLICY$delta_thresholds
+    if (is.null(primary_delta)) {
+      if (!isTRUE(allow_unevaluated)) {
+        stop("[PRACTICAL_THRESHOLD_REQUIRED] Safety比較は既定閾値0.001を使用します。省略する場合のみ利用者合意後にallow_unevaluated=TRUEを指定してください", call. = FALSE)
+      }
+    } else if (!is.numeric(primary_delta) || length(primary_delta) != 1L ||
+      !is.finite(primary_delta) || primary_delta <= 0 || primary_delta > 1) {
+      stop("[INVALID_PRIMARY_DELTA] Safety primary_delta は0より大きく1以下の有限な割合尺度の単一値が必要です", call. = FALSE)
+    }
+    if (!is.numeric(delta_thresholds) || any(!is.finite(delta_thresholds)) ||
+      any(delta_thresholds <= 0 | delta_thresholds > 1)) {
+      stop("[INVALID_DELTA_THRESHOLDS] Safety delta_thresholds は0より大きく1以下の有限な割合尺度が必要です", call. = FALSE)
+    }
+  }
+  threshold_source <- if (is_safety_domain && primary_delta_was_missing) "default_policy" else if (is.null(primary_delta)) "explicit_none" else "explicit_argument"
+  if (!is_safety_domain) allow_unevaluated <- TRUE
+
   contrast_mode <- match.arg(contrast_mode)
   required_run_functions <- c("reserve_run_output_dir", "write_results_manifest", "write_run_meta", "read_run_control", "verify_results_manifest")
   if (!all(vapply(required_run_functions, exists, logical(1L), mode = "function"))) {
@@ -110,6 +144,13 @@ generate_comparative_report <- function(
         pair_key <- sprintf("%s__%s_vs_%s", thm, cp$target, cp$reference)
         ev <- evidence_overrides[[pair_key]]
         if (is.null(ev)) next
+        if (is_safety_domain && !isTRUE(allow_unevaluated) && identical(ev$resolution_grade$grade, "NONE")) {
+          stop(sprintf("[PRACTICAL_THRESHOLD_REQUIRED] %s overrideに有効な実務評価がありません", pair_key), call. = FALSE)
+        }
+        if (is_safety_domain && (!is.list(ev$practical_region_support) || is.null(ev$practical_region_support$primary_delta)) &&
+          !identical(ev$resolution_grade$grade, "NONE")) {
+          stop(sprintf("[INVALID_PRACTICAL_EVIDENCE] %s overrideの評価済み閾値が欠落しています", pair_key), call. = FALSE)
+        }
         if (!identical(ev$inferential_semantics, "bootstrap") || is.null(ev$iptw$raw_patient_counts)) {
           stop("[INVALID_EVIDENCE_OVERRIDE] design-aware overrideにはIPTW bootstrap evidenceとraw_patient_countsが必要です")
         }
@@ -277,7 +318,31 @@ generate_comparative_report <- function(
       support_label <- if (identical(semantics, "bootstrap")) "Bootstrap support fraction (RD > 0)" else "P(RD > 0)"
       interval_label <- if (identical(interval_method, "bootstrap_percentile")) "bootstrap percentile interval" else "ETI"
       u_grd <- ev$resolution_grade$grade
-      dom_reg <- ev$resolution_grade$dominant_region %||% "none"
+      dom_reg <- ev$resolution_grade$dominant_region
+      # 搬送時に評価状態を確定し、表示層では再判定しない。
+      regions <- c("target_excess", "practical_neutral", "reference_excess")
+      valid_scalar <- function(x, choices) is.character(x) && length(x) == 1L && !is.na(x) && x %in% choices
+      support <- ev$practical_region_support
+      valid_practical <- valid_scalar(u_grd, c("U0", "U1", "U2", "U3", "NONE")) &&
+        valid_scalar(dom_reg, c(regions, "none"))
+      if (valid_practical && u_grd == "NONE") {
+        valid_practical <- identical(dom_reg, "none") && is.null(support) &&
+          is.null(ev$resolution_grade$max_region_probability)
+      } else if (valid_practical && is.list(support)) {
+        probabilities <- lapply(regions, function(region) support[[region]])
+        valid_probability <- function(x) is.numeric(x) && length(x) == 1L && is.finite(x) && x >= 0 && x <= 1
+        delta <- support$primary_delta
+        valid_practical <- dom_reg %in% regions && all(vapply(probabilities, valid_probability, logical(1L))) &&
+          is.numeric(delta) && length(delta) == 1L && is.finite(delta) && delta > 0
+        if (valid_practical) valid_practical <- abs(sum(unlist(probabilities)) - 1) <= 1e-6
+      } else {
+        valid_practical <- FALSE
+      }
+      if (!isTRUE(valid_practical)) {
+        stop(sprintf("[INVALID_PRACTICAL_EVIDENCE] %s: 実務評価の正本フィールドが欠落または矛盾しています", pair_key), call. = FALSE)
+      }
+      practical_evaluation_status <- if (u_grd == "NONE") "not_evaluated" else "evaluated"
+      practical_evaluation_reason <- if (u_grd == "NONE") "primary_delta_not_set" else NA_character_
 
       # Precision metrics (preserve suppression; do not invent metrics if suppressed)
       rd_width <- ev$precision_metrics$rd_interval_width %||% (
@@ -353,6 +418,10 @@ generate_comparative_report <- function(
         rr_interval_lower = rr_low,
         rr_interval_upper = rr_upp,
         direction_support = dir_sup,
+        practical_evaluation_status = practical_evaluation_status,
+        practical_evaluation_reason = practical_evaluation_reason,
+        effective_primary_delta = if (u_grd == "NONE") NA_real_ else as.numeric(ev$practical_region_support$primary_delta),
+        practical_threshold_source = if (u_grd == "NONE") "explicit_none" else if (design_aware_override) "evidence_override" else threshold_source,
         u_grade = u_grd,
         dominant_region = dom_reg,
         fisher_p_value = p_fisher,
@@ -373,6 +442,19 @@ generate_comparative_report <- function(
   }
 
   summary_df <- do.call(rbind, summary_rows)
+  practical_difference_policy <- list(
+    policy_version = if (is_safety_domain) REPORTING_SAFETY_POLICY$version else NULL,
+    domain = domain,
+    primary_delta_source = threshold_source,
+    primary_delta = if (is.null(primary_delta)) NULL else as.numeric(primary_delta),
+    delta_thresholds = as.numeric(delta_thresholds),
+    unit = if (is_safety_domain) "proportion" else NULL,
+    allow_unevaluated = isTRUE(allow_unevaluated)
+  )
+  all_practical_not_evaluated <- all(summary_df$practical_evaluation_status == "not_evaluated")
+  practical_notice <- if (all_practical_not_evaluated) {
+    "実務閾値が未設定のため、この実行では実務領域・U-Gradeを評価していません。未評価はU3や実務的中立を意味しません。"
+  } else ""
 
   # 4. Write Deliverable Files inside Run Directory
   # B. comparative_evidence.json (conforms to comparative-evidence-batch-v1)
@@ -383,7 +465,8 @@ generate_comparative_report <- function(
     run_meta = list(
       run_output_dir = basename(run_output_dir),
       skill = "vcd-categorical-reporting",
-      seed = seed
+      seed = seed,
+      practical_difference_policy = practical_difference_policy
     ),
     domain = domain,
     primary_delta = primary_delta,
@@ -409,6 +492,8 @@ generate_comparative_report <- function(
     "> **多重比較の探索的スクリーニング免責**: 複数テーマの一括スクリーニング解析では、家族ワイズ第1種過誤率（FWER）は制御されていません。本結果は仮説生成のための探索的スクリーニングとして解釈してください。",
     "",
     "## 2. 解析結果要約",
+    "",
+    if (nzchar(practical_notice)) paste0("> ", practical_notice) else "",
     "",
     "| テーマ | 比較 | 記述N (T / R) | 記述イベント数 (T / R) | RD 推定値 [区間] | 100人あたり差 (E100) | NNT・NNH-like | RR 推定値 [区間] | 方向支持指標 | 実務領域・U-Grade | 精度指標 (ESS / 区間幅) | 診断バッジ |",
     "|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---|"
@@ -439,7 +524,7 @@ generate_comparative_report <- function(
     rd_width_md <- if (is.na(row$rd_interval_width)) "N/A" else sprintf("幅: %.3f", row$rd_interval_width)
     precision_md <- sprintf("ESS: %s; %s", ess_md, rd_width_md)
     md_lines <- c(md_lines, sprintf(
-      "| %s | %s vs %s | %d / %d | %d / %d | %s | %s | %s | %s | %.3f (%s) | %s / %s | %s | %s |",
+      "| %s | %s vs %s | %d / %d | %d / %d | %s | %s | %s | %s | %.3f (%s) | %s | %s | %s |",
       row$theme, row$target_arm, row$reference_arm,
       row$target_total, row$reference_total,
       row$target_events, row$reference_events,
@@ -447,7 +532,7 @@ generate_comparative_report <- function(
       e100_md,
       reciprocal_label_md,
       rr_str_md, row$direction_support, row$support_label,
-      row$u_grade, row$dominant_region,
+      if (row$practical_evaluation_status == "not_evaluated") "未評価：実務閾値未設定" else sprintf("%s / %s", row$u_grade, row$dominant_region),
       precision_md,
       row$badges
     ))
@@ -509,6 +594,13 @@ generate_comparative_report <- function(
     "- **逆数の不確実性契約**: RD 区間が0を跨ぐ場合は SIGN_AMBIGUOUS として方向付き NNT/NNH-like を抑制する。0を跨ぐRD区間を単純反転した連続区間は表示しない。",
     "- **重要禁止解釈**: 区間が 0 を跨ぐことは二群間の「同等性」や「差がないこと」を証明しない。因果的 NNT を自動主張しない。",
     "",
+    "### 2a. 100人あたり差 (E100)",
+    "- E100 = 100 × RD。RD = +0.03 / −0.03 は100人あたり3人多い／少ないことを示します。相対的な3%増減ではなく3パーセントポイントの絶対差です。RDの区間と併せて読みます。",
+    "",
+    "### 2b. NNT・NNH-like（逆数RD）",
+    "- 1/|RD| はcanonical RD点推定の変換で、RD = ±0.03 は約33.3人に対してイベント発生者1人分の差に相当する規模です。逆数の事後中央値ではありません。",
+    "- SafetyかつSTABLE_DIRECTIONの場合のみNNH-like / NNT-likeを表示し、非Safetyでは1/|RD|とします。SIGN_AMBIGUOUSは区間がゼロを含む、RD_NEAR_ZEROは点が数値的ゼロ、NOT_INTERPRETABLEは非有限値または符号不整合のため表示を抑制します。因果的NNTを断定せず、ゼロを含む区間を単純反転しません。",
+    "",
     "### 3. 相対リスク (Relative Risk: RR)",
     "- **定義**: $RR = p_T / p_R$。対照群に対する相対的な発生リスクの対比を評価します。",
     rr_zero_desc,
@@ -524,6 +616,8 @@ generate_comparative_report <- function(
     "- **3 領域確率**: $q_T = P(RD > \\delta)$, $q_N = P(-\\delta \\le RD \\le \\delta)$, $q_R = P(RD < -\\delta)$ ($q_T + q_N + q_R = 1$)。",
     "- **無効化契約**: `primary_delta = null` の場合、実務領域分類は無効化（`none`）され、無彩色化されます。",
     "",
+    "- 未評価は「未評価：実務閾値未設定」と表示します。U3や実務的中立とは異なります。閾値は分析目的に応じて事前に設定します。primary_delta = 0.05 は5パーセントポイントの例であり推奨既定値ではありません。",
+    "",
     "### 7. 実務領域解像度グレード (U-Grade)",
     "- **定義**: 最大領域確率 $C = \\max(q_T, q_N, q_R)$ に基づく解像度等級（U0 $\\ge$ 0.95, U1 $\\ge$ 0.80, U2 $\\ge$ 0.60, U3 < 0.60）。",
     "- **重要禁止解釈**: 不確実性分布の実務領域への収まり具合（解像度）であり、標本サイズ（精度）や有害事象の臨床的重症度を意味しません。",
@@ -538,6 +632,23 @@ generate_comparative_report <- function(
     "- **探索的位置付け**: 家族ワイズ第1種過誤率（FWER）は制御されておらず、シグナル検出・仮説生成のためのスクリーニングです。自動規制決定や薬事承認の決定的根拠としてはなりません。"
   )
 
+  if (is_safety_domain) {
+    policy_summary_md <- if (is.null(primary_delta)) {
+      sprintf("実務領域評価は明示的な省略許可により実行していません。感度候補: %s。", paste(delta_thresholds, collapse = ", "))
+    } else {
+      sprintf("探索的比較の閾値はδ=%g（1,000人あたり%.1f人の差）です。設定元: %s。感度候補: %s。これらは臨床的重要性や許容可能なリスクの普遍的基準ではありません。",
+        primary_delta, primary_delta * 1000, threshold_source, paste(delta_thresholds, collapse = ", "))
+    }
+    md_lines <- c(md_lines, "", "## 4. 実務閾値と感度設定", "", policy_summary_md,
+      "重篤事象はこの閾値・U-Gradeにかかわらず別途レビューしてください。実務的中立は安全性の保証ではありません。入力に重篤性情報がない場合、重篤事象を自動識別していません。")
+    for (i in seq_len(nrow(summary_df))) {
+      d <- evidence_list[[sprintf("%s__%s_vs_%s", summary_df$theme[i], summary_df$target_arm[i], summary_df$reference_arm[i])]]$delta_profile
+      if (!length(d)) next
+      md_lines <- c(md_lines, "", sprintf("### %s：閾値感度", summary_df$theme[i]), "",
+        "| δ (割合差) | P(RD > δ) | P(RD < −δ) | P(|RD| ≤ δ) |", "|---:|---:|---:|---:|")
+      for (point in d) md_lines <- c(md_lines, sprintf("| %g | %.4f | %.4f | %.4f |", point$delta, point$p_rd_gt_delta, point$p_rd_lt_minus_delta, point$p_neutral))
+    }
+  }
   writeLines(md_lines, md_path)
 
   # E. dashboard.html (Zero-External-Asset standalone HTML with Section 14 Visual Separation Contract)
@@ -592,7 +703,7 @@ generate_comparative_report <- function(
     # 14.2 & 14.3: Practical Difference cell ONLY visual encoding
     # Row tr remains uncolored to preserve semantic separation of Effect/Direction/Precision
     practical_bg <- "transparent"
-    if (!is.null(primary_delta) && !is.na(primary_delta) && row$u_grade != "NONE") {
+    if (row$practical_evaluation_status == "evaluated") {
       if (row$u_grade == "U3") {
         practical_bg <- theme_hex_to_rgba(THEME_TOKENS$practical_u3, "0.12")
       } else {
@@ -688,7 +799,7 @@ generate_comparative_report <- function(
         "<td class='col-effect col-reciprocal' data-sort-value=\"%s\">%s</td>",
         "<td class='col-effect' data-sort-value=\"%s\">%s</td>",
         "<td class='col-direction' data-sort-value=\"%s\">%.3f<br><small>(%s)</small></td>",
-        "<td class='%s' style='background-color: %s;' data-sort-value=\"%s\"><span class='ugrade'>%s</span><br><small>%s</small></td>",
+        "<td class='%s' style='background-color: %s;' data-sort-value=\"%s\">%s</td>",
         "<td class='col-precision' data-sort-value=\"%s\">%s</td>",
         "<td class='col-diagnostics' data-sort-value=\"%s\">%s</td>",
         "</tr>"
@@ -703,7 +814,8 @@ generate_comparative_report <- function(
       reciprocal_sort_val, reciprocal_label_html,
       rr_sort_val, rr_str,
       dir_sort_val, row$direction_support, html_escape(row$support_label),
-      practical_class, practical_bg, practical_sort_val, html_escape(row$u_grade), html_escape(row$dominant_region),
+      practical_class, practical_bg, practical_sort_val,
+      if (row$practical_evaluation_status == "not_evaluated") "<span class=\"practical-not-evaluated\">未評価：実務閾値未設定</span>" else sprintf("<span class=\"ugrade\">%s</span><br><small>%s</small>%s", html_escape(row$u_grade), html_escape(row$dominant_region), if (row$practical_threshold_source == "evidence_override" && !is.na(row$effective_primary_delta)) sprintf("<br><small>δ=%g</small>", row$effective_primary_delta) else ""),
       prec_sort_val, precision_html,
       html_escape(diag_sort_val), badge_html
     ))
@@ -759,6 +871,7 @@ generate_comparative_report <- function(
   </style>
   <style>
     /* Layout / interaction only — page chrome comes from shared dashboard_theme.css */
+    .metric-guide-link { display: inline-block; margin-left: 0.5em; font-size: 0.8em; color: inherit; text-decoration: underline; }
     .callout { background: #fffbeb; border-left: 4px solid #d97706; padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-size: 0.9em; }
     .callout strong { color: #a16207; }
     .callout.warning { background: #fef2f2; border-left: 4px solid #9b2945; }
@@ -842,7 +955,7 @@ generate_comparative_report <- function(
             <label class="filter-item"><input type="checkbox" class="filter-region" value="target_excess"> target_excess</label>
             <label class="filter-item"><input type="checkbox" class="filter-region" value="practical_neutral"> practical_neutral</label>
             <label class="filter-item"><input type="checkbox" class="filter-region" value="reference_excess"> reference_excess</label>
-            <label class="filter-item"><input type="checkbox" class="filter-region" value="none"> none</label>
+            <label class="filter-item"><input type="checkbox" class="filter-region" value="none"> 未評価（閾値未設定）</label>
           </div>
           <div class="filter-subgroup">
             <div class="filter-subgroup-title">U-Grade (OR)</div>
@@ -850,7 +963,7 @@ generate_comparative_report <- function(
             <label class="filter-item"><input type="checkbox" class="filter-ugrade" value="U1"> U1</label>
             <label class="filter-item"><input type="checkbox" class="filter-ugrade" value="U2"> U2</label>
             <label class="filter-item"><input type="checkbox" class="filter-ugrade" value="U3"> U3</label>
-            <label class="filter-item"><input type="checkbox" class="filter-ugrade" value="NONE"> NONE</label>
+            <label class="filter-item"><input type="checkbox" class="filter-ugrade" value="NONE"> 未評価（閾値未設定）</label>
           </div>
         </div>
       </details>
@@ -877,6 +990,17 @@ generate_comparative_report <- function(
   </div>
 ', paste(theme_checkbox_items, collapse = "\n"), paste(badge_checkbox_items, collapse = "\n"), nrow(summary_df), nrow(summary_df))
 
+  if (all_practical_not_evaluated) {
+    html_toolbar <- sub('id="filter-group-practical"', 'id="filter-group-practical" aria-disabled="true"', html_toolbar, fixed = TRUE)
+    html_toolbar <- sub('<div class="filter-panel filter-dual-panel">',
+      '<div class="filter-panel filter-dual-panel"><p>実務閾値未設定のためフィルタは利用できません。</p><fieldset disabled aria-label="実務評価フィルタ（未評価）">', html_toolbar, fixed = TRUE)
+    # Close the fieldset inside the practical panel only.
+    html_toolbar <- sub('value="NONE"> 未評価（閾値未設定）</label>\n          </div>\n        </div>',
+      'value="NONE"> 未評価（閾値未設定）</label>\n          </div>\n          </fieldset>\n        </div>', html_toolbar, fixed = TRUE)
+    html_toolbar <- sub('id="practical-filter-count" class="filter-badge-indicator">すべて',
+      'id="practical-filter-count" class="filter-badge-indicator">未評価', html_toolbar, fixed = TRUE)
+  }
+
   html_table <- sprintf('  %s
   <div class="table-container">
     <table id="comparative-evidence-table" aria-describedby="guidance-callout">
@@ -888,8 +1012,8 @@ generate_comparative_report <- function(
           <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">記述N (T / R)<span class="sort-indicator" aria-hidden="true">↕</span></th>
           <th scope="col" class="col-id sortable" aria-sort="none" tabindex="0" role="columnheader">記述イベント数 (T / R)<span class="sort-indicator" aria-hidden="true">↕</span></th>
           <th scope="col" class="col-effect sortable" aria-sort="none" tabindex="0" role="columnheader">RD 推定値 [区間]<span class="sort-indicator" aria-hidden="true">↕</span></th>
-          <th scope="col" class="col-effect col-e100 sortable" aria-sort="none" tabindex="0" role="columnheader">100人あたり差 (E100)<span class="sort-indicator" aria-hidden="true">↕</span></th>
-          <th scope="col" class="col-effect col-reciprocal sortable" aria-sort="none" tabindex="0" role="columnheader">NNT・NNH-like<span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-effect col-e100 sortable" aria-sort="none" tabindex="0" role="columnheader">100人あたり差 (E100)<a class="metric-guide-link" href="#guide-item-e100" aria-label="100人あたり差の解説">解説</a><span class="sort-indicator" aria-hidden="true">↕</span></th>
+          <th scope="col" class="col-effect col-reciprocal sortable" aria-sort="none" tabindex="0" role="columnheader">NNT・NNH-like<a class="metric-guide-link" href="#guide-item-reciprocal" aria-label="NNT・NNH-likeの解説">解説</a><span class="sort-indicator" aria-hidden="true">↕</span></th>
           <th scope="col" class="col-effect sortable" aria-sort="none" tabindex="0" role="columnheader">RR 推定値 [区間]<span class="sort-indicator" aria-hidden="true">↕</span></th>
           <th scope="col" class="col-direction sortable" aria-sort="none" tabindex="0" role="columnheader">方向支持指標<span class="sort-indicator" aria-hidden="true">↕</span></th>
           <th scope="col" class="col-practical sortable" aria-sort="none" tabindex="0" role="columnheader">実務領域・U-Grade<span class="sort-indicator" aria-hidden="true">↕</span></th>
@@ -1215,6 +1339,35 @@ generate_comparative_report <- function(
       </div>
     </details>'
 
+  e100_accordion_html <- '    <details id="guide-item-e100" class="guide-accordion">
+      <summary class="guide-summary">2a. 100人あたり差 (E100)</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>E100 = 100 × RD。RD点推定を100人あたりのイベント発生者数の差に換算した自然単位です。</p>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>RD = +0.03なら E100 = +3.00 / 100人、RD = −0.03なら −3.00 / 100人です。比較対象群で参照群より100人あたり3人多い／少ないことを示します。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>相対リスクの3%増減ではなく、絶対割合の3パーセントポイント差です。イベントが有害か有益かで意味が変わります。未調整の比較から因果的な増減を断定しません。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>RDを読みやすい単位で示すために用います。独立した推論指標ではなく、RDの不確実性区間と併せて読みます。</p>
+      </div>
+    </details>'
+
+  reciprocal_accordion_html <- '    <details id="guide-item-reciprocal" class="guide-accordion">
+      <summary class="guide-summary">2b. NNT・NNH-like（逆数RD）</summary>
+      <div class="guide-content">
+        <h4>定義 (Definition)</h4>
+        <p>1/|RD| はcanonical RD点推定の絶対値の逆数です。RD = ±0.03なら約33.3人に対してイベント発生者1人分の差に相当する規模です。</p>
+        <h4>どう読むか (Interpretation)</h4>
+        <p>Safety かつ STABLE_DIRECTION の場合のみ、target_excess → NNH-like（有害イベントが多い方向）、reference_excess → NNT-like（有害イベントが少ない方向）と表示します。非Safetyでは1/|RD|表記です。</p>
+        <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
+        <p>SIGN_AMBIGUOUS はRD区間がゼロを含み方向が定まらないため、RD_NEAR_ZERO は点推定が数値的ゼロで逆数が安定しないため、NOT_INTERPRETABLE は非有限値または点と区間の符号不整合のため、数値・方向ラベルを抑制します。</p>
+        <p>逆数の事後中央値ではありません。ゼロを含むRD区間を単純反転した連続区間は表示しません。観察データから因果的な治療効果やNNTを断定せず、区間がゼロを含むことを同等性の証明としません。</p>
+        <h4>いつ使うか (When to Use)</h4>
+        <p>RDとE100を主に読み、逆数RDは絶対差の規模を理解する二次的な補助指標として用います。</p>
+      </div>
+    </details>'
+
   practical_accordion_html <- '    <details id="guide-item-practical" class="guide-accordion">
       <summary class="guide-summary">6. 実務領域と一次対比閾値 (Practical Difference Regions &amp; primary_delta)</summary>
       <div class="guide-content">
@@ -1233,7 +1386,8 @@ generate_comparative_report <- function(
         <h4>どう読むか (Interpretation)</h4>
         <p>最大確率を占める領域を優勢領域（dominant_region: target_excess, practical_neutral, reference_excess）として識別します。</p>
         <h4>注意点・禁止解釈 (Cautions &amp; Invariants)</h4>
-        <p>primary_delta が未指定（null）の場合、実務領域分類は無効化（none）され、セルのハイライト配色は行われません。</p>
+        <p>primary_delta が未指定（null）の場合は「未評価：実務閾値未設定」と表示し、セルのハイライト配色は行いません。未評価はU3や実務的中立を意味しません。</p>
+        <p>実務閾値は分析目的に応じて事前に設定します。例えば primary_delta = 0.05 は5パーセントポイントを意味しますが、推奨既定値ではありません。</p>
         <h4>いつ使うか (When to Use)</h4>
         <p>統計的有意性だけでなく、実務上意味のある差が存在するかを領域確率として評価する際に用います。</p>
       </div>
@@ -1318,6 +1472,8 @@ generate_comparative_report <- function(
     "    <h2>統計指標の数学的解説と利用ガイド</h2>\n\n",
     risk_accordion_html, "\n\n",
     rd_accordion_html, "\n\n",
+    e100_accordion_html, "\n\n",
+    reciprocal_accordion_html, "\n\n",
     rr_accordion_html, "\n\n",
     intervals_accordion_html, "\n\n",
     direction_accordion_html, "\n\n",
@@ -1381,7 +1537,7 @@ generate_comparative_report <- function(
         }
         if (practicalCountEl) {
           var pCount = selRegions.length + selUgrades.length;
-          practicalCountEl.textContent = pCount > 0 ? pCount + " 件選択" : "すべて";
+          practicalCountEl.textContent = document.getElementById("filter-group-practical").getAttribute("aria-disabled") === "true" ? "未評価" : (pCount > 0 ? pCount + " 件選択" : "すべて");
         }
         if (diagCountEl) {
           diagCountEl.textContent = selBadges.length > 0 ? selBadges.length + " 件選択" : "すべて";
@@ -1511,6 +1667,17 @@ generate_comparative_report <- function(
         });
       }
 
+      document.querySelectorAll(".metric-guide-link").forEach(function(link) {
+        function openGuide() {
+          var guide = document.getElementById(link.getAttribute("href").slice(1));
+          if (guide) { guide.open = true; guide.querySelector("summary").focus(); }
+        }
+        link.addEventListener("click", openGuide);
+        link.addEventListener("keydown", function(e) {
+          if (e.key === " ") { e.preventDefault(); link.click(); }
+        });
+      });
+
       /* --- Sort Table Logic (Task 14.10) --- */
       headers.forEach(function(header, colIndex) {
         function sortTable() {
@@ -1579,8 +1746,11 @@ generate_comparative_report <- function(
           });
         }
 
-        header.addEventListener("click", sortTable);
+        header.addEventListener("click", function(e) {
+          if (!e.target.closest(".metric-guide-link")) sortTable();
+        });
         header.addEventListener("keydown", function(e) {
+          if (e.target.closest(".metric-guide-link")) return;
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             sortTable();
@@ -1592,7 +1762,17 @@ generate_comparative_report <- function(
 </body>
 </html>'
 
-  html_content <- paste0(html_head, html_toolbar, html_table, html_guide, html_json, html_script)
+  practical_policy_notice <- if (is_safety_domain) {
+    policy_summary_html <- if (is.null(primary_delta)) {
+      sprintf("実務領域評価は明示的な省略許可により実行していません。感度候補: %s。", html_escape(paste(delta_thresholds, collapse = "、")))
+    } else {
+      sprintf("主閾値 δ=%g（1,000人あたり%.1f人の差、設定元: %s）。感度候補: %s。",
+        primary_delta, primary_delta * 1000, html_escape(threshold_source), html_escape(paste(delta_thresholds, collapse = "、")))
+    }
+    paste0('<aside id="practical-threshold-policy" class="callout" role="note"><strong>実務閾値・感度設定</strong><p>',
+      policy_summary_html, '</p><p>探索用の運用基準であり、臨床的重要性や許容可能なリスクの普遍的基準ではありません。重篤事象は閾値・U-Gradeにかかわらず別途レビューしてください。実務的中立は安全性の保証ではありません。重篤性情報がない場合は重篤事象を自動識別していません。</p></aside>')
+  } else ""
+  html_content <- paste0(html_head, practical_policy_notice, if (nzchar(practical_notice)) paste0('<p id="practical-evaluation-notice" role="status">', practical_notice, "</p>") else "", html_toolbar, html_table, html_guide, html_json, html_script)
 
   writeLines(html_content, html_path)
 
@@ -1615,6 +1795,7 @@ generate_comparative_report <- function(
     run_id = if (!is.null(run_id)) run_id else basename(run_output_dir),
     input_data_path = input_data_path,
     extra = list(
+      practical_difference_policy = practical_difference_policy,
       results_manifest_sha256 = manifest$manifest_sha256,
       inputs = input_record, config_origin = "api_arguments", data_frame_sha256 = df_sha256,
       data_frame_hash_contract = "R-serialize-v2: column names, types, classes, values, row order",
