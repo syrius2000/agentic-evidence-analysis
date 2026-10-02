@@ -33,6 +33,7 @@ author: Codex (GPT-5) / Antigravity / Cursor (Composer) / Codex (GPT-6)
 | **2** | [3次元カテゴリカル探索の数理](three_way_models.md) | 9 階層対数線形モデル（M1〜M9）、閉形式最尤推定量と反復比例適合（IPF）、ゼロセル分類と最尤推定量存在条件（Fienberg 1970）、ポアソン完全対数尤度と明示式 BIC、新 4 軸セル診断（Effect/Evidence/Influence/Stability）、マルチベースライン診断構造、大標本 Dual-Filter 原則、標本サイズ $c$ 倍拡張（100倍実験）の漸近挙動体系、局所逸脱度改善量 $\Delta G_i^2/N$、条件付きセル順位再現性（CRR）の多項再標本化と反復再推定 | ✓ |
 | **3** | [ベイズ推定とモデル比較の基礎](stats_bayesian.md) | ベイズ因子（周辺尤度比）の定義、Schwarz BIC 近似の成立条件、多項 Dirichlet 事後推論、部分集合指定による一般化条件付き割合と層間差の同時事後推論、均一連関オッズ比不変性、シンプソンのパラドックス解消機構、独立対飽和の解析的厳密ベイズ因子、Freeman-Tukey 事後予測チェック。※独立群 Beta-Binomial／Gamma-Poisson との対照節は未追記 | △ |
 | **4** | [比較エビデンス推論の統計数理](comparative_evidence_math.md) | 独立 Jeffreys Beta-Binomial モデル、共役事後分布と事前感度、6大対比（RD/RR/E100/reciprocal RD/方向支持/ETI）、reciprocal 決定論的状態機械、参照群ゼロ発生時（$x_R=0$）の無限大期待値契約（`mean=null`）、実務領域と U-Grade（U0〜U3）、12 列提示階層、探索的多重性免責、安全性重複排除規約 | ✓ |
+| **補助資料** | [FDA White Paper: Data Mining at FDA](fda_safety_data_mining_white_paper.md) | 安全性シグナル閾値の文脈依存性、シグナル検出と因果・発生率評価の区別。本スキルのRD閾値に対する直接的な数値根拠ではない | 参照記録 |
 | **5** | [デザイン考慮型比較推論の統計数理](design_aware_inference_math.md) | 1:1 マッチドペア（4セル多項 Jeffreys Dirichlet、McNemar オッズ比、解析的厳密期待値）、1:k マッチドセット（ATT エスティマンド、固定条件付き原子クラスタブートストラップ、SMD）、IPTW（PS モデル再適合患者ブートストラップ、Kish ESS、Positivity 診断、非整数度数拒絶原則）、人年発症率（共役 Gamma-Poisson モデル、IRD/IRR） | ✓ |
 | **6** | [探索的分析設計と実務ワークフロー](advanced_analysis.md) | 4-Pass 推奨思考プロセス、大標本 Dual-Filter スクリーニング手順、アソシエーションルール（ARM）や疎な表との境界 | ✓ |
 | **7** | [分析スキルの責務境界](skill_responsibilities.md) | 全 9 スキルの役割分担とインターフェース契約、比較・デザイン・決定監査の原則、CRRの解釈境界 | ✓ |
