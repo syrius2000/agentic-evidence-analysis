@@ -1,6 +1,13 @@
 #!/usr/bin/env Rscript
 # tests/test_skill_run_isolation.R — run スコープ出力の回帰（上書き防止・run_meta）
 root <- normalizePath(".", mustWork = TRUE)
+source(file.path(root, ".agents", "shared", "run_scope.R"))
+new_test_output_root <- function(skill, label) {
+  path <- file.path(root, "evidence_runs", unname(RUN_SCOPE_SKILL_ROOTS[[skill]]),
+                    paste0(".test_", label, "_", Sys.getpid()))
+  dir.create(path, recursive = TRUE, showWarnings = FALSE)
+  path
+}
 
 pass <- 0L
 fail <- 0L
@@ -40,8 +47,7 @@ verify_run_meta_consistency <- function(run_dir, expected_skill, expected_out_ro
 bayes <- file.path(root, ".agents", "skills", "vcd-bayesian-evidence-analysis", "templates", "analysis.R")
 stopifnot(file.exists(bayes))
 
-td <- tempfile("run_iso_")
-dir.create(td)
+td <- new_test_output_root("vcd-bayesian-evidence-analysis", "run_iso")
 
 a1 <- tempfile("bayes_a_", fileext = ".csv")
 a2 <- tempfile("bayes_b_", fileext = ".csv")
@@ -71,35 +77,80 @@ if (length(runs) >= 1L) {
 
 root_files <- list.files(td, pattern = "evidence_results\\.json$", full.names = TRUE, recursive = FALSE)
 check("no evidence_results.json at skill root", length(root_files) == 0L)
+unlink(td, recursive = TRUE)
 
 # --- run_scope.R direct unit contracts ---
 source(file.path(root, ".agents", "shared", "run_scope.R"))
 
 td_scope <- tempfile("scope_test_")
 dir.create(td_scope)
+td_repo <- file.path(td_scope, "project")
+dir.create(td_repo)
+td_bayes_root <- file.path(td_repo, "evidence_runs", "vcd_bayesian")
+
+expected_skill_roots <- c(
+  "vcd-bayesian-evidence-analysis" = "vcd_bayesian",
+  "vcd-categorical-analysis" = "vcd_categorical",
+  "vcd-categorical-reporting" = "vcd_categorical_reporting",
+  "comparative-design-analysis" = "comparative_design",
+  "evidence-decision-review" = "evidence_decision_review",
+  "questionnaire-batch-analysis" = "questionnaire",
+  "sas-proc-freq" = "sas_proc_freq",
+  "sas-proc-means" = "sas_proc_means"
+)
+for (skill_name in names(expected_skill_roots)) {
+  resolved <- resolve_skill_output_root(skill_name, repo_root = td_repo)
+  expected <- file.path(td_repo, "evidence_runs", unname(expected_skill_roots[[skill_name]]))
+  check(paste(skill_name, "resolves to its stable evidence_runs slug"),
+        identical(resolved, normalizePath(expected, winslash = "/", mustWork = FALSE)))
+}
+custom_bayes_root <- file.path(td_bayes_root, "project_a")
+check("registered skill accepts a custom root within its namespace",
+      identical(resolve_skill_output_root("vcd-bayesian-evidence-analysis", custom_bayes_root, td_repo),
+                normalizePath(custom_bayes_root, winslash = "/", mustWork = FALSE)))
+outside_root <- file.path(td_repo, "custom-output")
+outside_error <- tryCatch({ resolve_skill_output_root("vcd-bayesian-evidence-analysis", outside_root, td_repo); "" }, error = conditionMessage)
+check("registered skill rejects roots outside its namespace", grepl("OUTPUT_ROOT_OUTSIDE_SKILL_NAMESPACE", outside_error))
+unregistered_error <- tryCatch({ resolve_skill_output_root("new-analysis-skill", repo_root = td_repo); "" }, error = conditionMessage)
+check("unregistered skill fails before creating output", grepl("UNREGISTERED_SKILL_SLUG", unregistered_error) && !dir.exists(file.path(td_repo, "evidence_runs", "new_analysis_skill")))
+traversal_error <- tryCatch({ resolve_skill_output_root("vcd-bayesian-evidence-analysis", file.path(td_bayes_root, "..", "escape"), td_repo); "" }, error = conditionMessage)
+check("parent traversal is rejected before creating output", grepl("OUTPUT_ROOT_TRAVERSAL", traversal_error) && !dir.exists(file.path(td_repo, "evidence_runs", "escape")))
+symlink_parent <- file.path(td_bayes_root, "escape_link")
+dir.create(td_bayes_root, recursive = TRUE)
+symlink_target <- tempfile("symlink_target_")
+dir.create(symlink_target)
+symlink_created <- isTRUE(file.symlink(symlink_target, symlink_parent))
+if (symlink_created) {
+  symlink_error <- tryCatch({ resolve_skill_output_root("vcd-bayesian-evidence-analysis", file.path(symlink_parent, "child"), td_repo); "" }, error = conditionMessage)
+  check("symlink escape is rejected before creating output", grepl("symlink", symlink_error, ignore.case = TRUE) && !dir.exists(file.path(symlink_target, "child")))
+}
+unlink(symlink_target, recursive = TRUE)
+
+td_scope <- td_bayes_root
 
 # 1. ID normalization: run_001 -> run_001 (no run_run_001)
-dir1 <- reserve_run_output_dir(td_scope, "vcd-bayesian-evidence-analysis", "run_001")
+dir1 <- reserve_run_output_dir(td_scope, "vcd-bayesian-evidence-analysis", "run_001", repo_root = td_repo)
 check("run_001 normalizes to run_001", basename(dir1) == "run_001")
 check("no run_run_001 generated", !grepl("run_run_", basename(dir1)))
 
 # 2. prefix addition: abc -> run_abc
-dir2 <- reserve_run_output_dir(td_scope, "vcd-bayesian-evidence-analysis", "abc")
+dir2 <- reserve_run_output_dir(td_scope, "vcd-bayesian-evidence-analysis", "abc", repo_root = td_repo)
 check("abc prefix adds to run_abc", basename(dir2) == "run_abc")
 
 # 3. collision avoidance: identical ID creates _2
-dir3 <- reserve_run_output_dir(td_scope, "vcd-bayesian-evidence-analysis", "abc")
+dir3 <- reserve_run_output_dir(td_scope, "vcd-bayesian-evidence-analysis", "abc", repo_root = td_repo)
 check("collision avoidance creates run_abc_2", basename(dir3) == "run_abc_2")
 
 # 4. questionnaire unified layout: no runs/ intermediate directory for new runs
-dir_q <- reserve_run_output_dir(td_scope, "questionnaire-batch-analysis", "batch_01")
+td_questionnaire_root <- file.path(td_repo, "evidence_runs", "questionnaire")
+dir_q <- reserve_run_output_dir(td_questionnaire_root, "questionnaire-batch-analysis", "batch_01", repo_root = td_repo)
 check("questionnaire new layout is run_batch_01", basename(dir_q) == "run_batch_01")
-check("questionnaire parent is td_scope directly", dirname(dir_q) == normalizePath(td_scope, winslash = "/"))
+check("questionnaire parent is its canonical namespace", dirname(dir_q) == normalizePath(td_questionnaire_root, winslash = "/"))
 
 # 5. trust boundary: accepts new layout
 meta_new <- list(
   skill = "questionnaire-batch-analysis",
-  out_root = normalizePath(td_scope, winslash = "/"),
+  out_root = normalizePath(td_questionnaire_root, winslash = "/"),
   run_output_dir = dir_q
 )
 tb_ok_new <- tryCatch({
@@ -109,13 +160,13 @@ tb_ok_new <- tryCatch({
 check("trust boundary accepts new questionnaire run_<id> layout", isTRUE(tb_ok_new))
 
 # 6. trust boundary: accepts legacy runs/<id> layout
-legacy_runs_dir <- file.path(td_scope, "runs")
+legacy_runs_dir <- file.path(td_questionnaire_root, "runs")
 dir.create(legacy_runs_dir, showWarnings = FALSE)
 legacy_run <- file.path(legacy_runs_dir, "legacy_01")
 dir.create(legacy_run, showWarnings = FALSE)
 meta_legacy <- list(
   skill = "questionnaire-batch-analysis",
-  out_root = normalizePath(td_scope, winslash = "/"),
+  out_root = normalizePath(td_questionnaire_root, winslash = "/"),
   run_output_dir = normalizePath(legacy_run, winslash = "/")
 )
 tb_ok_legacy <- tryCatch({
@@ -126,10 +177,11 @@ check("trust boundary accepts legacy questionnaire runs/<id> layout", isTRUE(tb_
 
 # 7. resolve_pass3_run_dir: discover single run from legacy runs/<id>
 writeLines("test,csv", file.path(legacy_run, "summary.csv"))
-res_disc <- resolve_pass3_run_dir(td_scope, "summary.csv", discover_single_run = TRUE)
+res_disc <- resolve_pass3_run_dir(td_questionnaire_root, "summary.csv", discover_single_run = TRUE)
 check("legacy run discovered by resolve_pass3_run_dir", normalizePath(res_disc$run_dir, winslash = "/") == normalizePath(legacy_run, winslash = "/"))
 
 unlink(td_scope, recursive = TRUE)
+unlink(td_repo, recursive = TRUE)
 unlink(td, recursive = TRUE)
 unlink(c(a1, a2))
 
@@ -141,6 +193,7 @@ unlink(c(a1, a2))
 q_runner <- file.path(root, ".agents", "skills", "questionnaire-batch-analysis", "templates", "batch_runner.R")
 td_q <- tempfile("q_collision_")
 dir.create(td_q)
+q_out <- new_test_output_root("questionnaire-batch-analysis", "q_collision")
 
 q_data <- file.path(td_q, "data.csv")
 write.csv(data.frame(x = c("A", "B", "A", "B"), y = c("1", "1", "2", "2")), q_data, row.names = FALSE)
@@ -150,14 +203,14 @@ writeLines(c(
   "s1,q1,nominal_2way,x,y,,q01,Q1 Label,,drop,,note"
 ), q_cfg)
 
-st_q1 <- system2("Rscript", c(q_runner, "--data", q_data, "--question-config", q_cfg, "--out", td_q, "--run-id", "collision_check"))
-st_q2 <- system2("Rscript", c(q_runner, "--data", q_data, "--question-config", q_cfg, "--out", td_q, "--run-id", "collision_check"))
+st_q1 <- system2("Rscript", c(q_runner, "--data", q_data, "--question-config", q_cfg, "--out", q_out, "--run-id", "collision_check"))
+st_q2 <- system2("Rscript", c(q_runner, "--data", q_data, "--question-config", q_cfg, "--out", q_out, "--run-id", "collision_check"))
 
 check("questionnaire run 1 exit 0", identical(as.integer(st_q1), 0L))
 check("questionnaire run 2 exit 0", identical(as.integer(st_q2), 0L))
 
-q_run1 <- file.path(td_q, "run_collision_check")
-q_run2 <- file.path(td_q, "run_collision_check_2")
+q_run1 <- file.path(q_out, "run_collision_check")
+q_run2 <- file.path(q_out, "run_collision_check_2")
 check("questionnaire run_collision_check created", dir.exists(q_run1))
 check("questionnaire run_collision_check_2 created (collision avoidance)", dir.exists(q_run2))
 
@@ -188,12 +241,12 @@ if (file.exists(file.path(q_run1, "results_manifest.json"))) {
   check("questionnaire manifest contains report.html", any(grepl("report\\.html$", art_paths)))
 }
 
-check("questionnaire meta matches manifest sha256 and path contract", verify_run_meta_consistency(q_run1, "questionnaire-batch-analysis", td_q, "collision_check"))
+check("questionnaire meta matches manifest sha256 and path contract", verify_run_meta_consistency(q_run1, "questionnaire-batch-analysis", q_out, "collision_check"))
 
 # CRITICAL 1: Questionnaire --run-id auto binds logical_run_id to JST timestamp, not 'auto'
-st_q_auto <- system2("Rscript", c(q_runner, "--data", q_data, "--question-config", q_cfg, "--out", td_q, "--run-id", "auto"))
+st_q_auto <- system2("Rscript", c(q_runner, "--data", q_data, "--question-config", q_cfg, "--out", q_out, "--run-id", "auto"))
 check("questionnaire run with --run-id auto exit 0", identical(as.integer(st_q_auto), 0L))
-auto_runs <- list.dirs(td_q, recursive = FALSE, full.names = TRUE)
+auto_runs <- list.dirs(q_out, recursive = FALSE, full.names = TRUE)
 auto_runs <- auto_runs[grepl("/run_[0-9]{8}_[0-9]{6}", auto_runs)]
 check("questionnaire auto run dir created", length(auto_runs) >= 1L)
 if (length(auto_runs) >= 1L) {
@@ -212,9 +265,9 @@ writeLines(c(
   "s1,q_ok,nominal_2way,x,y,,q01_ok,OK Label,,drop,,note",
   "s1,q_bad,nominal_2way,nonexistent_var,y,,q02_bad,Bad Label,,drop,,note"
 ), q_cfg_fail)
-st_q_fail <- system2("Rscript", c(q_runner, "--data", q_data, "--question-config", q_cfg_fail, "--out", td_q, "--run-id", "fail_check"))
+st_q_fail <- system2("Rscript", c(q_runner, "--data", q_data, "--question-config", q_cfg_fail, "--out", q_out, "--run-id", "fail_check"))
 check("questionnaire with failed question exits non-zero (status 1)", identical(as.integer(st_q_fail), 1L))
-fail_run_dir <- file.path(td_q, "run_fail_check")
+fail_run_dir <- file.path(q_out, "run_fail_check")
 if (dir.exists(fail_run_dir)) {
   fail_meta_file <- file.path(fail_run_dir, "run_meta.json")
   check("questionnaire failed run still writes run_meta.json", file.exists(fail_meta_file))
@@ -227,11 +280,13 @@ if (dir.exists(fail_run_dir)) {
 }
 
 unlink(td_q, recursive = TRUE)
+unlink(q_out, recursive = TRUE)
 
 # --- 9. SAS PROC FREQ runner double run collision avoidance & run_meta contract ---
 freq_runner <- file.path(root, ".agents", "skills", "sas-proc-freq", "templates", "run_freq.R")
 td_freq <- tempfile("freq_collision_")
 dir.create(td_freq)
+freq_out <- new_test_output_root("sas-proc-freq", "freq_collision")
 
 freq_data <- file.path(td_freq, "data.csv")
 write.csv(data.frame(gender = c("M", "F", "M", "F"), outcome = c("Y", "N", "N", "Y")), freq_data, row.names = FALSE)
@@ -241,7 +296,7 @@ jsonlite::write_json(list(
   analysis_kind = "sas_proc_freq",
   run_id = "test_freq_run",
   input = freq_data,
-  output_dir = td_freq,
+  output_dir = freq_out,
   tables = list(list(
     table_id = "t1",
     row_var = "gender",
@@ -256,8 +311,8 @@ st_f2 <- system2("Rscript", c(freq_runner, "--config", freq_cfg))
 check("sas-proc-freq run 1 exit 0", identical(as.integer(st_f1), 0L))
 check("sas-proc-freq run 2 exit 0", identical(as.integer(st_f2), 0L))
 
-f_run1 <- file.path(td_freq, "run_test_freq_run")
-f_run2 <- file.path(td_freq, "run_test_freq_run_2")
+f_run1 <- file.path(freq_out, "run_test_freq_run")
+f_run2 <- file.path(freq_out, "run_test_freq_run_2")
 check("sas-proc-freq run_test_freq_run created", dir.exists(f_run1))
 check("sas-proc-freq run_test_freq_run_2 created (collision avoidance)", dir.exists(f_run2))
 
@@ -270,7 +325,7 @@ if (file.exists(file.path(f_run1, "run_meta.json"))) {
   check("sas-proc-freq meta run_state is completed", identical(m_f1$run_state, "completed"))
 }
 
-check("sas-proc-freq meta matches manifest sha256 and path contract", verify_run_meta_consistency(f_run1, "sas-proc-freq", td_freq, "test_freq_run"))
+check("sas-proc-freq meta matches manifest sha256 and path contract", verify_run_meta_consistency(f_run1, "sas-proc-freq", freq_out, "test_freq_run"))
 
 # WARNING 1: SAS PROC FREQ preserves full logical_run_id even when >16 chars
 freq_long_cfg <- file.path(td_freq, "config_long.json")
@@ -279,7 +334,7 @@ jsonlite::write_json(list(
   analysis_kind = "sas_proc_freq",
   run_id = "clinical_trial_2026_analysis_primary",
   input = freq_data,
-  output_dir = td_freq,
+  output_dir = freq_out,
   tables = list(list(
     table_id = "t1",
     row_var = "gender",
@@ -288,7 +343,7 @@ jsonlite::write_json(list(
 ), freq_long_cfg, auto_unbox = TRUE, pretty = TRUE)
 st_fl <- system2("Rscript", c(freq_runner, "--config", freq_long_cfg))
 check("sas-proc-freq long run_id exit 0", identical(as.integer(st_fl), 0L))
-f_long_dir <- file.path(td_freq, "run_clinical_trial_2")
+f_long_dir <- file.path(freq_out, "run_clinical_trial_2")
 check("sas-proc-freq physical dir is truncated slug", dir.exists(f_long_dir))
 if (dir.exists(f_long_dir)) {
   m_fl <- jsonlite::fromJSON(file.path(f_long_dir, "run_meta.json"))
@@ -297,11 +352,13 @@ if (dir.exists(f_long_dir)) {
 }
 
 unlink(td_freq, recursive = TRUE)
+unlink(freq_out, recursive = TRUE)
 
 # --- 10. SAS PROC MEANS runner double run collision avoidance & run_meta contract ---
 means_runner <- file.path(root, ".agents", "skills", "sas-proc-means", "templates", "run_means.R")
 td_means <- tempfile("means_collision_")
 dir.create(td_means)
+means_out <- new_test_output_root("sas-proc-means", "means_collision")
 
 means_data <- file.path(td_means, "data.csv")
 write.csv(data.frame(group = c("A", "B", "A", "B"), val = c(10, 20, 30, 40)), means_data, row.names = FALSE)
@@ -311,7 +368,7 @@ jsonlite::write_json(list(
   analysis_kind = "sas_proc_means",
   run_id = "test_means_run",
   input = means_data,
-  output_dir = td_means,
+  output_dir = means_out,
   analysis_variables = list("val"),
   statistics = list("N", "MEAN", "STD")
 ), means_cfg, auto_unbox = TRUE, pretty = TRUE)
@@ -322,8 +379,8 @@ st_m2 <- system2("Rscript", c(means_runner, "--config", means_cfg))
 check("sas-proc-means run 1 exit 0", identical(as.integer(st_m1), 0L))
 check("sas-proc-means run 2 exit 0", identical(as.integer(st_m2), 0L))
 
-m_run1 <- file.path(td_means, "run_test_means_run")
-m_run2 <- file.path(td_means, "run_test_means_run_2")
+m_run1 <- file.path(means_out, "run_test_means_run")
+m_run2 <- file.path(means_out, "run_test_means_run_2")
 check("sas-proc-means run_test_means_run created", dir.exists(m_run1))
 check("sas-proc-means run_test_means_run_2 created (collision avoidance)", dir.exists(m_run2))
 
@@ -336,7 +393,7 @@ if (file.exists(file.path(m_run1, "run_meta.json"))) {
   check("sas-proc-means meta run_state is completed", identical(m_m1$run_state, "completed"))
 }
 
-check("sas-proc-means meta matches manifest sha256 and path contract", verify_run_meta_consistency(m_run1, "sas-proc-means", td_means, "test_means_run"))
+check("sas-proc-means meta matches manifest sha256 and path contract", verify_run_meta_consistency(m_run1, "sas-proc-means", means_out, "test_means_run"))
 
 # WARNING 1: SAS PROC MEANS preserves full logical_run_id even when >16 chars
 means_long_cfg <- file.path(td_means, "config_long.json")
@@ -345,13 +402,13 @@ jsonlite::write_json(list(
   analysis_kind = "sas_proc_means",
   run_id = "clinical_trial_2026_analysis_primary",
   input = means_data,
-  output_dir = td_means,
+  output_dir = means_out,
   analysis_variables = list("val"),
   statistics = list("N", "MEAN")
 ), means_long_cfg, auto_unbox = TRUE, pretty = TRUE)
 st_ml <- system2("Rscript", c(means_runner, "--config", means_long_cfg))
 check("sas-proc-means long run_id exit 0", identical(as.integer(st_ml), 0L))
-m_long_dir <- file.path(td_means, "run_clinical_trial_2")
+m_long_dir <- file.path(means_out, "run_clinical_trial_2")
 check("sas-proc-means physical dir is truncated slug", dir.exists(m_long_dir))
 if (dir.exists(m_long_dir)) {
   m_ml <- jsonlite::fromJSON(file.path(m_long_dir, "run_meta.json"))
@@ -360,11 +417,13 @@ if (dir.exists(m_long_dir)) {
 }
 
 unlink(td_means, recursive = TRUE)
+unlink(means_out, recursive = TRUE)
 
 # --- 11. VCD Categorical Analysis double run collision avoidance & run_meta contract ---
 cat_runner <- file.path(root, ".agents", "skills", "vcd-categorical-analysis", "templates", "analysis.R")
 td_cat <- tempfile("cat_collision_")
 dir.create(td_cat)
+cat_out <- new_test_output_root("vcd-categorical-analysis", "cat_collision")
 
 source(file.path(root, ".agents", "shared", "pass0_contract.R"))
 cat_data <- file.path(td_cat, "data.csv")
@@ -404,13 +463,13 @@ jsonlite::write_json(list(
   )
 ), cat_cfg, auto_unbox = TRUE, pretty = TRUE)
 
-st_c1 <- system2("Rscript", c(cat_runner, "--config", cat_cfg, "--out", td_cat))
-st_c2 <- system2("Rscript", c(cat_runner, "--config", cat_cfg, "--out", td_cat))
+st_c1 <- system2("Rscript", c(cat_runner, "--config", cat_cfg, "--out", cat_out))
+st_c2 <- system2("Rscript", c(cat_runner, "--config", cat_cfg, "--out", cat_out))
 
 check("vcd-categorical run 1 exit 0", identical(as.integer(st_c1), 0L))
 check("vcd-categorical run 2 exit 0", identical(as.integer(st_c2), 0L))
 
-cat_runs <- list.dirs(td_cat, recursive = FALSE, full.names = TRUE)
+cat_runs <- list.dirs(cat_out, recursive = FALSE, full.names = TRUE)
 cat_runs <- cat_runs[grepl("/run_[0-9a-f]{16}(_[0-9]+)?$", cat_runs)]
 check("vcd-categorical created 2 distinct run directories", length(cat_runs) == 2L)
 if (length(cat_runs) == 2L) {
@@ -425,10 +484,11 @@ if (length(cat_runs) >= 1L) {
     m_c1 <- jsonlite::fromJSON(file.path(cat_runs[1L], "run_meta.json"))
     check("vcd-categorical meta run_state is completed", identical(m_c1$run_state, "completed"))
   }
-  check("vcd-categorical meta matches manifest sha256 and path contract", verify_run_meta_consistency(cat_runs[1L], "vcd-categorical-analysis", td_cat))
+  check("vcd-categorical meta matches manifest sha256 and path contract", verify_run_meta_consistency(cat_runs[1L], "vcd-categorical-analysis", cat_out))
 }
 
 unlink(td_cat, recursive = TRUE)
+unlink(cat_out, recursive = TRUE)
 
 cat(sprintf("\n--- Results: %d passed, %d failed ---\n", pass, fail))
 if (fail > 0L) {

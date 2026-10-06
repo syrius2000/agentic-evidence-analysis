@@ -224,6 +224,8 @@ run_categorical_analysis_core <- function(
     ))
   }
 
+  out_root <- resolve_skill_output_root("vcd-categorical-analysis", out_root)
+
   # ------------------------------------------------------------
   # CANONICAL モード: Core 内部での独立三者 SHA 再検証
   # ------------------------------------------------------------
@@ -545,6 +547,10 @@ run_categorical_analysis_core <- function(
 run_analysis <- function(args_vec = commandArgs(trailingOnly = TRUE)) {
   out_root <- get_arg_val(args_vec, "--out", "./evidence_runs/vcd_categorical")
   data_label <- get_arg_val(args_vec, "--label", "two_way_analysis")
+
+  if (!("--help" %in% args_vec || "-h" %in% args_vec)) {
+    out_root <- resolve_skill_output_root("vcd-categorical-analysis", out_root)
+  }
 
   # 1. Canonical CLI ホワイトリスト検証
   validate_canonical_cli_args(args_vec, out_root)

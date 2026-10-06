@@ -27,9 +27,10 @@ suppressPackageStartupMessages({
 
 args <- commandArgs(trailingOnly = TRUE)
 
-# 出力先ディレクトリを指定できるようにする。run ごとに一意なディレクトリを
-# 渡すことで、入力を変えて再実行しても過去の inspection_results.json を
-# 上書きしない（推奨: evidence_runs/inspections/<project>/run_<id>/、未指定時はカレントディレクトリで後方互換）。
+# inspection成果物は分析Skillのcanonical root registryとは別のPass 0専用例外。
+# 出力先ディレクトリを指定でき、run ごとに一意なディレクトリを渡すことで、入力を変えて
+# 再実行しても過去の inspection_results.json を上書きしない（推奨: evidence_runs/inspections/<project>/run_<id>/、
+# 未指定時はカレントディレクトリで後方互換）。このscriptは指定されたrun directoryをそのまま使う。
 # 使い方: Rscript inspect_data.R <input.csv> [<out_dir>]
 #         Rscript inspect_data.R <input.csv> --out-dir <out_dir>
 out_dir <- "."

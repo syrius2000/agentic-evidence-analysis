@@ -9,6 +9,8 @@ output:
     pandoc_args: ["--mathml"]
 params:
   output_dir: "./evidence_runs/vcd_categorical/"
+  run_dir: null
+  discover_single_run: false
   repo_root: NULL
 ---
 
@@ -67,6 +69,7 @@ shared_root <- resolve_shared_dashboard_root(params$repo_root)
 source(file.path(shared_root, ".agents", "shared", "dashboard_theme_tokens.R"), local = TRUE)
 source(file.path(shared_root, ".agents", "shared", "dashboard_dt_ja.R"), local = TRUE)
 source(file.path(shared_root, ".agents", "shared", "dashboard_glossary.R"), local = TRUE)
+source(file.path(shared_root, ".agents", "shared", "run_scope.R"), local = TRUE)
 shared_theme_css <- load_shared_dashboard_theme_css(shared_root)
 inline_dt_ja <- get_dt_ja_lang()
 
@@ -94,8 +97,19 @@ detect_ggplot_jp_font <- function() {
 }
 ggplot_jp_font <- detect_ggplot_jp_font()
 
-# 結果読み込み
-output_dir <- params$output_dir
+# 結果読み込み: root指定時は明示的な単一run探索を要求し、run_dir指定時はそのrunを直接読む。
+run_root <- if (!is.null(params$run_dir) && nzchar(trimws(as.character(params$run_dir)))) {
+  as.character(params$run_dir)
+} else {
+  params$output_dir
+}
+run_resolution <- resolve_pass3_run_dir(
+  run_root,
+  "categorical_results.json",
+  "vcd-categorical-analysis",
+  discover_single_run = isTRUE(params$discover_single_run)
+)
+output_dir <- run_resolution$run_dir
 json_path <- file.path(output_dir, "categorical_results.json")
 summ_path <- file.path(output_dir, "executive_summary.md")
 

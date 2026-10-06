@@ -25,7 +25,7 @@ SAS PROC FREQ の度数・分割表集計、欠損処理規則（exclude, misspr
 2. **計算エンジンの実行**:
    `templates/run_freq.R` を `--config <path_to_config>` で実行する。
 3. **成果物の確認**:
-   隔離ディレクトリ `<output_dir>/run_<first16_run_id>/` 配下に以下の成果物が漏れなく生成されていることを確認する：
+   `output_dir` は `evidence_runs/sas_proc_freq/` またはその配下に限定されます。隔離ディレクトリ `<resolved_output_dir>/run_<canonical_id>[_N]/` 配下に以下の成果物が漏れなく生成されていることを確認する：
    - `freq_results.json`: 機械可読・正本・全統計量・表の向き・未定義理由コード（`status_reason`）
    - `summary.csv`: 可逆な複合キー `strata_key` および個別層別変数列を含む表形式データ
    - `summary_report.md`: 日本語Markdownレポート（分割表・検定結果・効果量・資源停止注記・統計的注意点）

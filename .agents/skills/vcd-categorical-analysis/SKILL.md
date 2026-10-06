@@ -22,7 +22,7 @@ metadata:
 | **次元数（Arity）** | 厳密に2（$I \ge 2, J \ge 2$） | `INVALID_INPUT_ARITY` でフェイルファスト停止し、3-way正本スキルへ委譲案内 |
 | **度数** | 有限非負整数（$N > 0$） | 欠測・負値・非整数重みは即時停止（`NON_INTEGER_COUNTS` 等） |
 | **構造的ゼロ** | **入力禁止**（サンプリングゼロのみ許容） | `STRUCTURAL_ZERO_NOT_SUPPORTED` で即時停止し準独立モデル案内 |
-| **出力先** | `<out>/run_<first16>[_N]/` | 衝突時は自動サフィックス分離 |
+| **出力先** | `evidence_runs/vcd_categorical/` またはその配下にある明示root内の `run_<canonical_id>[_N]/` | namespace外・`..`・symlink逸脱は拒否。衝突時は自動サフィックス分離 |
 
 ---
 

@@ -17,7 +17,7 @@ params:
   max_cells_dotplot: 25
 ---
 
-> **レガシー資産:** 本テンプレートは v1.x 互換保守用であり、現行canonical入口ではありません。現行2次元解析は `dashboard.Rmd`、3次元解析は `vcd-bayesian-evidence-analysis` を使用してください。
+> **レガシー資産:** 本テンプレートは v1.x 互換保守用であり、現行canonical入口ではありません。旧動作では指定 `output_dir` 直下へファイルを書きます。新規解析の出力契約には使わず、現行2次元解析は `analysis.R` と `dashboard.Rmd`、3次元解析は `vcd-bayesian-evidence-analysis` を使用してください。
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.width = 8, fig.height = 6)

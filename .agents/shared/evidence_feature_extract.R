@@ -376,6 +376,7 @@ init_evidence_decision_run <- function(out_root = "evidence_runs/evidence_decisi
     source(shared, local = FALSE)
   }
   assert_run_scope_supported_skill("evidence-decision-review")
+  out_root <- resolve_skill_output_root("evidence-decision-review", out_root)
   reserve_run_output_dir(out_root = out_root, skill = "evidence-decision-review", run_id = run_id)
 }
 
@@ -391,6 +392,7 @@ complete_evidence_decision_feature_run <- function(features,
     source(shared, local = FALSE)
   }
   assert_evidence_feature_v1(features, context = "complete_evidence_decision_feature_run")
+  out_root <- resolve_skill_output_root("evidence-decision-review", out_root)
 
   logical_id <- if (!is.null(run_id) && nzchar(trimws(as.character(run_id)))) {
     sub("^run_", "", trimws(as.character(run_id)))

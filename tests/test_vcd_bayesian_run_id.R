@@ -4,16 +4,21 @@
 root <- normalizePath(".", mustWork = TRUE)
 analysis <- file.path(root, ".agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R")
 stopifnot(file.exists(analysis))
-
 td <- tempfile("vcd_bay_runid_")
-dir.create(td)
-base_out <- file.path(td, "bay_out")
-dir.create(base_out)
+base_out <- file.path(root, "evidence_runs/vcd_bayesian", basename(td), "bay_out")
+dir.create(base_out, recursive = TRUE)
+on.exit(unlink(file.path(root, "evidence_runs/vcd_bayesian", basename(td)), recursive = TRUE), add = TRUE)
 slug <- "unit_test_slug_xyz"
+config_path <- tempfile(fileext = ".json")
+on.exit(unlink(config_path), add = TRUE)
+jsonlite::write_json(list(
+  input = file.path(root, "examples/titanic.csv"), vars = c("Class", "Sex", "Survived"),
+  freq = "Freq", response_var = "Survived", output_dir = base_out, run_id = slug
+), config_path, auto_unbox = TRUE)
 
 out <- system2(
   "Rscript",
-  c(analysis, "--output_dir", base_out, "--run-id", slug),
+  c(analysis, "--config", config_path),
   stdout = TRUE,
   stderr = TRUE
 )

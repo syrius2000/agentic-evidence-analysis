@@ -3,6 +3,7 @@
 > [!NOTE]
 > 本テンプレートは旧版の 2 段階レガシーレポート仕様です。
 > 現行の比較エビデンス報告（v3）では、`comparative_report.md` および自己完結型 `dashboard.html` が標準の成果物となります。
+> 以下の `skill_out/vcd_categorical/` リンクは当時の保存例です。現行のReporting成果物を新規保存する場合は `evidence_runs/vcd_categorical_reporting/run_<canonical_id>[_N]/` を使います。
 
 ```markdown
 # VCD カテゴリカル分析結果（判断ファースト）

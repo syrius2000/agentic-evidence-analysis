@@ -6,6 +6,8 @@ author: Cursor (Composer)
 
 作業中の計画書・独立 QA・メタ反省を置くディレクトリの**置き場正本**です。完了バッチの退避先は [`../Archives/`](../Archives/) です。
 
+解析実行の成果物置き場ではありません。新規解析成果物は [`evidence-run-layout`](../../openspec/specs/evidence-run-layout/spec.md) のslug rootとrun隔離契約に従って `evidence_runs/` 配下へ保存します。Pass 0 inspectionは同仕様の例外rootを使います。
+
 ---
 
 ## 1. ディレクトリ構成（新規はここへ）

@@ -11,10 +11,25 @@
 - **WHEN** 解析ランナー実行時に明示的な出力先が指定されない
 - **THEN** システムは登録済みslugに対応する `evidence_runs/<skill_slug>/` をout_rootとして採用する
 
-#### Scenario: Explicit custom output root
+#### Scenario: Explicit custom output root within skill namespace
 
 - **WHEN** 利用者がスキル規定の出力インターフェースでrootを明示する
 - **THEN** システムは、解決後のrootが当該スキルの `evidence_runs/<skill_slug>/` 自身またはその配下にある場合に限り指定を受理し、それ以外は書込み前に拒否する
+
+#### Scenario: Stable slug registry
+
+- **WHEN** 登録済み解析スキルが正規rootを解決する
+- **THEN** 次の安定対応を使用する: `vcd-bayesian-evidence-analysis` → `vcd_bayesian`; `vcd-categorical-analysis` → `vcd_categorical`; `vcd-categorical-reporting` → `vcd_categorical_reporting`; `comparative-design-analysis` → `comparative_design`; `evidence-decision-review` → `evidence_decision_review`; `questionnaire-batch-analysis` → `questionnaire`; `sas-proc-freq` → `sas_proc_freq`; `sas-proc-means` → `sas_proc_means`
+
+#### Scenario: Unregistered skill fails closed
+
+- **WHEN** root台帳に未登録の解析スキルが永続出力しようとする
+- **THEN** システムはslugを推測せず、ディレクトリやファイルを作成する前に未登録エラーで停止する
+
+#### Scenario: Slug lifecycle
+
+- **WHEN** スキル名が変更・廃止される、または出力契約が非互換に変更される
+- **THEN** 互換性がある名称変更ではslugを維持し、廃止済みslugを別スキルへ再利用せず、必要な場合は移行規則とともに新slugを登録する
 
 #### Scenario: Interface boundaries preserved by skill kind
 
@@ -24,7 +39,7 @@
 #### Scenario: Pre-inspection backward-compatible default output
 
 - **WHEN** 事前検分スクリプト（`inspect_data.R`）実行時に明示的な `--out-dir` または第2引数が指定されない
-- **THEN** システムは既存の呼び出し元および対話的ワークフローの後方互換性を維持するためカレントディレクトリ（`.`）への出力を許容し、明示的に `--out-dir` が渡された場合は指定ディレクトリ配下（推奨: `evidence_runs/inspections/<project>/run_<id>/`）へ成果物を隔離出力する
+- **THEN** システムは既存の呼び出し元および対話的ワークフローの後方互換性を維持するためカレントディレクトリ（`.`）への出力を許容し、明示的に `--out-dir` が渡された場合は指定されたinspection directoryへ成果物を出力する（推奨: `evidence_runs/inspections/<project>/run_<id>/`）。inspectionは分析Skill root台帳と別の成果物であり、`inspect_data.R` は指定directoryを分析Skill rootとして解決しない
 
 ### Requirement: Run Isolation and No Root Leakage
 
@@ -34,6 +49,11 @@
 
 - **WHEN** 解析実行が正常に開始される
 - **THEN** システムは解析結果ファイル（JSON, CSV, MD, HTML等）を出力root直下に書き込まず、必ず `run_<canonical_id>[_N]/` を作成してその配下に格納する
+
+#### Scenario: Comparative design inference persistence ownership
+
+- **WHEN** `comparative-design-analysis` の共有推論関数が呼び出される
+- **THEN** 関数は結果オブジェクトを返し、run directoryや結果ファイルを直接作成しない。将来の永続化は呼び出し側がownerとなり、登録root `evidence_runs/comparative_design/` 配下へ共通run隔離を使って保存する
 
 ## ADDED Requirements
 

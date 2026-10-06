@@ -42,6 +42,14 @@ def parse_r_registry(text: str) -> list[str]:
     return re.findall(r'"([^"]+)"', match.group(1))
 
 
+def parse_skill_root_registry(text: str) -> dict[str, str]:
+    match = re.search(r"RUN_SCOPE_SKILL_ROOTS\s*<-\s*c\((.*?)\n\)", text, re.DOTALL)
+    if match is None:
+        ERRORS.append("run_scope.R に RUN_SCOPE_SKILL_ROOTS がありません")
+        return {}
+    return dict(re.findall(r'"([^"]+)"\s*=\s*"([^"]+)"', match.group(1)))
+
+
 def main() -> int:
     categorical_skill = read(".agents/skills/vcd-categorical-analysis/SKILL.md")
     canonical = section(categorical_skill, "## 3. R エンジンの実行方法")
@@ -64,6 +72,27 @@ def main() -> int:
     require(bool(registry), "R registryが空です")
     for relative in registry:
         require((ROOT / relative).is_file(), f"R registryのテストが存在しません: {relative}")
+
+    # Keep the runtime slug registry, normative OpenSpec registry, and user/agent guides aligned.
+    runtime_map = parse_skill_root_registry(read(".agents/shared/run_scope.R"))
+    layout_spec = read("openspec/specs/evidence-run-layout/spec.md")
+    spec_pairs = dict(re.findall(r"`([a-z][a-z0-9-]+)`\s*→\s*`([a-z][a-z0-9_]*)`", layout_spec))
+    require(runtime_map == spec_pairs, "run_scope.R と evidence-run-layout のSkill slug台帳が一致しません")
+    agents = read("AGENTS.md")
+    readme = read("README.md")
+    for skill, slug in runtime_map.items():
+        require(f"`{skill}` → `{slug}`" in agents, f"AGENTS.md にslug対応がありません: {skill}")
+        require(f"`{skill}` | `evidence_runs/{slug}/`" in readme,
+                f"README.md にcanonical rootがありません: {skill}")
+    require("evidence_runs/inspections/<project>/run_<id>/" in layout_spec,
+            "OpenSpecにPass 0 inspection例外rootがありません")
+    require("inspection例外" in agents and "evidence_runs/inspections/<project>/run_<id>/" in agents,
+            "AGENTS.md にPass 0 inspection例外がありません")
+    require("resolve_pass3_run_dir" in read(".agents/skills/vcd-categorical-analysis/templates/dashboard.Rmd"),
+            "2次元dashboardがshared run resolverを利用していません")
+    for slug, spec_path in (("sas_proc_freq", "openspec/specs/sas-proc-freq/spec.md"),
+                           ("sas_proc_means", "openspec/specs/sas-proc-means/spec.md")):
+        require(f"evidence_runs/{slug}/" in read(spec_path), f"OpenSpecにSAS rootがありません: {slug}")
 
     responsibilities = read("docs/reference/skill_responsibilities.md")
     require("2次元では$N \\ge 2,000$" in responsibilities, "責務解説に2次元N閾値がありません")

@@ -61,6 +61,25 @@ flowchart LR
 
 エージェントへの依頼時は、結論・次の行動・未検証事項が分かるように、[`docs/reference/output_style_adhd.md`](docs/reference/output_style_adhd.md) の出力方針を適用します。この方針は独立したSkillではありません。
 
+### 解析成果物の出力先
+
+解析結果をディスクへ保存するSkillは、安定slugに対応する正規rootと、その配下のrun directoryを使います。slug台帳・境界の規範は [`evidence-run-layout`](openspec/specs/evidence-run-layout/spec.md) です。
+
+| Skill | 正規root |
+| :--- | :--- |
+| `vcd-bayesian-evidence-analysis` | `evidence_runs/vcd_bayesian/` |
+| `vcd-categorical-analysis` | `evidence_runs/vcd_categorical/` |
+| `vcd-categorical-reporting` | `evidence_runs/vcd_categorical_reporting/` |
+| `comparative-design-analysis` | `evidence_runs/comparative_design/`（推論APIは現在in-memoryで、直接ファイルを保存しません） |
+| `evidence-decision-review` | `evidence_runs/evidence_decision_review/` |
+| `questionnaire-batch-analysis` | `evidence_runs/questionnaire/` |
+| `sas-proc-freq` | `evidence_runs/sas_proc_freq/` |
+| `sas-proc-means` | `evidence_runs/sas_proc_means/` |
+
+run成果物は各rootまたは許可されたroot内 `output_dir` の直下ではなく、`run_<canonical_id>[_N]/` 配下へ隔離されます。明示rootも当該Skillの正規root内に限り、namespace外のパス、`..`、symlink逸脱は拒否されます。旧runは移動・上書きしません。
+
+Pass 0の `inspect_data.R` は分析root台帳の対象外です。未指定時は互換のため `.` を使用し、明示する場合は実行ごとに新しい `evidence_runs/inspections/<project>/run_<id>/` を指定します。
+
 ---
 
 ## クイックスタート

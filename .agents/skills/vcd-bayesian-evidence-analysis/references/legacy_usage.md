@@ -79,7 +79,7 @@ $$\log \mathrm{BF}_{10} \approx \tfrac{1}{2}\bigl(\mathrm{EBIC}_{\mathrm{indep}}
   "vars": ["Class", "Sex", "Age", "Survived"],
   "freq": "Freq",
   "response_var": "Survived",
-  "output_dir": "output/titanic",
+  "output_dir": "evidence_runs/vcd_bayesian",
   "run_id": "titanic_v1"
 }
 ```

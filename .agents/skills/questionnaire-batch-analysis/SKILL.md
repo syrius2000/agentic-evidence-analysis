@@ -56,7 +56,7 @@ Rscript .agents/skills/questionnaire-batch-analysis/templates/batch_runner.R \
 
 ※ `--config` を使用する場合、JSON 内の `input` が `--data` に、`question_config` が `--question-config` に自動的に割り当てられます。
 
-- **`--run-id`**: 実行識別子。指定時（または未指定時のauto）は `--out/run_<id>/` に隔離され、`summary.csv` の上書き衝突を避けます（`run_001` 等の `run_` プレフィックス付き入力も正規化されて `run_001` に格納されます）。
+- **`--run-id`**: 実行識別子。指定時（または未指定時のauto）は `evidence_runs/questionnaire/` またはその配下に指定した `--out` root内の `run_<id>/` に隔離されます。namespace外・`..`・symlink逸脱は拒否し、既存runは上書きしません（`run_001` 等の `run_` プレフィックス付き入力も正規化されて `run_001` に格納されます）。
 
 ## 出力
 

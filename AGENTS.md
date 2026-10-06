@@ -28,7 +28,10 @@
 
 - 解析の永続出力はスキルごとの出力ルート配下に `run_<canonical_id>[_N]/` を作り、run間で物理的に分離する。出力ルート直下へ解析成果物を書かない。
 - 既存runやユーザーデータを無言で上書きしない。既定ルート・ID形式・互換条件は各スキルと共有run基盤の契約に従う。
-- 新しい解析実行の出力先は原則 `evidence_runs/<skill_slug>/` 配下とする。
+- 新規の解析永続出力は `evidence_runs/<skill_slug>/` 配下へ限定する。利用者指定rootも該当slug root自身またはその配下に限り、namespace外、`..`、symlink逸脱は書込み前に拒否する。
+- 安定slugの正本は [`evidence-run-layout`](openspec/specs/evidence-run-layout/spec.md)。現在の対応は `vcd-bayesian-evidence-analysis` → `vcd_bayesian`、`vcd-categorical-analysis` → `vcd_categorical`、`vcd-categorical-reporting` → `vcd_categorical_reporting`、`comparative-design-analysis` → `comparative_design`、`evidence-decision-review` → `evidence_decision_review`、`questionnaire-batch-analysis` → `questionnaire`、`sas-proc-freq` → `sas_proc_freq`、`sas-proc-means` → `sas_proc_means`。
+- `comparative-design-analysis` の推論器は現在in-memory結果を返し、ファイルを直接永続化しない。将来の永続化は呼び出し側の責務とし、上記rootと共通run隔離を使う。
+- Pass 0の `inspect_data.R` は解析Skill rootとは別のinspection例外。未指定時 `.` の後方互換を保ち、明示時は `evidence_runs/inspections/<project>/run_<id>/` を推奨する。Artifact置き場規約は [`docs/Artifacts/README.md`](docs/Artifacts/README.md) を参照する。
 
 ### 4. 言語・時刻と成果物の制約
 

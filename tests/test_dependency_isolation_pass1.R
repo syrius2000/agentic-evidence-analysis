@@ -33,7 +33,7 @@ assert <- function(cond, msg) {
 cat("=== Pass 1 表示依存遮断・自律完結テスト開始 ===\n")
 
 # 1. 一時ディレクトリとテスト用設定の準備
-td <- tempfile("pass1_isolation_")
+td <- file.path(root, "evidence_runs/vcd_bayesian", paste0(".test_pass1_", Sys.getpid()))
 dir.create(td, recursive = TRUE, showWarnings = FALSE)
 on.exit(unlink(td, recursive = TRUE), add = TRUE)
 
@@ -142,9 +142,8 @@ if (file.exists(results_json)) {
 # ============================================================
 cat("\n=== Part B: 別プロセス .Library 物理隔離下での Pass 1 実行検証 ===\n")
 
-td_proc <- tempfile("pass1_proc_iso_")
+td_proc <- file.path(td, "proc")
 dir.create(td_proc, recursive = TRUE, showWarnings = FALSE)
-on.exit(unlink(td_proc, recursive = TRUE), add = TRUE)
 
 isolated_lib <- file.path(td_proc, "isolated_lib")
 dir.create(isolated_lib, recursive = TRUE, showWarnings = FALSE)
@@ -188,6 +187,8 @@ runner_script <- file.path(td_proc, "run_child_isolated.R")
 child_code <- sprintf("
 unlockBinding(\".Library\", asNamespace(\"base\"))
 assign(\".Library\", \"%s\", envir = asNamespace(\"base\"))
+unlockBinding(\".Library.site\", asNamespace(\"base\"))
+assign(\".Library.site\", character(), envir = asNamespace(\"base\"))
 .libPaths(\"%s\")
 
 cat(\"[CHILD_OBS] .libPaths:\", paste(.libPaths(), collapse = \", \"), \"\\n\")

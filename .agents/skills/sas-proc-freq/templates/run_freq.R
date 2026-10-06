@@ -701,6 +701,7 @@ main <- function() {
   if (!exists("reserve_run_output_dir", mode = "function")) {
     stop("SHARED_RUN_SCOPE_UNAVAILABLE: reserve_run_output_dir function is required from .agents/shared/run_scope.R.")
   }
+  cfg$output_dir <- resolve_skill_output_root("sas-proc-freq", cfg$output_dir)
   run_dir <- reserve_run_output_dir(cfg$output_dir, "sas-proc-freq", run_slug)
 
   # Read Input Data

@@ -21,6 +21,62 @@ RUN_SCOPE_SUPPORTED_SKILLS <- c(
   "evidence-decision-review"
 )
 
+# Stable output slug registry. Keep aligned with openspec/specs/evidence-run-layout/spec.md.
+RUN_SCOPE_SKILL_ROOTS <- c(
+  "vcd-bayesian-evidence-analysis" = "vcd_bayesian",
+  "vcd-categorical-analysis" = "vcd_categorical",
+  "vcd-categorical-reporting" = "vcd_categorical_reporting",
+  "comparative-design-analysis" = "comparative_design",
+  "evidence-decision-review" = "evidence_decision_review",
+  "questionnaire-batch-analysis" = "questionnaire",
+  "sas-proc-freq" = "sas_proc_freq",
+  "sas-proc-means" = "sas_proc_means"
+)
+
+assert_run_scope_registered_skill <- function(skill) {
+  if (!is.character(skill) || length(skill) != 1L || is.na(skill) || !nzchar(skill) ||
+      !skill %in% names(RUN_SCOPE_SKILL_ROOTS)) {
+    stop("[UNREGISTERED_SKILL_SLUG] 未登録の解析Skillです: ", as.character(skill), call. = FALSE)
+  }
+  invisible(skill)
+}
+
+run_scope_path_has_parent_segment <- function(path) {
+  parts <- strsplit(chartr("\\", "/", as.character(path)), "/", fixed = TRUE)[[1L]]
+  any(parts == "..")
+}
+
+resolve_skill_output_root <- function(skill, out_root = NULL, repo_root = NULL) {
+  assert_run_scope_registered_skill(skill)
+  root <- run_scope_repo_root(explicit = repo_root)
+  canonical <- file.path(root, "evidence_runs", unname(RUN_SCOPE_SKILL_ROOTS[[skill]]))
+  canonical <- normalizePath(assert_no_symlink(canonical), winslash = "/", mustWork = FALSE)
+
+  use_default <- is.null(out_root)
+  if (!use_default) {
+    if (!is.character(out_root) || length(out_root) != 1L || is.na(out_root)) {
+      stop("[INVALID_OUTPUT_ROOT] output rootは単一の文字列で指定してください", call. = FALSE)
+    }
+    use_default <- !nzchar(trimws(out_root))
+  }
+  configured <- if (use_default) {
+    canonical
+  } else {
+    raw <- trimws(out_root)
+    if (run_scope_path_has_parent_segment(raw)) {
+      stop("[OUTPUT_ROOT_TRAVERSAL] output rootに '..' は使用できません: ", raw, call. = FALSE)
+    }
+    candidate <- if (run_scope_is_absolute_path(raw)) raw else file.path(root, raw)
+    normalizePath(assert_no_symlink(candidate), winslash = "/", mustWork = FALSE)
+  }
+
+  if (!(identical(configured, canonical) || startsWith(configured, paste0(canonical, "/")))) {
+    stop("[OUTPUT_ROOT_OUTSIDE_SKILL_NAMESPACE] output rootは ", canonical,
+      " 自身またはその配下に限定されます: ", configured, call. = FALSE)
+  }
+  configured
+}
+
 assert_run_scope_supported_skill <- function(skill) {
   if (!is.character(skill) || length(skill) != 1L || is.na(skill) || !nzchar(skill) ||
       !skill %in% RUN_SCOPE_SUPPORTED_SKILLS) {
@@ -461,9 +517,10 @@ read_run_control <- function(run_dir, allow_legacy = FALSE) {
 }
 
 # --- Task 1.2: 秒単位 JST タイムスタンプ衝突の原子的解決 ---
-reserve_run_output_dir <- function(out_root, skill, run_id = NULL, max_attempts = 100L) {
-  assert_valid_out_root(out_root)
-  norm_root <- normalizePath(out_root, winslash = "/", mustWork = FALSE)
+reserve_run_output_dir <- function(out_root, skill, run_id = NULL, max_attempts = 100L, repo_root = NULL) {
+  resolved_root <- resolve_skill_output_root(skill, out_root, repo_root = repo_root)
+  assert_valid_out_root(resolved_root)
+  norm_root <- normalizePath(resolved_root, winslash = "/", mustWork = FALSE)
   if (!dir.exists(norm_root)) {
     dir.create(norm_root, recursive = TRUE, showWarnings = FALSE)
   }

@@ -13,7 +13,8 @@ stopifnot(file.exists(runner))
 
 td <- tempfile("questionnaire_duplicate_slug_")
 dir.create(td, recursive = TRUE)
-on.exit(unlink(td, recursive = TRUE), add = TRUE)
+test_out_root <- file.path(root, "evidence_runs/questionnaire", basename(td))
+on.exit(unlink(c(td, test_out_root), recursive = TRUE), add = TRUE)
 
 data_path <- file.path(td, "survey.csv")
 utils::write.csv(
@@ -54,7 +55,7 @@ assert_no_artifacts <- function(path) {
 
 run_invalid_case <- function(case_name, slugs, message_pattern, outside_paths = character(0)) {
   config_path <- file.path(td, paste0(case_name, "_questions.csv"))
-  output_root <- file.path(td, paste0(case_name, "_output"))
+  output_root <- file.path(test_out_root, paste0(case_name, "_output"))
   utils::write.csv(make_config(slugs), config_path, row.names = FALSE, na = "")
 
   output <- suppressWarnings(
@@ -87,7 +88,7 @@ run_invalid_case <- function(case_name, slugs, message_pattern, outside_paths = 
 
 run_valid_case <- function(case_name, slugs, config = make_config(slugs)) {
   config_path <- file.path(td, paste0(case_name, "_questions.csv"))
-  output_root <- file.path(td, paste0(case_name, "_output"))
+  output_root <- file.path(test_out_root, paste0(case_name, "_output"))
   utils::write.csv(config, config_path, row.names = FALSE, na = "")
 
   output <- suppressWarnings(

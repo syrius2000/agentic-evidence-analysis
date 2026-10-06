@@ -50,7 +50,7 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R --con
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R --config analysis_config.json
 ```
 
-出力は設定の `output_dir/run_<run_id先頭16文字>/`。同じ出力先の再使用を拒否する。`evidence_results.json`のschemaは `three-way-results-v1`。計算済みは `COMPUTED`、推定保留を含む場合 `PARTIAL_HOLD`（終了2）、校正・照合失敗は `CHECK_FAILED`（終了1）。部分保留を全体成功へ言い換えない。
+出力rootの既定値は `evidence_runs/vcd_bayesian/`。明示する場合も同root自身または配下に限定し、namespace外・`..`・symlink逸脱は書込み前に拒否する。出力はroot配下の `run_<canonical_id>[_N]/` に隔離し、同じ物理runの上書きを拒否する。`evidence_results.json`のschemaは `three-way-results-v1`。計算済みは `COMPUTED`、推定保留を含む場合 `PARTIAL_HOLD`（終了2）、校正・照合失敗は `CHECK_FAILED`（終了1）。部分保留を全体成功へ言い換えない。
 
 ## Pass 2：結果を読んで日本語で考察する
 
