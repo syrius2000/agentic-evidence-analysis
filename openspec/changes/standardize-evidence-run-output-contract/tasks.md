@@ -13,7 +13,7 @@
 - [ ] 2.1 `AGENTS.md` をエージェント横断契約として保ち、OpenSpec・AGENTS・Skillの正本階層、8 Skillの安定slugによるroot、run隔離、inspection例外、Artifacts置き場規約を簡潔に同期する。確認方法: root/slug/Pass 0の記載をspec台帳と照合し、文書整合性checkを通す。
 - [ ] 2.2 `README.md` の利用者向けSkill案内・例を全件照合し、8 Skillのroot、比較デザインの永続化境界、SAS設定、inspection例外を更新する。確認方法: 全root例をspec台帳と自動または手動比較し、Skill entrypointへのリンクを確認する。
 - [ ] 2.3 `docs/Artifacts/README.md` と出力契約を記載する現行reference文書を確認し、Artifact配置規約と本Changeへの導線を整える。確認方法: Markdownリンク検査とroot語彙の横断検索で現行契約の矛盾がないことを確認する。
-- [ ] 2.4 `openspec/specs/evidence-run-layout/spec.md`、`openspec/specs/sas-proc-freq/spec.md`、`openspec/specs/sas-proc-means/spec.md` へこのChangeのdeltaを適用し、main specsと実装の規範が一致することを確認する。確認方法: `openspec validate --change standardize-evidence-run-output-contract` とspec全文レビューを行う。
+- [ ] 2.4 `openspec/specs/evidence-run-layout/spec.md`、`openspec/specs/sas-proc-freq/spec.md`、`openspec/specs/sas-proc-means/spec.md` へこのChangeのdeltaを適用し、main specsと実装の規範が一致することを確認する。確認方法: `openspec validate standardize-evidence-run-output-contract --type change --strict` を実行し、終了コード0とstrict validation成功を記録したうえでspec全文レビューを行う。
 
 ## 3. VCD解析Skillの出力契約改定
 

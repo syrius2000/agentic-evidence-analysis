@@ -9,7 +9,7 @@
 #### Scenario: 3点セット成果物の正常生成
 
 - **WHEN** PROC MEANS 解析が正常に完了する
-- **THEN** `evidence_runs/sas_proc_means/run_<canonical_id>[_N]/` 配下に `means_results.json`、`summary.csv`、`summary_report.md`、`analysis_config.json`、`manifest.json` が漏れなく生成される
+- **THEN** 解決後の出力root（`evidence_runs/sas_proc_means/` またはその配下にある明示 `output_dir`）直下に `run_<canonical_id>[_N]/` が作成され、その配下に `means_results.json`、`summary.csv`、`summary_report.md`、`analysis_config.json`、`manifest.json` が漏れなく生成される
 
 #### Scenario: 未定義統計量の出力表現
 
