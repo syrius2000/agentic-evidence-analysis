@@ -172,9 +172,10 @@ assert_true(file.exists(".agents/skills/evidence-decision-review/SKILL.md"),
 assert_true("evidence-decision-review" %in% RUN_SCOPE_SUPPORTED_SKILLS,
             "evidence-decision-review is in RUN_SCOPE_SUPPORTED_SKILLS")
 
-tmp_root <- file.path(tempdir(), "edr_out_r1")
+tmp_root <- file.path(normalizePath("."), "evidence_runs/evidence_decision_review", paste0(".test_edr_", Sys.getpid()))
 unlink(tmp_root, recursive = TRUE)
 dir.create(tmp_root, recursive = TRUE)
+on.exit(unlink(tmp_root, recursive = TRUE), add = TRUE)
 engine <- run_independent_beta_binomial(12, 100, 4, 100, seed = 21L, primary_delta = 0.05)
 features <- extract_evidence_features(engine$evidence)
 run1 <- complete_evidence_decision_feature_run(features, out_root = tmp_root, run_id = "phaseA_demo")

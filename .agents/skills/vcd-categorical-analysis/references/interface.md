@@ -17,7 +17,7 @@
 
 ## 2. 出力ディレクトリ規約
 
-常に `<out>/run_<first16>[_N]/`。
+正規root `evidence_runs/vcd_categorical/` またはその配下に限定した明示rootの `run_<canonical_id>[_N]/`。namespace外・`..`・symlink逸脱は書込み前に拒否する。
 
 - `first16`: 要求 run ID の先頭16文字
 - `_N`: 既存 run との衝突回避サフィックス

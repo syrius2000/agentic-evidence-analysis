@@ -57,7 +57,7 @@ if (!is.null(opt$config) && file.exists(opt$config)) {
 stopifnot(!is.null(opt$data), file.exists(opt$data))
 stopifnot(!is.null(opt$`question-config`), file.exists(opt$`question-config`))
 
-base_out <- opt$out
+base_out <- resolve_skill_output_root("questionnaire-batch-analysis", opt$out)
 
 rid <- trimws(as.character(opt$`run-id`))
 if (!nzchar(rid) || tolower(rid) %in% c("auto", "run")) {

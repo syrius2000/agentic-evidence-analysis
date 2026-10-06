@@ -70,5 +70,6 @@ metadata:
 
 - 結果を因果的優越や自動意思決定として解釈しない。
 - 生のドローは既定でメモリ内のみとし、`persist_raw_draws=TRUE` を明示したときだけ返す。
-- この共有推論器は run ディレクトリを直接作成しない。成果物を永続化する呼び出し側は `evidence-run-layout` の `run_<canonical_id>[_N]/` と shared `run_scope.R` を使用する。
+- **永続化境界:** 本Skillの4推論器は結果オブジェクトを返すin-memory APIであり、リポジトリ内に結果ファイルを書き出す本番wrapper/callerはない。`persist_raw_draws=TRUE` はraw drawsを返却オブジェクトに保持する指定で、ディスク保存を意味しない。将来、呼び出し側が成果物を永続化する場合はその呼び出し側がownerとなり、`evidence-run-layout` に登録された `evidence_runs/comparative_design/` 配下へ shared `run_scope.R` でrunを予約する。
+- 共有推論器自体は run ディレクトリを作成しない。将来このSkillの結果を永続化するcallerは `evidence_runs/comparative_design/` namespaceと `evidence-run-layout` の `run_<canonical_id>[_N]/` を使用し、callerが保存ownerとなる。
 - 実行中にパッケージを導入しない。不足した依存関係は明示的に停止する。

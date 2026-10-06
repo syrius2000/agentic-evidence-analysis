@@ -6,7 +6,7 @@
 sequenceDiagram
     participant AI as AI Agent (Reporting)
     participant R as analysis.R
-    participant Out as skill_out/
+    participant Out as evidence_runs/vcd_categorical_reporting/run_<canonical_id>[_N]/
 
     Note over AI,R: Pass 1: プロファイリング（軽量）
     AI->>R: analysis.R --profile

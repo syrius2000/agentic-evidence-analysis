@@ -3,6 +3,10 @@
 
 test_pass <- 0L
 test_fail <- 0L
+repo_root <- normalizePath(".", mustWork = TRUE)
+test_output_parent <- file.path(repo_root, "evidence_runs/vcd_categorical_reporting", paste0("test_", Sys.getpid()))
+skill_temp <- function(prefix) file.path(test_output_parent, paste0(prefix, sample.int(1e8, 1L)))
+on.exit(unlink(test_output_parent, recursive = TRUE), add = TRUE)
 
 assert_true <- function(cond, msg) {
   if (isTRUE(cond)) {
@@ -27,7 +31,7 @@ batch_df <- data.frame(
   stringsAsFactors = FALSE
 )
 
-out_dir <- tempfile("comp_rep_test_")
+out_dir <- skill_temp("comp_rep_test_")
 res <- generate_comparative_report(
   df = batch_df,
   reference_arm = "Placebo",
@@ -53,7 +57,7 @@ assert_true(identical(meta$data_frame_hash_contract,
   "R-serialize-v2: column names, types, classes, values, row order"), "Hash contract records input order and type")
 assert_true(isTRUE(verify_results_manifest(res$run_output_dir)$valid), "Results manifest verifies registered artifacts")
 
-out_dir_grid <- tempfile("comp_rep_grid_")
+out_dir_grid <- skill_temp("comp_rep_grid_")
 res_grid <- generate_comparative_report(batch_df[batch_df$theme == "AE_Infection", ],
   reference_arm = "Placebo", output_dir = out_dir_grid, delta_thresholds = c(0.02, 0.04))
 meta_grid <- read_run_control(res_grid$run_output_dir)
@@ -62,13 +66,13 @@ assert_true(identical(unlist(meta_grid$delta_thresholds), c(0.02, 0.04)), "Delta
 assert_true(identical(unlist(payload_grid$delta_thresholds), c(0.02, 0.04)), "Delta grid is retained in batch evidence")
 
 duplicate_input <- rbind(batch_df, batch_df[1L, , drop = FALSE])
-duplicate_error <- tryCatch({generate_comparative_report(duplicate_input, output_dir = tempfile("duplicate_")); NULL},
+duplicate_error <- tryCatch({generate_comparative_report(duplicate_input, output_dir = skill_temp("duplicate_")); NULL},
   error = function(e) conditionMessage(e))
 assert_true(!is.null(duplicate_error) && grepl("DUPLICATE_THEME_GROUP", duplicate_error, fixed = TRUE),
             "Duplicate theme-group rows fail before a run is reserved")
 
 res_changed <- generate_comparative_report(transform(batch_df[batch_df$theme == "AE_Infection", ],
-  events = events + 1L), reference_arm = "Placebo", output_dir = tempfile("changed_input_"))
+  events = events + 1L), reference_arm = "Placebo", output_dir = skill_temp("changed_input_"))
 assert_true(!identical(read_run_control(res_changed$run_output_dir)$data_frame_sha256,
                        read_run_control(res_grid$run_output_dir)$data_frame_sha256),
             "Input hash changes when event values change")
@@ -76,13 +80,13 @@ assert_true(!identical(read_run_control(res_changed$run_output_dir)$data_frame_s
 input_csv <- tempfile(fileext = ".csv")
 utils::write.csv(batch_df[batch_df$theme == "AE_Infection", ], input_csv, row.names = FALSE)
 res_file <- generate_comparative_report(utils::read.csv(input_csv, stringsAsFactors = FALSE),
-  reference_arm = "Placebo", input_data_path = input_csv, output_dir = tempfile("file_provenance_"))
+  reference_arm = "Placebo", input_data_path = input_csv, output_dir = skill_temp("file_provenance_"))
 meta_file <- read_run_control(res_file$run_output_dir)
 assert_true(identical(meta_file$inputs[[1L]]$sha256, sha256_file(input_csv)),
             "File input SHA-256 is retained in run metadata")
 
 cat("\n=== 2. Test All-Pairs Contrast Mode ===\n")
-out_dir_all <- tempfile("comp_rep_all_")
+out_dir_all <- skill_temp("comp_rep_all_")
 res_all <- generate_comparative_report(
   df = batch_df[batch_df$theme == "AE_Infection", ],
   contrast_mode = "all_pairs",
@@ -128,7 +132,7 @@ iptw_report_df <- data.frame(
 )
 iptw_key <- "synthetic__Target_vs_Reference"
 iptw_report <- generate_comparative_report(iptw_report_df, target_arm = "Target", reference_arm = "Reference", contrast_mode = "explicit",
-  evidence_overrides = setNames(list(iptw_ev), iptw_key), allow_unevaluated = TRUE, output_dir = tempfile("iptw_report_"))
+  evidence_overrides = setNames(list(iptw_ev), iptw_key), allow_unevaluated = TRUE, output_dir = skill_temp("iptw_report_"))
 iptw_md <- paste(readLines(iptw_report$md_path, warn = FALSE), collapse = "\n")
 iptw_row <- iptw_report$summary_df[iptw_report$summary_df$inferential_semantics == "bootstrap", , drop = FALSE]
 assert_true(nrow(iptw_row) == 1L && iptw_row$interval_label == "bootstrap percentile interval", "IPTW override is rendered with bootstrap percentile interval semantics")
@@ -143,14 +147,14 @@ assert_true(!grepl("ETI", iptw_md, fixed = TRUE) && !grepl("posterior median", t
 bad_source_counts <- iptw_report_df
 bad_source_counts$events[[1L]] <- bad_source_counts$events[[1L]] + 1L
 provenance_error <- tryCatch(generate_comparative_report(bad_source_counts, target_arm = "Target", reference_arm = "Reference",
-  contrast_mode = "explicit", evidence_overrides = setNames(list(iptw_ev), iptw_key), allow_unevaluated = TRUE, output_dir = tempfile("iptw_mismatch_")),
+  contrast_mode = "explicit", evidence_overrides = setNames(list(iptw_ev), iptw_key), allow_unevaluated = TRUE, output_dir = skill_temp("iptw_mismatch_")),
   error = function(e) conditionMessage(e))
 assert_true(!is.null(provenance_error) && grepl("EVIDENCE_REPORT_PROVENANCE_MISMATCH", provenance_error, fixed = TRUE),
             "Mismatched report counts fail with governed provenance error")
 
 cat("\n=== 5. Test Visual Encoding Guard (Hue not determined by P(RD > 0) alone) ===\n")
 # When primary_delta is NULL, all row backgrounds must be transparent
-out_dir_none <- tempfile("comp_rep_none_")
+out_dir_none <- skill_temp("comp_rep_none_")
 res_none <- generate_comparative_report(
   df = batch_df[batch_df$theme == "AE_Infection", ],
   reference_arm = "Placebo",
@@ -162,7 +166,7 @@ html_none <- paste(readLines(res_none$html_path, warn = FALSE, encoding = "UTF-8
 assert_true(!grepl("background-color: rgba(", html_none, fixed = TRUE), "Row background color is disabled when primary_delta is NULL")
 neutral_report <- generate_comparative_report(data.frame(theme = c("neutral", "neutral"),
   arm = c("A", "B"), events = c(10L, 10L), total = c(100L, 100L)),
-  primary_delta = 0.10, output_dir = tempfile("neutral_palette_"))
+  primary_delta = 0.10, output_dir = skill_temp("neutral_palette_"))
 neutral_html <- paste(readLines(neutral_report$html_path, warn = FALSE), collapse = "\n")
 assert_true(grepl("rgba(100, 116, 139", neutral_html, fixed = TRUE),
             "Practical-neutral region uses neutral gray")

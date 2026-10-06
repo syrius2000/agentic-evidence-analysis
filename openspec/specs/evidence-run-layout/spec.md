@@ -8,17 +8,32 @@
 
 ### Requirement: Canonical Recommended Output Root
 
-システムは、全解析スキルの推奨既定出力ルートとして `evidence_runs/<skill_slug>/` を提供しなければならない（MUST）。ただし利用者が明示した別の出力ルートは、パストラバーサル等の安全性検証を通過する限り尊重しなければならない（MUST）。
+システムは、各解析スキルに登録された安定slugを用いて `evidence_runs/<skill_slug>/` を正規出力rootとして使用しなければならない（MUST）。明示rootは当該スキルの正規root自身またはその配下に限定し、それ以外は書込み前に拒否しなければならない（MUST）。
 
 #### Scenario: Default output root resolution
 
 - **WHEN** 解析ランナー実行時に明示的な出力先が指定されない
 - **THEN** システムは自動的に `evidence_runs/<skill_slug>/` を出力ルート（out_root）として採用する
 
-#### Scenario: Explicit custom output root
+#### Scenario: Explicit custom output root within skill namespace
 
-- **WHEN** 利用者が明示的にスキル規定のインターフェース（`vcd-*` / `questionnaire` の `--out` / `--output_dir`、または `sas-proc-*` の設定JSON `output_dir`）で検証可能な出力先を指定する
-- **THEN** システムは指定された出力先を出力ルートとして採用し、その配下にRun隔離ディレクトリを作成する
+- **WHEN** 利用者がスキル規定の出力インターフェースでrootを明示する
+- **THEN** システムは、解決後rootが当該スキルの `evidence_runs/<skill_slug>/` 自身またはその配下にある場合に限り受理し、その配下にrun隔離ディレクトリを作成する。namespace外、親directory成分 `..`、またはsymlinkによる逸脱は書込み前に拒否する
+
+#### Scenario: Stable slug registry
+
+- **WHEN** 登録済み解析スキルが正規rootを解決する
+- **THEN** 次の安定対応を使用する: `vcd-bayesian-evidence-analysis` → `vcd_bayesian`; `vcd-categorical-analysis` → `vcd_categorical`; `vcd-categorical-reporting` → `vcd_categorical_reporting`; `comparative-design-analysis` → `comparative_design`; `evidence-decision-review` → `evidence_decision_review`; `questionnaire-batch-analysis` → `questionnaire`; `sas-proc-freq` → `sas_proc_freq`; `sas-proc-means` → `sas_proc_means`
+
+#### Scenario: Unregistered skill fails closed
+
+- **WHEN** root台帳に未登録の解析スキルが永続出力しようとする
+- **THEN** システムはslugを推測せず、ディレクトリやファイルを作成する前に未登録エラーで停止する
+
+#### Scenario: Slug lifecycle
+
+- **WHEN** スキル名が変更・廃止される、または出力契約が非互換に変更される
+- **THEN** 互換性がある名称変更ではslugを維持し、廃止済みslugを別スキルへ再利用せず、必要な場合は移行規則とともに新slugを登録する
 
 #### Scenario: Interface boundaries preserved by skill kind
 
@@ -28,7 +43,7 @@
 #### Scenario: Pre-inspection backward-compatible default output
 
 - **WHEN** 事前検分スクリプト（`inspect_data.R`）実行時に明示的な `--out-dir` または第2引数が指定されない
-- **THEN** システムは既存の呼び出し元および対話的ワークフローの後方互換性を維持するためカレントディレクトリ（`.`）への出力を許容し、明示的に `--out-dir` が渡された場合はその指定ディレクトリ配下（推奨: `evidence_runs/inspections/<project>/run_<id>/`）へ成果物を隔離出力する
+- **THEN** システムは既存の呼び出し元および対話的ワークフローの後方互換性を維持するためカレントディレクトリ（`.`）への出力を許容し、明示的に `--out-dir` が渡された場合は指定されたinspection directoryへ成果物を出力する（推奨: `evidence_runs/inspections/<project>/run_<id>/`）。inspectionは分析Skill root台帳と別の成果物であり、`inspect_data.R` は指定directoryを分析Skill rootとして解決しない
 
 ### Requirement: Run Isolation and No Root Leakage
 
@@ -37,7 +52,12 @@
 #### Scenario: Artifact isolation in run directory
 
 - **WHEN** 解析実行が正常に開始される
-- **THEN** システムは出力ルート直下に解析結果ファイル（JSON, CSV, MD, HTML等）を直接書き込まず、必ず `run_<id>/` サブディレクトリを作成してその配下にのみ全成果物を格納する
+- **THEN** システムは登録済み正規rootまたは許可されたcustom sub-root直下に解析結果ファイル（JSON, CSV, MD, HTML等）を書き込まず、必ず `run_<canonical_id>[_N]/` を作成し、その配下に全成果物を格納する
+
+#### Scenario: Comparative design inference persistence ownership
+
+- **WHEN** `comparative-design-analysis` の共有推論関数が呼び出される
+- **THEN** 関数は結果オブジェクトを返し、run directoryや結果ファイルを直接作成しない。将来の永続化は呼び出し側がownerとなり、登録root `evidence_runs/comparative_design/` 配下へ共通run隔離を使って保存する
 
 ### Requirement: Run Identifier Normalization and Collision Handling
 

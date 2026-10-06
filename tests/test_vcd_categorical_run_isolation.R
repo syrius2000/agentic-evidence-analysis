@@ -51,7 +51,8 @@ stopifnot(file.exists(analysis_script))
 
 td <- tempfile("vcd_cat_run_iso_")
 dir.create(td, recursive = TRUE)
-on.exit(unlink(td, recursive = TRUE), add = TRUE)
+test_out_root <- file.path(repo_root, "evidence_runs/vcd_categorical", basename(td))
+on.exit(unlink(c(td, test_out_root), recursive = TRUE), add = TRUE)
 
 # ------------------------------------------------------------
 # 1. 2組の異なるテストデータと Pass 0 Fixture の作成
@@ -156,7 +157,7 @@ writeLines(jsonlite::toJSON(list(
 # Test 1: 異なる解析設定における決定論的 Run Isolation
 # ============================================================
 cat("[TEST 1] 異なる設定での実行分離と決定論的シグネチャ検証\n")
-out1_dir <- file.path(td, "out1_runs")
+out1_dir <- file.path(test_out_root, "out1_runs")
 
 cmd_a <- sprintf("Rscript %s --config %s --out %s --label analysis_a", analysis_script, cfg_a_path, out1_dir)
 cmd_b <- sprintf("Rscript %s --config %s --out %s --label analysis_b", analysis_script, cfg_b_path, out1_dir)
@@ -231,7 +232,7 @@ assert(length(run_dirs_after) == 2L, "同一設定の再実行で新規ディレ
 # ============================================================
 if (identical(.Platform$OS.type, "unix")) {
   cat("[TEST 4] 並行実行時のファイル隔離性検証 (parallel execution)\n")
-  out4_dir <- file.path(td, "out4_parallel")
+  out4_dir <- file.path(test_out_root, "out4_parallel")
   dir.create(out4_dir, recursive = TRUE)
 
   job_a <- parallel::mcparallel({
@@ -258,7 +259,7 @@ if (identical(.Platform$OS.type, "unix")) {
 # Test 5: 同一設定で異なる --label 指定時の Run 分離 (Task 2.7)
 # ============================================================
 cat("[TEST 5] 同一設定・異なる --label 指定時の署名分離と独立実行検証 (Task 2.7)\n")
-out5_dir <- file.path(td, "out5_labels")
+out5_dir <- file.path(test_out_root, "out5_labels")
 dir.create(out5_dir, recursive = TRUE)
 
 cmd_label1 <- sprintf("Rscript %s --config %s --out %s --label label_alpha", analysis_script, cfg_a_path, out5_dir)
@@ -301,7 +302,7 @@ if (length(run_dirs5) == 2L) {
 # ============================================================
 if (identical(.Platform$OS.type, "unix")) {
   cat("[TEST 6] 同一署名・同一出力 root の並行実行排他ロック検証 (.run_lock)\n")
-  out6_dir <- file.path(td, "out6_lock")
+  out6_dir <- file.path(test_out_root, "out6_lock")
   dir.create(out6_dir, recursive = TRUE)
 
   # 同一の cfg_a_path と同一の --label lock_test を同時に起動
@@ -341,22 +342,15 @@ if (identical(.Platform$OS.type, "unix")) {
     }
   }
 
-  # 先行ロック存在時の確実な遮断検証
+  # 既存runの再利用時は上書きせず collision suffix を付ける
   if (length(run_dirs6) == 1L) {
-    dir.create(file.path(run_dirs6[1], ".run_lock"))
     cmd_lock_blocked <- sprintf("Rscript %s --config %s --out %s --label lock_test", analysis_script, cfg_a_path, out6_dir)
-    out_blocked <- suppressWarnings(system(cmd_lock_blocked, intern = TRUE, ignore.stderr = FALSE))
-    st_blocked <- attr(out_blocked, "status")
-    assert(!is.null(st_blocked) && st_blocked != 0, "先行ロック存在時に実行が非ゼロで終了する")
-
-    root_state_blocked <- file.path(out6_dir, "run_state.json")
-    assert(file.exists(root_state_blocked), "ロック失敗時に root run_state.json が記録される")
-    if (file.exists(root_state_blocked)) {
-      rst_b <- jsonlite::fromJSON(root_state_blocked)
-      assert(identical(rst_b$error_code, "CONCURRENT_RUN_IN_PROGRESS"),
-             "先行ロック存在時に error_code == 'CONCURRENT_RUN_IN_PROGRESS' で即時遮断される")
-    }
-    unlink(file.path(run_dirs6[1], ".run_lock"), recursive = TRUE)
+    out_suffix <- suppressWarnings(system(cmd_lock_blocked, intern = TRUE, ignore.stderr = FALSE))
+    st_suffix <- attr(out_suffix, "status")
+    assert(is.null(st_suffix) || identical(as.integer(st_suffix), 0L), "既存runに対する再実行が正常終了する")
+    suffixed_run <- paste0(run_dirs6[1], "_2")
+    assert(dir.exists(suffixed_run), "既存runを保持し、新規出力を _2 suffix のrun directoryへ隔離する")
+    assert(file.exists(file.path(suffixed_run, "categorical_results.json")), "suffix付きrunに成果物が保存される")
   }
 } else {
   cat("[TEST 6] SKIP: Windows環境のため並行ロックテストをスキップ\n")

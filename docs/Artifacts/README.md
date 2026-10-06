@@ -6,6 +6,8 @@ author: Cursor (Composer)
 
 作業中の計画書・独立 QA・メタ反省を置くディレクトリの**置き場正本**です。完了バッチの退避先は [`../Archives/`](../Archives/) です。
 
+解析実行の成果物置き場ではありません。新規解析成果物は [`evidence-run-layout`](../../openspec/specs/evidence-run-layout/spec.md) のslug rootとrun隔離契約に従って `evidence_runs/` 配下へ保存します。Pass 0 inspectionは同仕様の例外rootを使います。
+
 ---
 
 ## 1. ディレクトリ構成（新規はここへ）
@@ -42,7 +44,7 @@ docs/Artifacts/qa_cycles/<topic>/c<N>/
 2. **`implementation_plan_NNN_*.md` の上書き禁止**。別案件は新しい NNN（`plans/` 内の最大番号 + 1）。
 3. **flat 形式の新規独立 QA 禁止**（例: `independent_qa_*.md` を直下に新規作成しない）。新規は必ず `qa_cycles/`。
 4. **flat 形式の新規 implementation / planning QA レビュー禁止**。独立 QA は `qa_cycles/`、計画レビューは `planning_qa/` またはサイクル運用に寄せる。
-5. **`docs/ADR/QA/` への新規独立 QA 案件追加を禁止**（legacy。正本は `qa_cycles/`）。
+5. **旧形式 `docs/ADR/QA/` の作成・利用禁止**（legacy 廃止・削除済み。正本は `qa_cycles/`）。
 
 ---
 

@@ -24,6 +24,10 @@ author: Codex (GPT-5) / Cursor (Composer)
 | **SAS PROC FREQ 互換集計** | `sas-proc-freq` | PROC FREQ 互換度数集計、独立性検定、2×2効果量、Fisher正確検定、Monte Carlo推定 | Pass 0 対話相談、ベイジアン事後推論 |
 | **SAS PROC MEANS 互換記述統計** | `sas-proc-means` | PROC MEANS 互換記述統計、CLASS層別、FREQ/WEIGHT、VARDEF、QNTLDEF 1〜5 | Pass 0 対話相談、因果推論 |
 
+### 解析成果物と永続化owner
+
+新規解析永続出力の安定slug、root境界、run隔離、Pass 0 inspection例外は規範仕様 [`evidence-run-layout`](../../openspec/specs/evidence-run-layout/spec.md) に従います。`comparative-design-analysis` の共有推論器は現在in-memory結果を返し、ファイルwriterを持ちません。将来ファイルへ保存する場合は利用するwrapper/callerが永続化ownerとなり、登録済みrootと共通run基盤を使用します。
+
 ---
 
 ## 2. 現行 3 次元経路の基本原則

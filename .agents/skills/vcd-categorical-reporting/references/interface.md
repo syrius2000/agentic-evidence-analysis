@@ -4,7 +4,7 @@ interface_version: "2.1"
 
 ## 出力ディレクトリ
 
-分析側が生成した `<out>/run_<first16>[_N]/`。現行推奨のout rootは `./evidence_runs/vcd_categorical/`（旧形式: `./skill_out/vcd_categorical/`）。
+現行のreporting成果物は `./evidence_runs/vcd_categorical_reporting/run_<canonical_id>[_N]/` 配下。明示rootを使う場合も、このSkillのnamespace内に限る。旧analysis root `evidence_runs/vcd_categorical/` の `data_profile.json` 連携は移行対象のlegacy interfaceであり、reportingが新規永続出力するrootとは区別する。旧形式 `./skill_out/vcd_categorical/` は履歴例。
 
 ## Pass 1 出力: data_profile.json
 ## Pass 2 出力: data_profile_post.json

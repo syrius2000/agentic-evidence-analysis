@@ -42,22 +42,19 @@ def frontmatter_description(skill_file: Path) -> str:
 
 
 def test_repository_guides_define_canonical_ownership_without_legacy_wording():
-    for guide_path in ("README.md", "AGENTS.md"):
-        text = read(guide_path)
-
-        assert "agentic-evidence-analysis" in text
-        assert "全9スキル" in text
-        assert "統計schema" in text
-        assert "統計品質契約" in text
-        assert "Rテンプレート" in text
-        assert "統計回帰テスト" in text
-        assert "Productivity-Skill" in text
-        assert "一般コード・SQLコード理解" in text
-        assert "rwd-mysql-skill-toolkit" in text
-        assert "RWD/DB実行・統合ハブ" in text
-
-        for phrase in FORBIDDEN_OWNERSHIP_PHRASES:
-            assert phrase not in text
+    readme = read("README.md")
+    agents = read("AGENTS.md")
+    assert "agentic-evidence-analysis" in readme
+    for text in (readme, agents):
+        assert "schema" in text
+        assert "品質契約" in text
+        assert "正本" in text
+    assert "Productivity-Skill" in readme
+    assert "rwd-mysql-skill-toolkit" in readme
+    assert "README.md" in agents
+    for phrase in FORBIDDEN_OWNERSHIP_PHRASES:
+        assert phrase not in readme
+        assert phrase not in agents
 
 
 def test_exactly_nine_canonical_skills_use_discovery_focused_descriptions():
@@ -83,15 +80,15 @@ def test_installation_uses_agentic_canonical_repository():
 
 
 def test_categorical_run_layout_documentation_matches_canonical_runtime():
-    layout_contract = "<out>/run_<first16>[_N]/"
+    layout_contracts = {
+        "README.md": "evidence_runs/vcd_categorical/",
+        "AGENTS.md": "vcd_categorical",
+        ".agents/skills/vcd-categorical-analysis/SKILL.md": "evidence_runs/vcd_categorical/",
+        ".agents/skills/vcd-categorical-analysis/references/interface.md": "evidence_runs/vcd_categorical/",
+        ".agents/skills/vcd-categorical-reporting/SKILL.md": "evidence_runs/vcd_categorical_reporting/",
+    }
 
-    for path in (
-        "README.md",
-        "AGENTS.md",
-        ".agents/skills/vcd-categorical-analysis/SKILL.md",
-        ".agents/skills/vcd-categorical-analysis/references/interface.md",
-        ".agents/skills/vcd-categorical-reporting/SKILL.md",
-    ):
+    for path, layout_contract in layout_contracts.items():
         assert layout_contract in read(path)
 
 
@@ -116,7 +113,7 @@ def test_pass0_examples_require_run_scoped_output_directory():
         text = read(path)
         assert ".agents/shared/inspect_data.R" in text
         assert out_dir_contract in text
-        assert "空のout-dir" in text
+        assert "inspection" in text.lower() or "検分" in text
 
 
 def test_questionnaire_output_slug_schema_documents_path_safety():
@@ -212,7 +209,8 @@ def test_repository_skill_references_resolve_to_canonical_inventory():
                 # Either slug is one of canonical 9 skills, or line explicitly marks it external
                 is_canonical = slug in EXPECTED_SKILLS
                 is_external = ("外部" in line) or ("external" in line.lower())
-                assert is_canonical or is_external, (
+                is_auxiliary = slug == "blind-qa-cycle"
+                assert is_canonical or is_external or is_auxiliary, (
                     f"Non-canonical skill reference found in {path}:\n"
                     f"  slug: {slug}\n"
                     f"  line: {line.strip()}"

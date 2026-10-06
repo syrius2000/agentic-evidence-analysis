@@ -37,7 +37,10 @@ message("PASS: 初期ファイル（SKILL.md, schema, template）が存在しま
 
 td <- tempfile("sas_proc_freq_test_")
 dir.create(td, recursive = TRUE)
-on.exit(unlink(td, recursive = TRUE), add = TRUE)
+output_root <- file.path(root, "evidence_runs/sas_proc_freq", paste0("test_", Sys.getpid()))
+dir.create(output_root, recursive = TRUE)
+on.exit(unlink(c(td, output_root), recursive = TRUE), add = TRUE)
+stopifnot(dir.exists(td), dir.exists(output_root))
 
 run_engine <- function(config_path) {
   suppressWarnings(
@@ -63,7 +66,7 @@ bad_cfg1 <- list(
   schema_version = "invalid-version",
   analysis_kind = "sas_proc_freq",
   input = dummy_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "test_bad1",
   tables = list(list(table_id = "t1", row_var = "a"))
 )
@@ -78,7 +81,7 @@ bad_cfg2 <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "invalid_kind",
   input = dummy_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "test_bad2",
   tables = list(list(table_id = "t1", row_var = "a"))
 )
@@ -93,7 +96,7 @@ bad_cfg3 <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = dummy_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "test_bad3",
   tables = list(list(table_id = "t1", row_var = "a", missing_mode = "unknown_mode"))
 )
@@ -123,7 +126,7 @@ cfg_bad_count <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = bad_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_bad_count",
   tables = list(list(table_id = "t_neg", row_var = "a", col_var = "b", count_var = "cnt"))
 )
@@ -157,7 +160,7 @@ cfg_struct_zero <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = good_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_struct_zero",
   tables = list(list(
     table_id = "t_sz",
@@ -186,7 +189,7 @@ cfg_zero_row <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = zero_row_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_zero_row",
   tables = list(list(
     table_id = "t_zr",
@@ -201,7 +204,7 @@ out_zr <- run_engine(cfg_zr_path)
 if (!is.null(attr(out_zr, "status")) && attr(out_zr, "status") != 0) {
   stop("out_zr failed:\n", paste(out_zr, collapse = "\n"))
 }
-res_zr <- jsonlite::fromJSON(file.path(td, "run_run_zero_row", "freq_results.json"))
+res_zr <- jsonlite::fromJSON(file.path(output_root, "run_zero_row", "freq_results.json"))
 t_zr <- res_zr$tables$t_zr$strata$ALL
 stopifnot(!"Unobs" %in% t_zr$row_levels)
 stopifnot(t_zr$total_frequency == 100L)
@@ -225,14 +228,14 @@ cfg_ex <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = miss_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_miss_ex",
   tables = list(list(table_id = "t_ex", row_var = "cat", col_var = "val", count_var = "cnt", missing_mode = "exclude"))
 )
 cfg_ex_path <- file.path(td, "cfg_miss_ex.json")
 jsonlite::write_json(cfg_ex, cfg_ex_path, auto_unbox = TRUE)
 run_engine(cfg_ex_path)
-res_ex <- jsonlite::fromJSON(file.path(td, "run_run_miss_ex", "freq_results.json"))$tables$t_ex$strata$ALL
+res_ex <- jsonlite::fromJSON(file.path(output_root, "run_miss_ex", "freq_results.json"))$tables$t_ex$strata$ALL
 stopifnot(res_ex$total_frequency == 40L)
 stopifnot(res_ex$excluded_missing_count == 5L)
 stopifnot(!"<MISSING>" %in% res_ex$row_levels)
@@ -242,14 +245,14 @@ cfg_mp <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = miss_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_miss_mp",
   tables = list(list(table_id = "t_mp", row_var = "cat", col_var = "val", count_var = "cnt", missing_mode = "missprint"))
 )
 cfg_mp_path <- file.path(td, "cfg_miss_mp.json")
 jsonlite::write_json(cfg_mp, cfg_mp_path, auto_unbox = TRUE)
 run_engine(cfg_mp_path)
-res_mp <- jsonlite::fromJSON(file.path(td, "run_run_miss_mp", "freq_results.json"))$tables$t_mp$strata$ALL
+res_mp <- jsonlite::fromJSON(file.path(output_root, "run_miss_mp", "freq_results.json"))$tables$t_mp$strata$ALL
 stopifnot(res_mp$total_frequency == 40L) # inferential total excludes NA
 stopifnot("<MISSING>" %in% res_mp$row_levels)
 
@@ -258,14 +261,14 @@ cfg_inc <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = miss_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_miss_inc",
   tables = list(list(table_id = "t_inc", row_var = "cat", col_var = "val", count_var = "cnt", missing_mode = "include"))
 )
 cfg_inc_path <- file.path(td, "cfg_miss_inc.json")
 jsonlite::write_json(cfg_inc, cfg_inc_path, auto_unbox = TRUE)
 run_engine(cfg_inc_path)
-res_inc <- jsonlite::fromJSON(file.path(td, "run_run_miss_inc", "freq_results.json"))$tables$t_inc$strata$ALL
+res_inc <- jsonlite::fromJSON(file.path(output_root, "run_miss_inc", "freq_results.json"))$tables$t_inc$strata$ALL
 stopifnot(res_inc$total_frequency == 45L)
 stopifnot("<MISSING>" %in% res_inc$row_levels)
 message("PASS: 欠損値モード（exclude, missprint, include）の独立制御が正常に検証されました。")
@@ -288,7 +291,7 @@ cfg_ow <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = ow_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_oneway",
   tables = list(list(
     table_id = "t_ow",
@@ -300,14 +303,14 @@ cfg_ow <- list(
 cfg_ow_path <- file.path(td, "cfg_oneway.json")
 jsonlite::write_json(cfg_ow, cfg_ow_path, auto_unbox = TRUE)
 run_engine(cfg_ow_path)
-res_ow <- jsonlite::fromJSON(file.path(td, "run_run_oneway", "freq_results.json"))
+res_ow <- jsonlite::fromJSON(file.path(output_root, "run_oneway", "freq_results.json"))
 stopifnot(identical(res_ow$tables$t_ow$strata$ALL$type, "one_way"))
 
 cfg_st <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = ow_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_strata",
   tables = list(list(
     table_id = "t_st",
@@ -323,8 +326,8 @@ cfg_st_path <- file.path(td, "cfg_strata.json")
 jsonlite::write_json(cfg_st, cfg_st_path, auto_unbox = TRUE)
 run_engine(cfg_st_path)
 
-st_json <- jsonlite::fromJSON(file.path(td, "run_run_strata", "freq_results.json"), simplifyVector = FALSE)
-st_csv <- utils::read.csv(file.path(td, "run_run_strata", "summary.csv"),
+st_json <- jsonlite::fromJSON(file.path(output_root, "run_strata", "freq_results.json"), simplifyVector = FALSE)
+st_csv <- utils::read.csv(file.path(output_root, "run_strata", "summary.csv"),
                           stringsAsFactors = FALSE, check.names = FALSE)
 stopifnot(any(st_csv$strata_key != "ALL"))
 # Engine-level strata_key must round-trip
@@ -357,7 +360,7 @@ cfg_2x2 <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = test_2x2_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_parity_2x2",
   tables = list(list(
     table_id = "t_2x2",
@@ -380,7 +383,7 @@ cfg_2x2_path <- file.path(td, "cfg_2x2.json")
 jsonlite::write_json(cfg_2x2, cfg_2x2_path, auto_unbox = TRUE)
 run_engine(cfg_2x2_path)
 
-res_2x2 <- jsonlite::fromJSON(file.path(td, "run_run_parity_2x2", "freq_results.json"))$tables$t_2x2$strata$ALL
+res_2x2 <- jsonlite::fromJSON(file.path(output_root, "run_parity_2x2", "freq_results.json"))$tables$t_2x2$strata$ALL
 
 # Parity tolerance helper: |R - Target| <= atol + rtol * |Target|
 atol <- 1e-12
@@ -454,7 +457,7 @@ cfg_zc$run_id <- "run_zero_cell"
 cfg_zc_path <- file.path(td, "cfg_zero_cell.json")
 jsonlite::write_json(cfg_zc, cfg_zc_path, auto_unbox = TRUE)
 run_engine(cfg_zc_path)
-res_zc <- jsonlite::fromJSON(file.path(td, "run_run_zero_cell", "freq_results.json"))$tables$t_2x2$strata$ALL
+res_zc <- jsonlite::fromJSON(file.path(output_root, "run_zero_cell", "freq_results.json"))$tables$t_2x2$strata$ALL
 stopifnot(res_zc$measures$odds_ratio$status_reason == "ZERO_CELL_UNDEFINED")
 stopifnot(is.null(res_zc$measures$odds_ratio$lower_cl))
 stopifnot(res_zc$measures$relative_risk_col1$status_reason == "ZERO_CELL_UNDEFINED")
@@ -497,7 +500,7 @@ cfg_mc1 <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = mc_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_mc_rep1",
   tables = list(list(
     table_id = "t_mc",
@@ -524,8 +527,8 @@ cfg_mc2_path <- file.path(td, "cfg_mc2.json")
 jsonlite::write_json(cfg_mc2, cfg_mc2_path, auto_unbox = TRUE)
 run_engine(cfg_mc2_path)
 
-res_mc1 <- jsonlite::fromJSON(file.path(td, "run_run_mc_rep1", "freq_results.json"))$tables$t_mc$strata$ALL$fisher
-res_mc2 <- jsonlite::fromJSON(file.path(td, "run_run_mc_rep2", "freq_results.json"))$tables$t_mc$strata$ALL$fisher
+res_mc1 <- jsonlite::fromJSON(file.path(output_root, "run_mc_rep1", "freq_results.json"))$tables$t_mc$strata$ALL$fisher
+res_mc2 <- jsonlite::fromJSON(file.path(output_root, "run_mc_rep2", "freq_results.json"))$tables$t_mc$strata$ALL$fisher
 
 stopifnot(res_mc1$p_value == res_mc2$p_value)
 stopifnot(res_mc1$extreme_count == res_mc2$extreme_count)
@@ -551,7 +554,7 @@ cfg_ws_ex <- list(
   schema_version = "sas-summary-config-v1",
   analysis_kind = "sas_proc_freq",
   input = mc_csv,
-  output_dir = td,
+  output_dir = output_root,
   run_id = "run_ws_fallback",
   tables = list(list(
     table_id = "t_ws",
@@ -571,7 +574,7 @@ cfg_ws_path <- file.path(td, "cfg_ws_fallback.json")
 jsonlite::write_json(cfg_ws_ex, cfg_ws_path, auto_unbox = TRUE)
 run_engine(cfg_ws_path)
 
-res_ws <- jsonlite::fromJSON(file.path(td, "run_run_ws_fallback", "freq_results.json"))$tables$t_ws$strata$ALL$fisher
+res_ws <- jsonlite::fromJSON(file.path(output_root, "run_ws_fallback", "freq_results.json"))$tables$t_ws$strata$ALL$fisher
 stopifnot(res_ws$fallback_reason == "RESOURCE_LIMIT_EXCEEDED")
 stopifnot(res_ws$requested_method == "exact")
 stopifnot(res_ws$executed_method == "monte_carlo")
@@ -668,7 +671,7 @@ message("PASS: RFC 3986 percent-encoding による strata_key の完全可逆・
 # -----------------------------------------------------------------------------
 message(">>> 8. 3点セット成果物・Run隔離・マニフェスト整合性 (Tasks 5.1〜5.4)")
 
-run_dir_final <- file.path(td, "run_run_parity_2x2")
+run_dir_final <- file.path(output_root, "run_parity_2x2")
 files_in_run <- list.files(run_dir_final)
 stopifnot("freq_results.json" %in% files_in_run)
 stopifnot("summary.csv" %in% files_in_run)

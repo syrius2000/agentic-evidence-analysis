@@ -269,7 +269,8 @@ rid <- if (is.null(cfg$run_id)) {
   list(run_id = sanitize_run_slug(cfg$run_id), method = "manual")
 }
 out_root <- cfg$output_dir
-assert_valid_out_root(out_root)
+out_root <- resolve_skill_output_root("vcd-bayesian-evidence-analysis", out_root)
+cfg$output_dir <- out_root
 artifact_dir <- reserve_run_output_dir(out_root, "vcd-bayesian-evidence-analysis", rid$run_id)
 
 # 設定スナップショット保存

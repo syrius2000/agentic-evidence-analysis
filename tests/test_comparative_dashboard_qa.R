@@ -4,6 +4,10 @@
 
 test_pass <- 0L
 test_fail <- 0L
+repo_root <- normalizePath(".", mustWork = TRUE)
+test_output_parent <- file.path(repo_root, "evidence_runs/vcd_categorical_reporting", paste0("dashboard_qa_", Sys.getpid()))
+skill_output_dir <- function(prefix) file.path(test_output_parent, paste0(prefix, basename(tempfile())))
+on.exit(unlink(test_output_parent, recursive = TRUE), add = TRUE)
 
 assert_true <- function(cond, msg) {
   if (isTRUE(cond)) {
@@ -27,7 +31,7 @@ df_standard <- data.frame(
   stringsAsFactors = FALSE
 )
 
-out_dir_std <- tempfile("qa_14_std_")
+out_dir_std <- skill_output_dir("qa_14_std_")
 res_std <- generate_comparative_report(
   df = df_standard,
   reference_arm = "Control",
@@ -78,7 +82,7 @@ df_target_exc <- data.frame(
   total = c(100L, 100L),
   stringsAsFactors = FALSE
 )
-res_te <- generate_comparative_report(df_target_exc, reference_arm = "Control", primary_delta = 0.05, output_dir = tempfile("qa_te_"))
+res_te <- generate_comparative_report(df_target_exc, reference_arm = "Control", primary_delta = 0.05, output_dir = skill_output_dir("qa_te_"))
 html_te <- paste(readLines(res_te$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(grepl("background-color: rgba(155, 41, 69", html_te, fixed = TRUE), "target_excess practical cell uses academic burgundy")
 assert_true(!grepl("<tr style='background-color:", html_te, fixed = TRUE), "Row-wide tr background-color is absent (cell-only styling)")
@@ -91,7 +95,7 @@ df_ref_exc <- data.frame(
   total = c(100L, 100L),
   stringsAsFactors = FALSE
 )
-res_re <- generate_comparative_report(df_ref_exc, reference_arm = "Control", primary_delta = 0.05, output_dir = tempfile("qa_re_"))
+res_re <- generate_comparative_report(df_ref_exc, reference_arm = "Control", primary_delta = 0.05, output_dir = skill_output_dir("qa_re_"))
 html_re <- paste(readLines(res_re$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(grepl("background-color: rgba(31, 77, 122", html_re, fixed = TRUE), "reference_excess practical cell uses academic navy")
 
@@ -103,12 +107,12 @@ df_neut <- data.frame(
   total = c(100L, 100L),
   stringsAsFactors = FALSE
 )
-res_neut <- generate_comparative_report(df_neut, reference_arm = "Control", primary_delta = 0.10, output_dir = tempfile("qa_neut_"))
+res_neut <- generate_comparative_report(df_neut, reference_arm = "Control", primary_delta = 0.10, output_dir = skill_output_dir("qa_neut_"))
 html_neut <- paste(readLines(res_neut$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(grepl("background-color: rgba(100, 116, 139", html_neut, fixed = TRUE), "practical_neutral practical cell uses neutral slate hue")
 
 # Test primary_delta = NULL -> all practical cells transparent
-res_null_delta <- generate_comparative_report(df_target_exc, reference_arm = "Control", primary_delta = NULL, allow_unevaluated = TRUE, output_dir = tempfile("qa_nd_"))
+res_null_delta <- generate_comparative_report(df_target_exc, reference_arm = "Control", primary_delta = NULL, allow_unevaluated = TRUE, output_dir = skill_output_dir("qa_nd_"))
 html_nd <- paste(readLines(res_null_delta$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(!grepl("background-color: rgba(", html_nd, fixed = TRUE), "When primary_delta is NULL, all cells have transparent background")
 
@@ -121,7 +125,7 @@ df_u3 <- data.frame(
   total = c(100L, 100L),
   stringsAsFactors = FALSE
 )
-res_u3 <- generate_comparative_report(df_u3, reference_arm = "Control", primary_delta = 0.01, output_dir = tempfile("qa_u3_"))
+res_u3 <- generate_comparative_report(df_u3, reference_arm = "Control", primary_delta = 0.01, output_dir = skill_output_dir("qa_u3_"))
 html_u3 <- paste(readLines(res_u3$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 # Strict test adequacy: must be U3 without unconditional pass fallback
 assert_true(any(res_u3$summary_df$u_grade == "U3"), "U3 state produced deterministically for test")
@@ -137,7 +141,7 @@ df_zero_ref <- data.frame(
   total = c(100L, 100L),
   stringsAsFactors = FALSE
 )
-res_zr <- generate_comparative_report(df_zero_ref, reference_arm = "Control", output_dir = tempfile("qa_zr_"))
+res_zr <- generate_comparative_report(df_zero_ref, reference_arm = "Control", output_dir = skill_output_dir("qa_zr_"))
 html_zr <- paste(readLines(res_zr$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
 # Badges must appear in col-diagnostics as discrete <span class='badge'>...</span>
@@ -166,7 +170,7 @@ df_stable <- data.frame(
   total = c(200L, 200L),
   stringsAsFactors = FALSE
 )
-res_stable <- generate_comparative_report(df_stable, reference_arm = "Control", output_dir = tempfile("qa_stable_"))
+res_stable <- generate_comparative_report(df_stable, reference_arm = "Control", output_dir = skill_output_dir("qa_stable_"))
 html_stable <- paste(readLines(res_stable$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(
   !grepl("numerical-instability-warning", html_stable, fixed = TRUE),
@@ -287,7 +291,7 @@ res_iptw_partial <- generate_comparative_report(
   reference_arm = "Control",
   evidence_overrides = list("IPTW_Partial__Active_vs_Control" = iptw_override_partial),
   allow_unevaluated = TRUE,
-  output_dir = tempfile("qa_iptw_part_")
+  output_dir = skill_output_dir("qa_iptw_part_")
 )
 
 html_iptw_part <- paste(readLines(res_iptw_partial$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -361,7 +365,7 @@ res_iptw_zero <- generate_comparative_report(
   df = df_iptw_zero,
   reference_arm = "Control",
   evidence_overrides = list("IPTW_Zero__Active_vs_Control" = iptw_override_zero),
-  output_dir = tempfile("qa_iptw_zero_")
+  output_dir = skill_output_dir("qa_iptw_zero_")
 )
 
 html_iptw_zero <- paste(readLines(res_iptw_zero$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -387,7 +391,7 @@ res_hostile <- generate_comparative_report(
   df = df_hostile,
   reference_arm = 'Control & "Safe"',
   primary_delta = 0.05,
-  output_dir = tempfile("qa_hostile_")
+  output_dir = skill_output_dir("qa_hostile_")
 )
 
 html_hostile <- paste(readLines(res_hostile$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
@@ -714,7 +718,7 @@ res_mixed <- generate_comparative_report(
   df = df_mixed,
   reference_arm = "Control",
   evidence_overrides = list("IPTW_Theme__Active_vs_Control" = iptw_override_mixed),
-  output_dir = tempfile("qa_mixed_")
+  output_dir = skill_output_dir("qa_mixed_")
 )
 html_mixed <- paste(readLines(res_mixed$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 
@@ -800,7 +804,7 @@ df_q2 <- data.frame(
   total = c(100L, 100L, 100L, 100L),
   stringsAsFactors = FALSE
 )
-res_q2 <- generate_comparative_report(df_q2, reference_arm = "Control", primary_delta = 0.05, output_dir = tempfile("qa_q2_"))
+res_q2 <- generate_comparative_report(df_q2, reference_arm = "Control", primary_delta = 0.05, output_dir = skill_output_dir("qa_q2_"))
 html_q2 <- paste(readLines(res_q2$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 row_matches_q2 <- gregexpr("<tr data-row-key=\"[^\"]+\"[^>]*>.*?</tr>", html_q2, perl = TRUE)[[1L]]
 assert_true(length(row_matches_q2) >= 2L && row_matches_q2[1L] > 0L, "Q2: multi-row fixture produced >=2 data rows")
@@ -852,7 +856,7 @@ df_amb <- data.frame(
   total = c(100L, 100L),
   stringsAsFactors = FALSE
 )
-res_amb <- generate_comparative_report(df_amb, reference_arm = "Control", primary_delta = 0.05, output_dir = tempfile("qa_amb_"))
+res_amb <- generate_comparative_report(df_amb, reference_arm = "Control", primary_delta = 0.05, output_dir = skill_output_dir("qa_amb_"))
 html_amb <- paste(readLines(res_amb$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(
   any(res_amb$summary_df$reciprocal_status == "SIGN_AMBIGUOUS"),
@@ -906,7 +910,7 @@ res_near0 <- generate_comparative_report(
   reference_arm = "Control",
   evidence_overrides = list("Near0__Active_vs_Control" = near0_override),
   allow_unevaluated = TRUE,
-  output_dir = tempfile("qa_near0_")
+  output_dir = skill_output_dir("qa_near0_")
 )
 html_near0 <- paste(readLines(res_near0$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(
@@ -961,7 +965,7 @@ res_ni <- generate_comparative_report(
   reference_arm = "Control",
   primary_delta = 0.05,
   evidence_overrides = list("NotInterp__Active_vs_Control" = ni_override),
-  output_dir = tempfile("qa_ni_")
+  output_dir = skill_output_dir("qa_ni_")
 )
 html_ni <- paste(readLines(res_ni$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 assert_true(
@@ -989,7 +993,7 @@ res_rwd <- generate_comparative_report(
   reference_arm = "Control",
   primary_delta = 0.05,
   domain = "rwd",
-  output_dir = tempfile("qa_rwd_")
+  output_dir = skill_output_dir("qa_rwd_")
 )
 html_rwd <- paste(readLines(res_rwd$html_path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
 md_rwd_lines <- readLines(res_rwd$md_path, warn = FALSE, encoding = "UTF-8")
@@ -1180,7 +1184,7 @@ mixed_practical <- generate_comparative_report(rbind(df_iptw, df_near0), referen
   primary_delta = NULL,
   evidence_overrides = list(IPTW_Partial__Active_vs_Control = iptw_override_partial,
     Near0__Active_vs_Control = near0_override), allow_unevaluated = TRUE,
-  output_dir = tempfile("qa_practical_mixed_"))
+  output_dir = skill_output_dir("qa_practical_mixed_"))
 mixed_practical_html <- paste(readLines(mixed_practical$html_path, warn = FALSE), collapse = "\n")
 assert_true(identical(sort(mixed_practical$summary_df$practical_evaluation_status), c("evaluated", "not_evaluated")),
   "混在overrideの評価状態は各contrastの正本を優先")
@@ -1202,14 +1206,14 @@ for (name in names(invalid_practical)) {
   key_bad <- paste0(df_bad$theme[1], "__Active_vs_Control")
   error_bad <- tryCatch({ generate_comparative_report(df_bad, reference_arm = "Control",
     evidence_overrides = setNames(list(ev_bad), key_bad), allow_unevaluated = TRUE,
-    output_dir = tempfile("qa_invalid_practical_")); "NO_ERROR" },
+    output_dir = skill_output_dir("qa_invalid_practical_")); "NO_ERROR" },
     error = function(e) conditionMessage(e))
   assert_true(grepl("INVALID_PRACTICAL_EVIDENCE", error_bad, fixed = TRUE), paste("不整合は未評価とせず停止:", name))
 }
 
 
 cat("\n=== Safety既定閾値と実行前fail-fast ===\n")
-default_dir <- tempfile("qa_safety_default_")
+default_dir <- skill_output_dir("qa_safety_default_")
 default_result <- generate_comparative_report(df_standard, reference_arm="Control", output_dir=default_dir)
 default_html <- paste(readLines(default_result$html_path,warn=FALSE),collapse="\n")
 default_evidence <- jsonlite::fromJSON(default_result$json_path,simplifyVector=FALSE)
@@ -1219,11 +1223,11 @@ assert_true(identical(unlist(default_evidence$run_meta$practical_difference_poli
 assert_true(grepl("重篤事象は閾値・U-Gradeにかかわらず別途レビュー",default_html,fixed=TRUE) && grepl("δ=0.001",default_html,fixed=TRUE), "ダッシュボードに既定閾値と重篤レビュー方針を表示")
 assert_true(grepl("閾値感度",paste(readLines(default_result$md_path,warn=FALSE),collapse="\n"),fixed=TRUE), "Markdownにcanonical delta_profileの感度結果を表示")
 for (bad_delta in list(0,-0.01,NA_real_,Inf,c(0.01,0.02),1.01)) {
-  untouched <- tempfile("qa_bad_delta_")
+  untouched <- skill_output_dir("qa_bad_delta_")
   err <- tryCatch({generate_comparative_report(df_standard,primary_delta=bad_delta,output_dir=untouched);"NO_ERROR"},error=function(e)conditionMessage(e))
   assert_true(grepl("INVALID_PRIMARY_DELTA",err,fixed=TRUE) && !dir.exists(untouched), paste("不正閾値は出力予約前に停止",paste(bad_delta,collapse=",")))
 }
-null_dir <- tempfile("qa_null_delta_")
+null_dir <- skill_output_dir("qa_null_delta_")
 null_err <- tryCatch({generate_comparative_report(df_standard,primary_delta=NULL,output_dir=null_dir);"NO_ERROR"},error=function(e)conditionMessage(e))
 assert_true(grepl("PRACTICAL_THRESHOLD_REQUIRED",null_err,fixed=TRUE) && !dir.exists(null_dir), "明示NULLは省略許可なしに計算開始前停止")
 

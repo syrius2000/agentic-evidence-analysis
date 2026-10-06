@@ -37,6 +37,7 @@ supported_skills <- c("vcd-bayesian-evidence-analysis", "vcd-categorical-analysi
 if (!(skill %in% supported_skills)) {
   stop("[ERROR] --skill は次のいずれかである必要があります: ", paste(supported_skills, collapse = ", "), call. = FALSE)
 }
+out_root <- resolve_skill_output_root(skill, out_root, repo_root = repo_root)
 if (!file.exists(scope_path)) {
   stop("[ERROR] Pass 0 スコープ文書が見つかりません: ", scope_path, call. = FALSE)
 }

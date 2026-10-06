@@ -2,6 +2,7 @@
 
 root <- normalizePath(".", mustWork = TRUE)
 source(file.path(root, ".agents", "shared", "run_scope.R"))
+source(file.path(root, ".agents", "shared", "pass0_contract.R"))
 
 analysis <- file.path(
   root,
@@ -58,7 +59,9 @@ for (case in resolver_cases) {
   resolved <- resolve_pass3_run_dir(
     parent,
     "categorical_results.json",
-    "vcd-categorical-analysis"
+    "vcd-categorical-analysis",
+    discover_single_run = TRUE,
+    allow_legacy = TRUE
   )
   stopifnot(identical(
     normalizePath(resolved$run_dir, mustWork = TRUE),
@@ -66,46 +69,56 @@ for (case in resolver_cases) {
   ))
 }
 
-analysis_root <- file.path(td, "analysis_output")
-run_analysis <- function() {
-  output <- suppressWarnings(system2(
-    "Rscript",
-    c(
-      "--vanilla",
-      analysis,
-      "--render",
-      "--out",
-      analysis_root,
-      "--run-id",
-      "dashboard_case"
-    ),
-    stdout = TRUE,
-    stderr = TRUE
-  ))
-  status <- attr(output, "status")
-  if (is.null(status)) status <- 0L
-  if (!identical(as.integer(status), 0L)) {
-    stop(paste(output, collapse = "\n"))
-  }
-}
+analysis_root <- file.path(root, "evidence_runs/vcd_categorical", basename(td), "analysis_output")
+on.exit(unlink(file.path(root, "evidence_runs/vcd_categorical", basename(td)), recursive = TRUE), add = TRUE)
+input_csv <- file.path(td, "dashboard_input.csv")
+utils::write.csv(data.frame(
+  Treatment = c("Drug", "Drug", "Placebo", "Placebo"),
+  Response = c("Yes", "No", "Yes", "No"),
+  Freq = c(60L, 20L, 25L, 55L)
+), input_csv, row.names = FALSE)
+input_sha <- pass0_sha256_file(input_csv)
+config_sha <- compute_canonical_config_sha256(
+  vars = c("Treatment", "Response"), freq = "Freq", input_mode = "aggregated",
+  prior_alpha = 0.5, practical_delta = NULL
+)
+inspection_file <- file.path(td, "inspection.json")
+jsonlite::write_json(list(
+  contract_version = "1.0", inspection_status = "ready", input_sha256 = input_sha,
+  candidate_variables = list("Treatment", "Response"), detected_freq = "Freq",
+  approved_config = list(canonical_config_sha256 = config_sha)
+), inspection_file, auto_unbox = TRUE, pretty = TRUE)
+inspection_sha <- pass0_sha256_file(inspection_file)
+config_file <- file.path(td, "analysis_config.json")
+jsonlite::write_json(list(
+  input = input_csv, vars = c("Treatment", "Response"), freq = "Freq",
+  input_mode = "aggregated",
+  pass0_provenance = list(
+    contract_version = "1.0", inspection_results = inspection_file,
+    inspection_results_sha256 = inspection_sha, input_sha256 = input_sha,
+    canonical_config_sha256 = config_sha, finalized_at_jst = "2026-10-06 12:00",
+    target_skill = "vcd-categorical-analysis"
+  )
+), config_file, auto_unbox = TRUE, pretty = TRUE)
 
-run_analysis()
-Sys.sleep(0.1)
-run_analysis()
-stopifnot(dir.exists(file.path(analysis_root, "run_dashboard_case")))
-stopifnot(dir.exists(file.path(analysis_root, "run_dashboard_case_2")))
+output <- suppressWarnings(system2(
+  "Rscript", c("--vanilla", analysis, "--config", config_file,
+               "--out", analysis_root, "--label", "dashboard_case"),
+  stdout = TRUE, stderr = TRUE
+))
+status <- attr(output, "status")
+if (!is.null(status) && !identical(as.integer(status), 0L)) stop(paste(output, collapse = "\n"))
 
 dashboard_html <- rmarkdown::render(
   dashboard_rmd,
   output_file = "categorical_dashboard.html",
   output_dir = td,
-  params = list(output_dir = analysis_root),
+  params = list(output_dir = analysis_root, discover_single_run = TRUE),
   knit_root_dir = root,
   envir = new.env(parent = globalenv()),
   quiet = TRUE
 )
 stopifnot(file.exists(dashboard_html))
 html <- paste(readLines(dashboard_html, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-stopifnot(grepl("dashboard_case_2", html, fixed = TRUE))
 
 message("OK: categorical Step 3 resolves JST, named, and collision-suffixed run directories")

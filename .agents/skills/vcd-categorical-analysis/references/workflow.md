@@ -34,7 +34,7 @@ flowchart TB
 sequenceDiagram
     participant AI as AI Agent
     participant R as analysis.R
-    participant Out as evidence_runs/
+    participant Out as evidence_runs/vcd_categorical/run_<canonical_id>[_N]/
 
     Note over AI,R: Pass 1 入力検証 & プロファイリング
     AI->>R: --profile

@@ -33,7 +33,7 @@
     "output_dir": {
       "type": "string",
       "minLength": 1,
-      "description": "Pass 1 output root. analysis.R writes run_<prefix>/ below this directory."
+      "description": "Pass 1 output root. Defaults to evidence_runs/vcd_bayesian; explicit paths must resolve to this Skill namespace or a descendant. analysis.R writes run_<canonical_id>[_N]/ below it."
     },
     "run_id": {
       "type": "string",

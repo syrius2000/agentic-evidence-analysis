@@ -5,7 +5,7 @@
 
 ## analysis.R 出力ファイル一覧
 
-Pass 2 実行後に `./evidence_runs/vcd_categorical/` に生成されるファイル：
+Pass 2 実行後に `./evidence_runs/vcd_categorical/run_<canonical_id>[_N]/` に生成されるファイル：
 
 | ファイル | 内容 | 形式 |
 | :--- | :--- | :--- |

@@ -18,7 +18,7 @@ stopifnot(file.exists(schema_file))
 stopifnot(file.exists(run_means_script))
 message("PASS: 初期ファイル（SKILL.md, schema, template）が存在します。")
 
-td <- tempfile("sas_proc_means_test_")
+td <- file.path(root, "evidence_runs/sas_proc_means", paste0("test_", Sys.getpid()))
 dir.create(td, recursive = TRUE)
 on.exit(unlink(td, recursive = TRUE), add = TRUE)
 

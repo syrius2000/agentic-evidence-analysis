@@ -22,66 +22,24 @@
 
 ---
 
-## 4-Pass 分析パイプライン (Strict Execution Sequence)
+## 分析の進み方
 
-本ツールキットは、AI エージェントと R 統計エンジンが協調する厳格な 4 ステップ（Pass）で分析を実行します。
+Pass 0（事前相談）の適用はスキルごとに異なります。`vcd-bayesian-evidence-analysis` と `vcd-categorical-analysis` の新規分析、および `comparative-design-analysis` で非独立デザインを扱う場合は必須です。複数テーマ・複数設問の一括分析では、設計を揃えるためPass 0を推奨します。SAS互換の集計や保守作業では要求しません。条件の詳細は [`vcd-pass0-consultation`](.agents/skills/vcd-pass0-consultation/SKILL.md) を参照してください。
 
 ```mermaid
-graph TD
-  Data[Raw Data CSV / Contingency Table] --> P0["<b>Pass 0: Interactive Consultation</b><br/>AIがデータを検分し分析設計を提案"]
-  P0 --> CFG[analysis_config.json]
-  CFG --> P1["<b>Pass 1: R Engine Computation</b><br/>階層モデル・新4軸セル診断・ベイズ推論"]
-  P1 --> JSON[evidence_results.json]
-  JSON --> P2["<b>Pass 2: AI Review & Narrative</b><br/>専門コンサルタントによる日本語考察"]
-  P2 --> MD[executive_summary.md / quality_check.md]
-  JSON & MD --> P3["<b>Pass 3: Report Integration</b><br/>インタラクティブHTMLダッシュボード生成"]
-  P3 --> HTML[dashboard.html]
-
-  style P0 fill:#fff3e0,stroke:#e65100
-  style CFG fill:#fff3e0,stroke:#e65100,stroke-dasharray: 5 5
-  style P1 fill:#e1f5fe,stroke:#01579b
-  style P2 fill:#f3e5f5,stroke:#4a148c
-  style P3 fill:#e8f5e9,stroke:#1b5e20
-  style HTML font-weight:bold,fill:#fff9c4
+flowchart LR
+  A[入力と目的の確認] --> B{Pass 0の対象か}
+  B -->|必須・推奨| C[入力検分と分析設計]
+  B -->|対象外| D[スキル固有の設定・実行]
+  C --> E[スキル固有の計算]
+  D --> E
+  E --> F[結果の確認・解釈]
+  F --> G[必要に応じてレポート生成]
 ```
 
-1. **Pass 0 (Interactive Consultation / 事前相談)**:
-   AI がデータの水準数、観測度数、欠測、疎セルを事前に検分し、次元削減や層別解析をユーザーに提案。Pass 1 の入力を固定する **`analysis_config.json`**（Single Source of Truth）を作成します。
-2. **Pass 1 (R Engine Computation / 統計計算)**:
-   R スクリプトが 9 階層対数線形モデル、総度数 $N$ 基準の明示式 BIC、新 4 軸セル診断、多項 Dirichlet 事後推論、事後予測チェック（PPP-value）を高速かつ決定論的に計算し、`evidence_results.json` を出力します。
-3. **Pass 2 (AI Review & Narrative / 専門家考察)**:
-   AI が専門統計コンサルタントとして構造化結果を読み解き、背景ドメイン知識を交えた日本語エグゼクティブ・サマリー (`executive_summary.md`) を執筆します。品質保留や隔離セルは `quality_check.md` に明記します。
-4. **Pass 3 (Report Integration / レポート統合)**:
-   `render_dashboard.R`（RMarkdown）が統計結果と AI 考察を統合し、外部通信・リモートCDNを一切排除した完全自己完結型（スタンドアローン）の 11 セクション HTML ダッシュボード (`dashboard.html`) を生成します。
+3次元集計表の `vcd-bayesian-evidence-analysis` では、Pass 0の相談、R計算、AIによる結果レビュー、HTMLレポート生成という4段階を代表的な流れとして使います。他スキルは固有の手順・成果物を持つため、各スキルの説明に従ってください。
 
----
-
-## 現代的カテゴリカル分析の 5 つの柱
-
-| 柱 | 領域 | 中核手法・指標 | 役割と数理的根拠 |
-| :---: | :--- | :--- | :--- |
-| **1** | **全体構造の階層比較**<br>(Global Model Hierarchy) | 9 階層対数線形モデル（M1〜M9）<br>総度数 $N$ 基準の明示式 BIC | $\mathrm{BIC}_{\mathrm{explicit}} = -2 \ln L + p \ln N$<br>ポアソン完全対数尤度に基づき、過大・過小ペナルティを排した決定論的モデル選択 |
-| **2** | **新 4 軸セル診断フレームワーク**<br>(Four-Axis Cell Diagnostics) | ・Effect（効果量）<br>・Evidence（証拠強度）<br>・Influence（影響度）<br>・Stability（数値安定性） | ・Effect: 標本倍率不変 $\log(O/E)$、標準化差 $e_i^{(\mathrm{global})}$、率差 $d_i$<br>・Evidence: 標本数比例 Rao Score $T_i^{\mathrm{score}}$、対数 P 値 $\ln(P)$<br>・Influence: ハット行列 Leverage $h_{ii}$（Pregibon 1981）<br>・Stability: $O_i=0$、$E_i<5.0$、$h_{ii} \ge 0.80$ の論理和判定（`QUARANTINED` 隔離） |
-| **3** | **探索的 Dual-Filter 原則**<br>（2次元: $N \ge 2,000$ / 3次元: $N$ 閾値なし） | 2 段階スクリーニング | ・Step 1 (Effect): $\lvert\log(O/E)\rvert \ge 0.50$ で実質的乖離をスクリーニング<br>・Step 2 (Evidence): $T_i^{\mathrm{score}} \ge 3.84$（未調整の探索的足切り［FWER/FDR未保証］）で標本誤差・不確実セルを除外<br>※ 3次元現行候補式には $N$ 閾値を含めず、探索的着目セル選定であり実務的重要性や多重性調整（FWER/FDR）を保証しない |
-| **4** | **多項 Dirichlet 事後推論と不確実性評価** | 多項 Jeffreys 事前（$\alpha = 0.5$）<br>Laplace 事前感度分析（$\alpha = 1.0$）<br>条件付き事後予測確率・事後予測チェック | ・フィッシャー情報行列に整合し小標本・疎セルで安定する多項 Jeffreys 事前 $\alpha=0.5$ を主事前として採用<br>・行条件付き $P(B \mid A)$ および列条件付き $P(A \mid B)$ の事後中央値・95% 等裾信用区間（ETI）による予測確率評価<br>・独立性からの事後対数乖離 $\log D_{ij}$、事後信用区間幅ランキング<br>・全セル同時事後標本による層間差 $\Delta \theta$ の推論と Freeman-Tukey 統計量による事後予測チェック（PPP-value） |
-| **5** | **標本変動下における条件付き順位再現性**<br>(Conditional Rank Reproducibility: CRR) | 多項再標本化と各反復でのモデル再適合（M1/M5）<br>運用品質ゲート（有効反復率 $\ge 0.95$） | ・元データ `REGULAR` 適格セル集合 $\mathcal{C}_{\mathrm{reg}}$ に限定した条件付き Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$ と MCSE<br>・固定期待度数の誤謬を排除した反復閉形式 MLE 推定<br>・階数落ち・特異分割表に対する安全な解釈保留（HOLD）契約 |
-
-### 指標の読み分けガイド
-
-| 問いの次元 | 採用指標 | 数理的性質と解釈 |
-| :--- | :--- | :--- |
-| **全体の連関構造** | 9 階層対数線形モデル（M1〜M9）、ポアソン完全対数尤度による明示式 BIC | 相互独立、条件付き独立、均一連関、3 次交互作用のどれがデータを最良に説明するか |
-| **差の大きさ（現象）** | 局所対数効果比 $\log(O_i/E_i)$、標準化差 $e_i$、率差 $d_i$ | 標本サイズ $N$ に依存しない乗法的・絶対的な乖離の大きさ |
-| **証拠の強さ（確信度）** | Rao の局所スコア検定統計量 $T_i^{\mathrm{score}} = \frac{r_{P,i}^2}{1-h_{ii}}$、対数 P 値 $\ln(P)$ | 偶然の標本誤差ではない統計的確信度（$N$ に比例） |
-| **モデル改善量** | 局所逸脱度改善 $\Delta G_i^2 / N$ | 1 観測あたりの逸脱度改善（KL 乖離縮小）。標準化効果量とは区別 |
-| **数値安定性と影響度** | ハット行列 Leverage $h_{ii}$、Stability フラグ（`QUARANTINED` / `REGULAR`） | 観測ゼロ $O_i=0$、疎セル $E_i < 5.0$、過大レバレッジ $h_{ii} \ge 0.80$ を自動隔離 |
-| **統計的不確実性** | 多項 Dirichlet 事後分布（主事前 $\alpha=0.5$）、95% 等裾信用区間（ETI）、ETI 幅ランキング | 事後不確実性の幅。ETI 幅の狭さは有意性・重要性を意味しない |
-| **条件付き予測確率** | 条件付き事後分布 $P(B \mid A)$、$P(A \mid B)$（中央値・95% ETI・平均） | 特定要因のもとでの結果発生確率。中央値・分位点の総和は 1 にならない |
-| **独立性からの事後乖離** | 事後対数乖離 $\log D_{ij} = \log\pi_{ij} - \log(\pi_{i+}\pi_{+j})$ | 独立モデルからの局所乗法的乖離。0またぎのみで安易に二値判定しない |
-| **順位の再現性（安定度）** | 条件付きセル順位再現性（CRR）、Top-$K$ 選択頻度 $\hat{\pi}_i^{(K)}$、MCSE | 標本変動（多項再標本化）および反復モデル再適合下での優先セル順位の頑健性 |
-
-> [!NOTE]
-> 旧プロトタイプの「旧エビデンススコア（$r^2-k\ln N$）」は、セル追加モデルを再適合した局所BICでもベイズ因子でもありません。固定された非ゼロ乖離では標本サイズの増加とともに正値化し得ますが、全セルが必ず正値になるわけではありません。符号を候補選定に使わず、現行システムでは**監査専用列（audit-only）**としてのみ保持します。
+統計手法の概要は、全体構造、効果、証拠、不確実性、数値安定性を区別して扱うことです。数式、モデル、推論条件と限界は [統計リファレンスポータル](docs/reference/README.md) を参照してください。P値だけで実務的重要性を決めたり、探索結果を自動的な規制判断に使ったりしません。
 
 ---
 
@@ -102,6 +60,25 @@ graph TD
 | **sas-proc-means** | SAS 互換記述統計 | PROC MEANS 互換の記述統計、CLASS 群化、FREQ/WEIGHT、VARDEF、QNTLDEF 1〜5 |
 
 エージェントへの依頼時は、結論・次の行動・未検証事項が分かるように、[`docs/reference/output_style_adhd.md`](docs/reference/output_style_adhd.md) の出力方針を適用します。この方針は独立したSkillではありません。
+
+### 解析成果物の出力先
+
+解析結果をディスクへ保存するSkillは、安定slugに対応する正規rootと、その配下のrun directoryを使います。slug台帳・境界の規範は [`evidence-run-layout`](openspec/specs/evidence-run-layout/spec.md) です。
+
+| Skill | 正規root |
+| :--- | :--- |
+| `vcd-bayesian-evidence-analysis` | `evidence_runs/vcd_bayesian/` |
+| `vcd-categorical-analysis` | `evidence_runs/vcd_categorical/` |
+| `vcd-categorical-reporting` | `evidence_runs/vcd_categorical_reporting/` |
+| `comparative-design-analysis` | `evidence_runs/comparative_design/`（推論APIは現在in-memoryで、直接ファイルを保存しません） |
+| `evidence-decision-review` | `evidence_runs/evidence_decision_review/` |
+| `questionnaire-batch-analysis` | `evidence_runs/questionnaire/` |
+| `sas-proc-freq` | `evidence_runs/sas_proc_freq/` |
+| `sas-proc-means` | `evidence_runs/sas_proc_means/` |
+
+run成果物は各rootまたは許可されたroot内 `output_dir` の直下ではなく、`run_<canonical_id>[_N]/` 配下へ隔離されます。明示rootも当該Skillの正規root内に限り、namespace外のパス、`..`、symlink逸脱は拒否されます。旧runは移動・上書きしません。
+
+Pass 0の `inspect_data.R` は分析root台帳の対象外です。未指定時は互換のため `.` を使用し、明示する場合は実行ごとに新しい `evidence_runs/inspections/<project>/run_<id>/` を指定します。
 
 ---
 
@@ -142,29 +119,29 @@ Agent Skills 対応ツール（Antigravity, Cursor, Gemini CLI 等）から本�
 npx skills add syrius2000/agentic-evidence-analysis
 ```
 
-このリポジトリは、全9スキル、統計schema、統計品質契約、Rテンプレート、統計回帰テストの唯一の正本です。一般コード・SQLコード理解は `Productivity-Skill`、RWD/DB実行・統合ハブは `rwd-mysql-skill-toolkit` が担当します。
+このリポジトリは、統計スキル・schema・統計品質契約・Rテンプレート・統計回帰テストの正本です。一般コード・SQLコード理解は `Productivity-Skill`、RWD/DB実行・統合ハブは `rwd-mysql-skill-toolkit` が担当します。エージェントが本リポジトリで作業する際の契約は [AGENTS.md](AGENTS.md) を参照してください。
 
 > 「`examples/titanic.csv` を Class × Sex × Survived で分析したい。まずは `vcd-pass0-consultation` スキルでデータの性質を検分して、分析設定を作って。」
 
 ### 2. R コマンドラインから実行する
 
-2次元 `vcd-categorical-analysis` のcanonical成果物は `<out>/run_<first16>[_N]/`（推奨: `evidence_runs/vcd_categorical/`）に分離されます。
+各スキルは成果物をrun単位で分離します。以下はPass 0を経て3次元 `vcd-bayesian-evidence-analysis` を実行する例です。スキル別の出力名や設定形式は各 `SKILL.md` を確認してください。
 
 ```bash
 # Pass 0: データの事前検分
 Rscript .agents/shared/inspect_data.R examples/titanic.csv \
   --out-dir evidence_runs/inspections/<project>/run_<id>/
 
-# Pass 1: 3次元統計計算（Pass 0 で作成した設定を指定）
+# Pass 0 の検分後、合意した設定を run ディレクトリ内に保存して計算
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/analysis.R \
   --config evidence_runs/vcd_bayesian/run_01/analysis_config.json
 
-# Pass 3: ダッシュボード生成
+# ダッシュボード生成
 Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R \
   evidence_runs/vcd_bayesian/run_01/
 ```
 
-`--out` や `--out-dir` に空のout-dirを指定しても、各実行は run 識別子で分離し、既存成果物を無言で上書きしません。
+出力先には実行ごとに新しいrunディレクトリを使い、既存成果物を無言で上書きしないでください。
 
 ---
 

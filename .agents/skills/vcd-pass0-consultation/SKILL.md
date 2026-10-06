@@ -33,6 +33,7 @@ Rscript .agents/shared/inspect_data.R <path_to_your_data.csv> \
 
 `<project>` と `<id>` は実際の識別子へ置き換え、実行ごとに新しい run directory を指定します。既存 run へ無言で上書きしてはなりません。
 空のout-dirを指定する場合も、実行識別子を含む run directory を新規に確保してから出力します。
+この検分成果物は解析Skillの出力ではなくPass 0専用の例外です。`evidence_runs/<skill_slug>/` のroot台帳とは分離し、`--out-dir` 未指定時は後方互換のためカレントディレクトリを使用します。
 
 生成された `inspection_results.json` を確認し、以下の統計的性質を点検します：
 - 各変数の水準数（多すぎないか？）

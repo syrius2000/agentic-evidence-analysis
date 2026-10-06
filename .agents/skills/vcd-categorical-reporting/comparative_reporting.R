@@ -105,6 +105,7 @@ generate_comparative_report <- function(
   if (!is.null(output_dir)) {
     out_root <- output_dir
   }
+  out_root <- resolve_skill_output_root("vcd-categorical-reporting", out_root)
 
   # 1. Determine contrast pairs
   all_groups <- sort(unique(df[[group_col]]))

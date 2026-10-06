@@ -17,7 +17,9 @@ on.exit(unlink(td, recursive = TRUE), add = TRUE)
 
 data_path <- file.path(td, "survey.csv")
 config_path <- file.path(td, "questions.csv")
-output_root <- file.path(td, "output")
+output_parent <- file.path(normalizePath("."), "evidence_runs/questionnaire", basename(td))
+on.exit(unlink(output_parent, recursive = TRUE), add = TRUE)
+output_root <- file.path(output_parent, "output")
 outside_target <- file.path(td, "outside_target")
 slug <- "symlink_escape"
 
@@ -50,7 +52,7 @@ utils::write.csv(
   na = ""
 )
 
-dir.create(output_root)
+dir.create(output_root, recursive = TRUE)
 dir.create(outside_target)
 link_path <- file.path(output_root, slug)
 symlink_created <- suppressWarnings(file.symlink(outside_target, link_path))

@@ -30,7 +30,7 @@ metadata:
 5. **完全自己完結型成果物（Zero-External-Asset 原則）**:
    - 生成される HTML は、外部 CDN（Google Fonts, DataTables CDN 等）やローカルの OS 絶対パス（`/Users/` 等）を一切含まない完全オフライン仕様とする。
 6. **出力ディレクトリ規約**:
-   - 出力先は `<out>/run_<first16>[_N]/`（推奨: `evidence_runs/vcd_categorical_reporting/run_<canonical_id>[_N]/`）とし、run ディレクトリ直下に完全隔離する。
+   - 正規rootは `evidence_runs/vcd_categorical_reporting/`。明示rootも当root自身または配下に限定し、その中の `run_<canonical_id>[_N]/` へ隔離する。namespace外・`..`・symlink逸脱は書込み前に拒否する。
 
 ---
 

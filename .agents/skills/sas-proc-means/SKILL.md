@@ -23,7 +23,7 @@ SAS PROC MEANS の記述統計量、CLASS群化、欠損処理、FREQ/WEIGHT規�
 2. **計算エンジンの実行**:
    `templates/run_means.R` を `--config <path_to_config>` で実行する。
 3. **成果物の確認**:
-   隔離ディレクトリ `<output_dir>/run_<first16_run_id>/` 配下に以下の成果物が漏れなく生成されていることを確認する：
+   `output_dir` は `evidence_runs/sas_proc_means/` またはその配下に限定されます。隔離ディレクトリ `<resolved_output_dir>/run_<canonical_id>[_N]/` 配下に以下の成果物が漏れなく生成されていることを確認する：
    - `means_results.json`: 機械可読・正本・全統計量・未定義理由コード（`status_reason`）
    - `summary.csv`: SAS ODS Summary / OUT=データセット相当の表形式データ
    - `summary_report.md`: 日本語Markdownレポート（群別要約表・設定一覧・適用制約）

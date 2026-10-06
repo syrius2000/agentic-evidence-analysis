@@ -3,6 +3,9 @@
 
 test_pass <- 0L
 test_fail <- 0L
+repo_root <- normalizePath(".", mustWork = TRUE)
+schema_test_output <- file.path(repo_root, "evidence_runs/vcd_categorical_reporting", paste0("schema_batch_", Sys.getpid()))
+on.exit(unlink(schema_test_output, recursive = TRUE), add = TRUE)
 
 assert_true <- function(cond, msg) {
   if (isTRUE(cond)) {
@@ -445,7 +448,7 @@ assert_true(
 schema_batch <- generate_comparative_report(data.frame(
   theme = c("X", "X"), arm = c("A", "B"),
   events = c(3L, 0L), total = c(100L, 100L)
-), output_dir = tempfile("schema_batch_"))
+), output_dir = schema_test_output)
 batch_payload <- jsonlite::read_json(schema_batch$json_path, simplifyVector = FALSE)
 assert_true(
   validate_payload_against_schema(batch_payload, "comparative-evidence-batch-v1.json")$valid,

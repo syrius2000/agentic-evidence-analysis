@@ -1,0 +1,32 @@
+{
+  "schema": "blind-qa-cycle-v1",
+  "topic": "standardize-evidence-run-output-contract",
+  "cycle": 3,
+  "baseline": "3b8e32ab7b835286db082b598460bd5dbf9ec85c",
+  "reviewed": "03081d6fe278b83c349ff65d4ea23f92b7328a7e",
+  "audience": "local",
+  "remote_visibility": "local-only",
+  "gate": "HOLD",
+  "focus_packs": [
+    "openspec-coherence",
+    "path-sanitization",
+    "provenance-plans"
+  ],
+  "findings": [
+    {
+      "id": "QA-TEST-H01",
+      "severity": "High",
+      "status": "OPEN",
+      "title": "macOS実体パスの期待値不整合によりrun isolation回帰が失敗する",
+      "repair_surface": "code"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "closes": "QA-TEST-H01",
+      "done": false,
+      "verify": "macOS上でRscript tests/test_skill_run_isolation.Rを実行し、stable slug root 8件とcustom root 1件を含む全検査がPASSし終了コード0となること。"
+    }
+  ]
+}

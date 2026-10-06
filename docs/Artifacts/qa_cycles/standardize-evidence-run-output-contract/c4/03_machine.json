@@ -1,0 +1,25 @@
+{
+  "schema": "blind-qa-cycle-v1",
+  "topic": "standardize-evidence-run-output-contract",
+  "cycle": 4,
+  "baseline": "03081d6fe278b83c349ff65d4ea23f92b7328a7e",
+  "reviewed": "1e6f49b6dd0e5d0f3d77a7434f4dfe5f2c2d594e",
+  "audience": "local",
+  "remote_visibility": "local-only",
+  "gate": "PASS",
+  "focus_packs": [
+    "openspec-coherence",
+    "path-sanitization",
+    "provenance-plans"
+  ],
+  "findings": [
+    {
+      "id": "QA-TEST-H01",
+      "severity": "PASS",
+      "status": "CLOSED",
+      "title": "macOS実体パスの期待値不整合",
+      "repair_surface": "code"
+    }
+  ],
+  "tasks": []
+}

@@ -31,7 +31,7 @@
     "output_dir": {
       "type": "string",
       "minLength": 1,
-      "description": "Output root directory. Runner isolates output into run_<first 16 chars of run_id>/.",
+      "description": "Output root must be evidence_runs/sas_proc_means or a descendant. Runner isolates output into run_<canonical_id>[_N]/.",
       "examples": [
         "evidence_runs/sas_proc_means"
       ]
