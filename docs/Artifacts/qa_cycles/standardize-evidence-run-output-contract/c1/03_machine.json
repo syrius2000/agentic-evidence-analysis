@@ -1,0 +1,45 @@
+{
+  "schema": "blind-qa-cycle-v1",
+  "topic": "standardize-evidence-run-output-contract",
+  "cycle": 1,
+  "baseline": "17670c0516c4885c64c86731a413108a28f8cb8a",
+  "reviewed": "936fa41ae57e4bde4b84a230427951ade70903cc",
+  "audience": "cloud",
+  "remote_visibility": "pushed",
+  "gate": "HOLD",
+  "focus_packs": [
+    "openspec-coherence",
+    "provenance-plans",
+    "path-sanitization"
+  ],
+  "findings": [
+    {
+      "id": "QA-SPEC-H01",
+      "severity": "High",
+      "status": "OPEN",
+      "title": "SAS custom output_dir と正常出力scenarioの保存先が矛盾",
+      "repair_surface": "spec"
+    },
+    {
+      "id": "QA-PROV-M01",
+      "severity": "Medium",
+      "status": "OPEN",
+      "title": "tasksのOpenSpec検証コマンドがCLI契約と不一致",
+      "repair_surface": "plan"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-01",
+      "closes": "QA-SPEC-H01",
+      "done": false,
+      "verify": "canonical rootとnamespace内sub-rootの期待保存先を逐語照合し、openspec validate standardize-evidence-run-output-contract --type change --strict が成功すること"
+    },
+    {
+      "id": "T-02",
+      "closes": "QA-PROV-M01",
+      "done": false,
+      "verify": "現行CLIでstrict Change validationコマンドを実行しexit code 0を確認する"
+    }
+  ]
+}
