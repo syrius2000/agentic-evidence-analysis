@@ -1,0 +1,16 @@
+{
+  "schema": "blind-qa-cycle-v1",
+  "topic": "standardize-evidence-run-output-contract",
+  "cycle": 2,
+  "baseline": "936fa41ae57e4bde4b84a230427951ade70903cc",
+  "reviewed": "df566824f2196ce531064c83b66b9b769502d50a",
+  "audience": "cloud",
+  "remote_visibility": "pushed",
+  "gate": "PASS",
+  "focus_packs": [
+    "openspec-coherence",
+    "provenance-plans"
+  ],
+  "findings": [],
+  "tasks": []
+}
