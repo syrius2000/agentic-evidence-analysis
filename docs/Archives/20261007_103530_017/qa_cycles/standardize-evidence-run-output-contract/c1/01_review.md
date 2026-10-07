@@ -36,7 +36,7 @@
 
 - `openspec validate standardize-evidence-run-output-contract --type change --strict`: **未実行**。独立レビュー環境に `openspec` CLI が存在せず、GitHub上のReviewed SHAに関連するworkflow run/statusも確認できなかったため、validator PASSは主張しない。
 - Plan provenance: Baseline上で `implementation_plan_003_1006.md` と `implementation_plan_004_1006.md` は存在し、`implementation_plan_005_1006.md` は未存在、少なくとも006/007も未存在であることを確認した。tasks/planで明示された主要source/test pathはReviewed tree上に存在することを確認した。
-- Path sanitization: Reviewed差分8ファイルについて `/Users/`, `/home/<user>`, `file:///`, Windows drive path, UNC pathに該当する実環境依存パスは検出しなかった。
+- Path sanitization: Reviewed差分8ファイルについて `/Users/<user>/`, `/home/<user>/`, `file:///`, Windows drive path, UNC pathに該当する実環境依存パスは検出しなかった。
 
 ## Re-QA
 - 推奨Baseline: `936fa41ae57e4bde4b84a230427951ade70903cc`

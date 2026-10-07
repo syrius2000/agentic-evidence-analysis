@@ -51,7 +51,7 @@ target: Google DeepMind / Google Antigravity Engineering Team
   - `~/.gemini/config/AGENTS.md`
   - `~/.gemini/docs/rules/operational_rules.md`
   - `~/.gemini/rules/00_common.md`
-- システムプロンプト上では `Global Customizations Root: /Users/.../.gemini/config` と提示される一方で、`<RULE[user_global]>` では `docs/rules/operational_rules.md` がリンクされており、エージェントが前者を触って「完了した」と錯覚する構造的トラップが存在する。
+- システムプロンプト上では `Global Customizations Root: ~/.gemini/config` と提示される一方で、`<RULE[user_global]>` では `docs/rules/operational_rules.md` がリンクされており、エージェントが前者を触って「完了した」と錯覚する構造的トラップが存在する。
 
 ### 3.3 アライメントにおける「不都合な事実の即時申告契約」の欠落
 

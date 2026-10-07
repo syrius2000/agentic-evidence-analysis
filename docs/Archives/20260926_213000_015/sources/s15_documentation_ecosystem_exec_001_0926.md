@@ -10,8 +10,8 @@
   - `.agents/skills/vcd-pass0-consultation/SKILL.md` (15.4): 観測デザインの検分とルーティング判定（独立2群、マッチドペア、マッチドセット、IPTW、人年発症率、被験者二値集約可能判定、決定監査）を追加。
   - `.agents/skills/vcd-categorical-reporting/SKILL.md` (15.5): 成果物 schema 記述を `top-level = comparative-evidence-batch-v1`、`contrasts[*] = comparative-evidence-v1` へ明確化。ゼロ参照群確定挙動（`mean = null, mean_is_finite = false`）、多重比較スクリーニング免責、安全性データの重複排除規約（SOC $\ne$ $\sum$ PT）を詳細化。
   - `.agents/skills/comparative-design-analysis/SKILL.md` (15.6): 人年発症率（共役 Gamma-Poisson 率推論）の節を同期。Jeffreys 非正格事前分布 $p(\lambda) \propto \lambda^{-1/2} \rightarrow \text{Gamma}(x_g + 0.5, \text{rate}=T_g)$ 表記の厳密化、ゼロ参照群診断契約 `incidence_rate_ratio$diagnostic = "ZERO_REFERENCE_EVENTS"` の runtime 完全一致、Frontmatter description の "Use when..." 形式英語化。
-  - `docs/Archives/` 関連ファイル (15.7, 15.8): 歴史的記録ファイル（`docs/Archives/`）の原本性を保全しつつ、ポインタ不整合（`archived_summary_*.md` 内の相対階層不整合）を是正。過去計画書内のローカル絶対パス（`/Users/...`）を非クリック可能なコード記法へ中立化。旧「5つの統計スキル」および旧 `vcd-categorical-reporting` 隔離・非推奨化記述に対し、`comparative-evidence-reporting-v3` による後継刷新を示す明確な Historical Record / Superseded Architecture Alert Banner（Task 15.7）を配備。
-  - 相対パスリンク監査 (15.9): リポジトリ全体において `file:///` または OS ローカル絶対パス（`/Users/` 等）が 0 件、更新・サマリーファイルでの実 navigation リンク切れ 0 件であることを検証。
+  - `docs/Archives/` 関連ファイル (15.7, 15.8): 歴史的記録ファイル（`docs/Archives/`）の原本性を保全しつつ、ポインタ不整合（`archived_summary_*.md` 内の相対階層不整合）を是正。過去計画書内のローカル絶対パス（`/Users/<user>/...`）を非クリック可能なコード記法へ中立化。旧「5つの統計スキル」および旧 `vcd-categorical-reporting` 隔離・非推奨化記述に対し、`comparative-evidence-reporting-v3` による後継刷新を示す明確な Historical Record / Superseded Architecture Alert Banner（Task 15.7）を配備。
+  - 相対パスリンク監査 (15.9): リポジトリ全体において `file:///` または OS ローカル絶対パス（`/Users/<user>/...` 等）が 0 件、更新・サマリーファイルでの実 navigation リンク切れ 0 件であることを検証。
 
 ---
 

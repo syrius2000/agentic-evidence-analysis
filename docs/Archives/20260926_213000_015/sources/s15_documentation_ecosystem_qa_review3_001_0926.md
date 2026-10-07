@@ -183,7 +183,7 @@ at the reviewed commit returns GitHub 404.
 The prior historical text used an environment-specific absolute user path:
 
 ```text
-/Users/.../.agents/skills/quality-review/SKILL.md
+~/.agents/skills/quality-review/SKILL.md
 ```
 
 During Section 15 path cleanup, that external/local reference was converted into a repository-looking relative path that does not exist.

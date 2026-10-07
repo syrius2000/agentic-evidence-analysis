@@ -5,7 +5,7 @@ Use when the invite lists `path-sanitization`.
 ## 重点監査観点（Audit Criteria）
 
 1. **環境依存パスおよび個人情報の完全無害化**:
-   - リポジトリ全体で特定個人名や OS ローカル絶対パス（`/Users/...` 等）、および Markdown 内 `file:///` リンクが完全に排除されているか。
+   - リポジトリ全体で特定個人名や OS ローカル絶対パス（`/Users/<user>/...` 等）、および Markdown 内 `file:///` リンクが完全に排除されているか。
 
 ## Reviewer notes
 

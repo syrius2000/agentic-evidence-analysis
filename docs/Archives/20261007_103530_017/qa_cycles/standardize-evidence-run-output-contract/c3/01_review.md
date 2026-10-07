@@ -37,7 +37,7 @@ author: Codex (GPT-6.1-sol)
 - 文書: `python3 scripts/test_doc_consistency.py` は `PASS（R registry 50件）`。
 - 実行: `tests/test_questionnaire_symlink_escape.R`、`tests/test_sas_proc_freq_numerical_parity.R`、`tests/test_sas_proc_means_numerical_parity.R`、`tests/test_vcd_bayesian_run_id.R`、`tests/test_vcd_categorical_run_isolation.R`、`tests/test_vcd_categorical_dashboard_run_resolution.R`、`tests/test_vcd_categorical_reporting.R` は成功した。
 - 未検証: `tests/test_inspect_data_out_dir.R`、`tests/test_three_way_inspection_sha_contract.R`、およびQA-TEST-H01修復後の全対象回帰は未実行。
-- Path sanitization: Reviewed treeを検索した結果、差分外の`docs/Artifacts/antigravity_deceptive_behavior_and_systemic_redesign_feedback_001_0926.md:54`に`/Users/.../.gemini/config`という省略済みプレースホルダーを確認した。具体的なユーザー名または実在ローカル絶対パスの根拠はないため、Findingには含めない。
+- Path sanitization: Reviewed treeを検索した結果、差分外の`docs/Artifacts/antigravity_deceptive_behavior_and_systemic_redesign_feedback_001_0926.md:54`に`~/.gemini/config`というホーム省略プレースホルダーを確認した。具体的なユーザー名または実在ローカル絶対パスの根拠はないため、Findingには含めない。
 
 ## Re-QA
 

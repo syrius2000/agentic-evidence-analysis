@@ -36,7 +36,7 @@ Blocking項目はない。`QA-TEST-H01` はCLOSEDである。
 - 差分: `git diff --check`は成功した。実質的な修復は`tests/test_skill_run_isolation.R`の2期待値のみであり、`run_scope.R`は差分に含まれない。
 - 名前空間・symlink: Reviewed treeの`run_scope.R:49-77`は登録済みslugのcanonical rootまたはその配下だけを受理し、`run_scope.R:454-472`はmacOSシステム別名を解決した後に各要素のsymlinkを拒否する。これらの制約緩和はない。
 - OpenSpec整合: Reviewed treeの`openspec/specs/evidence-run-layout/spec.md:11-31`はnamespace外、`..`、symlink逸脱の書込み前拒否を要求し、`tasks.md:57`は当該回帰テストをTask 5.1の確認方法に含める。実測結果はこの修復対象と整合する。
-- Path sanitization: 修復対象テストに実在の`/Users/...`、`file:///`、Windows drive、UNC pathは含まれない。c3中の一致は監査規則を説明するリテラルだけであり、Findingにはしない。
+- Path sanitization: 修復対象テストに実在の`/Users/<user>/...`、`file:///`、Windows drive、UNC pathは含まれない。c3中の一致は監査規則を説明するリテラルだけであり、Findingにはしない。
 - c3不変性: `git diff --quiet <Reviewed> -- docs/Artifacts/qa_cycles/standardize-evidence-run-output-contract/c3`が成功し、c3の5ファイルは未改変である。c3の`QA-TEST-H01`と`T-01`を本Re-QAの対象として追跡した。
 - 未検証: 指定範囲外の追加回帰テストおよびOpenSpec validateは実行していない。
 

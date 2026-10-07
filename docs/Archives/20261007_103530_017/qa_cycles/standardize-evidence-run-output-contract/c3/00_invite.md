@@ -76,7 +76,7 @@
     1. 各分析スキルの出力先規約（`evidence_runs/<skill_slug>/run_<canonical_id>[_N]/`）および `output_dir` 解決制約（各スキル名前空間配下に限定、`..` や symlink 逸脱拒否）が、共有基盤（`run_scope.R`）と各スキルのテンプレート/スクリプト/スキーマで一貫して実装されているか。
     2. Pass 0 例外（`inspect_data.R`）、`comparative-design-analysis` の in-memory 契約および将来の永続化責務の記述が矛盾なく反映されているか。
     3. ガバナンス文書（`AGENTS.md`、`README.md`、`docs/Artifacts/README.md`、`docs/reference/skill_responsibilities.md`）および各スキル `SKILL.md` の記載が相互に整合し、古い規約（フラットな `evidence_runs/` 直下への保存や旧 slug 名など）の残骸がないか。
-    4. 環境依存パス（`/Users/...` など）や Markdown 内 `file:///` リンクがコードおよびドキュメントに混入していないか（focus pack: `path-sanitization`）。
+    4. 環境依存パス（`/Users/<user>/...` や `~/...` など）や Markdown 内 `file:///` リンクがコードおよびドキュメントに混入していないか（focus pack: `path-sanitization`）。
   - 修復・コード修正・Owner 判断（ACCEPT/ARCHIVE）は行わず、差分と一次情報に基づいた独立評価を実施してください。
 
 ## 重点監査観点
@@ -91,7 +91,7 @@
 ### path-sanitization
 
 1. **環境依存パスおよび個人情報の完全無害化**:
-   - リポジトリ全体で特定個人名や OS ローカル絶対パス（`/Users/...` 等）、および Markdown 内 `file:///` リンクが完全に排除されているか。
+   - リポジトリ全体で特定個人名や OS ローカル絶対パス（`/Users/<user>/...` 等）、および Markdown 内 `file:///` リンクが完全に排除されているか。
 2. Reviewer notes:
    - Scope default: **reviewed commit tree content** (not full git history rewrite).
    - Distinguish real absolute paths / `file:///` navigation links (Findings) from literal forbid-patterns inside rules/tests/docs (PASS caveat).

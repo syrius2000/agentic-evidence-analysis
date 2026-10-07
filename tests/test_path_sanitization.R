@@ -117,7 +117,7 @@ if (length(posix_hits) > 0) {
 }
 assert_true(
   length(posix_hits) == 0L,
-  "No real POSIX absolute paths (/Users/<name>/, /home/<name>/, /private/var/, /tmp/<name>)"
+  "No real POSIX absolute paths (/Users/<user>/, /home/<user>/, /private/var/, /tmp/<name>)"
 )
 
 cat("\n=== 3. Markdown file:/// navigation links ===\n")
@@ -152,11 +152,12 @@ assert_true(
 )
 
 # Positive-control lines (ephemeral; never rely on a tracked reject fixture)
+demo_user <- paste0("user", "demo")
 reject_lines <- c(
-  "- Real Markdown navigation: [bad](file:///Users/alice/secret.R)",
-  "- Real POSIX abs: notes under /Users/alice/Programing/demo/",
-  "- Backticked concrete POSIX: `/Users/alice/project/file.R`",
-  "- Windows nav: [win](C:\\Users\\alice\\demo.R)",
+  paste0("- Real Markdown navigation: [bad](file://", "/Users/", demo_user, "/secret.R)"),
+  paste0("- Real POSIX abs: notes under ", "/Users/", demo_user, "/Programing/demo/"),
+  paste0("- Backticked concrete POSIX: `", "/Users/", demo_user, "/project/file.R`"),
+  paste0("- Windows nav: [win](C:\\Users\\", demo_user, "\\demo.R)"),
   "- Generic Windows drive: notes under D:\\Projects\\repo\\file.R",
   "- Concrete tmp path: write to /tmp/example/file"
 )
@@ -167,11 +168,11 @@ assert_true(
 )
 assert_true(
   any(vapply(reject_plain, is_real_posix_abs, logical(1L))),
-  "Reject samples contain /Users/<name>/ real path (detector positive control)"
+  "Reject samples contain concrete /Users/<user>/... style path (detector positive control)"
 )
 assert_true(
   isTRUE(is_real_posix_abs(reject_plain[[3L]])),
-  "Backticked concrete /Users/<name>/ is rejected after unwrap (QA-PATH-M01)"
+  "Backticked concrete /Users/<user>/... style path is rejected after unwrap (QA-PATH-M01)"
 )
 assert_true(
   any(vapply(reject_plain, is_md_win_nav, logical(1L))),
@@ -190,7 +191,7 @@ assert_true(
 allow_lines <- c(
   "Document placeholder `/Users/<user>/` in backticks.",
   "Document scheme only as `file:///`.",
-  "Ellipsis form `/Users/.../` is documentation only.",
+  "Tilde form `~/...` is documentation only.",
   "Bare scheme discussion mentions /tmp/ without a concrete leaf.",
   "Placeholder `/tmp/<name>/` is documentation only."
 )
@@ -199,7 +200,7 @@ assert_true(
   !any(vapply(allow_plain, is_real_posix_abs, logical(1L))) &&
     !any(vapply(allow_plain, is_md_file_nav, logical(1L))) &&
     !any(vapply(allow_plain, is_real_win_abs, logical(1L))),
-  "Placeholder /Users/<user>/, /Users/.../, /tmp/<name>/, bare /tmp/, and file:/// literals are allowed"
+  "Placeholder /Users/<user>/, ~/..., /tmp/<name>/, bare /tmp/, and file:/// literals are allowed"
 )
 
 cat(sprintf("\nTest Summary: %d Passed, %d Failed\n", test_pass, test_fail))
