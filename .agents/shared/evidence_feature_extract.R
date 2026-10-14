@@ -421,6 +421,7 @@ complete_evidence_decision_feature_run <- function(features,
     skill = "evidence-decision-review",
     run_id = basename(run_dir),
     extra = list(
+      run_state = "completed",
       requested_run_id = logical_id,
       logical_run_id = logical_id,
       results_manifest_sha256 = manifest$manifest_sha256,

@@ -30,4 +30,7 @@ SAS PROC FREQ の度数・分割表集計、欠損処理規則（exclude, misspr
    - `summary.csv`: 可逆な複合キー `strata_key` および個別層別変数列を含む表形式データ
    - `summary_report.md`: 日本語Markdownレポート（分割表・検定結果・効果量・資源停止注記・統計的注意点）
    - `analysis_config.json`: 設定の完全な写し
-   - `manifest.json`: 入出力SHA-256、JSTタイムスタンプ、R環境メタデータ
+   - `run_meta.json`: 統制メタデータ（JSTタイムスタンプ、入力SHA-256、再現性環境情報ブロック、シード等）
+   - `results_manifest.json`: 成果物SHA-256整合性マニフェスト（全成果物の改ざん検知）
+   - `session_info.txt`: 実行環境セッション情報（Rバージョン、OS、ロードパッケージ詳細）
+   - `runs_index.jsonl` / `latest.json`: 出力root直下の横断実行索引および最新実行ポインタ

@@ -35,9 +35,9 @@ cat("=== Pass 1 表示依存遮断・自律完結テスト開始 ===\n")
 # 1. 一時ディレクトリとテスト用設定の準備
 td <- file.path(root, "evidence_runs/vcd_bayesian", paste0(".test_pass1_", Sys.getpid()))
 dir.create(td, recursive = TRUE, showWarnings = FALSE)
-on.exit(unlink(td, recursive = TRUE), add = TRUE)
 
-data_path <- file.path(root, "examples", "titanic.csv")
+tryCatch({
+  data_path <- file.path(root, "examples", "titanic.csv")
 cfg <- list(
   input = data_path,
   dataset_name = "titanic",
@@ -253,8 +253,13 @@ if (file.exists(proc_results_json)) {
          "物理隔離生成成果物に完全な対数線形モデル・セル診断が含まれていること")
 }
 
-cat(sprintf("\n=== テスト完了: PASS=%d, FAIL=%d ===\n", PASS, FAIL))
-if (FAIL > 0) {
-  stop("Pass 1 表示依存遮断テストに失敗しました")
-}
-cat("=== 全テスト合格: 表示系未導入環境での Pass 1 自律完結性を完全実証 ===\n")
+  cat(sprintf("\n=== テスト完了: PASS=%d, FAIL=%d ===\n", PASS, FAIL))
+  if (FAIL > 0) {
+    stop("Pass 1 表示依存遮断テストに失敗しました")
+  }
+  cat("=== 全テスト合格: 表示系未導入環境での Pass 1 自律完結性を完全実証 ===\n")
+}, finally = {
+  if (dir.exists(td)) {
+    unlink(td, recursive = TRUE, force = TRUE)
+  }
+})

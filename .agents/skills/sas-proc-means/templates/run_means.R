@@ -623,42 +623,7 @@ main <- function() {
   cfg_copy_path <- file.path(run_dir, "analysis_config.json")
   jsonlite::write_json(cfg, cfg_copy_path, auto_unbox = TRUE, pretty = TRUE)
 
-  # Output 5: manifest.json (integrity metadata)
-  manifest <- list(
-    manifest_version = "1.0",
-    run_id = cfg$run_id,
-    timestamp_jst = jst_now,
-    input_file = list(
-      path = cfg$input,
-      sha256 = input_sha256
-    ),
-    artifacts = list(
-      means_results_json = list(
-        path = "means_results.json",
-        sha256 = digest::digest(json_path, file = TRUE, algo = "sha256")
-      ),
-      summary_csv = list(
-        path = "summary.csv",
-        sha256 = digest::digest(csv_path, file = TRUE, algo = "sha256")
-      ),
-      summary_report_md = list(
-        path = "summary_report.md",
-        sha256 = digest::digest(md_path, file = TRUE, algo = "sha256")
-      ),
-      analysis_config_json = list(
-        path = "analysis_config.json",
-        sha256 = digest::digest(cfg_copy_path, file = TRUE, algo = "sha256")
-      )
-    ),
-    r_environment = list(
-      version = R.version.string,
-      platform = R.version$platform
-    )
-  )
-  manifest_path <- file.path(run_dir, "manifest.json")
-  jsonlite::write_json(manifest, manifest_path, auto_unbox = TRUE, pretty = TRUE)
-
-  # Output 6: results_manifest.json and run_meta.json (unified evidence audit contract)
+  # Output 5: results_manifest.json and run_meta.json (unified evidence audit contract)
   artifacts_to_manifest <- list(
     list(path = "means_results.json", role = "primary_results"),
     list(path = "summary.csv", role = "summary_table"),

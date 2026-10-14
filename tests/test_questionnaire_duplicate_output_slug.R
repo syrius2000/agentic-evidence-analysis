@@ -14,9 +14,9 @@ stopifnot(file.exists(runner))
 td <- tempfile("questionnaire_duplicate_slug_")
 dir.create(td, recursive = TRUE)
 test_out_root <- file.path(root, "evidence_runs/questionnaire", basename(td))
-on.exit(unlink(c(td, test_out_root), recursive = TRUE), add = TRUE)
 
-data_path <- file.path(td, "survey.csv")
+tryCatch({
+  data_path <- file.path(td, "survey.csv")
 utils::write.csv(
   data.frame(
     response = c("yes", "no", "yes", "no"),
@@ -323,4 +323,12 @@ stopifnot(identical(non_slug_na_summary$status, "success"))
 stopifnot(identical(non_slug_na_summary$n_total, 4L))
 stopifnot(identical(non_slug_na_summary$n_used, 4L))
 
-message("OK: unsafe or duplicate output_slug values stop before any artifacts are generated")
+  message("OK: unsafe or duplicate output_slug values stop before any artifacts are generated")
+}, finally = {
+  if (dir.exists(test_out_root)) {
+    unlink(test_out_root, recursive = TRUE, force = TRUE)
+  }
+  if (dir.exists(td)) {
+    unlink(td, recursive = TRUE, force = TRUE)
+  }
+})

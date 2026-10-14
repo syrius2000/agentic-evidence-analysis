@@ -72,7 +72,7 @@ if (!is.null(res$cramers_v)) {
   md_lines <- c(md_lines,
     "#### 3. 効果量 (Dual-Filter)",
     cram_str,
-    "- **注**: Cramér's V はセル単位ではなく表全体の効果量です。セル単位の偏りは Residual / Evidence Score で確認します。",
+    "- **注**: Cramér's V はセル単位ではなく表全体の効果量です。セル単位の偏りは標準化残差（Residual）および局所セル診断で確認します。",
     ""
   )
 }
@@ -88,12 +88,13 @@ if (!is.null(res$warnings) && length(res$warnings) > 0) {
 if (!is.null(res$top_k_data) && is.data.frame(res$top_k_data) && nrow(res$top_k_data) > 0) {
   md_lines <- c(md_lines,
     "#### 4. 主要な偏りセル (Top-K)",
-    "以下のセルが強い偏り（Evidence Score > 0）を示しました："
+    "以下のセルが顕著な局所残差（偏り）を示しました："
   )
   for (i in seq_len(nrow(res$top_k_data))) {
     row <- res$top_k_data[i, ]
     cell_desc <- paste(sapply(res$dimensions, function(d) paste0(d, "=", row[[d]])), collapse = ", ")
-    md_lines <- c(md_lines, sprintf("- %d. %s (Score: %.2f, Residual: %.2f)", i, cell_desc, row$Evidence_Score, row$Residual))
+    res_val <- if (!is.null(row[["Residual"]])) row[["Residual"]] else NA_real_
+    md_lines <- c(md_lines, sprintf("- %d. %s (Residual: %.2f)", i, cell_desc, res_val))
   }
   md_lines <- c(md_lines, "")
 }

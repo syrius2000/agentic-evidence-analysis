@@ -26,7 +26,7 @@ author: Codex (GPT-5) / Cursor (Composer)
 
 ### 解析成果物と永続化owner
 
-新規解析永続出力の安定slug、root境界、run隔離、Pass 0 inspection例外は規範仕様 [`evidence-run-layout`](../../openspec/specs/evidence-run-layout/spec.md) に従います。`comparative-design-analysis` の共有推論器は現在in-memory結果を返し、ファイルwriterを持ちません。将来ファイルへ保存する場合は利用するwrapper/callerが永続化ownerとなり、登録済みrootと共通run基盤を使用します。
+新規解析永続出力の安定slug、root境界、run隔離、Pass 0 inspection例外は規範仕様 [`evidence-run-layout`](../../openspec/specs/evidence-run-layout/spec.md) に従います。各 run ディレクトリ内のメタデータ正本は `run_meta.json` および `results_manifest.json` に統一され（旧 `manifest.json` および run 内 `run_state.json` は廃止）、環境再現情報 `session_info.txt`、出力 root 直下の横断索引 `runs_index.jsonl` と最新実行ポインタ `latest.json` が配置されます。`comparative-design-analysis` の共有推論器は現在in-memory結果を返し、ファイルwriterを持ちません。将来ファイルへ保存する場合は利用するwrapper/callerが永続化ownerとなり、登録済みrootと共通run基盤を使用します。
 
 ---
 

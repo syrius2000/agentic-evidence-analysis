@@ -28,4 +28,7 @@ SAS PROC MEANS の記述統計量、CLASS群化、欠損処理、FREQ/WEIGHT規�
    - `summary.csv`: SAS ODS Summary / OUT=データセット相当の表形式データ
    - `summary_report.md`: 日本語Markdownレポート（群別要約表・設定一覧・適用制約）
    - `analysis_config.json`: 設定の完全な写し
-   - `manifest.json`: 入出力SHA-256、JSTタイムスタンプ、R環境メタデータ
+   - `run_meta.json`: 統制メタデータ（JSTタイムスタンプ、入力SHA-256、再現性環境情報ブロック等）
+   - `results_manifest.json`: 成果物SHA-256整合性マニフェスト（全成果物の改ざん検知）
+   - `session_info.txt`: 実行環境セッション情報（Rバージョン、OS、ロードパッケージ詳細）
+   - `runs_index.jsonl` / `latest.json`: 出力root直下の横断実行索引および最新実行ポインタ

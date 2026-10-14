@@ -175,40 +175,46 @@ assert_true("evidence-decision-review" %in% RUN_SCOPE_SUPPORTED_SKILLS,
 tmp_root <- file.path(normalizePath("."), "evidence_runs/evidence_decision_review", paste0(".test_edr_", Sys.getpid()))
 unlink(tmp_root, recursive = TRUE)
 dir.create(tmp_root, recursive = TRUE)
-on.exit(unlink(tmp_root, recursive = TRUE), add = TRUE)
-engine <- run_independent_beta_binomial(12, 100, 4, 100, seed = 21L, primary_delta = 0.05)
-features <- extract_evidence_features(engine$evidence)
-run1 <- complete_evidence_decision_feature_run(features, out_root = tmp_root, run_id = "phaseA_demo")
-assert_true(dir.exists(run1$run_dir) && grepl("/run_phaseA_demo$", run1$run_dir),
-            "complete lifecycle reserves run_phaseA_demo")
-assert_true(file.exists(file.path(run1$run_dir, "evidence_feature.json")),
-            "evidence_feature.json written")
-assert_true(file.exists(file.path(run1$run_dir, "results_manifest.json")),
-            "results_manifest.json written")
-assert_true(file.exists(file.path(run1$run_dir, "run_meta.json")),
-            "run_meta.json written")
 
-meta <- read_run_control(run1$run_dir)
-assert_true(identical(meta$skill, "evidence-decision-review"),
-            "read_run_control accepts evidence-decision-review")
-assert_true(identical(as.character(meta$path_schema_version), RUN_SCOPE_PATH_SCHEMA_VERSION),
-            "path_schema_version is canonical")
-assert_true(!is.null(meta$results_manifest_sha256) &&
-              identical(meta$results_manifest_sha256, run1$manifest$manifest_sha256),
-            "results_manifest_sha256 bound into run_meta")
-assert_true(identical(as.character(meta$logical_run_id), "phaseA_demo"),
-            "logical_run_id preserved")
-v_manifest <- verify_results_manifest(run1$run_dir, meta$results_manifest_sha256)
-assert_true(identical(v_manifest$manifest_sha256, meta$results_manifest_sha256),
-            "verify_results_manifest succeeds against bound hash")
-assert_true(identical(basename(dirname(run1$run_dir)), basename(tmp_root)),
-            "No root leakage: run nested under skill out_root")
+tryCatch({
+  engine <- run_independent_beta_binomial(12, 100, 4, 100, seed = 21L, primary_delta = 0.05)
+  features <- extract_evidence_features(engine$evidence)
+  run1 <- complete_evidence_decision_feature_run(features, out_root = tmp_root, run_id = "phaseA_demo")
+  assert_true(dir.exists(run1$run_dir) && grepl("/run_phaseA_demo$", run1$run_dir),
+              "complete lifecycle reserves run_phaseA_demo")
+  assert_true(file.exists(file.path(run1$run_dir, "evidence_feature.json")),
+              "evidence_feature.json written")
+  assert_true(file.exists(file.path(run1$run_dir, "results_manifest.json")),
+              "results_manifest.json written")
+  assert_true(file.exists(file.path(run1$run_dir, "run_meta.json")),
+              "run_meta.json written")
 
-run2 <- complete_evidence_decision_feature_run(features, out_root = tmp_root, run_id = "phaseA_demo")
-assert_true(grepl("/run_phaseA_demo_2$", run2$run_dir),
-            "Same run_id collision creates _2 suffix without overwrite")
-assert_true(dir.exists(run1$run_dir) && file.exists(file.path(run1$run_dir, "run_meta.json")),
-            "Original run directory remains intact after collision")
+  meta <- read_run_control(run1$run_dir)
+  assert_true(identical(meta$skill, "evidence-decision-review"),
+              "read_run_control accepts evidence-decision-review")
+  assert_true(identical(as.character(meta$path_schema_version), RUN_SCOPE_PATH_SCHEMA_VERSION),
+              "path_schema_version is canonical")
+  assert_true(!is.null(meta$results_manifest_sha256) &&
+                identical(meta$results_manifest_sha256, run1$manifest$manifest_sha256),
+              "results_manifest_sha256 bound into run_meta")
+  assert_true(identical(as.character(meta$logical_run_id), "phaseA_demo"),
+              "logical_run_id preserved")
+  v_manifest <- verify_results_manifest(run1$run_dir, meta$results_manifest_sha256)
+  assert_true(identical(v_manifest$manifest_sha256, meta$results_manifest_sha256),
+              "verify_results_manifest succeeds against bound hash")
+  assert_true(identical(basename(dirname(run1$run_dir)), basename(tmp_root)),
+              "No root leakage: run nested under skill out_root")
+
+  run2 <- complete_evidence_decision_feature_run(features, out_root = tmp_root, run_id = "phaseA_demo")
+  assert_true(grepl("/run_phaseA_demo_2$", run2$run_dir),
+              "Same run_id collision creates _2 suffix without overwrite")
+  assert_true(dir.exists(run1$run_dir) && file.exists(file.path(run1$run_dir, "run_meta.json")),
+              "Original run directory remains intact after collision")
+}, finally = {
+  if (dir.exists(tmp_root)) {
+    unlink(tmp_root, recursive = TRUE, force = TRUE)
+  }
+})
 
 cat("\n=== 13.2 / 13.A.R2-R3 Feature schema contracts ===\n")
 assert_true(validate_payload_against_schema(features, "evidence-feature-v1.json")$valid,

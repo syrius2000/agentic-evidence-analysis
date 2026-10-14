@@ -48,28 +48,30 @@ get_arg_val <- function(args_vec, arg_name, default = NULL) {
   return(default)
 }
 
-record_run_failure <- function(target_dir, error_code, message, is_root = FALSE, execution_mode = "canonical") {
+record_run_failure <- function(target_dir, error_code, message, is_root = FALSE, execution_mode = "canonical", config_file_sha256 = NULL, canonical_config_sha256 = NULL) {
   if (!is.null(target_dir)) {
     if (!dir.exists(target_dir)) {
       tryCatch(dir.create(target_dir, recursive = TRUE, showWarnings = FALSE), error = function(e) {})
     }
     if (dir.exists(target_dir)) {
-      state_file <- file.path(target_dir, "run_state.json")
-      payload <- list(
-        status = "failed",
-        error_code = error_code,
-        message = message,
-        execution_mode = execution_mode,
-        provenance_status = "failed",
-        phase = if (is_root) "gateway" else "execution",
-        run_id = if (is_root) NULL else basename(target_dir),
-        analysis_signature = NULL,
-        timestamp_jst = format(Sys.time(), "%Y-%m-%dT%H:%M:%S+09:00")
-      )
-      tryCatch(
-        writeLines(jsonlite::toJSON(payload, auto_unbox = TRUE, pretty = TRUE, null = "null"), state_file),
-        error = function(e) {}
-      )
+      if (is_root) {
+        state_file <- file.path(target_dir, "run_state.json")
+        payload <- list(
+          status = "failed",
+          error_code = error_code,
+          message = message,
+          execution_mode = execution_mode,
+          provenance_status = "failed",
+          phase = "gateway",
+          run_id = NULL,
+          analysis_signature = NULL,
+          timestamp_jst = format(Sys.time(), "%Y-%m-%dT%H:%M:%S+09:00")
+        )
+        tryCatch(
+          writeLines(jsonlite::toJSON(payload, auto_unbox = TRUE, pretty = TRUE, null = "null"), state_file),
+          error = function(e) {}
+        )
+      }
       if (!is_root && exists("write_run_meta", mode = "function")) {
         tryCatch({
           write_run_meta(
@@ -80,7 +82,12 @@ record_run_failure <- function(target_dir, error_code, message, is_root = FALSE,
             extra = list(
               logical_run_id = basename(target_dir),
               run_state = "failed",
+              error_code = error_code,
               failure_reason = sprintf("[%s] %s", error_code, message),
+              execution_mode = execution_mode,
+              provenance_status = "failed",
+              config_file_sha256 = config_file_sha256,
+              canonical_config_sha256 = canonical_config_sha256,
               pass_status = list(pass0 = "completed", pass1 = "failed", pass2 = "pending", pass3 = "pending")
             )
           )
@@ -380,45 +387,44 @@ run_categorical_analysis_core <- function(
   )
   analysis_signature <- digest::digest(sig_payload, algo = "sha256")
   prefix16 <- substr(analysis_signature, 1L, 16L)
-  run_output_dir <- reserve_run_output_dir(out_root, "vcd-categorical-analysis", prefix16)
-  run_id <- basename(run_output_dir)
-
   # 同一署名・同一出力 root の原子的排他ロック (Atomic Lock)
-  lock_dir <- file.path(run_output_dir, ".run_lock")
-  acquired_lock <- dir.create(lock_dir, showWarnings = FALSE)
-  if (!acquired_lock) {
-    record_run_failure(
-      out_root,
-      "CONCURRENT_RUN_IN_PROGRESS",
-      sprintf("同一解析署名 (%s) の実行が既に進行中です。並行競合および成果物破壊を防ぐため即時停止します。", analysis_signature),
-      is_root = TRUE
-    )
+  # spec: 同一署名の並行実行開始時は原子的排他ロックを取得し、先行実行中なら CONCURRENT_RUN_IN_PROGRESS で失敗する
+  sig_lock <- acquire_signature_lock(out_root, "vcd-categorical-analysis", analysis_signature)
+  if (!isTRUE(sig_lock$acquired)) {
+    if (identical(sig_lock$error_code, "CONCURRENT_RUN_IN_PROGRESS")) {
+      holder_detail <- ""
+      if (!is.null(sig_lock$pid) || !is.null(sig_lock$acquired_at)) {
+        parts <- c()
+        if (!is.null(sig_lock$pid)) parts <- c(parts, paste0("pid: ", sig_lock$pid))
+        if (!is.null(sig_lock$acquired_at)) parts <- c(parts, paste0("acquired_at: ", sig_lock$acquired_at))
+        holder_detail <- sprintf(" [保持プロセス情報: %s]", paste(parts, collapse = ", "))
+      }
+      record_run_failure(
+        out_root,
+        "CONCURRENT_RUN_IN_PROGRESS",
+        sprintf("同一解析署名 (%s) の実行が既に進行中です (lock: %s)%s。並行競合および成果物破壊を防ぐため即時停止します。",
+                analysis_signature, sig_lock$lock_path, holder_detail),
+        is_root = TRUE
+      )
+    } else {
+      err_code <- if (!is.null(sig_lock$error_code)) sig_lock$error_code else "LOCK_ACQUISITION_FAILED"
+      err_msg <- if (!is.null(sig_lock$error_message)) sig_lock$error_message else sprintf("ロック取得に失敗しました: %s", sig_lock$lock_path)
+      record_run_failure(out_root, err_code, err_msg, is_root = TRUE)
+    }
   }
   base::on.exit({
-    if (dir.exists(lock_dir)) {
-      unlink(lock_dir, recursive = TRUE, force = TRUE)
-    }
+    release_signature_lock(sig_lock)
   }, add = TRUE)
 
-
-  state_file <- file.path(run_output_dir, "run_state.json")
-  run_state_payload <- list(
-    status = "running",
-    run_id = run_id,
-    analysis_signature = analysis_signature,
-    execution_mode = "canonical",
-    provenance_status = "verified",
-    input_sha256 = input_sha,
-    config_file_sha256 = config_file_sha256,
-    canonical_config_sha256 = canonical_config_sha256,
-    timestamp_jst = format(Sys.time(), "%Y-%m-%dT%H:%M:%S+09:00")
-  )
-  writeLines(jsonlite::toJSON(run_state_payload, auto_unbox = TRUE, pretty = TRUE), state_file)
+  run_output_dir <- reserve_run_output_dir(out_root, "vcd-categorical-analysis", prefix16)
+  run_id <- basename(run_output_dir)
 
   raw_df <- tryCatch(
     utils::read.csv(data_path, stringsAsFactors = FALSE, check.names = FALSE),
     error = function(e) {
-      record_run_failure(run_output_dir, "CANNOT_READ_INPUT_CSV", conditionMessage(e))
+      record_run_failure(run_output_dir, "CANNOT_READ_INPUT_CSV", conditionMessage(e),
+                         config_file_sha256 = config_file_sha256,
+                         canonical_config_sha256 = canonical_config_sha256)
     }
   )
 
@@ -427,11 +433,17 @@ run_categorical_analysis_core <- function(
       data = raw_df,
       vars = vars,
       freq = freq_col,
-      input_mode = input_mode,
-      run_dir = run_output_dir
+      input_mode = input_mode
     ),
     error = function(e) {
-      stop(e)
+      err_msg <- conditionMessage(e)
+      m <- regexec("^\\[([A-Z0-9_]+)\\]\\s*(.*)$", err_msg)
+      reg_matches <- regmatches(err_msg, m)[[1]]
+      code <- if (length(reg_matches) >= 3L) reg_matches[2] else "INPUT_VALIDATION_FAILED"
+      clean_msg <- if (length(reg_matches) >= 3L) reg_matches[3] else err_msg
+      record_run_failure(run_output_dir, code, clean_msg,
+                         config_file_sha256 = config_file_sha256,
+                         canonical_config_sha256 = canonical_config_sha256)
     }
   )
 
@@ -465,7 +477,9 @@ run_categorical_analysis_core <- function(
       } else {
         "SERIALIZATION_FAILED"
       }
-      record_run_failure(run_output_dir, code, err_msg)
+      record_run_failure(run_output_dir, code, err_msg,
+                         config_file_sha256 = config_file_sha256,
+                         canonical_config_sha256 = canonical_config_sha256)
     }
   )
 
@@ -506,6 +520,12 @@ run_categorical_analysis_core <- function(
     logical_run_id = prefix16,
     requested_run_id = prefix16,
     run_state = "completed",
+    analysis_signature = analysis_signature,
+    execution_mode = "canonical",
+    provenance_status = "verified",
+    seed = post_res$deterministic_seed,
+    config_file_sha256 = config_file_sha256,
+    canonical_config_sha256 = canonical_config_sha256,
     results_manifest_sha256 = if (!is.null(manifest_res)) manifest_res$manifest_sha256 else NULL,
     pass_status = list(pass0 = "completed", pass1 = "completed", pass2 = "pending", pass3 = "pending")
   )
@@ -523,20 +543,6 @@ run_categorical_analysis_core <- function(
     stop(sprintf("CRITICAL_METADATA_FAILURE: run_meta.json could not be written: %s", conditionMessage(e)))
   })
 
-  completed_state <- list(
-    status = "completed",
-    run_id = run_id,
-    analysis_signature = analysis_signature,
-    execution_mode = "canonical",
-    provenance_status = "verified",
-    input_sha256 = input_sha,
-    config_file_sha256 = config_file_sha256,
-    canonical_config_sha256 = canonical_config_sha256,
-    artifacts = artifacts_list,
-    results_manifest_sha256 = if (!is.null(manifest_res)) manifest_res$manifest_sha256 else NULL,
-    timestamp_jst = format(Sys.time(), "%Y-%m-%dT%H:%M:%S+09:00")
-  )
-  writeLines(jsonlite::toJSON(completed_state, auto_unbox = TRUE, pretty = TRUE), state_file)
   message("[SUCCESS] vcd-categorical-analysis v4.1 完了: ", run_output_dir)
   invisible(results_v3)
 }

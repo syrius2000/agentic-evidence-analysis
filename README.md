@@ -141,7 +141,7 @@ Rscript .agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard
   evidence_runs/vcd_bayesian/run_01/
 ```
 
-出力先には実行ごとに新しいrunディレクトリを使い、既存成果物を無言で上書きしないでください。
+出力先には実行ごとに新しいrunディレクトリを使い、既存成果物を無言で上書きしないでください。各run内には統制メタデータ（`run_meta.json`）、改ざん検知マニフェスト（`results_manifest.json`）、環境情報（`session_info.txt`）が出力され、出力root直下に横断索引（`runs_index.jsonl`）と最新実行ポインタ（`latest.json`）が管理されます。
 
 ---
 

@@ -1237,42 +1237,7 @@ main <- function() {
   cfg_copy_path <- file.path(run_dir, "analysis_config.json")
   jsonlite::write_json(cfg, cfg_copy_path, auto_unbox = TRUE, pretty = TRUE)
 
-  # Output 5: manifest.json (integrity metadata)
-  manifest <- list(
-    manifest_version = "1.0",
-    run_id = cfg$run_id,
-    timestamp_jst = jst_now,
-    input_file = list(
-      path = cfg$input,
-      sha256 = input_sha256
-    ),
-    artifacts = list(
-      freq_results_json = list(
-        path = "freq_results.json",
-        sha256 = digest::digest(json_path, file = TRUE, algo = "sha256")
-      ),
-      summary_csv = list(
-        path = "summary.csv",
-        sha256 = digest::digest(csv_path, file = TRUE, algo = "sha256")
-      ),
-      summary_report_md = list(
-        path = "summary_report.md",
-        sha256 = digest::digest(md_path, file = TRUE, algo = "sha256")
-      ),
-      analysis_config_json = list(
-        path = "analysis_config.json",
-        sha256 = digest::digest(cfg_copy_path, file = TRUE, algo = "sha256")
-      )
-    ),
-    r_environment = list(
-      version = R.version.string,
-      platform = R.version$platform
-    )
-  )
-  manifest_path <- file.path(run_dir, "manifest.json")
-  jsonlite::write_json(manifest, manifest_path, auto_unbox = TRUE, pretty = TRUE)
-
-  # Output 6: results_manifest.json and run_meta.json (unified evidence audit contract)
+  # Output 5: results_manifest.json and run_meta.json (unified evidence audit contract)
   artifacts_to_manifest <- list(
     list(path = "freq_results.json", role = "primary_results"),
     list(path = "summary.csv", role = "summary_table"),
@@ -1285,10 +1250,29 @@ main <- function() {
     stop(sprintf("CRITICAL_METADATA_FAILURE: results_manifest.json could not be written: %s", conditionMessage(e)))
   })
 
+  # Monte Carlo 実行判定: 実行された表の中に monte_carlo があればその seed を extra に渡す
+  mc_seeds <- integer()
+  for (t_id in names(results_by_table)) {
+    for (s_key in names(results_by_table[[t_id]]$strata)) {
+      f_res <- results_by_table[[t_id]]$strata[[s_key]]$fisher
+      if (!is.null(f_res) && identical(f_res$method, "monte_carlo") && !is.null(f_res$seed)) {
+        mc_seeds <- c(mc_seeds, as.integer(f_res$seed))
+      }
+    }
+  }
+  mc_seed_val <- if (length(mc_seeds) == 1L) {
+    mc_seeds[1L]
+  } else if (length(mc_seeds) > 1L) {
+    unique(mc_seeds)
+  } else {
+    NULL
+  }
+
   extra_meta <- list(
     logical_run_id = cfg$run_id,
     requested_run_id = cfg$run_id,
     run_state = "completed",
+    seed = mc_seed_val,
     results_manifest_sha256 = if (!is.null(manifest_res)) manifest_res$manifest_sha256 else NULL,
     pass_status = list(pass0 = "bypassed", pass1 = "completed", pass2 = "bypassed", pass3 = "bypassed")
   )

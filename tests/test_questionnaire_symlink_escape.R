@@ -13,15 +13,15 @@ stopifnot(file.exists(runner))
 
 td <- tempfile("questionnaire_symlink_escape_")
 dir.create(td, recursive = TRUE)
-on.exit(unlink(td, recursive = TRUE), add = TRUE)
 
 data_path <- file.path(td, "survey.csv")
 config_path <- file.path(td, "questions.csv")
 output_parent <- file.path(normalizePath("."), "evidence_runs/questionnaire", basename(td))
-on.exit(unlink(output_parent, recursive = TRUE), add = TRUE)
 output_root <- file.path(output_parent, "output")
 outside_target <- file.path(td, "outside_target")
 slug <- "symlink_escape"
+
+tryCatch({
 
 utils::write.csv(
   data.frame(
@@ -56,12 +56,12 @@ dir.create(output_root, recursive = TRUE)
 dir.create(outside_target)
 link_path <- file.path(output_root, slug)
 symlink_created <- suppressWarnings(file.symlink(outside_target, link_path))
+skipped_fs <- FALSE
 if (!isTRUE(symlink_created)) {
   message("SKIP: filesystem does not support creating a directory symlink")
-  quit(status = 0L)
-}
-
-output <- suppressWarnings(system2(
+  skipped_fs <- TRUE
+} else {
+  output <- suppressWarnings(system2(
   "Rscript",
   c(
     "--vanilla",
@@ -84,6 +84,17 @@ stopifnot(!file.exists(file.path(
   outside_target,
   "questionnaire_results.json"
 )))
-stopifnot(!dir.exists(file.path(outside_target, "figures")))
+  stopifnot(!dir.exists(file.path(outside_target, "figures")))
 
-message("OK: questionnaire rejects a slug symlink that escapes the output root")
+    message("OK: questionnaire rejects a slug symlink that escapes the output root")
+  }
+}, finally = {
+  if (dir.exists(output_parent)) {
+    unlink(output_parent, recursive = TRUE, force = TRUE)
+  }
+  if (dir.exists(td)) {
+    unlink(td, recursive = TRUE, force = TRUE)
+  }
+})
+
+if (isTRUE(skipped_fs)) quit(status = 0L)

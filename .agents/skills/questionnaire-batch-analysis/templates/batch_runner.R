@@ -282,10 +282,21 @@ for (i in seq_len(nrow(cfg))) {
     {
       q_df <- df
       if (isTRUE(nzchar(subset_expr))) {
-        keep <- tryCatch(with(q_df, eval(parse(text = subset_expr))), error = function(e) rep(TRUE, nrow(q_df)))
-        if (length(keep) == nrow(q_df) && is.logical(keep)) {
-          q_df <- q_df[!is.na(keep) & keep, , drop = FALSE]
+        parsed_expr <- tryCatch(
+          parse(text = subset_expr),
+          error = function(e) stop("subset_expr parse error: ", conditionMessage(e))
+        )
+        keep <- tryCatch(
+          with(q_df, eval(parsed_expr)),
+          error = function(e) stop("subset_expr evaluation error: ", conditionMessage(e))
+        )
+        if (!is.logical(keep)) {
+          stop("subset_expr must evaluate to logical, got: ", typeof(keep))
         }
+        if (length(keep) != nrow(q_df)) {
+          stop(sprintf("subset_expr length mismatch: expected %d, got %d", nrow(q_df), length(keep)))
+        }
+        q_df <- q_df[!is.na(keep) & keep, , drop = FALSE]
       }
 
       vars <- c(var1, var2)

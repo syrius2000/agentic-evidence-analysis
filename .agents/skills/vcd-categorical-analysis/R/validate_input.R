@@ -6,23 +6,10 @@
 #' @param vars character(2) 解析対象の2変数名
 #' @param freq character(1) 度数列名（aggregated モードでは必須、individual モードでは指定禁止）
 #' @param input_mode character(1) "aggregated" または "individual"
-#' @param run_dir character(1) run成果物出力先（指定時はfailed状態を記録）
 #' @return 検証済み集計data.frame (var1, var2, Freq)
 #' @export
-validate_input_table <- function(data, vars, freq = NULL, input_mode = NULL, run_dir = NULL) {
+validate_input_table <- function(data, vars, freq = NULL, input_mode = NULL) {
   record_failure <- function(error_code, message) {
-    if (!is.null(run_dir) && dir.exists(run_dir)) {
-      state_file <- file.path(run_dir, "run_state.json")
-      state_payload <- list(
-        status = "failed",
-        error_code = error_code,
-        message = message,
-        timestamp_jst = format(Sys.time(), "%Y-%m-%dT%H:%M:%S+09:00")
-      )
-      tryCatch({
-        writeLines(jsonlite::toJSON(state_payload, auto_unbox = TRUE, pretty = TRUE), state_file)
-      }, error = function(e) {})
-    }
     stop(sprintf("[%s] %s", error_code, message), call. = FALSE)
   }
 

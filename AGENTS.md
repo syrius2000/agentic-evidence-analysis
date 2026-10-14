@@ -32,6 +32,9 @@
 - 安定slugの正本は [`evidence-run-layout`](openspec/specs/evidence-run-layout/spec.md)。現在の対応は `vcd-bayesian-evidence-analysis` → `vcd_bayesian`、`vcd-categorical-analysis` → `vcd_categorical`、`vcd-categorical-reporting` → `vcd_categorical_reporting`、`comparative-design-analysis` → `comparative_design`、`evidence-decision-review` → `evidence_decision_review`、`questionnaire-batch-analysis` → `questionnaire`、`sas-proc-freq` → `sas_proc_freq`、`sas-proc-means` → `sas_proc_means`。
 - `comparative-design-analysis` の推論器は現在in-memory結果を返し、ファイルを直接永続化しない。将来の永続化は呼び出し側の責務とし、上記rootと共通run隔離を使う。
 - Pass 0の `inspect_data.R` は解析Skill rootとは別のinspection例外。未指定時 `.` の後方互換を保ち、明示時は `evidence_runs/inspections/<project>/run_<id>/` を推奨する。Artifact置き場規約は [`docs/Artifacts/README.md`](docs/Artifacts/README.md) を参照する。
+- 各 run ディレクトリのメタデータ正本は `run_meta.json`（統制メタデータ・再現性環境情報・JSTタイムスタンプ）および `results_manifest.json`（成果物SHA-256マニフェスト）とし、個別スキル独自の `manifest.json` や run 内 `run_state.json` は作成しない。
+- 各スキル出力 root 直下には、完了確定事象を追記する横断索引 `runs_index.jsonl`、および最新の正常完了 run ディレクトリを指すポインタ `latest.json` が配置される。また、並行実行排他のための予約ディレクトリ `.run_locks` が配置される場合があるため、出力 root 直下の run 列挙処理は必ず `^run_` プレフィックスでフィルタリングする。
+- 出力 root 直下の早期失敗記録 `run_state.json` は、run ディレクトリ予約前のフェイルファスト記録として例外的に維持される。
 
 ### 4. 言語・時刻と成果物の制約
 

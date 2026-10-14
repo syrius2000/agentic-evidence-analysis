@@ -24,36 +24,37 @@ runner_path <- file.path(
   root, ".agents", "skills",
   "questionnaire-batch-analysis", "templates", "batch_runner.R"
 )
-tmp_dir <- file.path(tempdir(), "summary_csv_test")
+tmp_dir <- file.path(tempdir(), paste0("summary_csv_test_", Sys.getpid()))
 dir.create(tmp_dir, recursive = TRUE, showWarnings = FALSE)
-out_dir <- file.path(tmp_dir, "output")
+out_dir <- file.path(root, "evidence_runs", "questionnaire", paste0(".summary_cols_", format(Sys.time(), "%Y%m%d_%H%M%S"), "_", Sys.getpid()))
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-
-# UCBAdmissions データ作成
-data_path <- file.path(tmp_dir, "ucbadmissions.csv")
-ucb <- as.data.frame(UCBAdmissions)
-expanded <- ucb[rep(seq_len(nrow(ucb)), ucb$Freq), c("Admit", "Gender", "Dept")]
-utils::write.csv(expanded, data_path, row.names = FALSE, quote = TRUE)
-
-config_path <- file.path(tmp_dir, "config.csv")
-config_lines <- c(
-  "survey_id,question_id,analysis_type,var1,var2,var3,output_slug,question_label,subset_expr,na_policy,ordered_levels,reference_note",
-  "ucb,q01,nominal_2way,Admit,Gender,,q01_admit_gender,Admit x Gender,,drop,,2-way",
-  "ucb,q02,nominal_3way,Admit,Gender,Dept,q02_admit_gender_dept,Admit x Gender x Dept,,drop,,3-way"
-)
-writeLines(config_lines, config_path, useBytes = TRUE)
-
-cmd <- sprintf(
-  'cd "%s" && Rscript --vanilla "%s" --data "%s" --question-config "%s" --out "%s"',
-  root, runner_path, data_path, config_path, out_dir
-)
-cat("Running:", cmd, "\n\n")
-ret <- system(cmd)
 
 pass <- 0L
 fail <- 0L
 
-check <- function(label, expr) {
+tryCatch({
+  # UCBAdmissions データ作成
+  data_path <- file.path(tmp_dir, "ucbadmissions.csv")
+  ucb <- as.data.frame(UCBAdmissions)
+  expanded <- ucb[rep(seq_len(nrow(ucb)), ucb$Freq), c("Admit", "Gender", "Dept")]
+  utils::write.csv(expanded, data_path, row.names = FALSE, quote = TRUE)
+
+  config_path <- file.path(tmp_dir, "config.csv")
+  config_lines <- c(
+    "survey_id,question_id,analysis_type,var1,var2,var3,output_slug,question_label,subset_expr,na_policy,ordered_levels,reference_note",
+    "ucb,q01,nominal_2way,Admit,Gender,,q01_admit_gender,Admit x Gender,,drop,,2-way",
+    "ucb,q02,nominal_3way,Admit,Gender,Dept,q02_admit_gender_dept,Admit x Gender x Dept,,drop,,3-way"
+  )
+  writeLines(config_lines, config_path, useBytes = TRUE)
+
+  cmd <- sprintf(
+    'cd "%s" && Rscript --vanilla "%s" --data "%s" --question-config "%s" --out "%s"',
+    root, runner_path, data_path, config_path, out_dir
+  )
+  cat("Running:", cmd, "\n\n")
+  ret <- system(cmd)
+
+  check <- function(label, expr) {
   ok <- tryCatch(isTRUE(expr), error = function(e) FALSE)
   if (ok) {
     cat("[PASS]", label, "\n")
@@ -145,6 +146,14 @@ if (file.exists(summary_csv)) {
   }
 }
 
-cat(sprintf("\n--- Results: %d passed, %d failed ---\n", pass, fail))
-if (fail > 0L) stop("Some summary CSV new column tests failed.")
-message("OK: summary CSV new column tests passed.")
+  cat(sprintf("\n--- Results: %d passed, %d failed ---\n", pass, fail))
+  if (fail > 0L) stop("Some summary CSV new column tests failed.")
+  message("OK: summary CSV new column tests passed.")
+}, finally = {
+  if (dir.exists(out_dir)) {
+    unlink(out_dir, recursive = TRUE, force = TRUE)
+  }
+  if (dir.exists(tmp_dir)) {
+    unlink(tmp_dir, recursive = TRUE, force = TRUE)
+  }
+})

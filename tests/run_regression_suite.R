@@ -65,7 +65,16 @@ official_tests <- c(
   "tests/test_evidence_precedent.R",
   "tests/test_evidence_ledger.R",
   "tests/test_evidence_discordance.R",
-  "tests/test_evidence_trajectory.R"
+  "tests/test_evidence_trajectory.R",
+  "tests/test_questionnaire_subset_expr_failure.R",
+  "tests/test_pass2_stub_no_legacy_score.R",
+  "tests/test_run_scope_run_state.R",
+  "tests/test_run_scope_lock.R",
+  "tests/test_run_scope_environment.R",
+  "tests/test_run_scope_timestamp_jst.R",
+  "tests/test_run_scope_index.R",
+  "tests/test_single_pass_completed_state.R",
+  "tests/test_latest_pointer_real_path.R"
 )
 
 cat("========================================================\n")

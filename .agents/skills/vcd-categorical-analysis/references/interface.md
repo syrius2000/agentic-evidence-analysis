@@ -12,6 +12,7 @@
 - **次元（Arity）**: 厳密に2（$I \ge 2, J \ge 2$）。3次元以上はフェイルファスト停止し、正本スキル `vcd-bayesian-evidence-analysis` へ委譲。
 - **度数**: 有限非負整数（$N = \sum n_{ij} > 0$）。負値、非整数重み度数、無限大、NA/NaN は拒否。
 - **構造的ゼロ（発生不能セル）**: 入力禁止（OutOfScope / `STRUCTURAL_ZERO_NOT_SUPPORTED`）。本エンジンは完全分割表のみを対象とし、観測度数0はすべて標本抽出上の偶然（サンプリングゼロ）として扱う。
+- **入力検証例外フォールバック**: `[CODE]` 形式を含まない未分類の入力例外は `INPUT_VALIDATION_FAILED` として `run_meta.json` に記録し即時停止する。
 
 ---
 

@@ -21,6 +21,9 @@ RUN_SCOPE_SUPPORTED_SKILLS <- c(
   "evidence-decision-review"
 )
 
+# Supported run states. Aligned with implementation_plan_001_1013.md.
+RUN_SCOPE_RUN_STATES <- c("active", "completed", "failed", "sealed")
+
 # Stable output slug registry. Keep aligned with openspec/specs/evidence-run-layout/spec.md.
 RUN_SCOPE_SKILL_ROOTS <- c(
   "vcd-bayesian-evidence-analysis" = "vcd_bayesian",
@@ -507,7 +510,9 @@ read_run_control <- function(run_dir, allow_legacy = FALSE) {
     stop("[ERROR] 未対応の path_schema_version: ", meta$path_schema_version)
   }
   assert_run_scope_supported_skill(meta$skill)
-  if (!meta$run_state %in% c("active", "sealed")) stop("[ERROR] 不正なrun_state")
+  if (is.null(meta$run_state) || length(meta$run_state) != 1L || is.na(meta$run_state) || !meta$run_state %in% RUN_SCOPE_RUN_STATES) {
+    stop("[ERROR] 不正なrun_state")
+  }
   if (is.null(meta$pass_status) || !meta$pass_status$pass1 %in% c("pending", "completed", "partial", "failed") ||
     !meta$pass_status$pass2 %in% c("pending", "stub_generated", "completed") ||
     !meta$pass_status$pass3 %in% c("pending", "completed")) {
@@ -634,7 +639,7 @@ get_run_input_sha256 <- function(run_meta) {
 
 # --- Task 1.5: 全スキル共通結果マニフェスト (results_manifest.json) ---
 manifest_roles <- function(skill) {
-  switch(skill,
+  base_roles <- switch(skill,
     "vcd-bayesian-evidence-analysis" = c("primary_results", "report_html", "figure"),
     "vcd-categorical-analysis" = c("primary_results", "diagnostic", "intermediate", "summary_table", "figure", "report_html"),
     "vcd-categorical-reporting" = c("primary_results", "summary_table", "summary_report", "report_html"),
@@ -644,6 +649,7 @@ manifest_roles <- function(skill) {
     "evidence-decision-review" = c("primary_results", "summary_table", "diagnostic"),
     stop("[ERROR] 不明なmanifest skill")
   )
+  unique(c(base_roles, "environment_info"))
 }
 
 validate_manifest_entries <- function(run_dir, skill, artifacts, writing = FALSE) {
@@ -702,10 +708,42 @@ validate_manifest_entries <- function(run_dir, skill, artifacts, writing = FALSE
   validated
 }
 
+write_run_environment_session_info <- function(run_output_dir) {
+  norm_run <- normalizePath(run_output_dir, winslash = "/", mustWork = FALSE)
+  sess_path <- file.path(norm_run, "session_info.txt")
+  if (!file.exists(sess_path)) {
+    lines <- utils::capture.output(utils::sessionInfo())
+    # M1: 絶対パス（BLAS, LAPACK 等、空白または ; に続く / 始まりの複数階層パス、Windows のドライブパス）をファイル名に置換
+    clean_lines <- vapply(lines, function(line) {
+      pat <- "(?<=^|[ \t;])(/[^\t\r\n ;]+/[^\t\r\n ;]*|[A-Za-z]:[\\\\\\\\/][^\r\n;]*)"
+      m <- gregexpr(pat, line, perl = TRUE)
+      matches <- regmatches(line, m)[[1]]
+      if (length(matches) > 0L) {
+        for (mp in matches) {
+          mp_norm <- gsub("\\\\", "/", mp, fixed = TRUE)
+          bn <- basename(trimws(mp_norm))
+          line <- sub(mp, bn, line, fixed = TRUE)
+        }
+      }
+      line
+    }, FUN.VALUE = character(1), USE.NAMES = FALSE)
+    writeLines(clean_lines, sess_path, useBytes = TRUE)
+  }
+  sess_path
+}
+
 write_results_manifest <- function(run_output_dir, skill, artifacts) {
   path <- assert_path_within_run_dir("results_manifest.json", run_output_dir)
   if (file.exists(path)) stop("[ERROR] 確定manifestの上書きを拒絶")
   if (file.exists(file.path(run_output_dir, "run_meta.json")) && read_run_control(run_output_dir)$run_state == "sealed") stop("[ERROR] sealed run")
+  
+  # session_info.txt を物理生成し、artifacts に未登録の場合は自動補完
+  write_run_environment_session_info(run_output_dir)
+  has_sess <- any(vapply(artifacts, function(art) identical(art$path, "session_info.txt"), logical(1)))
+  if (!has_sess) {
+    artifacts <- c(artifacts, list(list(path = "session_info.txt", role = "environment_info")))
+  }
+
   entries <- validate_manifest_entries(run_output_dir, skill, artifacts, TRUE)
   key <- function(k) vapply(entries, function(x) if (is.null(x[[k]])) "" else x[[k]], character(1))
   entries <- entries[order(key("path"), key("role"), key("question_id"), method = "radix")]
@@ -849,8 +887,88 @@ acquire_stage_lock <- function(run_dir, stage, recover_stale = FALSE, stale_thre
     process_start = paste(system2("ps", c("-p", Sys.getpid(), "-o", "lstart="), stdout = TRUE), collapse = " "),
     acquired_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
   )
-  atomic_run_json(info, file.path(lock_path, "lock_info.json"))
+  tryCatch({
+    atomic_run_json(info, file.path(lock_path, "lock_info.json"))
+    TRUE
+  }, error = function(e) {
+    unlink(lock_path, recursive = TRUE)
+    stop("[ERROR] lock_info.json の原子的書込に失敗: ", conditionMessage(e))
+  })
   list(lock_dir = lock_path, lock_id = basename(control), token = token, info = info, run_dir = norm_run)
+}
+
+acquire_signature_lock <- function(out_root, skill, signature) {
+  resolved_root <- resolve_skill_output_root(skill, out_root)
+  assert_valid_out_root(resolved_root)
+  norm_root <- normalizePath(resolved_root, winslash = "/", mustWork = FALSE)
+  locks_base <- file.path(norm_root, ".run_locks")
+  assert_no_symlink(locks_base)
+  if (!dir.exists(locks_base)) {
+    dir.create(locks_base, recursive = TRUE, showWarnings = FALSE)
+  }
+  if (!dir.exists(locks_base)) {
+    stop("[ERROR] ロック管理領域を作成できません: ", locks_base)
+  }
+  sig16 <- substr(as.character(signature), 1L, 16L)
+  lock_path <- file.path(locks_base, paste0(sig16, ".lock"))
+  assert_no_symlink(lock_path)
+  if (!dir.create(lock_path, showWarnings = FALSE)) {
+    if (dir.exists(lock_path)) {
+      info_path <- file.path(lock_path, "lock_info.json")
+      existing_info <- tryCatch(jsonlite::read_json(info_path), error = function(e) NULL)
+      return(list(
+        acquired = FALSE,
+        lock_path = lock_path,
+        error_code = "CONCURRENT_RUN_IN_PROGRESS",
+        pid = if (!is.null(existing_info$pid)) existing_info$pid else NULL,
+        acquired_at = if (!is.null(existing_info$acquired_at)) existing_info$acquired_at else NULL
+      ))
+    } else {
+      return(list(
+        acquired = FALSE,
+        lock_path = lock_path,
+        error_code = "CANNOT_CREATE_LOCK_DIR",
+        error_message = sprintf("ロックディレクトリを作成できません（権限不足またはパス不正）: %s", lock_path)
+      ))
+    }
+  }
+  token <- digest::digest(list(Sys.time(), Sys.getpid(), runif(1)), algo = "sha256")
+  info <- list(
+    pid = Sys.getpid(),
+    hostname = unname(Sys.info()["nodename"]),
+    stage = "run",
+    skill = skill,
+    signature = as.character(signature),
+    token = token,
+    acquired_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
+  )
+  tryCatch({
+    atomic_run_json(info, file.path(lock_path, "lock_info.json"))
+  }, error = function(e) {
+    unlink(lock_path, recursive = TRUE, force = TRUE)
+    stop("[ERROR] lock_info.json の原子的書込に失敗: ", conditionMessage(e))
+  })
+  list(acquired = TRUE, lock_dir = lock_path, lock_path = lock_path, token = token, info = info)
+}
+
+release_signature_lock <- function(lock_obj) {
+  if (is.null(lock_obj) || !isTRUE(lock_obj$acquired)) {
+    return(invisible(FALSE))
+  }
+  assert_no_symlink(lock_obj$lock_dir)
+  if (!dir.exists(lock_obj$lock_dir)) {
+    return(invisible(FALSE))
+  }
+  info_path <- file.path(lock_obj$lock_dir, "lock_info.json")
+  if (file.exists(info_path)) {
+    current <- tryCatch(jsonlite::read_json(info_path), error = function(e) NULL)
+    if (!is.null(current) && !identical(current$token, lock_obj$token)) {
+      warning("[WARNING] ロック所有tokenが一致しないため解放を拒絶します: ", lock_obj$lock_dir)
+      return(invisible(FALSE))
+    }
+  }
+  unlink(lock_obj$lock_dir, recursive = TRUE, force = TRUE)
+  invisible(TRUE)
 }
 
 release_stage_lock <- function(lock_obj) {
@@ -999,9 +1117,34 @@ finalize_stage <- function(run_dir, stage, target_name, source_staging_path, exp
   art <- list(path = target_name, sha256 = tx$sha256, based_on_results_manifest_sha256 = v$manifest_sha256)
   if (stage == "pass3") art$based_on_narrative_sha256 <- nh
   meta$artifacts[[if (stage == "pass2") "narrative" else "dashboard"]] <- art
-  meta$timestamps[[paste0(stage, "_completed")]] <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
+  meta$timestamps[[paste0(stage, "_completed")]] <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z", tz = "Asia/Tokyo")
   if (stage == "pass3") meta$timestamps$sealed <- meta$timestamps$pass3_completed
   atomic_run_json(portableize_run_meta(meta, run_dir), file.path(run_dir, "run_meta.json"))
+  
+  # 横断索引 (runs_index.jsonl) 追記および latest.json 原子的更新
+  tryCatch({
+    repo_root <- run_scope_detect_repo_root(run_dir)
+    resolved_meta <- resolve_run_meta_paths(meta, run_dir, allow_legacy = TRUE)
+    out_root <- resolved_meta$out_root
+    if (!is.null(out_root) && nzchar(out_root) && dir.exists(out_root)) {
+      event <- list(
+        run_id = as.character(meta$run_id),
+        logical_run_id = meta$logical_run_id %||% as.character(meta$run_id),
+        run_dir = basename(run_dir),
+        timestamp_jst = meta$timestamps[[paste0(stage, "_completed")]] %||% format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z", tz = "Asia/Tokyo"),
+        run_state = as.character(meta$run_state),
+        manifest_sha256 = v$manifest_sha256,
+        skill = as.character(meta$skill)
+      )
+      append_run_index(out_root, event)
+      meta_for_latest <- meta
+      meta_for_latest$run_dir <- basename(run_dir)
+      write_latest(out_root, meta$run_id, meta_for_latest)
+    }
+  }, error = function(e) {
+    warning("[WARN] finalize_stage runs_index / latest 更新失敗: ", conditionMessage(e))
+  })
+
   list(
     run_dir = run_dir, target_name = target_name, sha256 = tx$sha256,
     results_manifest_sha256 = v$manifest_sha256, run_state = meta$run_state
@@ -1264,6 +1407,116 @@ resolve_pass3_run_dir <- function(root, required_filename, skill_label = "output
   list(run_dir = single_cand, run_meta = meta, resolved_from = "discovered_single")
 }
 
+collect_run_environment <- function(seed = NULL) {
+  r_ver <- R.version.string
+  plat <- R.version$platform
+  ns_loaded <- sort(loadedNamespaces())
+  pkgs <- lapply(ns_loaded, function(pkg) {
+    ver <- as.character(getNamespaceVersion(pkg))
+    list(name = pkg, version = ver)
+  })
+  list(
+    r_version = r_ver,
+    platform = plat,
+    packages = pkgs,
+    seed = seed %||% NULL,
+    session_info_path = "session_info.txt"
+  )
+}
+
+# --- Task 2.2: 横断索引 (runs_index.jsonl) & 最新実行ポインタ (latest.json) ---
+append_run_index <- function(out_root, event) {
+  norm_root <- normalizePath(out_root, winslash = "/", mustWork = FALSE)
+  if (!dir.exists(norm_root)) {
+    dir.create(norm_root, recursive = TRUE, showWarnings = FALSE)
+  }
+  index_path <- file.path(norm_root, "runs_index.jsonl")
+  line <- jsonlite::toJSON(event, auto_unbox = TRUE)
+  con <- file(index_path, open = "a", encoding = "UTF-8")
+  tryCatch({
+    writeLines(as.character(line), con, useBytes = TRUE)
+  }, finally = {
+    close(con)
+  })
+  invisible(index_path)
+}
+
+read_run_index <- function(out_root) {
+  norm_root <- normalizePath(out_root, winslash = "/", mustWork = FALSE)
+  index_path <- file.path(norm_root, "runs_index.jsonl")
+  if (!file.exists(index_path)) {
+    return(data.frame(
+      run_id = character(),
+      logical_run_id = character(),
+      run_dir = character(),
+      timestamp_jst = character(),
+      run_state = character(),
+      manifest_sha256 = character(),
+      skill = character(),
+      stringsAsFactors = FALSE
+    ))
+  }
+  lines <- readLines(index_path, warn = FALSE, encoding = "UTF-8")
+  lines <- lines[nzchar(trimws(lines))]
+  if (length(lines) == 0L) {
+    return(data.frame(
+      run_id = character(),
+      logical_run_id = character(),
+      run_dir = character(),
+      timestamp_jst = character(),
+      run_state = character(),
+      manifest_sha256 = character(),
+      skill = character(),
+      stringsAsFactors = FALSE
+    ))
+  }
+  records <- lapply(lines, function(l) jsonlite::fromJSON(l, simplifyVector = FALSE))
+  by_run <- list()
+  for (rec in records) {
+    rid <- as.character(rec$run_id)
+    by_run[[rid]] <- rec
+  }
+  runs <- names(by_run)
+  data.frame(
+    run_id = runs,
+    logical_run_id = vapply(runs, function(r) as.character(by_run[[r]]$logical_run_id %||% ""), character(1)),
+    run_dir = vapply(runs, function(r) as.character(by_run[[r]]$run_dir %||% ""), character(1)),
+    timestamp_jst = vapply(runs, function(r) as.character(by_run[[r]]$timestamp_jst %||% ""), character(1)),
+    run_state = vapply(runs, function(r) as.character(by_run[[r]]$run_state %||% ""), character(1)),
+    manifest_sha256 = vapply(runs, function(r) as.character(by_run[[r]]$manifest_sha256 %||% ""), character(1)),
+    skill = vapply(runs, function(r) as.character(by_run[[r]]$skill %||% ""), character(1)),
+    stringsAsFactors = FALSE
+  )
+}
+
+write_latest <- function(out_root, run_id, run_meta = NULL) {
+  norm_root <- normalizePath(out_root, winslash = "/", mustWork = FALSE)
+  state <- as.character(run_meta$run_state %||% "active")
+  if (identical(state, "failed")) {
+    return(invisible(FALSE))
+  }
+  # H1: path は最新 run のディレクトリ名（出力 root からの相対パス）
+  dir_name <- if (!is.null(run_meta$run_dir)) {
+    as.character(run_meta$run_dir)
+  } else if (!is.null(run_meta$run_output_dir) && nzchar(run_meta$run_output_dir) && !identical(run_meta$run_output_dir, ".")) {
+    basename(run_meta$run_output_dir)
+  } else {
+    as.character(run_id)
+  }
+  payload <- list(
+    run_id = as.character(run_id),
+    logical_run_id = run_meta$logical_run_id %||% as.character(run_id),
+    path = dir_name,
+    run_state = state,
+    timestamp_jst = run_meta$timestamp_jst %||% run_meta$timestamps$created %||% format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z", tz = "Asia/Tokyo"),
+    skill = run_meta$skill %||% NULL,
+    results_manifest_sha256 = run_meta$results_manifest_sha256 %||% run_meta$manifest_sha256 %||% NULL
+  )
+  target_file <- file.path(norm_root, "latest.json")
+  atomic_run_json(payload, target_file)
+  invisible(TRUE)
+}
+
 # --- メタデータ書き込み（v2.0 統合） ---
 write_run_meta <- function(out_root, run_output_dir, skill, run_id, input_data_path = NULL, extra = NULL) {
   extra <- if (is.null(extra)) list() else extra
@@ -1359,12 +1612,16 @@ write_run_meta <- function(out_root, run_output_dir, skill, run_id, input_data_p
     config_snapshot = extra$config_snapshot %||% "analysis_config.json", config_sha256 = extra$config_sha256 %||% NULL,
     question_config_sha256 = if (file.exists(file.path(norm_run, "question_config.csv"))) sha256_file(file.path(norm_run, "question_config.csv")) else NULL,
     artifacts = list(), partial_failures = extra$partial_failures %||% NULL,
+    environment = collect_run_environment(seed = extra$seed %||% NULL),
     pass_status = list(
       pass0 = extra$pass_status$pass0 %||% "completed",
       pass1 = extra$pass_status$pass1 %||% if (!is.null(extra$results_manifest_sha256)) "completed" else "pending",
       pass2 = extra$pass_status$pass2 %||% "pending", pass3 = extra$pass_status$pass3 %||% "pending"
     ),
-    timestamps = list(created = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"), pass1_completed = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"))
+    timestamps = list(
+      created = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z", tz = "Asia/Tokyo"),
+      pass1_completed = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z", tz = "Asia/Tokyo")
+    )
   )
   if (length(extra)) for (nm in names(extra)) if (!nm %in% c("pass_status", "timestamps", "inputs", "supersedes_run", "config_source_path", "config_source_path_kind", "out_root", "run_output_dir", "path_schema_version")) meta[[nm]] <- extra[[nm]]
   sanitize_paths <- function(x) {
@@ -1384,6 +1641,27 @@ write_run_meta <- function(out_root, run_output_dir, skill, run_id, input_data_p
   if (!is.null(prior)) meta$timestamps$created <- prior$timestamps$created
   if (meta$pass_status$pass1 != "completed") meta$timestamps$pass1_completed <- NULL
   atomic_run_json(meta, file.path(norm_run, "run_meta.json"))
+  
+  # 横断索引 (runs_index.jsonl) 追記および latest.json 原子的更新
+  tryCatch({
+    event <- list(
+      run_id = as.character(meta$run_id),
+      logical_run_id = meta$logical_run_id %||% as.character(meta$run_id),
+      run_dir = basename(norm_run),
+      timestamp_jst = meta$timestamps$created %||% format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z", tz = "Asia/Tokyo"),
+      run_state = as.character(meta$run_state),
+      manifest_sha256 = meta$results_manifest_sha256 %||% NULL,
+      skill = as.character(meta$skill)
+    )
+    append_run_index(norm_root, event)
+    meta_for_latest <- meta
+    meta_for_latest$run_dir <- basename(norm_run)
+    write_latest(norm_root, meta$run_id, meta_for_latest)
+  }, error = function(e) {
+    # 索引更新の失敗は解析主処理を阻害しないよう警告に留める
+    warning("[WARN] runs_index / latest 更新失敗: ", conditionMessage(e))
+  })
+
   runtime_meta <- resolve_run_meta_paths(meta, norm_run, allow_legacy = TRUE)
   if (!is.null(input_data_path) && length(runtime_meta$inputs)) runtime_meta$inputs[[1L]]$source_path <- normalizePath(input_data_path, winslash = "/", mustWork = FALSE)
   if (!is.null(original_inputs)) runtime_meta$inputs <- original_inputs

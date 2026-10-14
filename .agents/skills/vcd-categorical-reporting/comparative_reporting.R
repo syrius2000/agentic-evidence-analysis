@@ -1796,6 +1796,8 @@ generate_comparative_report <- function(
     run_id = if (!is.null(run_id)) run_id else basename(run_output_dir),
     input_data_path = input_data_path,
     extra = list(
+      run_state = "completed",
+      seed = seed,
       practical_difference_policy = practical_difference_policy,
       results_manifest_sha256 = manifest$manifest_sha256,
       inputs = input_record, config_origin = "api_arguments", data_frame_sha256 = df_sha256,

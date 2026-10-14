@@ -6,7 +6,8 @@ test_fail <- 0L
 repo_root <- normalizePath(".", mustWork = TRUE)
 test_output_parent <- file.path(repo_root, "evidence_runs/vcd_categorical_reporting", paste0("test_", Sys.getpid()))
 skill_temp <- function(prefix) file.path(test_output_parent, paste0(prefix, sample.int(1e8, 1L)))
-on.exit(unlink(test_output_parent, recursive = TRUE), add = TRUE)
+
+tryCatch({
 
 assert_true <- function(cond, msg) {
   if (isTRUE(cond)) {
@@ -181,5 +182,11 @@ assert_true(res$summary_df$effective_primary_delta[[1L]] == 0.05 &&
   res$summary_df$practical_threshold_source[[1L]] == "explicit_argument", "Explicit primary delta and provenance are transported")
 assert_true(grepl("重篤事象は閾値・U-Gradeにかかわらず別途レビュー", html_text, fixed = TRUE), "Serious-event review note rendered")
 
-cat(sprintf("\nTest Summary: %d Passed, %d Failed\n", test_pass, test_fail))
+  cat(sprintf("\nTest Summary: %d Passed, %d Failed\n", test_pass, test_fail))
+}, finally = {
+  if (dir.exists(test_output_parent)) {
+    unlink(test_output_parent, recursive = TRUE, force = TRUE)
+  }
+})
+
 if (test_fail > 0L) quit(status = 1L)

@@ -1232,4 +1232,7 @@ null_err <- tryCatch({generate_comparative_report(df_standard,primary_delta=NULL
 assert_true(grepl("PRACTICAL_THRESHOLD_REQUIRED",null_err,fixed=TRUE) && !dir.exists(null_dir), "明示NULLは省略許可なしに計算開始前停止")
 
 cat(sprintf("\nSection 14 QA Test Summary: %d Passed, %d Failed\n", test_pass, test_fail))
+if (dir.exists(test_output_parent)) {
+  unlink(test_output_parent, recursive = TRUE, force = TRUE)
+}
 if (test_fail > 0L) quit(status = 1L)

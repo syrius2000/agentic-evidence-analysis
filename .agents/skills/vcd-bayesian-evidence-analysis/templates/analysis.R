@@ -374,13 +374,14 @@ sensitivity_alpha <- dirichlet_prior_cfg$sensitivity_alpha %||% 1.0
 if (!is.null(dirichlet_prior_cfg$interval_level)) {
   stop("[ERROR] dirichlet_prior$interval_level は無効です。信用区間水準は conditional_rate_view$interval_level を使ってください。", call. = FALSE)
 }
+bayesian_sim_seed <- 20260906L
 crv_res <- compute_conditional_rate_view(
   df = df,
   vars = cat_vars,
   freq_col = freq_col,
   crv_spec = cfg$conditional_rate_view,
   draws = 20000,
-  seed = 20260906,
+  seed = bayesian_sim_seed,
   primary_alpha = primary_alpha,
   sensitivity_alpha = sensitivity_alpha
 )
@@ -512,7 +513,8 @@ extra_meta <- list(
     sensitivity_role = "sensitivity",
     sensitivity_name = if (is.list(crv_res$sensitivity_prior)) crv_res$sensitivity_prior$name else NULL,
     support = crv_res$support
-  )
+  ),
+  seed = bayesian_sim_seed
 )
 write_run_meta(out_root, artifact_dir, "vcd-bayesian-evidence-analysis", rid$run_id, cfg$input, extra = extra_meta)
 

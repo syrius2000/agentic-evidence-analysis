@@ -175,8 +175,9 @@ run_dirs <- list.dirs(out1_dir, recursive = FALSE)
 run_dirs <- run_dirs[grepl("^run_[0-9a-f]{16}$", basename(run_dirs))]
 assert(length(run_dirs) == 2L, "2つの独立した run_<first16> ディレクトリが生成される")
 
-# 出力ルート直下に成果物が漏洩していないこと
+# 出力ルート直下に成果物が漏洩していないこと（ただし正規の最新ポインタ latest.json 等は除く）
 root_json <- list.files(out1_dir, pattern = "\\.json$", recursive = FALSE)
+root_json <- setdiff(root_json, c("latest.json", "run_state.json"))
 assert(length(root_json) == 0L, "出力root直下に JSON 成果物が漏洩していないこと")
 root_csv <- list.files(out1_dir, pattern = "\\.csv$", recursive = FALSE)
 assert(length(root_csv) == 0L, "出力root直下に CSV 成果物が漏洩していないこと")
@@ -184,25 +185,35 @@ root_html <- list.files(out1_dir, pattern = "\\.html$", recursive = FALSE)
 assert(length(root_html) == 0L, "出力root直下に HTML 成果物が漏洩していないこと")
 
 # ============================================================
-# Test 2: run_state.json 契約および成果物整合性 (Task 3.1)
+# Test 2: run_meta.json 契約および成果物整合性 (Task 3.1)
 # ============================================================
-cat("[TEST 2] 各 run ディレクトリの run_state.json 契約検証\n")
+cat("[TEST 2] 各 run ディレクトリの run_meta.json 契約検証\n")
 for (r_dir in run_dirs) {
-  state_p <- file.path(r_dir, "run_state.json")
-  assert(file.exists(state_p), sprintf("run_state.json が存在する: %s", basename(r_dir)))
-  if (file.exists(state_p)) {
-    rs <- jsonlite::fromJSON(state_p)
-    assert(identical(rs$status, "completed"), "status == 'completed'")
+  assert(!file.exists(file.path(r_dir, "run_state.json")), sprintf("run_state.json が存在しない（廃止・run_meta統合）: %s", basename(r_dir)))
+  meta_p <- file.path(r_dir, "run_meta.json")
+  assert(file.exists(meta_p), sprintf("run_meta.json が存在する: %s", basename(r_dir)))
+  if (file.exists(meta_p)) {
+    rs <- jsonlite::fromJSON(meta_p)
+    assert(identical(rs$run_state, "completed"), "run_state == 'completed'")
     assert(identical(rs$execution_mode, "canonical"), "execution_mode == 'canonical'")
     assert(identical(rs$provenance_status, "verified"), "provenance_status == 'verified'")
     assert(!is.null(rs$analysis_signature) && nchar(rs$analysis_signature) == 64L,
            "有効な SHA-256 analysis_signature が記録されている")
-    assert(!is.null(rs$canonical_config_sha256), "canonical_config_sha256 が記録されている")
-    assert(!is.null(rs$config_file_sha256), "config_file_sha256 が記録されている")
+    assert(!is.null(rs$canonical_config_sha256) && nchar(rs$canonical_config_sha256) == 64L,
+           "run_meta.json に 64文字の canonical_config_sha256 が記録されている")
+    assert(!is.null(rs$config_file_sha256) && nchar(rs$config_file_sha256) == 64L,
+           "run_meta.json に 64文字の config_file_sha256 が記録されている")
     assert(identical(paste0("run_", substr(rs$analysis_signature, 1L, 16L)), basename(r_dir)),
            "run ディレクトリ名が analysis_signature の先頭16文字と完全一致する")
-    assert(length(rs$artifacts) >= 6L, "現行の全成果物が artifacts 配列にリストされている")
-    assert(!any(grepl("^(mosaic|assoc)_", rs$artifacts)), "モザイク・association PNGをcanonical成果物に含めない")
+  }
+
+  man_p <- file.path(r_dir, "results_manifest.json")
+  assert(file.exists(man_p), sprintf("results_manifest.json が存在する: %s", basename(r_dir)))
+  if (file.exists(man_p)) {
+    man_data <- jsonlite::read_json(man_p)
+    paths <- vapply(man_data$artifacts, function(a) a$path, character(1))
+    assert(length(paths) >= 6L, "現行の全成果物が results_manifest に登録されている")
+    assert(!any(grepl("^(mosaic|assoc)_", paths)), "モザイク・association PNGをcanonical成果物に含めない")
   }
 
   res_p <- file.path(r_dir, "categorical_results.json")
@@ -291,8 +302,8 @@ if (length(run_dirs5) == 2L) {
          (!has_alpha_1 && has_beta_1 && has_alpha_2 && !has_beta_2),
          "成果物ファイル名（gt/dt/plots）が各ディレクトリで混在・衝突せず完全分離されている")
 
-  s1 <- jsonlite::fromJSON(file.path(run_dirs5[1], "run_state.json"))
-  s2 <- jsonlite::fromJSON(file.path(run_dirs5[2], "run_state.json"))
+  s1 <- jsonlite::fromJSON(file.path(run_dirs5[1], "run_meta.json"))
+  s2 <- jsonlite::fromJSON(file.path(run_dirs5[2], "run_meta.json"))
   assert(!identical(s1$analysis_signature, s2$analysis_signature),
          "異なる --label で異なる analysis_signature が算出されている")
 }
@@ -351,6 +362,20 @@ if (identical(.Platform$OS.type, "unix")) {
     suffixed_run <- paste0(run_dirs6[1], "_2")
     assert(dir.exists(suffixed_run), "既存runを保持し、新規出力を _2 suffix のrun directoryへ隔離する")
     assert(file.exists(file.path(suffixed_run, "categorical_results.json")), "suffix付きrunに成果物が保存される")
+    # 追加検証: ロックが残存している状態で再実行すると CONCURRENT_RUN_IN_PROGRESS になり、メッセージにロックパスが含まれる
+    dummy_locks_dir <- file.path(out6_dir, ".run_locks")
+    dir.create(dummy_locks_dir, recursive = TRUE, showWarnings = FALSE)
+    # 署名先頭16文字
+    sig_16 <- substr(jsonlite::fromJSON(file.path(run_dirs6[1], "run_meta.json"))$analysis_signature, 1L, 16L)
+    stale_lock_dir <- file.path(dummy_locks_dir, paste0(sig_16, ".lock"))
+    dir.create(stale_lock_dir, showWarnings = FALSE)
+    stale_out <- suppressWarnings(system2("Rscript", c(analysis_script, "--config", cfg_a_path, "--out", out6_dir, "--label", "lock_test"), stdout = TRUE, stderr = TRUE))
+    stale_status <- attr(stale_out, "status")
+    if (is.null(stale_status)) stale_status <- 0L
+    assert(!is.null(stale_status) && stale_status != 0L, "ロック残存時の再実行は非ゼロ終了で遮断される")
+    assert(any(grepl("CONCURRENT_RUN_IN_PROGRESS", stale_out)), "出力メッセージに CONCURRENT_RUN_IN_PROGRESS が含まれる")
+    assert(any(grepl(stale_lock_dir, stale_out, fixed = TRUE)), "出力メッセージにロックパスが含まれる")
+    unlink(stale_lock_dir, recursive = TRUE, force = TRUE)
   }
 } else {
   cat("[TEST 6] SKIP: Windows環境のため並行ロックテストをスキップ\n")
@@ -361,5 +386,7 @@ cat(sprintf("結果: %d PASS / %d FAIL\n", PASS, FAIL))
 cat("============================================================\n")
 
 if (FAIL > 0L) {
+  unlink(c(td, test_out_root), recursive = TRUE, force = TRUE)
   stop(sprintf("[FAILED] %d 件のテストが失敗しました。", FAIL), call. = FALSE)
 }
+unlink(c(td, test_out_root), recursive = TRUE, force = TRUE)

@@ -124,9 +124,17 @@ post <- res$posterior
 qual <- res$quality
 prov <- res$provenance
 
-# run_state.json からの三者SHA再検証状態の取得 (Dashboard独自SHA再検証は行わない)
+# run_meta.json（または旧 run_state.json）からの三者SHA再検証状態の取得 (Dashboard独自SHA再検証は行わない)
+run_meta_path <- file.path(output_dir, "run_meta.json")
 run_state_path <- file.path(output_dir, "run_state.json")
-provenance_status_label <- if (file.exists(run_state_path)) {
+provenance_status_label <- if (file.exists(run_meta_path)) {
+  rm_data <- tryCatch(jsonlite::fromJSON(run_meta_path), error = function(e) NULL)
+  if (!is.null(rm_data) && !is.null(rm_data$provenance_status) && identical(as.character(rm_data$provenance_status), "verified")) {
+    "検証済み (Pass 0 承認合致)"
+  } else {
+    "未確認"
+  }
+} else if (file.exists(run_state_path)) {
   rs <- tryCatch(jsonlite::fromJSON(run_state_path), error = function(e) NULL)
   if (!is.null(rs) && !is.null(rs$provenance_status) && identical(as.character(rs$provenance_status), "verified")) {
     "検証済み (Pass 0 承認合致)"

@@ -20,9 +20,9 @@ message("PASS: 初期ファイル（SKILL.md, schema, template）が存在しま
 
 td <- file.path(root, "evidence_runs/sas_proc_means", paste0("test_", Sys.getpid()))
 dir.create(td, recursive = TRUE)
-on.exit(unlink(td, recursive = TRUE), add = TRUE)
 
-run_engine <- function(config_path) {
+tryCatch({
+  run_engine <- function(config_path) {
   suppressWarnings(
     system2(
       "Rscript",
@@ -279,7 +279,11 @@ stopifnot("means_results.json" %in% files_in_run)
 stopifnot("summary.csv" %in% files_in_run)
 stopifnot("summary_report.md" %in% files_in_run)
 stopifnot("analysis_config.json" %in% files_in_run)
-stopifnot("manifest.json" %in% files_in_run)
+stopifnot(!"manifest.json" %in% files_in_run)
+stopifnot(!file.exists(file.path(run_dir_final, "manifest.json")))
+stopifnot("run_meta.json" %in% files_in_run)
+stopifnot("results_manifest.json" %in% files_in_run)
+stopifnot("session_info.txt" %in% files_in_run)
 
 # Verify summary.csv structure with exact SAS ODS column names
 csv_read <- utils::read.csv(file.path(run_dir_final, "summary.csv"), stringsAsFactors = FALSE, check.names = FALSE)
@@ -294,11 +298,49 @@ stopifnot(grepl("SAS PROC MEANS 記述統計解析レポート", md_text, fixed 
 stopifnot(grepl("ビット単位一致の非保証", md_text, fixed = TRUE))
 stopifnot(grepl("規制提出適格性の非主張", md_text, fixed = TRUE))
 
-# Verify manifest integrity
-manifest_obj <- jsonlite::fromJSON(file.path(run_dir_final, "manifest.json"))
-stopifnot(manifest_obj$manifest_version == "1.0")
-stopifnot(manifest_obj$artifacts$means_results_json$sha256 == digest::digest(file.path(run_dir_final, "means_results.json"), file = TRUE, algo = "sha256"))
-message("PASS: 3点セット成果物、CSV列構造、日本語Markdownレポート、manifest.json が完全整合しています。")
+# Verify results_manifest.json integrity (migrated from former manifest.json)
+rm_obj <- jsonlite::read_json(file.path(run_dir_final, "results_manifest.json"))
+stopifnot(rm_obj$interface_version == "1.0")
+stopifnot(rm_obj$skill == "sas-proc-means")
+artifact_paths <- vapply(rm_obj$artifacts, function(a) a$path, character(1))
+artifact_shas <- vapply(rm_obj$artifacts, function(a) a$sha256, character(1))
+names(artifact_shas) <- artifact_paths
+stopifnot("means_results.json" %in% artifact_paths)
+stopifnot("summary.csv" %in% artifact_paths)
+stopifnot("summary_report.md" %in% artifact_paths)
+stopifnot("analysis_config.json" %in% artifact_paths)
+stopifnot("session_info.txt" %in% artifact_paths)
+stopifnot(artifact_shas[["means_results.json"]] == digest::digest(file.path(run_dir_final, "means_results.json"), file = TRUE, algo = "sha256"))
+stopifnot(artifact_shas[["summary.csv"]] == digest::digest(file.path(run_dir_final, "summary.csv"), file = TRUE, algo = "sha256"))
+stopifnot(artifact_shas[["summary_report.md"]] == digest::digest(file.path(run_dir_final, "summary_report.md"), file = TRUE, algo = "sha256"))
+stopifnot(artifact_shas[["analysis_config.json"]] == digest::digest(file.path(run_dir_final, "analysis_config.json"), file = TRUE, algo = "sha256"))
+stopifnot(artifact_shas[["session_info.txt"]] == digest::digest(file.path(run_dir_final, "session_info.txt"), file = TRUE, algo = "sha256"))
+
+# Verify run_meta.json integrity and migrated metadata
+meta_obj <- jsonlite::read_json(file.path(run_dir_final, "run_meta.json"))
+stopifnot(meta_obj$interface_version == "2.0")
+stopifnot(meta_obj$skill == "sas-proc-means")
+stopifnot(meta_obj$run_id == "run_rvd_DF")
+stopifnot(meta_obj$logical_run_id == "rvd_DF")
+stopifnot(meta_obj$run_state == "completed")
+stopifnot(!is.null(meta_obj$timestamps$created))
+stopifnot(grepl("\\+0900$", meta_obj$timestamps$created))
+stopifnot(length(meta_obj$inputs) >= 1L)
+data_input <- meta_obj$inputs[[1L]]
+stopifnot(data_input$role == "data")
+stopifnot(data_input$source_kind == "file")
+stopifnot(!is.null(data_input$sha256))
+stopifnot(data_input$sha256 == digest::digest(exact_csv, file = TRUE, algo = "sha256"))
+if (!is.null(data_input$source_path) && !is.na(data_input$source_path)) {
+  stopifnot(file.exists(data_input$source_path) || file.exists(file.path(root, data_input$source_path)))
+}
+stopifnot(!is.null(meta_obj$environment$r_version))
+stopifnot(!is.null(meta_obj$environment$platform))
+stopifnot(length(meta_obj$environment$packages) >= 1L)
+stopifnot(meta_obj$environment$session_info_path == "session_info.txt")
+stopifnot(meta_obj$results_manifest == "results_manifest.json")
+stopifnot(meta_obj$results_manifest_sha256 == digest::digest(file.path(run_dir_final, "results_manifest.json"), file = TRUE, algo = "sha256"))
+message("PASS: 3点セット成果物、CSV列構造、日本語Markdownレポート、run_meta.json、results_manifest.json が完全整合し、manifest.json 非存在を確認しました。")
 
 message(">>> 7. 数値パリティ許容誤差契約とfixture優先規則の検証 (Task 5.5)")
 # Verify tolerance contract:
@@ -331,4 +373,9 @@ stopifnot(st_df$MEDIAN == 4.5)
 stopifnot(res_df$metadata$sas_parity == "unverified")
 message("PASS: 数値パリティ許容誤差契約（OR論理）および fixture優先規則（unverified表記）を充足しています。")
 
-message(">>> ALL TESTS PASSED SUCCESSFULLY! <<<")
+  message(">>> ALL TESTS PASSED SUCCESSFULLY! <<<")
+}, finally = {
+  if (dir.exists(td)) {
+    unlink(td, recursive = TRUE, force = TRUE)
+  }
+})

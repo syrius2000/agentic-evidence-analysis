@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Rscript *)",
+      "Bash(openspec *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(grep *)",
+      "Bash(ls *)"
+    ],
+    "deny": [
+      "Bash(git push *)"
+    ]
+  }
+}

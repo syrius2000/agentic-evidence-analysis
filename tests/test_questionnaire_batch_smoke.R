@@ -31,10 +31,11 @@ run_test <- function() {
   config_path  <- file.path(root, "tests", "question_config_test.csv")
   runner_path  <- file.path(root, ".agents", "skills", "questionnaire-batch-analysis",
                             "templates", "batch_runner.R")
-  out_dir      <- file.path(tempdir(), paste0("skill_out_smoke_", format(Sys.time(), "%Y%m%d_%H%M%S")))
-  on.exit(unlink(out_dir, recursive = TRUE, force = TRUE), add = TRUE)
+  out_dir      <- file.path(root, "evidence_runs", "questionnaire", paste0(".smoke_", format(Sys.time(), "%Y%m%d_%H%M%S"), "_", Sys.getpid()))
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-stopifnot(file.exists(data_path))
+  tryCatch({
+    stopifnot(file.exists(data_path))
 stopifnot(file.exists(config_path))
 stopifnot(file.exists(runner_path))
 
@@ -143,6 +144,11 @@ if (file.exists(summary_csv)) {
   cat("\n===============================\n")
   cat(sprintf("Results: %d passed, %d failed\n", pass, fail))
   return(fail)
+  }, finally = {
+    if (dir.exists(out_dir)) {
+      unlink(out_dir, recursive = TRUE, force = TRUE)
+    }
+  })
 }
 
 fail_count <- run_test()

@@ -5,7 +5,8 @@ test_pass <- 0L
 test_fail <- 0L
 repo_root <- normalizePath(".", mustWork = TRUE)
 schema_test_output <- file.path(repo_root, "evidence_runs/vcd_categorical_reporting", paste0("schema_batch_", Sys.getpid()))
-on.exit(unlink(schema_test_output, recursive = TRUE), add = TRUE)
+
+tryCatch({
 
 assert_true <- function(cond, msg) {
   if (isTRUE(cond)) {
@@ -1009,5 +1010,11 @@ if (!py_available) {
   }
 }
 
-cat(sprintf("\nTest Summary: %d Passed, %d Failed\n", test_pass, test_fail))
+  cat(sprintf("\nTest Summary: %d Passed, %d Failed\n", test_pass, test_fail))
+}, finally = {
+  if (dir.exists(schema_test_output)) {
+    unlink(schema_test_output, recursive = TRUE, force = TRUE)
+  }
+})
+
 if (test_fail > 0L) quit(status = 1L)
