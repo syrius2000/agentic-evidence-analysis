@@ -56,3 +56,8 @@ node_modules/
 .agent/skills/openspec-*
 .agent/workflows/
 .agents/workflows/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
