@@ -47,9 +47,9 @@
 
 ### 鉄則 5: 正本リポジトリ境界
 
-- スキルツリーは `.agents/skills` のみを管理対象とする（`.cursor/skills` は作成・復元しない）。
+- スキルツリーは `.agents/skills` のみを管理対象とする。
 - 共通R基盤は `.agents/shared`、統計数理と責務の正本は `docs/reference` とする。
-- `agentic-evidence-analysis` は、全9スキル、統計schema、統計品質契約、Rテンプレート、統計回帰テストの唯一の正本である。
+- `agentic-evidence-analysis` は、統計系9スキル（§4の一覧）、統計schema、統計品質契約、Rテンプレート、統計回帰テストの唯一の正本である。`.agents/skills` には、このほか `blind-qa-cycle` と `openspec-*` 12件がある。
 - エコシステム境界:
   - 一般コード・SQLコード理解: `Productivity-Skill`
   - RWD/DB実行・統合ハブ: `rwd-mysql-skill-toolkit`
