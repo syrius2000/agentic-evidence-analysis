@@ -1,75 +1,47 @@
-# AGENTS.md — エージェント作業契約
+# AGENTS.md — エージェント作業規約
 
-このファイルは、本リポジトリで作業するAIエージェント向けの行動規則です。利用者向けの概要・導入・実行例は [README.md](README.md) を参照してください。
+このファイルは、本リポジトリで作業するAIエージェントの行動規則を定める。
+利用方法は `README.md`、スキルの手順は各 `SKILL.md`、規範的な挙動は現行の `openspec/specs/` に従う。
+文書間に不整合があれば、正本を照合し、解消できない場合は不整合を報告する。
 
-## 文書の責務と正本
+## 作業開始時
 
-- エージェントの作業境界・承認条件は本ファイルに従う。
-- 利用方法は [README.md](README.md) と各スキルの `SKILL.md`、スキル間の責務は [docs/reference/skill_responsibilities.md](docs/reference/skill_responsibilities.md) を参照する。
-- 統計数理は [docs/reference/README.md](docs/reference/README.md) から該当する数理文書を参照する。
-- 規範的な挙動は該当する `openspec/specs/` の現行仕様を確認する。archiveは履歴であり、規範として扱わない。
-- 文書間に不整合があれば独自に規則を作らず、該当する正本を照合し、解消できない場合は不整合を報告する。
+- 作業対象と関連する指示・仕様を確認する。
+- Gitのブランチ、差分、未追跡ファイルを確認し、開始時点のユーザー変更を保持する。
+- 調査・現状確認・差分確認は読み取り専用で進める。
 
-## 作業時の必須ルール
+## 変更と承認
 
-### 1. R依存関係は実行時に導入しない
+- 大規模変更、コード・依存関係・データの変更、外部システムへの書き込みの前に、`docs/Artifacts/plans/implementation_plan_NNN_MMDD.md` を作成する。
+- 計画の承認前に実装・データ変更・外部書き込みへ進まない。対象や方式が変わる場合は計画を更新し、再承認を得る。
+- 既存変更や未追跡ファイルを無断で復元・削除しない。
+- commit、mainへの集約、push、リモートブランチ削除は、ユーザーの明示指示がある場合に限る。
 
-- 解析・レポート生成・テスト実行中に `install.packages()`、`pacman::p_load()` などでパッケージを自動導入してはならない。
-- 依存関係が不足した場合は `check_r_dependencies()` 等の既存チェックに従って停止し、必要な案内を行う。
+## 解析作業
 
-### 2. Pass 0の適用範囲を守る
+- 解析・レポート生成・テスト実行中に、Rパッケージを自動インストールしない。不足時は既存の依存関係チェックに従って停止し、必要な案内をする。
+- Pass 0を適用する範囲は本ファイルの指示と各分析スキルに従う。対象外の処理にPass 0を要求しない。
+- 解析成果物はスキルごとの `evidence_runs/<skill_slug>/` 配下に、既存runを上書きせずrun単位で保存する。rootの逸脱やsymlink経由の書き込みを拒否する。
+- runメタデータ、マニフェスト、索引の形式は共有run基盤と現行仕様に従う。独自形式を追加しない。
+- レポート・解説は原則日本語、時刻はJSTとする。HTML成果物は外部通信先や環境依存の絶対パスを参照しない。
 
-- **必須**: `vcd-bayesian-evidence-analysis` と `vcd-categorical-analysis` の新規分析、および非独立観測デザインを扱う `comparative-design-analysis`。
-- **推奨**: 複数テーマ・複数設問を一括処理する `vcd-categorical-reporting` と `questionnaire-batch-analysis`。
-- **対象外**: `sas-proc-freq`、`sas-proc-means`、単体集計スクリプトの直接実行、回帰・ユニットテスト、文書・コードの保守。
-- Pass 0では入力品質、分析単位、変数・次元、欠測、疎セル、デザイン、目的を確認する。詳細な手順と設定契約は [vcd-pass0-consultation/SKILL.md](.agents/skills/vcd-pass0-consultation/SKILL.md) および各分析スキルに従う。
+## リポジトリと分析上の境界
 
-### 3. 解析成果物をrun単位で分離する
+- スキルの管理対象は `.agents/skills` のみ。`.cursor/skills` を作成・復元しない。
+- 共通R基盤は `.agents/shared`、数理リファレンスは `docs/reference`、規範的な挙動は現行 `openspec/specs/` で管理する。
+- P値単独や一律閾値で重要性を自動判定しない。効果量、証拠、不確実性、影響度、安定性、実務判断を区別する。
+- 独立ブラインドQAはユーザーが明示的に起動した場合のみ、`blind-qa-cycle` スキルに従って実施する。
 
-- 解析の永続出力はスキルごとの出力ルート配下に `run_<canonical_id>[_N]/` を作り、run間で物理的に分離する。出力ルート直下へ解析成果物を書かない。
-- 既存runやユーザーデータを無言で上書きしない。既定ルート・ID形式・互換条件は各スキルと共有run基盤の契約に従う。
-- 新規の解析永続出力は `evidence_runs/<skill_slug>/` 配下へ限定する。利用者指定rootも該当slug root自身またはその配下に限り、namespace外、`..`、symlink逸脱は書込み前に拒否する。
-- 安定slugの正本は [`evidence-run-layout`](openspec/specs/evidence-run-layout/spec.md)。現在の対応は `vcd-bayesian-evidence-analysis` → `vcd_bayesian`、`vcd-categorical-analysis` → `vcd_categorical`、`vcd-categorical-reporting` → `vcd_categorical_reporting`、`comparative-design-analysis` → `comparative_design`、`evidence-decision-review` → `evidence_decision_review`、`questionnaire-batch-analysis` → `questionnaire`、`sas-proc-freq` → `sas_proc_freq`、`sas-proc-means` → `sas_proc_means`。
-- `comparative-design-analysis` の推論器は現在in-memory結果を返し、ファイルを直接永続化しない。将来の永続化は呼び出し側の責務とし、上記rootと共通run隔離を使う。
-- Pass 0の `inspect_data.R` は解析Skill rootとは別のinspection例外。未指定時 `.` の後方互換を保ち、明示時は `evidence_runs/inspections/<project>/run_<id>/` を推奨する。Artifact置き場規約は [`docs/Artifacts/README.md`](docs/Artifacts/README.md) を参照する。
-- 各 run ディレクトリのメタデータ正本は `run_meta.json`（統制メタデータ・再現性環境情報・JSTタイムスタンプ）および `results_manifest.json`（成果物SHA-256マニフェスト）とし、個別スキル独自の `manifest.json` や run 内 `run_state.json` は作成しない。
-- 各スキル出力 root 直下には、完了確定事象を追記する横断索引 `runs_index.jsonl`、および最新の正常完了 run ディレクトリを指すポインタ `latest.json` が配置される。また、並行実行排他のための予約ディレクトリ `.run_locks` が配置される場合があるため、出力 root 直下の run 列挙処理は必ず `^run_` プレフィックスでフィルタリングする。
-- 出力 root 直下の早期失敗記録 `run_state.json` は、run ディレクトリ予約前のフェイルファスト記録として例外的に維持される。
+## 検証と報告
 
-### 4. 言語・時刻と成果物の制約
+- 構文・静的確認、テスト、解析実行、独立QA、Owner判断、commit、pushを区別して報告する。
+- 実施していない確認は「未検証」と明記する。実装者の報告だけで独立QAや完了を主張しない。
+- 結論を先に述べ、変更内容、確認結果、未検証事項、次の行動を簡潔に伝える。
 
-- 生成するレポート、AI要約、解説は原則として日本語で作成する。解析コンテキストとタイムスタンプはJSTを用いる。
-- HTMLレポートは外部CDN・外部CSS/JS・外部フォント・OS依存の絶対パスを参照しない自己完結型とする。成果物に外部通信先や環境依存パスを含めない。
+## 詳細な正本
 
-### 5. 正本リポジトリの境界
-
-- スキルの管理対象は `.agents/skills` のみとし、`.cursor/skills` を作成・復元しない。
-- 共通R基盤は `.agents/shared`、数理リファレンスは `docs/reference`、規範挙動は該当する現行 `openspec/specs/` で管理する。
-- 本リポジトリは統計スキル・schema・品質契約・Rテンプレート・統計回帰テストの正本である。一般コード・SQL理解とRWD/DB実行の境界は [README.md](README.md) のエコシステム案内に従う。
-- P値単独や一律閾値で重要性を自動判定しない。効果量、方向支持、実務領域、不確実性・精度、影響度、数値安定性、意思決定を混同せず、自動規制判断を行わない。定義と数理は担当リファレンスを参照する。
-
-## 変更前の手続きと保全
-
-- 調査、現状確認、差分確認、計画書作成は読み取り専用で進められる。
-- 大規模変更、コード・依存関係・データの変更、外部システムへの書き込みに着手する前に `docs/Artifacts/plans/implementation_plan_NNN_MMDD.md` を作成する。
-- 計画承認前に実装・データ変更・外部書き込みへ進まない。対象・方式・影響範囲が変わる場合は計画を更新し、再承認を得る。
-- 作業開始時点のユーザー変更、無関係な差分、未追跡ファイルを保持する。復元・削除が必要なら対象を限定し、明示的な承認を得る。
-- 計画書には、canonical指標と由来を含むデータ契約、統計概念の分離、コードベースの一次情報照合、Fixture・Checks・Expected Resultsを示す具体的な確認マトリクスを記載する。
-
-## Git・レビュー・外部操作
-
-- 本リポジトリは個人開発を基本とし、細かなGit履歴の保存・整形より、実装・検証・改善の速度を優先する。Gitは作業中の差分保全と、納得した成果をmainへ集約するために使う。
-- 大規模改修やOpenSpec Changeでは作業ブランチを使う。中間コミットやQAラウンドごとのコミットは必須ではなく、レビューや作業の区切りに必要な場合だけ作成する。
-- 問題が見つかった場合は、過去の試行錯誤を復元することを前提にせず、現在の状態から修正して再検証する。基準点が必要な作業では開始時のブランチとcommitを記録する。
-- ユーザーが完了・集約を指示したら、検証済みの成果を既定ではmainへ1つのコミットにまとめる。中間コミットのハッシュ一覧を集約コミットへ転記する必要はない。mainへの集約自体の明示指示がない場合は実行しない。
-- ユーザーが集約とあわせて整理・クリーンアップを指示した場合は、集約確認後に不要なローカル作業ブランチ、対象として指定された一時ファイル・一時ディレクトリ、完了済みQAの中間証拠を削除できる。削除対象を確認し、解析入力・ユーザーデータ・再現に必要な成果物・最終QA判断に必要な証拠は保持する。
-- QA証拠は完了判断に必要な最終結果を中心に残す。全ラウンドの招待文・中間報告・機械出力の恒久保存は必須としない。既存のQAサイクル契約が保存を要求する場合、またはユーザーが証拠の保持を指定した場合はそれに従う。
-- 独立ブラインドQAはユーザーが明示的に起動した場合に限り、[blind-qa-cycleスキル](.agents/skills/blind-qa-cycle/SKILL.md) の手順に従う。自動起動、Owner裁定の代行、QA担当による製品コード修正をしない。
-- `git push`、リモートブランチ削除、履歴書き換えなどリモートへの書き込みは、ユーザーの明示指示がない限り行わない。明示起動されたblind-qa-cycleの例外は同スキルと本リポジトリの運用規約に限定する。
-- ローカル作業ブランチの削除はリモート操作と区別する。ユーザーが集約後の整理を指示した場合に限り、mainへの集約と作業ツリーの保全を確認してから削除する。
-
-## 完了報告の証拠区分
-
-- 構文確認、静的確認、テスト、解析実行、独立QA、Owner判断、commit、pushを区別して報告する。
-- 実施していない確認は「未検証」とする。過去の記録や実装者の報告だけで現行状態を確定しない。
-- ユーザーへの報告は結論を先にし、次の行動と未検証事項が分かるようにする。詳細は [docs/reference/output_style_adhd.md](docs/reference/output_style_adhd.md) を参照する。
+- 利用方法: `README.md` と各 `.agents/skills/*/SKILL.md`
+- スキル間の責務: `docs/reference/skill_responsibilities.md`
+- 数理リファレンス: `docs/reference/README.md`
+- 成果物の配置: `docs/Artifacts/README.md`
+- 出力スタイル: `docs/reference/output_style_adhd.md`
