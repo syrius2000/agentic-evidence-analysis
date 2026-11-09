@@ -133,7 +133,7 @@ assert_html_theme <- function(html, label) {
   assert_true(!has_external_asset(html), sprintf("%s has no external asset / absolute OS path", label))
 }
 
-fixture_root <- file.path(repo, "tests", "fixtures", "dashboard_theme")
+fixture_root <- tempfile("dashboard_theme_fixture_")
 dir.create(fixture_root, recursive = TRUE, showWarnings = FALSE)
 
 cat("\n=== 5. Live render: reporting ===\n")
@@ -145,7 +145,7 @@ df <- data.frame(
   total = c(200L, 200L),
   stringsAsFactors = FALSE
 )
-out_rep <- tempfile("theme_contract_rep_")
+out_rep <- tempfile("theme_contract_rep_", tmpdir = file.path(repo, "evidence_runs", "vcd_categorical_reporting"))
 res_rep <- generate_comparative_report(
   df,
   reference_arm = "Control",

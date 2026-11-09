@@ -653,7 +653,7 @@ generate_comparative_report <- function(
   writeLines(md_lines, md_path)
 
   # E. dashboard.html (Zero-External-Asset standalone HTML with Section 14 Visual Separation Contract)
-  html_path <- file.path(run_output_dir, "dashboard.html")
+  html_path <- file.path(run_output_dir, "dashboard_preview.html")
 
   # Detect numerical instability across contrasts for conditional warning callout
   has_rr_instability <- any(!summary_df$rr_estimate_available, na.rm = TRUE) ||
@@ -928,6 +928,7 @@ generate_comparative_report <- function(
   </style>
 </head>
 <body>
+  <aside id="reporting-preview-notice" class="callout" role="status">暫定プレビュー：AI要約とDashboardの確定は未完了です。</aside>
   <h1 id="dashboard-title">比較エビデンス解析ダッシュボード</h1>
   <div id="guidance-callout" class="callout">
     <strong>【解釈上の厳格な契約・免責事項】</strong><br>
@@ -1780,8 +1781,7 @@ generate_comparative_report <- function(
   manifest <- write_results_manifest(run_output_dir, "vcd-categorical-reporting", list(
     list(path = "comparative_evidence.json", role = "primary_results"),
     list(path = "comparative_summary.csv", role = "summary_table"),
-    list(path = "comparative_report.md", role = "summary_report"),
-    list(path = "dashboard.html", role = "report_html")
+    list(path = "comparative_report.md", role = "summary_report")
   ))
   input_record <- if (is.null(input_data_path)) {
     list(list(
@@ -1796,16 +1796,18 @@ generate_comparative_report <- function(
     run_id = if (!is.null(run_id)) run_id else basename(run_output_dir),
     input_data_path = input_data_path,
     extra = list(
-      run_state = "completed",
+      run_state = "active",
       seed = seed,
       practical_difference_policy = practical_difference_policy,
       results_manifest_sha256 = manifest$manifest_sha256,
       inputs = input_record, config_origin = "api_arguments", data_frame_sha256 = df_sha256,
       data_frame_hash_contract = "R-serialize-v2: column names, types, classes, values, row order",
-      delta_thresholds = delta_thresholds
+      delta_thresholds = delta_thresholds,
+      dashboard_preview_sha256 = sha256_file(html_path)
     )
   )
   verify_results_manifest(run_output_dir, manifest$manifest_sha256)
+  write_run_handover(run_output_dir, "vcd-categorical-reporting", manifest$manifest_sha256, config_path = NULL)
 
   list(
     run_output_dir = run_output_dir,

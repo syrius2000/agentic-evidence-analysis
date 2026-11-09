@@ -17,7 +17,7 @@ author: Codex (GPT-5) / Cursor (Composer)
 | **Pass 0: 分析設計・事前相談・ルーティング** | `vcd-pass0-consultation` | データ検分（度数・水準・欠測）、次元削減・層別の提案、観察デザインの検証・ルーティング（`analysis_config.json` / `routing_decision.json` 生成） | 統計計算実行そのもの、非集約クラスターデータの強制投入 |
 | **3次元集計表の探索・関連構造** | `vcd-bayesian-evidence-analysis` | 3次元正本（`three-way-results-v1`）、9階層対数線形モデル、新4軸セル診断、明示式BIC、多項Dirichlet事後推論、Dual-Filterスクリーニング、条件付きセル順位再現性（CRR）、HTMLダッシュボード | 2変数のみの単純解析、旧スコアによる自動判定、因果構造の断定 |
 | **2次元名義カテゴリの関連・残差** | `vcd-categorical-analysis` | 2次元分割表の全体効果量（Cramér's V、Bergsma 補正）、Haberman型調整標準化残差ヒートマップ、estimand・不確実性、executive_summary、11セクションHTML生成 | 3次元以上の交互作用モデル比較、セルベイズ因子 |
-| **比較群間エビデンス・多テーマスクリーニング** | `vcd-categorical-reporting` | 独立2群・対照群対比のエビデンス（RD/RR/方向支持/実務領域/U-Grade）、ゼロ参照群確定挙動（`mean=null, mean_is_finite=false`）、安全性（SOC/PT重複排除）、完全オフラインHTML | マッチドペア・IPTW等の依存デザイン、FWER厳格制御の主張、自動規制判定 |
+| **比較群間エビデンス・多テーマスクリーニング** | `vcd-categorical-reporting` | 独立2群・対照群対比のエビデンス（RD/RR/方向支持/実務領域/U-Grade）、ゼロ参照群確定挙動（`mean=null, mean_is_finite=false`）、安全性（SOC/PT重複排除）、AI要約とスキルIDを含む完全オフラインHTML | マッチドペア・IPTW等の依存デザイン、FWER厳格制御の主張、自動規制判定 |
 | **デザイン考慮型比較推論** | `comparative-design-analysis` | 1:1マッチドペア（Dirichlet 厳密期待値）、1:kマッチドセット（固定条件付きクラスタブートストラップ）、IPTW（PS再適合患者ブートストラップ）、人年発症率（共役Gamma-Poisson推論） | 独立群用推論器への依存データ投入、GLMM/GEEモデリング、非整数度数のDirichlet投入 |
 | **統計エビデンス決定監査・先例検索** | `evidence-decision-review` | 決定ラベル非含有特徴量プロファイル抽出（`evidence-feature-v1`）、Gower距離、階層クラスタリング（HAC）、歴史的先例検索、決定台帳（Ledger）、QA Review Candidate助言 | 自動規制決定（承認/棄却）、決定ラベルの直接クラスタリング投入、処方的判断 |
 | **アンケート設問の量産・バッチ** | `questionnaire-batch-analysis` | 設定ファイルに基づく複数設問の自動バッチ実行、サマリー集約、共有学術テーマによる完全オフライン HTML | 設問ごとの統計的前提や因果構造の自動的正当化 |

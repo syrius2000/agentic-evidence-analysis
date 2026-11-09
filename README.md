@@ -52,7 +52,7 @@ flowchart LR
 | **vcd-pass0-consultation** | 事前相談 | データ検分、次元削減・層別解析の提案、観察デザインの検証・ルーティング（`analysis_config.json` / `routing_decision.json` 作成） |
 | **vcd-bayesian-evidence-analysis** | 3次元正本 | 3次元集計表の 9 階層対数線形モデル、新 4 軸セル診断、明示式 BIC、Dirichlet 事後推論、HTML レポート生成 |
 | **vcd-categorical-analysis** | 2次元正本 | 名義 2 変数の全体効果量（Cramér's V、Bergsma 補正）、調整標準化残差ヒートマップ、新 4 軸セル診断、多項 Jeffreys 事前推論、条件付き事後分布、11 セクション完全オフライン Scientific Dashboard 生成。3次元以上は `vcd-bayesian-evidence-analysis` へ委譲 |
-| **vcd-categorical-reporting** | 比較報告 | 独立 2 群（または対照群 vs 各群）の比較エビデンス（RD/RR/E100/reciprocal・方向支持/実務領域/U-Grade）、12 列提示階層、ゼロセル確定挙動、完全自己完結型 HTML/Markdown、安全性（SOC/PT 重複排除）および処方スクリーニング。数理正本: [`docs/reference/comparative_evidence_math.md`](docs/reference/comparative_evidence_math.md) |
+| **vcd-categorical-reporting** | 比較報告 | 独立 2 群（または対照群 vs 各群）の比較エビデンス（RD/RR/E100/reciprocal・方向支持/実務領域/U-Grade）、12 列提示階層、ゼロセル確定挙動、安全性（SOC/PT 重複排除）および処方スクリーニング。Pass 2のAI要約を確定後、全文とスキルIDを含む自己完結HTMLをPass 3で生成する。数理正本: [`docs/reference/comparative_evidence_math.md`](docs/reference/comparative_evidence_math.md) |
 | **comparative-design-analysis** | デザイン推論 | マッチドペア（Dirichlet 厳密期待値）、マッチドセット（固定条件付きクラスタブートストラップ）、IPTW（PS 再適合患者ブートストラップ）、人年発症率（共役 Gamma-Poisson 率推論）。数理正本: [`docs/reference/design_aware_inference_math.md`](docs/reference/design_aware_inference_math.md) |
 | **evidence-decision-review** | 決定監査 | 決定ラベル非含有特徴量、Gower・HAC、先例検索（QA Review Candidate、自動決定排除）。数理解説は P1 計画中（[ギャップ監査](docs/reference/math_coverage_gap_inventory_001_0927.md)） |
 | **questionnaire-batch-analysis** | バッチ処理 | アンケート複数設問の設定ファイルに基づく自動一括集計とサマリー量産 |

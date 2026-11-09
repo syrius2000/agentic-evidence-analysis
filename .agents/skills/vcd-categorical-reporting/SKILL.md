@@ -39,8 +39,8 @@ metadata:
 ```mermaid
 flowchart TD
   p0["Pass 0: 事前検分・ルーティング (routing_decision.json)"] --> p1["Pass 1: 独立 Jeffreys 推論 (Beta-Binomial)"]
-  p1 --> p2["Pass 2: 成果物生成 (comparative_evidence.json / summary.csv)"]
-  p2 --> p3["Pass 3: 自己完結型 HTML / Markdown Dashboard 生成"]
+  p1 --> p2["Pass 2: 結果に基づくAI要約を確定"]
+  p2 --> p3["Pass 3: 要約とスキルIDを含むDashboardを確定"]
 ```
 
 ### 1. 入力データと Pass 0 ルーティング
@@ -75,12 +75,16 @@ flowchart TD
 
 ### 2. コントラスト算出と出力成果物
 
+`generate_comparative_report()` はPass 1の統計結果、Markdown、`dashboard_preview.html` と `run_handover.json` を生成する。previewは暫定表示であり、runは `active` のままである。結果JSONとCSVを確認して日本語のAI考察を `staging/executive_summary.md` に作り、handoverの `pass2_ai.finalize.argv` で確定する。次にhandoverの `pass3.argv` を実行する。Pass 3は要約と結果manifestのハッシュを照合し、全文と `run_meta.json` のスキルIDを最終Dashboardに埋め込んでrunを `sealed` にする。要約欠落・空・改変・不一致では停止する。Pass 1だけのrunを完成報告してはならない。要約はMarkdownの記号を保持したテキストとして安全に表示される。
+
 本スキルは、以下の標準成果物を隔離 run ディレクトリ（`evidence_runs/vcd_categorical_reporting/run_<canonical_id>[_N]/`）内に生成します：
 
 - `comparative_evidence.json`: 構造化 JSON エビデンス（top-level = `comparative-evidence-batch-v1`、`contrasts[*]` = `comparative-evidence-v1` 準拠）
 - `comparative_summary.csv`: 主要要約指標一覧 CSV（6大概念列および全来歴列を保持）
 - `comparative_report.md`: 日本語エビデンス Markdown レポート（`1.33 [N/A]` 等の統一样式）
+- `executive_summary.md`: 同runの計算結果に基づくAI考察（Pass 2で確定）
 - `dashboard.html`: 自己完結型完全オフライン HTML ダッシュボード（外部 CDN / 絶対パス 0 件）
+- `run_handover.json`: Pass 2/3の実行案内。計算結果はmanifest、要約とDashboardは `run_meta.json` のハッシュで追跡する。
 
 ### 3. 数理挙動契約と安全性集計規約
 

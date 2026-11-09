@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 # tests/test_single_pass_completed_state.R
-# Task 4.1: vcd-categorical-reporting and evidence-decision-review completed run_state test
+# Reporting is staged; evidence-decision-review remains single-pass.
 
 args <- commandArgs(trailingOnly = FALSE)
 file_arg <- args[grep("^--file=", args)]
@@ -58,7 +58,8 @@ tryCatch({
     output_dir = test_dir_rep
   )
   meta_rep <- read_run_control(res_rep$run_output_dir)
-  check("vcd-categorical-reporting run_state is 'completed'", identical(meta_rep$run_state, "completed"))
+  check("vcd-categorical-reporting stays active after Pass 1", identical(meta_rep$run_state, "active"))
+  check("vcd-categorical-reporting has no final dashboard after Pass 1", !file.exists(file.path(res_rep$run_output_dir, "dashboard.html")))
   
   # 2. evidence-decision-review の検証
   dir.create(test_dir_edr, recursive = TRUE, showWarnings = FALSE)

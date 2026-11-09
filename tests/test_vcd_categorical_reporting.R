@@ -44,7 +44,7 @@ res <- generate_comparative_report(
 assert_true(file.exists(res$json_path), "comparative_evidence.json exists")
 assert_true(file.exists(res$csv_path), "comparative_summary.csv exists")
 assert_true(file.exists(res$md_path), "comparative_report.md exists")
-assert_true(file.exists(res$html_path), "dashboard.html exists")
+assert_true(file.exists(res$html_path) && basename(res$html_path) == "dashboard_preview.html", "Pass 1 dashboard preview exists")
 
 # 2 themes x 2 comparisons (Drug_A vs Placebo, Drug_B vs Placebo) = 4 rows
 assert_true(nrow(res$summary_df) == 4L, "Summary CSV has exactly 4 comparison rows")

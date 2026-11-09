@@ -1092,6 +1092,10 @@ finalize_stage <- function(run_dir, stage, target_name, source_staging_path, exp
     }
   } else {
     if (!file_test("-f", source) || file.info(source)$size == 0) stop("[ERROR] source は空でない通常ファイルが必要です")
+    if (stage == "pass2" && identical(meta$skill, "vcd-categorical-reporting") &&
+        !any(nzchar(trimws(readLines(source, warn = FALSE, encoding = "UTF-8"))))) {
+      stop("[ERROR] 要約が空です")
+    }
     tx <- c(expected_tx, list(sha256 = sha256_file(source)))
     atomic_run_json(tx, tx_path)
   }
@@ -1124,8 +1128,8 @@ finalize_stage <- function(run_dir, stage, target_name, source_staging_path, exp
   # 横断索引 (runs_index.jsonl) 追記および latest.json 原子的更新
   tryCatch({
     repo_root <- run_scope_detect_repo_root(run_dir)
-    resolved_meta <- resolve_run_meta_paths(meta, run_dir, allow_legacy = TRUE)
-    out_root <- resolved_meta$out_root
+    # read_run_control() already resolves portable paths to runtime paths.
+    out_root <- meta$out_root
     if (!is.null(out_root) && nzchar(out_root) && dir.exists(out_root)) {
       event <- list(
         run_id = as.character(meta$run_id),
@@ -1281,6 +1285,7 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
           switch(skill,
             "vcd-bayesian-evidence-analysis" = ".agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R",
             "vcd-categorical-analysis" = ".agents/skills/vcd-categorical-analysis/templates/render_dashboard.R",
+            "vcd-categorical-reporting" = ".agents/skills/vcd-categorical-reporting/render_dashboard.R",
             "questionnaire-batch-analysis" = ".agents/skills/questionnaire-batch-analysis/templates/render_dashboard.R"
           ),
           "--run-dir", run_arg,
@@ -1296,6 +1301,7 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
           switch(skill,
             "vcd-bayesian-evidence-analysis" = ".agents/skills/vcd-bayesian-evidence-analysis/templates/render_dashboard.R",
             "vcd-categorical-analysis" = ".agents/skills/vcd-categorical-analysis/templates/render_dashboard.R",
+            "vcd-categorical-reporting" = ".agents/skills/vcd-categorical-reporting/render_dashboard.R",
             "questionnaire-batch-analysis" = ".agents/skills/questionnaire-batch-analysis/templates/render_dashboard.R"
           ),
           "--run-dir", run_arg
@@ -1308,6 +1314,7 @@ write_run_handover <- function(run_output_dir, skill, results_manifest_sha256, c
 
   meta <- read_run_control(norm_run)
   if (skill != "vcd-bayesian-evidence-analysis") handover$next_actions$pass2_stub_preview <- NULL
+  if (skill == "vcd-categorical-reporting") handover$next_actions$pass3_preview <- NULL
   if (meta$pass_status$pass1 != "completed") {
     handover$next_actions <- list()
     handover$stop_reason <- paste0("Pass 1: ", meta$pass_status$pass1, "。本番後続処理を停止します")

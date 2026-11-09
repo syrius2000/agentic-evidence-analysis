@@ -7,9 +7,12 @@
 - `.agents/skills/vcd-pass0-consultation/`
 - `.agents/skills/vcd-categorical-analysis/`
 - `.agents/skills/vcd-bayesian-evidence-analysis/`
+- `.agents/skills/vcd-categorical-reporting/`
 - `.agents/skills/questionnaire-batch-analysis/`
 
 ## Pass別ゲート
+
+`vcd-categorical-reporting` はPass 1で計算結果を確定し、Pass 2で結果に基づく `executive_summary.md` を確定し、Pass 3でその全文とrunのスキルIDをDashboardに埋め込む。要約が欠落・空・結果と不一致の場合、最終Dashboardを生成せずrunを完了扱いにしない。
 
 | Pass | 確認対象 | 成果物または確認 |
 | :--- | :--- | :--- |
