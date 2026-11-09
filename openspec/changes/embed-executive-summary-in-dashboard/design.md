@@ -11,7 +11,7 @@ See `proposal.md` for the problem and the delta specs for required behavior. Tod
 - Make the executive summary and the actual skill ID visible together in every finalized comparative Dashboard.
 - Keep the final Dashboard unavailable until the summary has been written and verified against the same canonical results.
 - Use the shared run lifecycle and preserve the existing `comparative-evidence.json` and 40-field summary CSV contracts.
-- Make the embedded summary safe and self-contained without adding a package dependency.
+- Make the embedded summary safe and self-contained using checked `commonmark` and `xml2` dependencies.
 
 **Non-Goals:**
 
@@ -33,7 +33,7 @@ The results manifest will identify the canonical Pass 1 computational artifacts 
 
 ### 3. Embed the full summary safely near the Dashboard start
 
-The final Dashboard will place a clearly titled executive-summary section before the filters and comparison table. It will show the human-readable skill name and the exact skill slug from `run_meta.json`. The full Markdown source will be HTML-escaped and displayed with preserved line breaks and wrapping in a preformatted text container. This preserves all summary text without executing raw HTML, script, or link markup; it also avoids introducing a Markdown-rendering dependency or external asset.
+The final Dashboard places an initially open `details` accordion immediately after the existing guidance callout and before the filters. Its summary contains an H2 titled `エクゼクティブサマリー`; the body displays the skill slug and Markdown rendered as HTML. `commonmark` parses the summary into an XML syntax tree; a fixed node-to-tag allowlist renders its content, while raw HTML and link/image destinations are escaped as text. No source markup, scripts, event attributes, active links, or external image assets are emitted from the narrative. Both required packages are checked before rendering and are never installed automatically.
 
 ### 4. Make the skill workflow explicit
 
@@ -54,7 +54,7 @@ For each lifecycle and rendering behavior, add a focused regression test that de
 
 - [Pass 1 and Pass 2 runs remain active if the AI workflow stops] → The handover will expose the exact next action and identify the run as incomplete; only Pass 3 seals it.
 - [A very long summary increases standalone Dashboard size] → Embed one escaped copy of the summary and avoid duplicating it in the page data model.
-- [Preformatted display retains Markdown punctuation] → Preserve exact content and safety without new dependencies; the section heading and wrapping keep the prose readable.
+- [Untrusted Markdown contains executable markup or external resources] → Parse into an allowlisted syntax tree and render raw HTML and destinations as escaped text; do not emit active links or images.
 - [Older reporting runs lack staged metadata and embedded summaries] → Keep them read-only and valid under their original contract; require a new run to obtain the integrated Dashboard.
 
 ## Migration Plan

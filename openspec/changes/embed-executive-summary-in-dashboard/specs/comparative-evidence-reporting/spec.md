@@ -11,6 +11,11 @@ Every finalized comparative reporting Dashboard SHALL display the complete run-s
 - **WHEN** Pass 3 finalizes a comparative reporting run with a non-empty `executive_summary.md` bound to that run's canonical evidence
 - **THEN** `dashboard.html` MUST visibly include the complete summary content and the skill identifier from `run_meta.json`
 
+#### Scenario: Positioning the executive summary
+
+- **WHEN** the final Dashboard displays the summary
+- **THEN** it MUST present the dashboard H1, the existing guidance callout, and an initially open accordion with H2 `エクゼクティブサマリー` in that order, rendering Markdown headings, paragraphs, emphasis, lists, and tables as safe HTML
+
 #### Scenario: Summary is missing or does not match the run
 
 - **WHEN** Pass 3 is requested and the summary is missing, empty, or its recorded evidence digest differs from the run's canonical results

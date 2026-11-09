@@ -19,3 +19,9 @@
 
 - [x] 4.1 Add an end-to-end regression case that runs a small reporting fixture through Pass 1, summary finalization, and Pass 3; verify the Dashboard contains the exact summary and skill ID, is offline and safe, and the sealed run passes manifest and provenance checks.
 - [x] 4.2 Run the focused lifecycle, renderer, and end-to-end tests; record results and any remaining visual or compatibility limits in the run report.
+
+## 5. Executive-summary presentation revision
+
+- [x] 5.1 Use a disposable TDD fixture to demonstrate the old ordering and raw Markdown fail the required accordion, HTML structure, and safety checks; implement safe Markdown rendering after the unchanged guidance callout.
+- [x] 5.2 Update the existing tracked renderer and end-to-end tests for the new HTML contract, run the focused and comparative regressions, and remove only this task's disposable test runs.
+- [x] 5.3 Regenerate the safety-data Dashboard in a new run, compare all contrasts and CSV to the prior run, and verify summary content, ordering, provenance, and OpenSpec consistency.
