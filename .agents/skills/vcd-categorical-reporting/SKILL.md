@@ -75,7 +75,7 @@ flowchart TD
 
 ### 2. コントラスト算出と出力成果物
 
-`generate_comparative_report()` はPass 1の統計結果、Markdown、`dashboard_preview.html` と `run_handover.json` を生成する。previewは暫定表示であり、runは `active` のままである。結果JSONとCSVを確認して日本語のAI考察を `staging/executive_summary.md` に作り、handoverの `pass2_ai.finalize.argv` で確定する。次にhandoverの `pass3.argv` を実行する。Pass 3は要約と結果manifestのハッシュを照合し、全文と `run_meta.json` のスキルIDを最終Dashboardに埋め込んでrunを `sealed` にする。要約欠落・空・改変・不一致では停止する。Pass 1だけのrunを完成報告してはならない。要約はMarkdownの記号を保持したテキストとして安全に表示される。
+`generate_comparative_report()` はPass 1の統計結果、Markdown、`dashboard_preview.html` と `run_handover.json` を生成する。previewは暫定表示であり、runは `active` のままである。結果JSONとCSVを確認して日本語のAI考察を `staging/executive_summary.md` に作り、handoverの `pass2_ai.finalize.argv` で確定する。次にhandoverの `pass3.argv` を実行する。Pass 3は要約と結果manifestのハッシュを照合し、全文と `run_meta.json` のスキルIDを最終Dashboardに埋め込んでrunを `sealed` にする。要約欠落・空・改変・不一致では停止する。Pass 1だけのrunを完成報告してはならない。要約は免責事項の直後に初期展開された折りたたみ領域として表示し、Markdownを安全なHTMLへ変換する。描画には `commonmark` と `xml2` が必要であり、不足時は自動インストールせず停止する。
 
 本スキルは、以下の標準成果物を隔離 run ディレクトリ（`evidence_runs/vcd_categorical_reporting/run_<canonical_id>[_N]/`）内に生成します：
 

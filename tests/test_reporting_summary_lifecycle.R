@@ -2,7 +2,7 @@ source(".agents/skills/vcd-categorical-reporting/comparative_reporting.R")
 
 fixture <- data.frame(theme = c("事象", "事象"), arm = c("Drug", "Placebo"),
                       events = c(4L, 1L), total = c(20L, 20L))
-root <- tempfile("tdd_lifecycle_", tmpdir = "evidence_runs/vcd_categorical_reporting")
+root <- tempfile("tdd_lifecycle_", tmpdir = Sys.getenv("REPORTING_TEST_OUTPUT", unset = "evidence_runs/vcd_categorical_reporting"))
 result <- generate_comparative_report(fixture, target_arm = "Drug", reference_arm = "Placebo",
                                       contrast_mode = "explicit", output_dir = root)
 run <- result$run_output_dir
